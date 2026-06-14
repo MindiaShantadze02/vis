@@ -31,12 +31,22 @@ export interface BookingService {
   name: string
   duration_minutes: number
   price: number
+  max_per_slot: number
+}
+
+export interface BookingStaff {
+  id: string
+  display_name: string | null
+  title: string | null
+  sort_order: number
 }
 
 export interface BookingState {
   service: BookingService | null
   date: string        // yyyy-MM-dd
   time: string        // HH:mm
+  staffId: string | null      // chosen specific member, or null = "Any available"
+  assignedStaff: BookingStaff[] // bookable members assigned to the chosen service
   firstName: string
   lastName: string
   phone: string
@@ -57,6 +67,7 @@ export default function BookingLayout() {
   const [step, setStep] = useState(0)
   const [booking, setBooking] = useState<BookingState>({
     service: null, date: '', time: '',
+    staffId: null, assignedStaff: [],
     firstName: '', lastName: '', phone: '', notes: '',
     paymentMethod: 'in_person',
   })
@@ -218,7 +229,9 @@ export default function BookingLayout() {
             <Step2DateTimeSelect
               orgId={org.id}
               service={booking.service!}
-              onSelect={(date, time) => { patch({ date, time }); setStep(2) }}
+              onSelect={(date, time, staffId, assignedStaff) => {
+                patch({ date, time, staffId, assignedStaff }); setStep(2)
+              }}
               onBack={() => setStep(0)}
             />
           )}

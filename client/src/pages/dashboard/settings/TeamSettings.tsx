@@ -3,10 +3,11 @@ import {
   Box, Typography, Card, Button, TextField, Avatar,
   Stack, Divider, Alert, CircularProgress, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  IconButton,
+  IconButton, Switch, FormControlLabel,
 } from '@mui/material'
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone } from '@/lib/validation'
@@ -19,6 +20,10 @@ interface Member {
   user_id: string
   role: 'owner' | 'admin'
   joined_at: string | null
+  display_name: string | null
+  title: string | null
+  is_bookable: boolean
+  sort_order: number
   user_phone?: string
 }
 
@@ -51,6 +56,13 @@ export default function TeamSettings() {
   const [invitePhone, setInvitePhone] = useState('')
   const [inviting, setInviting] = useState(false)
 
+  // Edit member dialog
+  const [editMember, setEditMember] = useState<Member | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editTitle, setEditTitle] = useState('')
+  const [editBookable, setEditBookable] = useState(false)
+  const [savingMember, setSavingMember] = useState(false)
+
   useEffect(() => {
     if (org) load()
   }, [org])
@@ -62,7 +74,7 @@ export default function TeamSettings() {
     const [membersRes, invRes] = await Promise.all([
       supabase
         .from('org_members')
-        .select('id, user_id, role, joined_at')
+        .select('id, user_id, role, joined_at, display_name, title, is_bookable, sort_order')
         .eq('org_id', org.id)
         .order('joined_at'),
       supabase
@@ -117,6 +129,32 @@ export default function TeamSettings() {
     toast.success(t('common.deleted'))
   }
 
+  function openEdit(m: Member) {
+    setEditMember(m)
+    setEditName(m.display_name ?? '')
+    setEditTitle(m.title ?? '')
+    setEditBookable(m.is_bookable)
+  }
+
+  async function saveMember() {
+    if (!editMember) return
+    setSavingMember(true)
+    const patch = {
+      display_name: editName.trim() || null,
+      title: editTitle.trim() || null,
+      is_bookable: editBookable,
+    }
+    const { error: err } = await supabase
+      .from('org_members')
+      .update(patch)
+      .eq('id', editMember.id)
+    setSavingMember(false)
+    if (err) { setError(err.message); return }
+    setMembers(prev => prev.map(m => m.id === editMember.id ? { ...m, ...patch } : m))
+    setEditMember(null)
+    toast.success(t('common.saved'))
+  }
+
   const invitePhoneInvalid = invitePhone.trim().length > 0 && !isValidGeorgianPhone(invitePhone)
 
   return (
@@ -145,24 +183,30 @@ export default function TeamSettings() {
               {i > 0 && <Divider />}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2.5, py: 2 }}>
                 <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
-                  {m.user_id.slice(0, 2).toUpperCase()}
+                  {(m.display_name?.trim() || m.user_id).slice(0, 2).toUpperCase()}
                 </Avatar>
-                <Box sx={{ flex: 1 }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {m.user_id === user?.id ? 'თქვენ' : `მომხმარებელი ·${m.user_id.slice(-4)}`}
+                    {m.display_name?.trim()
+                      || (m.user_id === user?.id ? 'თქვენ' : `მომხმარებელი ·${m.user_id.slice(-4)}`)}
                   </Typography>
-                  {m.joined_at && (
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      შეუერთდა: {new Date(m.joined_at).toLocaleDateString('ka-GE')}
-                    </Typography>
-                  )}
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {[m.title?.trim(), m.joined_at ? `შეუერთდა: ${new Date(m.joined_at).toLocaleDateString('ka-GE')}` : null]
+                      .filter(Boolean).join(' · ')}
+                  </Typography>
                 </Box>
+                {m.is_bookable && (
+                  <Chip label={t('settings.bookable')} size="small" color="success" variant="outlined" />
+                )}
                 <Chip
                   label={m.role === 'owner' ? 'მფლობელი' : 'ადმინი'}
                   size="small"
                   color={m.role === 'owner' ? 'primary' : 'default'}
                   variant={m.role === 'owner' ? 'filled' : 'outlined'}
                 />
+                <IconButton size="small" aria-label={t('settings.editMember')} onClick={() => openEdit(m)}>
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
                 {role === 'owner' && m.role !== 'owner' && m.user_id !== user?.id && (
                   <IconButton size="small" color="error" aria-label={t('settings.removeAdmin')} onClick={() => handleRemove(m.id)}>
                     <DeleteOutlinedIcon fontSize="small" />
@@ -242,6 +286,38 @@ export default function TeamSettings() {
             disabled={inviting || !isValidGeorgianPhone(invitePhone)}
           >
             {inviting ? <CircularProgress size={20} color="inherit" /> : 'გაგზავნა'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit member dialog */}
+      <Dialog open={!!editMember} onClose={() => setEditMember(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.editMember')}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2.5} sx={{ pt: 1 }}>
+            <TextField
+              label={t('settings.displayName')}
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              fullWidth
+              autoFocus
+            />
+            <TextField
+              label={t('settings.staffTitle')}
+              value={editTitle}
+              onChange={e => setEditTitle(e.target.value)}
+              fullWidth
+            />
+            <FormControlLabel
+              control={<Switch checked={editBookable} onChange={e => setEditBookable(e.target.checked)} />}
+              label={t('settings.bookable')}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setEditMember(null)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={saveMember} disabled={savingMember}>
+            {savingMember ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
           </Button>
         </DialogActions>
       </Dialog>

@@ -21,16 +21,27 @@ import type { AppointmentStatus } from '@/components/ui'
 
 // ── Types ─────────────────────────────────────────────────────
 
+interface StaffRef { id: string; display_name: string | null; title: string | null }
+
 interface Appointment {
   id: string
   scheduled_at: string
   duration_minutes: number
+  service_id: string
+  staff_id: string | null
   status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed'
   payment_method: string
   payment_status: string
   notes: string | null
   customers: { first_name: string; last_name: string | null; phone_number: string } | null
   services: { name: string; price: number } | null
+  staff: StaffRef | null
+}
+
+/** PostgREST may type a to-one relation as an array; normalize to one object. */
+function pickOne<T>(rel: T | T[] | null | undefined): T | null {
+  if (Array.isArray(rel)) return rel[0] ?? null
+  return rel ?? null
 }
 
 interface RestPeriod { start: string; end: string; label: string }
@@ -118,6 +129,10 @@ export default function CalendarPage() {
   const [template, setTemplate] = useState<Template | null>(null)
   const [overrides, setOverrides] = useState<Record<string, DayOverride>>({})
 
+  // Bookable members + the ones assignable to the selected appointment's service
+  const [bookableMembers, setBookableMembers] = useState<StaffRef[]>([])
+  const [assignableIds, setAssignableIds] = useState<string[]>([])
+
   // Rest period dialog
   const [restDialog, setRestDialog] = useState(false)
   const [restDate, setRestDate] = useState('')
@@ -138,12 +153,39 @@ export default function CalendarPage() {
 
   async function loadTemplate() {
     if (!org) return
-    const { data } = await supabase
-      .from('working_hours_template')
-      .select('monday,tuesday,wednesday,thursday,friday,saturday,sunday')
-      .eq('org_id', org.id)
-      .single()
-    if (data) setTemplate(data as unknown as Template)
+    const [tplRes, memRes] = await Promise.all([
+      supabase
+        .from('working_hours_template')
+        .select('monday,tuesday,wednesday,thursday,friday,saturday,sunday')
+        .eq('org_id', org.id)
+        .single(),
+      supabase
+        .from('org_members')
+        .select('id, display_name, title')
+        .eq('org_id', org.id)
+        .eq('is_bookable', true)
+        .order('sort_order'),
+    ])
+    if (tplRes.data) setTemplate(tplRes.data as unknown as Template)
+    setBookableMembers((memRes.data ?? []) as StaffRef[])
+  }
+
+  // When an appointment is opened, load which members are assignable to its service.
+  useEffect(() => {
+    if (!selected) { setAssignableIds([]); return }
+    supabase
+      .from('service_staff')
+      .select('member_id')
+      .eq('service_id', selected.service_id)
+      .then(({ data }) => setAssignableIds((data ?? []).map(r => (r as { member_id: string }).member_id)))
+  }, [selected])
+
+  async function reassignStaff(staffId: string | null) {
+    if (!selected) return
+    await supabase.from('appointments').update({ staff_id: staffId, updated_at: new Date().toISOString() }).eq('id', selected.id)
+    const staff = staffId ? bookableMembers.find(m => m.id === staffId) ?? null : null
+    setAppointments(prev => prev.map(a => a.id === selected.id ? { ...a, staff_id: staffId, staff } : a))
+    setSelected(prev => prev ? { ...prev, staff_id: staffId, staff } : prev)
   }
 
   async function loadWeek() {
@@ -154,7 +196,7 @@ export default function CalendarPage() {
     const [apptRes, overrideRes] = await Promise.all([
       supabase
         .from('appointments')
-        .select('id, scheduled_at, duration_minutes, status, payment_method, payment_status, notes, customers(first_name, last_name, phone_number), services(name, price)')
+        .select('id, scheduled_at, duration_minutes, service_id, staff_id, status, payment_method, payment_status, notes, customers(first_name, last_name, phone_number), services(name, price), staff:org_members!appointments_staff_id_fkey(id, display_name, title)')
         .eq('org_id', org.id)
         .gte('scheduled_at', weekStart.toISOString())
         .lt('scheduled_at', weekEnd.toISOString())
@@ -169,7 +211,15 @@ export default function CalendarPage() {
         .lt('date', format(weekEnd, 'yyyy-MM-dd')),
     ])
 
-    setAppointments((apptRes.data ?? []) as unknown as Appointment[])
+    setAppointments((apptRes.data ?? []).map(row => {
+      const r = row as Record<string, unknown>
+      return {
+        ...r,
+        customers: pickOne(r.customers as never),
+        services: pickOne(r.services as never),
+        staff: pickOne(r.staff as never),
+      }
+    }) as unknown as Appointment[])
 
     const map: Record<string, DayOverride> = {}
     for (const row of (overrideRes.data ?? [])) {
@@ -404,7 +454,7 @@ export default function CalendarPage() {
                       return (
                         <Tooltip
                           key={appt.id}
-                          title={`${appt.customers?.first_name} ${appt.customers?.last_name ?? ''} · ${appt.services?.name}`}
+                          title={`${appt.customers?.first_name} ${appt.customers?.last_name ?? ''} · ${appt.services?.name}${appt.staff?.display_name ? ` · ${appt.staff.display_name}` : ''}`}
                           placement="top"
                         >
                           <Box
@@ -429,7 +479,7 @@ export default function CalendarPage() {
                               {format(new Date(appt.scheduled_at), 'HH:mm')} {appt.customers?.first_name}
                             </Typography>
                             <Typography sx={{ color: c.main, opacity: 0.75, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, lineHeight: 1.3 }}>
-                              {appt.services?.name}
+                              {appt.services?.name}{appt.staff?.display_name ? ` · ${appt.staff.display_name}` : ''}
                             </Typography>
                           </Box>
                         </Tooltip>
@@ -531,6 +581,25 @@ export default function CalendarPage() {
                   <StatusChip status={selected.status} />
                 </Box>
               </Box>
+              {(() => {
+                const options = bookableMembers.filter(m => assignableIds.includes(m.id))
+                if (options.length === 0) return null
+                return (
+                  <FormControl fullWidth size="small">
+                    <InputLabel>{t('dashboard.staff')}</InputLabel>
+                    <Select
+                      value={selected.staff_id ?? ''}
+                      label={t('dashboard.staff')}
+                      onChange={e => reassignStaff(e.target.value === '' ? null : e.target.value)}
+                    >
+                      <MenuItem value=""><em>{t('dashboard.unassigned')}</em></MenuItem>
+                      {options.map(m => (
+                        <MenuItem key={m.id} value={m.id}>{m.display_name || '—'}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )
+              })()}
               {selected.notes && (
                 <Box>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>შენიშვნა</Typography>

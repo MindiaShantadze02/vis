@@ -24,7 +24,8 @@
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 6 characters",
     "endBeforeStart": "End time cannot be before start time",
-    "rangeOverlap": "Time ranges overlap"
+    "rangeOverlap": "Time ranges overlap",
+    "breakOutsideHours": "Breaks must be within working hours"
   },
   "auth": {
     "phoneNumber": "Phone number",
@@ -73,7 +74,10 @@
     "noSlots": "No available slots on this day",
     "step1": "1. Service",
     "step2": "2. Time",
-    "step3": "3. Details"
+    "step3": "3. Details",
+    "anyAvailable": "Any available",
+    "selectStaff": "Specialist",
+    "slotTaken": "This time was just taken. Please pick another."
   },
   "dashboard": {
     "overview": "Overview",
@@ -90,7 +94,10 @@
     "rejected": "Rejected",
     "pending": "Pending",
     "completed": "Completed",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "staff": "Specialist",
+    "unassigned": "Unassigned",
+    "assignStaff": "Assign specialist"
   },
   "settings": {
     "profile": "Profile",
@@ -100,7 +107,13 @@
     "payment": "Payment",
     "subscription": "Subscription",
     "inviteAdmin": "Invite admin",
-    "removeAdmin": "Remove admin"
+    "removeAdmin": "Remove admin",
+    "maxPerSlot": "Max appointments per slot",
+    "assignStaff": "Assigned specialists",
+    "bookable": "Bookable",
+    "displayName": "Name (shown when booking)",
+    "staffTitle": "Title",
+    "editMember": "Edit member"
   },
   "subscription": {
     "free": "Free",

@@ -10,6 +10,7 @@ Open the [Supabase SQL Editor](https://supabase.com/dashboard/project/dnmecnpugj
 | 2 | `migrations/002_functions.sql` | Helper SQL functions + `updated_at` triggers |
 | 3 | `migrations/003_indexes.sql` | Performance indexes |
 | 4 | `migrations/rls.sql` | Enables RLS + creates all access policies |
+| 5 | `migrations/005_staff_and_capacity.sql` | Per-service slot capacity + assignable staff (run on existing DBs too) |
 
 Copy-paste each file into the SQL editor and click **Run**.
 

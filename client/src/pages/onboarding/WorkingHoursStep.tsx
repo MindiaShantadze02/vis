@@ -6,9 +6,15 @@ import {
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import CloseIcon from '@mui/icons-material/Close'
+import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
+import CoffeeOutlinedIcon from '@mui/icons-material/CoffeeOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isEndAfterStart, hasOverlap } from '@/lib/validation'
+import {
+  isEndAfterStart, timeToMinutes, minutesToTime, clampTime,
+  rangesToSchedule, scheduleToRanges, dayScheduleIssue,
+  type TimeRange, type DaySchedule,
+} from '@/lib/validation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
 import type { OnboardingData } from './OnboardingLayout'
@@ -37,60 +43,72 @@ export default function WorkingHoursStep() {
   const { refresh } = useOrg()
   const navigate = useNavigate()
 
-  const [hours, setHours] = useState(data.workingHours)
+  const [hours, setHours] = useState<Record<string, DaySchedule>>(() => {
+    const init: Record<string, DaySchedule> = {}
+    for (const day of DAYS) {
+      const d = data.workingHours[day]
+      init[day] = rangesToSchedule(d?.open ?? false, d?.ranges ?? [])
+    }
+    return init
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function toggleDay(day: string) {
-    setHours(h => ({
-      ...h,
-      [day]: {
-        open: !h[day].open,
-        ranges: !h[day].open && h[day].ranges.length === 0
-          ? [{ start: '09:00', end: '18:00' }]
-          : h[day].ranges,
-      },
-    }))
+    setHours(h => ({ ...h, [day]: { ...h[day], open: !h[day].open } }))
   }
 
-  function setRangeField(day: string, idx: number, field: 'start' | 'end', value: string) {
-    setHours(h => ({
-      ...h,
-      [day]: {
-        ...h[day],
-        ranges: h[day].ranges.map((r, i) => i === idx ? { ...r, [field]: value } : r),
-      },
-    }))
+  function setDayTime(day: string, field: 'openTime' | 'closeTime', value: string) {
+    setHours(h => ({ ...h, [day]: { ...h[day], [field]: value } }))
   }
 
-  function addRange(day: string) {
+  // Adds an editable break, defaulting to a 1h slot inside the working window:
+  // after the last break if one exists, otherwise centred on the day.
+  function addBreak(day: string) {
     setHours(h => {
-      const ranges = h[day].ranges
-      const lastEnd = ranges.at(-1)?.end ?? '09:00'
-      const [hr, m] = lastEnd.split(':').map(Number)
-      const newEnd = `${String(Math.min(hr + 4, 22)).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      const s = h[day]
+      const openM = timeToMinutes(s.openTime)
+      const closeM = timeToMinutes(s.closeTime)
+      const base = s.breaks.length
+        ? timeToMinutes(s.breaks[s.breaks.length - 1].end) + 60
+        : openM + Math.floor((closeM - openM) / 2) - 30
+      let bs = Math.max(openM, Math.min(base, closeM - 60))
+      let be = Math.min(bs + 60, closeM)
+      if (be <= bs) { bs = Math.max(openM, closeM - 60); be = closeM }
+      const newBreak: TimeRange = { start: minutesToTime(bs), end: minutesToTime(be) }
+      return { ...h, [day]: { ...s, breaks: [...s.breaks, newBreak] } }
+    })
+  }
+
+  // Break times are clamped to the day's working window so they can never be
+  // selected outside working hours.
+  function setBreakField(day: string, idx: number, field: 'start' | 'end', value: string) {
+    setHours(h => {
+      const s = h[day]
+      const clamped = clampTime(value, s.openTime, s.closeTime)
       return {
         ...h,
-        [day]: { ...h[day], ranges: [...ranges, { start: lastEnd, end: newEnd }] },
+        [day]: {
+          ...s,
+          breaks: s.breaks.map((b, i) => i === idx ? { ...b, [field]: clamped } : b),
+        },
       }
     })
   }
 
-  function removeRange(day: string, idx: number) {
+  function removeBreak(day: string, idx: number) {
     setHours(h => ({
       ...h,
-      [day]: { ...h[day], ranges: h[day].ranges.filter((_, i) => i !== idx) },
+      [day]: { ...h[day], breaks: h[day].breaks.filter((_, i) => i !== idx) },
     }))
   }
 
   function validateHours(): string | null {
     for (const day of DAYS) {
-      const h = hours[day]
-      if (!h.open) continue
-      for (const r of h.ranges) {
-        if (!isEndAfterStart(r.start, r.end)) return t('validation.endBeforeStart')
-      }
-      if (hasOverlap(h.ranges)) return t('validation.rangeOverlap')
+      const s = hours[day]
+      if (!s.open) continue
+      const issue = dayScheduleIssue(s.openTime, s.closeTime, s.breaks)
+      if (issue) return t(`validation.${issue}`)
     }
     return null
   }
@@ -157,8 +175,11 @@ export default function WorkingHoursStep() {
 
       const templateRow: Record<string, unknown> = { org_id: orgId }
       for (const day of DAYS) {
-        const h = hours[day]
-        templateRow[day] = { open: h.open, ranges: h.open ? h.ranges : [] }
+        const s = hours[day]
+        templateRow[day] = {
+          open: s.open,
+          ranges: s.open ? scheduleToRanges(s.openTime, s.closeTime, s.breaks) : [],
+        }
       }
 
       const { error: hoursErr } = await supabase.from('working_hours_template').insert(templateRow)
@@ -184,73 +205,118 @@ export default function WorkingHoursStep() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Stack spacing={1.5} sx={{ mb: 4 }}>
-        {DAYS.map(day => (
-          <Box
-            key={day}
-            sx={{
-              p: 1.5,
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: hours[day].open ? 'primary.main' : 'divider',
-              bgcolor: hours[day].open ? 'secondary.main' : 'transparent',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <FormControlLabel
-                control={<Switch checked={hours[day].open} onChange={() => toggleDay(day)} color="primary" />}
-                label={
-                  <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 90 }}>
-                    {DAY_LABELS[day]}
+        {DAYS.map(day => {
+          const cfg = hours[day]
+          const windowValid = isEndAfterStart(cfg.openTime, cfg.closeTime)
+          return (
+            <Box
+              key={day}
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: cfg.open ? 'primary.main' : 'divider',
+                bgcolor: cfg.open ? 'secondary.main' : 'transparent',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <FormControlLabel
+                  control={<Switch checked={cfg.open} onChange={() => toggleDay(day)} color="primary" />}
+                  label={
+                    <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 90 }}>
+                      {DAY_LABELS[day]}
+                    </Typography>
+                  }
+                  sx={{ mr: 0, flex: 1 }}
+                />
+                {!cfg.open && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {t('onboarding.closed')}
                   </Typography>
-                }
-                sx={{ mr: 0, flex: 1 }}
-              />
-              {!hours[day].open && (
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {t('onboarding.closed')}
-                </Typography>
-              )}
-            </Box>
+                )}
+              </Box>
 
-            {hours[day].open && (
-              <Box sx={{ mt: 1.5, pl: 1 }}>
-                {hours[day].ranges.map((r, ri) => (
-                  <Box key={ri} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              {cfg.open && (
+                <Box sx={{ mt: 1.5, pl: 1 }}>
+                  {/* Working window */}
+                  <Box
+                    sx={{
+                      display: 'flex', alignItems: 'center', gap: 1, mb: 1.5,
+                      pl: 1, borderLeft: '3px solid', borderLeftColor: 'success.main',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 88, color: 'success.dark' }}>
+                      <WorkOutlineOutlinedIcon sx={{ fontSize: 16 }} />
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>სამუშაო</Typography>
+                    </Box>
                     <TextField
-                      size="small" type="time"
-                      value={r.start}
-                      onChange={e => setRangeField(day, ri, 'start', e.target.value)}
+                      size="small" type="time" value={cfg.openTime}
+                      onChange={e => setDayTime(day, 'openTime', e.target.value)}
                       sx={{ width: 110 }}
                     />
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>—</Typography>
                     <TextField
-                      size="small" type="time"
-                      value={r.end}
-                      onChange={e => setRangeField(day, ri, 'end', e.target.value)}
-                      error={!isEndAfterStart(r.start, r.end)}
+                      size="small" type="time" value={cfg.closeTime}
+                      onChange={e => setDayTime(day, 'closeTime', e.target.value)}
+                      error={!windowValid}
                       sx={{ width: 110 }}
                     />
-                    {hours[day].ranges.length > 1 && (
-                      <Tooltip title="ამოშლა">
-                        <IconButton size="small" onClick={() => removeRange(day, ri)}>
-                          <CloseIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </Tooltip>
-                    )}
                   </Box>
-                ))}
-                <Button
-                  size="small"
-                  startIcon={<AddIcon sx={{ fontSize: 14 }} />}
-                  onClick={() => addRange(day)}
-                  sx={{ color: 'text.secondary', fontSize: 12, mt: 0.25 }}
-                >
-                  შესვენება
-                </Button>
-              </Box>
-            )}
-          </Box>
-        ))}
+
+                  {/* Breaks — editable, constrained to the working window */}
+                  {cfg.breaks.map((b, bi) => {
+                    const breakInvalid = !isEndAfterStart(b.start, b.end)
+                      || timeToMinutes(b.start) < timeToMinutes(cfg.openTime)
+                      || timeToMinutes(b.end) > timeToMinutes(cfg.closeTime)
+                    return (
+                      <Box
+                        key={bi}
+                        sx={{
+                          display: 'flex', alignItems: 'center', gap: 1, mb: 1,
+                          pl: 1, borderLeft: '3px solid', borderLeftColor: 'grey.300',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 88, color: 'text.secondary' }}>
+                          <CoffeeOutlinedIcon sx={{ fontSize: 16 }} />
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>შესვენება</Typography>
+                        </Box>
+                        <TextField
+                          size="small" type="time" value={b.start}
+                          onChange={e => setBreakField(day, bi, 'start', e.target.value)}
+                          error={breakInvalid}
+                          slotProps={{ htmlInput: { min: cfg.openTime, max: cfg.closeTime } }}
+                          sx={{ width: 110 }}
+                        />
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>—</Typography>
+                        <TextField
+                          size="small" type="time" value={b.end}
+                          onChange={e => setBreakField(day, bi, 'end', e.target.value)}
+                          error={breakInvalid}
+                          slotProps={{ htmlInput: { min: cfg.openTime, max: cfg.closeTime } }}
+                          sx={{ width: 110 }}
+                        />
+                        <Tooltip title="ამოშლა">
+                          <IconButton size="small" aria-label="ამოშლა" onClick={() => removeBreak(day, bi)}>
+                            <CloseIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    )
+                  })}
+
+                  <Button
+                    size="small"
+                    startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                    onClick={() => addBreak(day)}
+                    sx={{ color: 'text.secondary', fontSize: 12, mt: 0.25 }}
+                  >
+                    შესვენების დამატება
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )
+        })}
       </Stack>
 
       <Stack direction="row" spacing={2}>

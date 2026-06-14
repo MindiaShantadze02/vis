@@ -40,6 +40,51 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     setError(null)
 
     try {
+      // Re-check availability right before inserting: the slot may have filled
+      // since it was computed in Step 2 (capacity and per-person freedom).
+      const dayStart = `${booking.date}T00:00:00.000Z`
+      const dayEnd = `${booking.date}T23:59:59.999Z`
+      const { data: existing } = await supabase
+        .from('appointments')
+        .select('scheduled_at, duration_minutes, service_id, staff_id')
+        .eq('org_id', org.id)
+        .gte('scheduled_at', dayStart)
+        .lte('scheduled_at', dayEnd)
+        .not('status', 'in', '(rejected,cancelled)')
+
+      const slotStart = scheduledAt.getTime()
+      const slotEnd = slotStart + booking.service.duration_minutes * 60000
+      const overlapping = (existing ?? []).filter(a => {
+        const aStart = new Date(a.scheduled_at).getTime()
+        const aEnd = aStart + a.duration_minutes * 60000
+        return slotStart < aEnd && slotEnd > aStart
+      })
+
+      // Per-service capacity cap.
+      const serviceCount = overlapping.filter(a => a.service_id === booking.service!.id).length
+      if (serviceCount >= booking.service.max_per_slot) {
+        setError(t('booking.slotTaken')); setLoading(false); return
+      }
+
+      // Resolve the assigned person. "Any available" auto-assigns a free member
+      // so per-person availability stays correct for subsequent bookings.
+      let staffId: string | null = null
+      if (booking.assignedStaff.length > 0) {
+        const busyIds = new Set(
+          overlapping.map(a => a.staff_id).filter((id): id is string => !!id),
+        )
+        if (booking.staffId) {
+          if (busyIds.has(booking.staffId)) { setError(t('booking.slotTaken')); setLoading(false); return }
+          staffId = booking.staffId
+        } else {
+          const free = booking.assignedStaff
+            .filter(m => !busyIds.has(m.id))
+            .sort((a, b) => a.sort_order - b.sort_order)
+          if (free.length === 0) { setError(t('booking.slotTaken')); setLoading(false); return }
+          staffId = free[0].id
+        }
+      }
+
       // Generate IDs client-side to avoid needing SELECT after INSERT
       const customerId = crypto.randomUUID()
       const appointmentId = crypto.randomUUID()
@@ -65,6 +110,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           customer_id: customerId,
           scheduled_at: scheduledAt.toISOString(),
           duration_minutes: booking.service.duration_minutes,
+          staff_id: staffId,
           status: booking.paymentMethod === 'online' ? 'approved' : 'pending',
           payment_method: booking.paymentMethod,
           payment_status: 'unpaid',

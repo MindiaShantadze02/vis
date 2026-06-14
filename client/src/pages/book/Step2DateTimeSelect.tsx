@@ -8,28 +8,48 @@ import {
   format, addDays, startOfDay, isBefore, isSameDay,
 } from 'date-fns'
 import { ka } from 'date-fns/locale'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { anim } from '@/theme/animations'
 import { elevation } from '@/theme/theme'
 import { LoadingState } from '@/components/ui'
-import type { BookingService } from './BookingLayout'
+import type { BookingService, BookingStaff } from './BookingLayout'
 
 interface Props {
   orgId: string
   service: BookingService
-  onSelect: (date: string, time: string) => void
+  onSelect: (date: string, time: string, staffId: string | null, assignedStaff: BookingStaff[]) => void
   onBack: () => void
 }
 
+interface ApptRow {
+  scheduled_at: string
+  duration_minutes: number
+  service_id: string
+  staff_id: string | null
+}
+
+interface OverrideRow {
+  is_closed: boolean
+  ranges: { start: string; end: string }[] | null
+}
+
 const DAY_SHORT = ['კვ', 'ორ', 'სა', 'ოთ', 'ხუ', 'პა', 'შა']
+const ANY = 'any'
 
 export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }: Props) {
+  const { t } = useTranslation()
   const today = startOfDay(new Date())
   const [weekStart, setWeekStart] = useState(today)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [slots, setSlots] = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [template, setTemplate] = useState<Record<string, { open: boolean; ranges: { start: string; end: string }[] }> | null>(null)
+
+  const [assignedStaff, setAssignedStaff] = useState<BookingStaff[]>([])
+  const [selectedStaffId, setSelectedStaffId] = useState<string>(ANY)
+  const [dayAppts, setDayAppts] = useState<ApptRow[]>([])
+  const [override, setOverride] = useState<OverrideRow | null>(null)
 
   // Load working hours template once
   useEffect(() => {
@@ -41,9 +61,32 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
       .then(({ data }) => { if (data) setTemplate(data) })
   }, [orgId])
 
-  // Load appointments + override when date selected
+  // Load bookable members assigned to this service once
+  useEffect(() => {
+    supabase
+      .from('service_staff')
+      .select('member_id, org_members(id, display_name, title, is_bookable, sort_order)')
+      .eq('service_id', service.id)
+      .then(({ data }) => {
+        // PostgREST returns the nested relation as an object at runtime but
+        // types it as an array; normalize either shape.
+        const staff: BookingStaff[] = (data ?? [])
+          .map(r => {
+            const m = (r as { org_members: unknown }).org_members
+            return (Array.isArray(m) ? m[0] : m) as
+              (BookingStaff & { is_bookable: boolean }) | null
+          })
+          .filter((m): m is BookingStaff & { is_bookable: boolean } => !!m && m.is_bookable)
+          .map(m => ({ id: m.id, display_name: m.display_name, title: m.title, sort_order: m.sort_order }))
+          .sort((a, b) => a.sort_order - b.sort_order)
+        setAssignedStaff(staff)
+      })
+  }, [service.id])
+
+  // Fetch appointments + override when the date changes
   useEffect(() => {
     if (!selectedDate) return
+    setLoadingSlots(true)
     const dateKey = format(selectedDate, 'yyyy-MM-dd')
     const dayStart = dateKey + 'T00:00:00.000Z'
     const dayEnd = dateKey + 'T23:59:59.999Z'
@@ -51,12 +94,12 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
     Promise.all([
       supabase
         .from('appointments')
-        .select('scheduled_at, duration_minutes')
+        .select('scheduled_at, duration_minutes, service_id, staff_id')
         .eq('org_id', orgId)
         .gte('scheduled_at', dayStart)
         .lte('scheduled_at', dayEnd)
         .not('status', 'in', '(rejected,cancelled)')
-        .then(({ data }) => data ?? []),
+        .then(({ data }) => (data ?? []) as ApptRow[]),
 
       supabase
         .from('working_hours_overrides')
@@ -64,11 +107,19 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
         .eq('org_id', orgId)
         .eq('date', dateKey)
         .maybeSingle()
-        .then(({ data }) => data),
-    ]).then(([appts, override]) => {
-      computeSlots(selectedDate, appts, override)
+        .then(({ data }) => (data ?? null) as OverrideRow | null),
+    ]).then(([appts, ov]) => {
+      setDayAppts(appts)
+      setOverride(ov)
+      setLoadingSlots(false)
     })
-  }, [selectedDate])
+  }, [selectedDate, orgId])
+
+  // Recompute slots whenever the date, fetched data, or staff choice changes
+  useEffect(() => {
+    setSlots(selectedDate ? computeSlots(selectedDate, dayAppts, override) : [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, dayAppts, override, selectedStaffId, assignedStaff, template])
 
   function getDayKey(d: Date): string {
     const keys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
@@ -81,21 +132,17 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
     return cfg?.open ?? false
   }
 
-  function computeSlots(
-    date: Date,
-    existing: { scheduled_at: string; duration_minutes: number }[],
-    override?: { is_closed: boolean; ranges: { start: string; end: string }[] | null } | null,
-  ) {
-    if (!template) return
-    if (override?.is_closed) { setSlots([]); return }
+  function computeSlots(date: Date, existing: ApptRow[], ov: OverrideRow | null): string[] {
+    if (!template) return []
+    if (ov?.is_closed) return []
 
-    const cfg = override?.ranges
-      ? { open: true, ranges: override.ranges }
+    const cfg = ov?.ranges
+      ? { open: true, ranges: ov.ranges }
       : template[getDayKey(date)]
 
-    if (!cfg?.open) { setSlots([]); return }
+    if (!cfg?.open) return []
 
-    setLoadingSlots(true)
+    const now = new Date()
     const generated: string[] = []
 
     for (const range of cfg.ranges) {
@@ -110,17 +157,7 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
         const slotEnd = new Date(cur.getTime() + service.duration_minutes * 60000)
         if (slotEnd > end) break
 
-        // Check overlap with existing appointments
-        const overlaps = existing.some(a => {
-          const aStart = new Date(a.scheduled_at)
-          const aEnd = new Date(aStart.getTime() + a.duration_minutes * 60000)
-          return cur < aEnd && slotEnd > aStart
-        })
-
-        // Skip past slots
-        const isPast = isBefore(cur, new Date())
-
-        if (!overlaps && !isPast) {
+        if (!isBefore(cur, now) && isSlotAvailable(cur, slotEnd, existing)) {
           generated.push(format(cur, 'HH:mm'))
         }
 
@@ -128,12 +165,39 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
       }
     }
 
-    setSlots(generated)
-    setLoadingSlots(false)
+    return generated
+  }
+
+  // Combines per-service capacity (max_per_slot) with per-person availability.
+  function isSlotAvailable(cur: Date, slotEnd: Date, existing: ApptRow[]): boolean {
+    const overlapping = existing.filter(a => {
+      const aStart = new Date(a.scheduled_at).getTime()
+      const aEnd = aStart + a.duration_minutes * 60000
+      return cur.getTime() < aEnd && slotEnd.getTime() > aStart
+    })
+
+    // Per-service concurrency cap.
+    const serviceCount = overlapping.filter(a => a.service_id === service.id).length
+    if (serviceCount >= service.max_per_slot) return false
+
+    // No assigned staff → capacity is the only constraint.
+    if (assignedStaff.length === 0) return true
+
+    // A member is busy if they have ANY overlapping appointment (across services).
+    const busyIds = new Set(overlapping.map(a => a.staff_id).filter(Boolean))
+    const freeMembers = assignedStaff.filter(m => !busyIds.has(m.id))
+
+    if (selectedStaffId === ANY) return freeMembers.length >= 1
+    return freeMembers.some(m => m.id === selectedStaffId)
   }
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const canGoPrev = !isBefore(addDays(weekStart, -1), today)
+
+  const staffOptions = [
+    { id: ANY, label: t('booking.anyAvailable') },
+    ...assignedStaff.map(m => ({ id: m.id, label: m.display_name || '—' })),
+  ]
 
   return (
     <Box>
@@ -150,6 +214,30 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
         {service.name} · {service.duration_minutes} წთ
       </Typography>
+
+      {/* Staff picker — only when the service has assigned people */}
+      {assignedStaff.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+            {t('booking.selectStaff')}
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {staffOptions.map(opt => {
+              const selected = selectedStaffId === opt.id
+              return (
+                <Chip
+                  key={opt.id}
+                  label={opt.label}
+                  onClick={() => setSelectedStaffId(opt.id)}
+                  color={selected ? 'primary' : 'default'}
+                  variant={selected ? 'filled' : 'outlined'}
+                  sx={{ fontWeight: 500 }}
+                />
+              )
+            })}
+          </Box>
+        </Box>
+      )}
 
       {/* Week navigation */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -232,7 +320,12 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
                   <Chip
                     key={time}
                     label={time}
-                    onClick={() => onSelect(format(selectedDate, 'yyyy-MM-dd'), time)}
+                    onClick={() => onSelect(
+                      format(selectedDate, 'yyyy-MM-dd'),
+                      time,
+                      selectedStaffId === ANY ? null : selectedStaffId,
+                      assignedStaff,
+                    )}
                     sx={{
                       fontWeight: 600, fontSize: 14, height: 40,
                       cursor: 'pointer',

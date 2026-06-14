@@ -21,10 +21,14 @@ import type { AppointmentStatus } from '@/components/ui'
 
 // ── Types ─────────────────────────────────────────────────────
 
+interface StaffRef { id: string; display_name: string | null; title: string | null }
+
 interface Appointment {
   id: string
   scheduled_at: string
   duration_minutes: number
+  service_id: string
+  staff_id: string | null
   status: AppointmentStatus
   payment_method: string
   payment_status: string
@@ -32,6 +36,7 @@ interface Appointment {
   admin_notes: string | null
   customers: { first_name: string; last_name: string | null; phone_number: string } | null
   services: { name: string; price: number; duration_minutes: number } | null
+  staff: StaffRef | null
 }
 
 interface Stats {
@@ -65,15 +70,43 @@ export default function OverviewPage() {
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [adminNote, setAdminNote] = useState('')
 
+  const [bookableMembers, setBookableMembers] = useState<StaffRef[]>([])
+  const [assignableIds, setAssignableIds] = useState<string[]>([])
+
   useEffect(() => {
     if (!org) return
     loadStats()
     loadAppointments()
+    supabase
+      .from('org_members')
+      .select('id, display_name, title')
+      .eq('org_id', org.id)
+      .eq('is_bookable', true)
+      .order('sort_order')
+      .then(({ data }) => setBookableMembers((data ?? []) as StaffRef[]))
   }, [org])
 
   useEffect(() => {
     if (org) loadAppointments()
   }, [statusFilter])
+
+  // Which members are assignable to the opened appointment's service.
+  useEffect(() => {
+    if (!selected) { setAssignableIds([]); return }
+    supabase
+      .from('service_staff')
+      .select('member_id')
+      .eq('service_id', selected.service_id)
+      .then(({ data }) => setAssignableIds((data ?? []).map(r => (r as { member_id: string }).member_id)))
+  }, [selected])
+
+  async function reassignStaff(staffId: string | null) {
+    if (!selected) return
+    await supabase.from('appointments').update({ staff_id: staffId, updated_at: new Date().toISOString() }).eq('id', selected.id)
+    const staff = staffId ? bookableMembers.find(m => m.id === staffId) ?? null : null
+    setAppointments(prev => prev.map(a => a.id === selected.id ? { ...a, staff_id: staffId, staff } : a))
+    setSelected(prev => prev ? { ...prev, staff_id: staffId, staff } : prev)
+  }
 
   async function loadStats() {
     if (!org) return
@@ -130,7 +163,7 @@ export default function OverviewPage() {
 
     let query = supabase
       .from('appointments')
-      .select('id, scheduled_at, duration_minutes, status, payment_method, payment_status, notes, admin_notes, customers(first_name, last_name, phone_number), services(name, price, duration_minutes)')
+      .select('id, scheduled_at, duration_minutes, service_id, staff_id, status, payment_method, payment_status, notes, admin_notes, customers(first_name, last_name, phone_number), services(name, price, duration_minutes), staff:org_members!appointments_staff_id_fkey(id, display_name, title)')
       .eq('org_id', org.id)
       .order('scheduled_at', { ascending: false })
       .limit(100)
@@ -299,6 +332,7 @@ export default function OverviewPage() {
                       </Typography>
                       <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
                         {format(new Date(appt.scheduled_at), 'd MMM, HH:mm', { locale: ka })} · {appt.services?.name}
+                        {appt.staff?.display_name ? ` · ${appt.staff.display_name}` : ''}
                       </Typography>
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                         {appt.services?.price} ₾
@@ -329,7 +363,14 @@ export default function OverviewPage() {
                     {appt.customers?.phone_number}
                   </Typography>
                 </Box>
-                <Typography variant="body2" noWrap sx={{ pr: 1 }}>{appt.services?.name}</Typography>
+                <Box sx={{ minWidth: 0, pr: 1 }}>
+                  <Typography variant="body2" noWrap>{appt.services?.name}</Typography>
+                  {appt.staff?.display_name && (
+                    <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block' }}>
+                      {appt.staff.display_name}
+                    </Typography>
+                  )}
+                </Box>
                 <Chip
                   label={appt.payment_method === 'online' ? 'ონლაინ' : 'ადგილზე'}
                   size="small"
@@ -375,6 +416,25 @@ export default function OverviewPage() {
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>სტატუსი</Typography>
                   <Box sx={{ mt: 0.25 }}><StatusChip status={selected.status} /></Box>
                 </Box>
+                {(() => {
+                  const options = bookableMembers.filter(m => assignableIds.includes(m.id))
+                  if (options.length === 0) return null
+                  return (
+                    <FormControl fullWidth size="small">
+                      <InputLabel>{t('dashboard.staff')}</InputLabel>
+                      <Select
+                        value={selected.staff_id ?? ''}
+                        label={t('dashboard.staff')}
+                        onChange={e => reassignStaff(e.target.value === '' ? null : e.target.value)}
+                      >
+                        <MenuItem value=""><em>{t('dashboard.unassigned')}</em></MenuItem>
+                        {options.map(m => (
+                          <MenuItem key={m.id} value={m.id}>{m.display_name || '—'}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )
+                })()}
                 {selected.notes && (
                   <Box>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>შენიშვნა</Typography>

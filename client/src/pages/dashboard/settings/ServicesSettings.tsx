@@ -3,6 +3,7 @@ import {
   Box, Typography, Card, Button, TextField, Stack,
   IconButton, Switch, FormControlLabel, Divider, Alert,
   CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
+  Chip,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
@@ -20,6 +21,13 @@ interface Service {
   price: number
   is_active: boolean
   sort_order: number
+  max_per_slot: number
+}
+
+interface BookableMember {
+  id: string
+  display_name: string | null
+  title: string | null
 }
 
 const EMPTY: Omit<Service, 'id' | 'sort_order'> = {
@@ -27,6 +35,7 @@ const EMPTY: Omit<Service, 'id' | 'sort_order'> = {
   duration_minutes: 60,
   price: 0,
   is_active: true,
+  max_per_slot: 1,
 }
 
 export default function ServicesSettings() {
@@ -35,6 +44,7 @@ export default function ServicesSettings() {
   const toast = useToast()
 
   const [services, setServices] = useState<Service[]>([])
+  const [bookableMembers, setBookableMembers] = useState<BookableMember[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,6 +52,7 @@ export default function ServicesSettings() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Service | null>(null)
   const [form, setForm] = useState(EMPTY)
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Service | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -53,25 +64,61 @@ export default function ServicesSettings() {
   async function load() {
     if (!org) return
     setLoading(true)
-    const { data } = await supabase
-      .from('services')
-      .select('*')
-      .eq('org_id', org.id)
-      .order('sort_order')
-    setServices((data ?? []) as Service[])
+    const [svcRes, memRes] = await Promise.all([
+      supabase.from('services').select('*').eq('org_id', org.id).order('sort_order'),
+      supabase
+        .from('org_members')
+        .select('id, display_name, title')
+        .eq('org_id', org.id)
+        .eq('is_bookable', true)
+        .order('sort_order'),
+    ])
+    setServices((svcRes.data ?? []) as Service[])
+    setBookableMembers((memRes.data ?? []) as BookableMember[])
     setLoading(false)
   }
 
   function openCreate() {
     setEditing(null)
     setForm(EMPTY)
+    setSelectedMemberIds([])
     setOpen(true)
   }
 
-  function openEdit(s: Service) {
+  async function openEdit(s: Service) {
     setEditing(s)
-    setForm({ name: s.name, duration_minutes: s.duration_minutes, price: s.price, is_active: s.is_active })
+    setForm({
+      name: s.name, duration_minutes: s.duration_minutes, price: s.price,
+      is_active: s.is_active, max_per_slot: s.max_per_slot,
+    })
+    const { data } = await supabase.from('service_staff').select('member_id').eq('service_id', s.id)
+    setSelectedMemberIds((data ?? []).map(r => (r as { member_id: string }).member_id))
     setOpen(true)
+  }
+
+  function toggleMember(id: string) {
+    setSelectedMemberIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  // Reconcile the service_staff rows for a service with the selected member ids.
+  async function syncStaff(serviceId: string) {
+    if (!org) return
+    const { data } = await supabase.from('service_staff').select('id, member_id').eq('service_id', serviceId)
+    const existing = (data ?? []) as { id: string; member_id: string }[]
+    const existingIds = new Set(existing.map(e => e.member_id))
+    const selected = new Set(selectedMemberIds)
+
+    const toAdd = selectedMemberIds.filter(id => !existingIds.has(id))
+    const toRemoveIds = existing.filter(e => !selected.has(e.member_id)).map(e => e.id)
+
+    if (toAdd.length) {
+      await supabase.from('service_staff').insert(
+        toAdd.map(member_id => ({ org_id: org.id, service_id: serviceId, member_id })),
+      )
+    }
+    if (toRemoveIds.length) {
+      await supabase.from('service_staff').delete().in('id', toRemoveIds)
+    }
   }
 
   async function handleSave() {
@@ -79,6 +126,7 @@ export default function ServicesSettings() {
     setSaving(true)
     setError(null)
 
+    let serviceId: string
     if (editing) {
       const { error: err } = await supabase
         .from('services')
@@ -87,12 +135,14 @@ export default function ServicesSettings() {
           duration_minutes: Number(form.duration_minutes),
           price: Number(form.price),
           is_active: form.is_active,
+          max_per_slot: Number(form.max_per_slot),
         })
         .eq('id', editing.id)
       if (err) { setError(err.message); setSaving(false); return }
+      serviceId = editing.id
     } else {
       const maxOrder = services.reduce((m, s) => Math.max(m, s.sort_order), -1)
-      const { error: err } = await supabase
+      const { data, error: err } = await supabase
         .from('services')
         .insert({
           org_id: org.id,
@@ -100,10 +150,16 @@ export default function ServicesSettings() {
           duration_minutes: Number(form.duration_minutes),
           price: Number(form.price),
           is_active: form.is_active,
+          max_per_slot: Number(form.max_per_slot),
           sort_order: maxOrder + 1,
         })
-      if (err) { setError(err.message); setSaving(false); return }
+        .select('id')
+        .single()
+      if (err || !data) { setError(err?.message ?? 'error'); setSaving(false); return }
+      serviceId = data.id
     }
+
+    await syncStaff(serviceId)
 
     setSaving(false)
     setOpen(false)
@@ -213,6 +269,35 @@ export default function ServicesSettings() {
               fullWidth
               slotProps={{ htmlInput: { min: 0, step: 1 } }}
             />
+            <TextField
+              label={t('settings.maxPerSlot')}
+              type="number"
+              value={form.max_per_slot}
+              onChange={e => setForm(f => ({ ...f, max_per_slot: Math.max(1, Number(e.target.value)) }))}
+              fullWidth
+              slotProps={{ htmlInput: { min: 1, step: 1 } }}
+            />
+            {bookableMembers.length > 0 && (
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                  {t('settings.assignStaff')}
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {bookableMembers.map(m => {
+                    const sel = selectedMemberIds.includes(m.id)
+                    return (
+                      <Chip
+                        key={m.id}
+                        label={m.display_name || '—'}
+                        onClick={() => toggleMember(m.id)}
+                        color={sel ? 'primary' : 'default'}
+                        variant={sel ? 'filled' : 'outlined'}
+                      />
+                    )
+                  })}
+                </Box>
+              </Box>
+            )}
             <FormControlLabel
               control={
                 <Switch

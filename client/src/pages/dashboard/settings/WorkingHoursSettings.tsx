@@ -8,21 +8,22 @@ import {
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import CloseIcon from '@mui/icons-material/Close'
+import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
+import CoffeeOutlinedIcon from '@mui/icons-material/CoffeeOutlined'
 import { format, parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isEndAfterStart, hasOverlap } from '@/lib/validation'
+import {
+  isEndAfterStart, timeToMinutes, minutesToTime, clampTime,
+  rangesToSchedule, scheduleToRanges, dayScheduleIssue,
+  type TimeRange, type DaySchedule,
+} from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, ConfirmDialog, useToast } from '@/components/ui'
 
-interface DayConfig {
-  open: boolean
-  ranges: { start: string; end: string }[]
-}
-
 type WeekTemplate = {
-  monday: DayConfig; tuesday: DayConfig; wednesday: DayConfig; thursday: DayConfig;
-  friday: DayConfig; saturday: DayConfig; sunday: DayConfig;
+  monday: DaySchedule; tuesday: DaySchedule; wednesday: DaySchedule; thursday: DaySchedule;
+  friday: DaySchedule; saturday: DaySchedule; sunday: DaySchedule;
 }
 
 interface Override {
@@ -41,14 +42,12 @@ const DAY_LABELS: Record<keyof WeekTemplate, string> = {
   thursday: 'ხუთშაბათი', friday: 'პარასკევი', saturday: 'შაბათი', sunday: 'კვირა',
 }
 
+const openDay = (): DaySchedule => ({ open: true, openTime: '09:00', closeTime: '18:00', breaks: [] })
+const closedDay = (): DaySchedule => ({ open: false, openTime: '09:00', closeTime: '18:00', breaks: [] })
+
 const DEFAULT_TEMPLATE: WeekTemplate = {
-  monday:    { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
-  tuesday:   { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
-  wednesday: { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
-  thursday:  { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
-  friday:    { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
-  saturday:  { open: false, ranges: [] },
-  sunday:    { open: false, ranges: [] },
+  monday: openDay(), tuesday: openDay(), wednesday: openDay(),
+  thursday: openDay(), friday: openDay(), saturday: closedDay(), sunday: closedDay(),
 }
 
 export default function WorkingHoursSettings() {
@@ -93,63 +92,72 @@ export default function WorkingHoursSettings() {
       setTemplateId(tplRes.data.id)
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id, org_id, updated_at, max_appointments_per_slot, ...days } = tplRes.data
-      setTemplate(days as WeekTemplate)
+      const next = {} as WeekTemplate
+      for (const day of DAY_KEYS) {
+        const stored = (days as Record<string, { open: boolean; ranges: TimeRange[] }>)[day]
+        next[day] = rangesToSchedule(stored?.open ?? false, stored?.ranges ?? [])
+      }
+      setTemplate(next)
     }
     setOverrides((ovRes.data ?? []) as Override[])
     setLoading(false)
   }
 
   function setDayOpen(day: keyof WeekTemplate, open: boolean) {
-    setTemplate(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        open,
-        ranges: open && prev[day].ranges.length === 0
-          ? [{ start: '09:00', end: '18:00' }]
-          : prev[day].ranges,
-      },
-    }))
+    setTemplate(prev => ({ ...prev, [day]: { ...prev[day], open } }))
   }
 
-  function setRangeField(day: keyof WeekTemplate, idx: number, field: 'start' | 'end', val: string) {
-    setTemplate(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        ranges: prev[day].ranges.map((r, i) => i === idx ? { ...r, [field]: val } : r),
-      },
-    }))
+  function setDayTime(day: keyof WeekTemplate, field: 'openTime' | 'closeTime', val: string) {
+    setTemplate(prev => ({ ...prev, [day]: { ...prev[day], [field]: val } }))
   }
 
-  function addRange(day: keyof WeekTemplate) {
+  // Adds an editable break, defaulting to a 1h slot inside the working window:
+  // after the last break if one exists, otherwise centred on the day.
+  function addBreak(day: keyof WeekTemplate) {
     setTemplate(prev => {
-      const ranges = prev[day].ranges
-      const lastEnd = ranges.at(-1)?.end ?? '09:00'
-      const [h, m] = lastEnd.split(':').map(Number)
-      const newEnd = `${String(Math.min(h + 4, 22)).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      const s = prev[day]
+      const openM = timeToMinutes(s.openTime)
+      const closeM = timeToMinutes(s.closeTime)
+      const base = s.breaks.length
+        ? timeToMinutes(s.breaks[s.breaks.length - 1].end) + 60
+        : openM + Math.floor((closeM - openM) / 2) - 30
+      let bs = Math.max(openM, Math.min(base, closeM - 60))
+      let be = Math.min(bs + 60, closeM)
+      if (be <= bs) { bs = Math.max(openM, closeM - 60); be = closeM }
+      const newBreak: TimeRange = { start: minutesToTime(bs), end: minutesToTime(be) }
+      return { ...prev, [day]: { ...s, breaks: [...s.breaks, newBreak] } }
+    })
+  }
+
+  // Break times are clamped to the day's working window so they can never be
+  // selected outside working hours.
+  function setBreakField(day: keyof WeekTemplate, idx: number, field: 'start' | 'end', val: string) {
+    setTemplate(prev => {
+      const s = prev[day]
+      const clamped = clampTime(val, s.openTime, s.closeTime)
       return {
         ...prev,
-        [day]: { ...prev[day], ranges: [...ranges, { start: lastEnd, end: newEnd }] },
+        [day]: {
+          ...s,
+          breaks: s.breaks.map((b, i) => i === idx ? { ...b, [field]: clamped } : b),
+        },
       }
     })
   }
 
-  function removeRange(day: keyof WeekTemplate, idx: number) {
+  function removeBreak(day: keyof WeekTemplate, idx: number) {
     setTemplate(prev => ({
       ...prev,
-      [day]: { ...prev[day], ranges: prev[day].ranges.filter((_, i) => i !== idx) },
+      [day]: { ...prev[day], breaks: prev[day].breaks.filter((_, i) => i !== idx) },
     }))
   }
 
   function validateTemplate(): string | null {
     for (const day of DAY_KEYS) {
-      const cfg = template[day]
-      if (!cfg.open) continue
-      for (const r of cfg.ranges) {
-        if (!isEndAfterStart(r.start, r.end)) return t('validation.endBeforeStart')
-      }
-      if (hasOverlap(cfg.ranges)) return t('validation.rangeOverlap')
+      const s = template[day]
+      if (!s.open) continue
+      const issue = dayScheduleIssue(s.openTime, s.closeTime, s.breaks)
+      if (issue) return t(`validation.${issue}`)
     }
     return null
   }
@@ -163,7 +171,15 @@ export default function WorkingHoursSettings() {
     setSaving(true)
     setError(null)
 
-    const payload = { ...template, org_id: org.id, updated_at: new Date().toISOString() }
+    const daysPayload: Record<string, { open: boolean; ranges: TimeRange[] }> = {}
+    for (const day of DAY_KEYS) {
+      const s = template[day]
+      daysPayload[day] = {
+        open: s.open,
+        ranges: s.open ? scheduleToRanges(s.openTime, s.closeTime, s.breaks) : [],
+      }
+    }
+    const payload = { ...daysPayload, org_id: org.id, updated_at: new Date().toISOString() }
 
     let err
     if (templateId) {
@@ -218,6 +234,7 @@ export default function WorkingHoursSettings() {
           <Stack spacing={2}>
             {DAY_KEYS.map((day, di) => {
               const cfg = template[day]
+              const windowValid = isEndAfterStart(cfg.openTime, cfg.closeTime)
               return (
                 <Box key={day}>
                   {di > 0 && <Divider sx={{ mb: 2 }} />}
@@ -239,34 +256,77 @@ export default function WorkingHoursSettings() {
 
                   {cfg.open && (
                     <Box sx={{ pl: { xs: 0, sm: '118px' }, mt: 1.5 }}>
-                      {cfg.ranges.map((r, ri) => (
-                        <Box key={ri} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <TextField
-                            type="time" size="small" value={r.start}
-                            onChange={e => setRangeField(day, ri, 'start', e.target.value)}
-                            sx={{ width: 115 }}
-                          />
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>—</Typography>
-                          <TextField
-                            type="time" size="small" value={r.end}
-                            onChange={e => setRangeField(day, ri, 'end', e.target.value)}
-                            error={!isEndAfterStart(r.start, r.end)}
-                            sx={{ width: 115 }}
-                          />
-                          {cfg.ranges.length > 1 && (
-                            <IconButton size="small" onClick={() => removeRange(day, ri)}>
+                      {/* Working window */}
+                      <Box
+                        sx={{
+                          display: 'flex', alignItems: 'center', gap: 1, mb: 1.5,
+                          pl: 1, borderLeft: '3px solid', borderLeftColor: 'success.main',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 92, color: 'success.dark' }}>
+                          <WorkOutlineOutlinedIcon sx={{ fontSize: 16 }} />
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>სამუშაო</Typography>
+                        </Box>
+                        <TextField
+                          type="time" size="small" value={cfg.openTime}
+                          onChange={e => setDayTime(day, 'openTime', e.target.value)}
+                          sx={{ width: 115 }}
+                        />
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>—</Typography>
+                        <TextField
+                          type="time" size="small" value={cfg.closeTime}
+                          onChange={e => setDayTime(day, 'closeTime', e.target.value)}
+                          error={!windowValid}
+                          sx={{ width: 115 }}
+                        />
+                      </Box>
+
+                      {/* Breaks — editable, constrained to the working window */}
+                      {cfg.breaks.map((b, bi) => {
+                        const breakInvalid = !isEndAfterStart(b.start, b.end)
+                          || timeToMinutes(b.start) < timeToMinutes(cfg.openTime)
+                          || timeToMinutes(b.end) > timeToMinutes(cfg.closeTime)
+                        return (
+                          <Box
+                            key={bi}
+                            sx={{
+                              display: 'flex', alignItems: 'center', gap: 1, mb: 1,
+                              pl: 1, borderLeft: '3px solid', borderLeftColor: 'grey.300',
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 92, color: 'text.secondary' }}>
+                              <CoffeeOutlinedIcon sx={{ fontSize: 16 }} />
+                              <Typography variant="caption" sx={{ fontWeight: 600 }}>შესვენება</Typography>
+                            </Box>
+                            <TextField
+                              type="time" size="small" value={b.start}
+                              onChange={e => setBreakField(day, bi, 'start', e.target.value)}
+                              error={breakInvalid}
+                              slotProps={{ htmlInput: { min: cfg.openTime, max: cfg.closeTime } }}
+                              sx={{ width: 115 }}
+                            />
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>—</Typography>
+                            <TextField
+                              type="time" size="small" value={b.end}
+                              onChange={e => setBreakField(day, bi, 'end', e.target.value)}
+                              error={breakInvalid}
+                              slotProps={{ htmlInput: { min: cfg.openTime, max: cfg.closeTime } }}
+                              sx={{ width: 115 }}
+                            />
+                            <IconButton size="small" aria-label={t('common.delete')} onClick={() => removeBreak(day, bi)}>
                               <CloseIcon sx={{ fontSize: 16 }} />
                             </IconButton>
-                          )}
-                        </Box>
-                      ))}
+                          </Box>
+                        )
+                      })}
+
                       <Button
                         size="small"
                         startIcon={<AddIcon sx={{ fontSize: 14 }} />}
-                        onClick={() => addRange(day)}
+                        onClick={() => addBreak(day)}
                         sx={{ color: 'text.secondary', fontSize: 12 }}
                       >
-                        შესვენება
+                        შესვენების დამატება
                       </Button>
                     </Box>
                   )}

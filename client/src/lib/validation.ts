@@ -20,6 +20,14 @@ export function timeToMinutes(t: string): number {
   return h * 60 + m
 }
 
+/** Minutes since midnight → "HH:mm" (clamped to 00:00–23:59). */
+export function minutesToTime(min: number): string {
+  const clamped = Math.max(0, Math.min(min, 23 * 60 + 59))
+  const h = Math.floor(clamped / 60)
+  const m = clamped % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
 /** True when `end` is strictly after `start` (both "HH:mm"). */
 export function isEndAfterStart(start: string, end: string): boolean {
   return timeToMinutes(end) > timeToMinutes(start)
@@ -35,4 +43,89 @@ export function hasOverlap(ranges: { start: string; end: string }[]): boolean {
     if (timeToMinutes(sorted[i].start) < timeToMinutes(sorted[i - 1].end)) return true
   }
   return false
+}
+
+/** Clamp a "HH:mm" value to the inclusive [min, max] window (both "HH:mm"). */
+export function clampTime(value: string, min: string, max: string): string {
+  const v = timeToMinutes(value)
+  const lo = timeToMinutes(min)
+  const hi = timeToMinutes(max)
+  if (v < lo) return min
+  if (v > hi) return max
+  return value
+}
+
+export interface TimeRange { start: string; end: string }
+
+/**
+ * A day expressed the way admins think about it: a single working window
+ * (open → close) with explicit breaks carved out of it. This is the editable
+ * shape; storage uses working ranges (the gaps between breaks).
+ */
+export interface DaySchedule {
+  open: boolean
+  openTime: string
+  closeTime: string
+  breaks: TimeRange[]
+}
+
+/**
+ * Stored working ranges → editable open/close window + breaks.
+ * The first range's start is the open time, the last range's end is the close
+ * time, and each gap between consecutive ranges becomes a break.
+ */
+export function rangesToSchedule(open: boolean, ranges: TimeRange[]): DaySchedule {
+  if (!ranges || ranges.length === 0) {
+    return { open, openTime: '09:00', closeTime: '18:00', breaks: [] }
+  }
+  const sorted = [...ranges].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
+  const breaks: TimeRange[] = []
+  for (let i = 0; i < sorted.length - 1; i++) {
+    breaks.push({ start: sorted[i].end, end: sorted[i + 1].start })
+  }
+  return {
+    open,
+    openTime: sorted[0].start,
+    closeTime: sorted[sorted.length - 1].end,
+    breaks,
+  }
+}
+
+/**
+ * Editable open/close window + breaks → stored working ranges. Working ranges
+ * are the segments of [open, close] that aren't covered by a break. Zero-length
+ * or inverted segments are dropped.
+ */
+export function scheduleToRanges(openTime: string, closeTime: string, breaks: TimeRange[]): TimeRange[] {
+  const sorted = [...breaks]
+    .filter(b => isEndAfterStart(b.start, b.end))
+    .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
+  const ranges: TimeRange[] = []
+  let cursor = openTime
+  for (const b of sorted) {
+    if (isEndAfterStart(cursor, b.start)) ranges.push({ start: cursor, end: b.start })
+    cursor = b.end
+  }
+  if (isEndAfterStart(cursor, closeTime)) ranges.push({ start: cursor, end: closeTime })
+  return ranges
+}
+
+/**
+ * Validate one day's editable schedule. Returns a `validation.*` i18n key
+ * suffix describing the first problem found, or null when valid.
+ */
+export function dayScheduleIssue(
+  openTime: string,
+  closeTime: string,
+  breaks: TimeRange[],
+): 'endBeforeStart' | 'breakOutsideHours' | 'rangeOverlap' | null {
+  if (!isEndAfterStart(openTime, closeTime)) return 'endBeforeStart'
+  for (const b of breaks) {
+    if (!isEndAfterStart(b.start, b.end)) return 'endBeforeStart'
+    if (timeToMinutes(b.start) < timeToMinutes(openTime) || timeToMinutes(b.end) > timeToMinutes(closeTime)) {
+      return 'breakOutsideHours'
+    }
+  }
+  if (hasOverlap(breaks)) return 'rangeOverlap'
+  return null
 }

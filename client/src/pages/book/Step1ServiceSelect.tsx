@@ -20,7 +20,7 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
   useEffect(() => {
     supabase
       .from('services')
-      .select('id, name, duration_minutes, price')
+      .select('id, name, duration_minutes, price, max_per_slot')
       .eq('org_id', orgId)
       .eq('is_active', true)
       .order('sort_order')
