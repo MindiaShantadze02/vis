@@ -7,9 +7,11 @@ import {
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
 import CreditCardOutlinedIcon from '@mui/icons-material/CreditCardOutlined'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
-import { format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { isValidGeorgianPhone } from '@/lib/validation'
 import type { BookingOrg, BookingState } from './BookingLayout'
 
 interface Props {
@@ -21,6 +23,7 @@ interface Props {
 }
 
 export default function Step3CustomerForm({ org, booking, onChange, onBack, onDone }: Props) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -77,9 +80,10 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     }
   }
 
+  const phoneInvalid = booking.phone.trim().length > 0 && !isValidGeorgianPhone(booking.phone)
   const canBook =
     booking.firstName.trim().length >= 2 &&
-    booking.phone.trim().length >= 6
+    isValidGeorgianPhone(booking.phone)
 
   return (
     <Box>
@@ -126,6 +130,8 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           fullWidth
           required
           placeholder="599 123 456"
+          error={phoneInvalid}
+          helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
           slotProps={{ htmlInput: { inputMode: 'tel' as const } }}
         />
 

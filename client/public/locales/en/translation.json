@@ -11,7 +11,20 @@
     "error": "Error",
     "success": "Success",
     "search": "Search",
-    "noData": "No data"
+    "noData": "No data",
+    "copy": "Copy",
+    "saved": "Changes saved",
+    "deleted": "Deleted",
+    "confirmDeleteTitle": "Confirm deletion",
+    "confirmDeleteMessage": "Are you sure? This action cannot be undone."
+  },
+  "validation": {
+    "required": "Required field",
+    "invalidPhone": "Invalid phone number (e.g. 5XX XXX XXX)",
+    "passwordMismatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 6 characters",
+    "endBeforeStart": "End time cannot be before start time",
+    "rangeOverlap": "Time ranges overlap"
   },
   "auth": {
     "phoneNumber": "Phone number",

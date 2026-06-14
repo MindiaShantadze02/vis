@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  Box, Typography, Avatar, CircularProgress, Stepper,
+  Box, Typography, Avatar, Stepper,
   Step, StepLabel, useMediaQuery, useTheme, Divider,
 } from '@mui/material'
+import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import { supabase } from '@/lib/supabase'
+import { anim } from '@/theme/animations'
+import { gradient } from '@/theme/theme'
+import { LoadingState, EmptyState } from '@/components/ui'
 import Step1ServiceSelect from './Step1ServiceSelect'
 import Step2DateTimeSelect from './Step2DateTimeSelect'
 import Step3CustomerForm from './Step3CustomerForm'
@@ -77,10 +81,11 @@ export default function BookingLayout() {
   if (notFound) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>ბიზნესი ვერ მოიძებნა</Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>შეამოწმეთ ბმული და სცადეთ თავიდან</Typography>
-        </Box>
+        <EmptyState
+          icon={<SearchOffOutlinedIcon />}
+          title="ბიზნესი ვერ მოიძებნა"
+          caption="შეამოწმეთ ბმული და სცადეთ თავიდან"
+        />
       </Box>
     )
   }
@@ -88,7 +93,7 @@ export default function BookingLayout() {
   if (!org) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
+        <LoadingState />
       </Box>
     )
   }
@@ -97,19 +102,45 @@ export default function BookingLayout() {
     <Box
       sx={{
         width: { xs: '100%', md: 300 },
-        bgcolor: 'primary.main',
+        background: gradient.sidebar,
         color: 'white',
         p: 4,
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
         flexShrink: 0,
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: -60, right: -60,
+          width: 200, height: 200,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(167,139,250,0.22) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        },
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          bottom: -40, left: -40,
+          width: 160, height: 160,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(244,114,182,0.12) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        },
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
         <Avatar
           src={org.logo_url ?? undefined}
-          sx={{ width: 56, height: 56, bgcolor: 'rgba(255,255,255,0.2)', fontSize: 22 }}
+          sx={{
+            width: 56, height: 56,
+            background: 'rgba(255,255,255,0.15)',
+            fontSize: 22, fontWeight: 700,
+            border: '2px solid rgba(255,255,255,0.30)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.20)',
+          }}
         >
           {org.name.charAt(0)}
         </Avatar>
@@ -126,8 +157,8 @@ export default function BookingLayout() {
 
       {org.description && (
         <>
-          <Divider sx={{ borderColor: 'rgba(255,255,255,0.2)' }} />
-          <Typography variant="body2" sx={{ opacity: 0.85, lineHeight: 1.6 }}>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.15)' }} />
+          <Typography variant="body2" sx={{ opacity: 0.85, lineHeight: 1.65, position: 'relative' }}>
             {org.description}
           </Typography>
         </>
@@ -135,8 +166,8 @@ export default function BookingLayout() {
 
       {/* Selected booking summary */}
       {booking.service && (
-        <>
-          <Divider sx={{ borderColor: 'rgba(255,255,255,0.2)' }} />
+        <Box sx={{ animation: anim.fadeInUp, position: 'relative' }}>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.15)', mb: 2 }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <CalendarMonthOutlinedIcon sx={{ fontSize: 16, opacity: 0.8 }} />
@@ -154,7 +185,7 @@ export default function BookingLayout() {
               {booking.service.price} ₾
             </Typography>
           </Box>
-        </>
+        </Box>
       )}
     </Box>
   )
@@ -175,8 +206,8 @@ export default function BookingLayout() {
           </Stepper>
         </Box>
 
-        {/* Step content */}
-        <Box sx={{ flex: 1, px: { xs: 2, md: 5 }, py: 4, maxWidth: 560, width: '100%' }}>
+        {/* Step content — key re-mounts on step change, re-firing animation */}
+        <Box key={step} sx={{ flex: 1, px: { xs: 2, md: 5 }, py: 4, maxWidth: 560, width: '100%', animation: anim.fadeInUp }}>
           {step === 0 && (
             <Step1ServiceSelect
               orgId={org.id}

@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Box, Typography, Card, CardContent, Button, CircularProgress, Chip, Stack } from '@mui/material'
+import { Box, Typography, Card, CardContent, Button, Stack } from '@mui/material'
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
+import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
 import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
+import { LoadingState, EmptyState, StatusChip } from '@/components/ui'
+import type { AppointmentStatus } from '@/components/ui'
 
 interface AppointmentDetail {
   id: string
@@ -41,7 +44,7 @@ export default function BookingConfirmationPage() {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
+        <LoadingState />
       </Box>
     )
   }
@@ -49,7 +52,7 @@ export default function BookingConfirmationPage() {
   if (!appt) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Typography>ჯავშანი ვერ მოიძებნა</Typography>
+        <EmptyState icon={<SearchOffOutlinedIcon />} title="ჯავშანი ვერ მოიძებნა" />
       </Box>
     )
   }
@@ -74,13 +77,13 @@ export default function BookingConfirmationPage() {
           <Box
             sx={{
               width: 72, height: 72, borderRadius: '50%',
-              bgcolor: isPending ? '#FEF3C7' : '#D1FAE5',
+              bgcolor: isPending ? 'warning.light' : 'success.light',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               mx: 'auto', mb: 2,
             }}
           >
             <CheckCircleOutlinedIcon
-              sx={{ fontSize: 38, color: isPending ? '#F59E0B' : '#10B981' }}
+              sx={{ fontSize: 38, color: isPending ? 'warning.main' : 'success.main' }}
             />
           </Box>
 
@@ -122,15 +125,7 @@ export default function BookingConfirmationPage() {
               <Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>სტატუსი</Typography>
                 <Box sx={{ mt: 0.25 }}>
-                  <Chip
-                    label={isPending ? 'მოლოდინში' : 'დადასტურებული'}
-                    size="small"
-                    sx={{
-                      bgcolor: isPending ? '#FEF3C7' : '#D1FAE5',
-                      color: isPending ? '#F59E0B' : '#10B981',
-                      fontWeight: 600,
-                    }}
-                  />
+                  <StatusChip status={appt.status as AppointmentStatus} />
                 </Box>
               </Box>
               <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>

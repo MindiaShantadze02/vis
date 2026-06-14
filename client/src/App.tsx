@@ -16,7 +16,6 @@ import WorkingHoursStep from '@/pages/onboarding/WorkingHoursStep'
 import DashboardLayout from '@/pages/dashboard/DashboardLayout'
 import OverviewPage from '@/pages/dashboard/OverviewPage'
 import CalendarPage from '@/pages/dashboard/CalendarPage'
-import AppointmentsPage from '@/pages/dashboard/AppointmentsPage'
 import ProfileSettings from '@/pages/dashboard/settings/ProfileSettings'
 import ServicesSettings from '@/pages/dashboard/settings/ServicesSettings'
 import WorkingHoursSettings from '@/pages/dashboard/settings/WorkingHoursSettings'
@@ -92,7 +91,6 @@ export default function App() {
       <Route path="/dashboard" element={<AuthGuard><OrgGuard><DashboardLayout /></OrgGuard></AuthGuard>}>
         <Route index element={<OverviewPage />} />
         <Route path="calendar" element={<CalendarPage />} />
-        <Route path="appointments" element={<AppointmentsPage />} />
         <Route path="settings/profile" element={<ProfileSettings />} />
         <Route path="settings/services" element={<ServicesSettings />} />
         <Route path="settings/hours" element={<WorkingHoursSettings />} />

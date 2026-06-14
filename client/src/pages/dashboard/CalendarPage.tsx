@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react'
 import {
   Box, Typography, IconButton, Card, Tooltip,
-  Drawer, Stack, Button, Chip, CircularProgress,
+  Drawer, Stack, Button, CircularProgress, useTheme,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Select, MenuItem, FormControl, InputLabel, TextField,
 } from '@mui/material'
+import type { Theme } from '@mui/material'
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import TodayIcon from '@mui/icons-material/Today'
+import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
+import CloseIcon from '@mui/icons-material/Close'
 import { format, startOfWeek, addWeeks, addDays, isSameDay } from 'date-fns'
+import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
+import { StatusChip, ConfirmDialog, LoadingState } from '@/components/ui'
+import type { AppointmentStatus } from '@/components/ui'
+
+// ── Types ─────────────────────────────────────────────────────
 
 interface Appointment {
   id: string
@@ -23,65 +33,151 @@ interface Appointment {
   services: { name: string; price: number } | null
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  pending:   '#F59E0B',
-  approved:  '#10B981',
-  rejected:  '#EF4444',
-  cancelled: '#9CA3AF',
-  completed: '#6B7280',
+interface RestPeriod { start: string; end: string; label: string }
+
+interface DayOverride {
+  is_closed: boolean
+  ranges: Array<{ start: string; end: string }> | null
+  rest_periods: RestPeriod[]
 }
 
-const STATUS_BG: Record<string, string> = {
-  pending:   '#FEF3C7',
-  approved:  '#D1FAE5',
-  rejected:  '#FEE2E2',
-  cancelled: '#F3F4F6',
-  completed: '#F3F4F6',
+type TemplateDay = { open: boolean; ranges: Array<{ start: string; end: string }> }
+type Template = Record<string, TemplateDay>
+
+// ── Constants ─────────────────────────────────────────────────
+
+// Maps each status to a semantic theme palette key so the event pills
+// derive their colors from the same tokens as the rest of the app.
+const STATUS_PALETTE: Record<AppointmentStatus, 'warning' | 'success' | 'error' | 'info' | 'grey'> = {
+  pending:   'warning',
+  approved:  'success',
+  rejected:  'error',
+  cancelled: 'grey',
+  completed: 'info',
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  pending:   'მოლოდინში',
-  approved:  'დამტკიცებული',
-  rejected:  'უარყოფილი',
-  cancelled: 'გაუქმებული',
-  completed: 'დასრულებული',
+/** Resolve a status to its main/light colors from the theme. */
+function statusColors(theme: Theme, status: AppointmentStatus): { main: string; light: string } {
+  const key = STATUS_PALETTE[status]
+  if (key === 'grey') return { main: theme.palette.grey[500], light: theme.palette.grey[100] }
+  return { main: theme.palette[key].main, light: theme.palette[key].light }
 }
 
-const DAY_NAMES = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი']
-
-// Working hours to display (8:00 – 20:00)
+const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8)
+
+const TIME_OPTIONS = Array.from({ length: 31 }, (_, i) => {
+  const mins = 7 * 60 + i * 30
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+})
+
+// ── Helpers ───────────────────────────────────────────────────
+
+function applyRestPeriods(
+  base: Array<{ start: string; end: string }>,
+  rests: RestPeriod[],
+): Array<{ start: string; end: string }> {
+  let ranges = [...base]
+  for (const rest of rests) {
+    const next: typeof ranges = []
+    for (const r of ranges) {
+      if (r.end <= rest.start || r.start >= rest.end) {
+        next.push(r)
+      } else {
+        if (r.start < rest.start) next.push({ start: r.start, end: rest.start })
+        if (r.end > rest.end) next.push({ start: rest.end, end: r.end })
+      }
+    }
+    ranges = next
+  }
+  return ranges
+}
+
+function isHourRested(hour: number, rest: RestPeriod): boolean {
+  const [sh, sm] = rest.start.split(':').map(Number)
+  const [eh, em] = rest.end.split(':').map(Number)
+  return hour * 60 < eh * 60 + em && (hour + 1) * 60 > sh * 60 + sm
+}
+
+// ── Component ─────────────────────────────────────────────────
 
 export default function CalendarPage() {
   const { t } = useTranslation()
   const { org } = useOrg()
+  const theme = useTheme()
 
-  const [weekStart, setWeekStart] = useState(() =>
-    startOfWeek(new Date(), { weekStartsOn: 1 })
-  )
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
+  const [restToRemove, setRestToRemove] = useState<{ dateKey: string; idx: number } | null>(null)
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
+  const [template, setTemplate] = useState<Template | null>(null)
+  const [overrides, setOverrides] = useState<Record<string, DayOverride>>({})
+
+  // Rest period dialog
+  const [restDialog, setRestDialog] = useState(false)
+  const [restDate, setRestDate] = useState('')
+  const [restStart, setRestStart] = useState('13:00')
+  const [restEnd, setRestEnd] = useState('14:00')
+  const [restLabel, setRestLabel] = useState('')
+  const [savingRest, setSavingRest] = useState(false)
+
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
+  useEffect(() => {
+    if (org) loadTemplate()
+  }, [org])
+
   useEffect(() => {
     if (org) loadWeek()
   }, [org, weekStart])
+
+  async function loadTemplate() {
+    if (!org) return
+    const { data } = await supabase
+      .from('working_hours_template')
+      .select('monday,tuesday,wednesday,thursday,friday,saturday,sunday')
+      .eq('org_id', org.id)
+      .single()
+    if (data) setTemplate(data as unknown as Template)
+  }
 
   async function loadWeek() {
     if (!org) return
     setLoading(true)
     const weekEnd = addDays(weekStart, 7)
-    const { data } = await supabase
-      .from('appointments')
-      .select('id, scheduled_at, duration_minutes, status, payment_method, payment_status, notes, customers(first_name, last_name, phone_number), services(name, price)')
-      .eq('org_id', org.id)
-      .gte('scheduled_at', weekStart.toISOString())
-      .lt('scheduled_at', weekEnd.toISOString())
-      .not('status', 'in', '(rejected,cancelled)')
-      .order('scheduled_at')
 
-    setAppointments((data ?? []) as unknown as Appointment[])
+    const [apptRes, overrideRes] = await Promise.all([
+      supabase
+        .from('appointments')
+        .select('id, scheduled_at, duration_minutes, status, payment_method, payment_status, notes, customers(first_name, last_name, phone_number), services(name, price)')
+        .eq('org_id', org.id)
+        .gte('scheduled_at', weekStart.toISOString())
+        .lt('scheduled_at', weekEnd.toISOString())
+        .not('status', 'in', '(rejected,cancelled)')
+        .order('scheduled_at'),
+
+      supabase
+        .from('working_hours_overrides')
+        .select('date, is_closed, ranges, note')
+        .eq('org_id', org.id)
+        .gte('date', format(weekStart, 'yyyy-MM-dd'))
+        .lt('date', format(weekEnd, 'yyyy-MM-dd')),
+    ])
+
+    setAppointments((apptRes.data ?? []) as unknown as Appointment[])
+
+    const map: Record<string, DayOverride> = {}
+    for (const row of (overrideRes.data ?? [])) {
+      let rest_periods: RestPeriod[] = []
+      try { rest_periods = JSON.parse(row.note ?? '{}').rest_periods ?? [] } catch {}
+      map[row.date] = { is_closed: row.is_closed ?? false, ranges: row.ranges, rest_periods }
+    }
+    setOverrides(map)
     setLoading(false)
   }
 
@@ -96,7 +192,69 @@ export default function CalendarPage() {
     loadWeek()
   }
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  function openRestDialog() {
+    const todayKey = format(new Date(), 'yyyy-MM-dd')
+    const isInWeek = days.some(d => format(d, 'yyyy-MM-dd') === todayKey)
+    setRestDate(isInWeek ? todayKey : format(days[0], 'yyyy-MM-dd'))
+    setRestStart('13:00')
+    setRestEnd('14:00')
+    setRestLabel('')
+    setRestDialog(true)
+  }
+
+  async function addRestPeriod() {
+    if (!org || !template || !restDate || restStart >= restEnd) return
+    setSavingRest(true)
+
+    const dateObj = new Date(restDate + 'T12:00:00')
+    const dayKey = DAY_KEYS[dateObj.getDay()]
+    const existing = overrides[restDate]
+    const baseRanges = existing?.ranges ?? template[dayKey]?.ranges ?? []
+    const existingRests = existing?.rest_periods ?? []
+
+    const newRest: RestPeriod = { start: restStart, end: restEnd, label: restLabel.trim() || 'დასვენება' }
+    const newRests = [...existingRests, newRest]
+    const newRanges = applyRestPeriods(baseRanges, [newRest])
+
+    await supabase.from('working_hours_overrides').upsert({
+      org_id: org.id,
+      date: restDate,
+      is_closed: false,
+      ranges: newRanges,
+      note: JSON.stringify({ rest_periods: newRests }),
+    }, { onConflict: 'org_id,date' })
+
+    setSavingRest(false)
+    setRestDialog(false)
+    loadWeek()
+  }
+
+  async function removeRestPeriod(dateKey: string, idx: number) {
+    if (!org || !template) return
+    const existing = overrides[dateKey]
+    if (!existing) return
+
+    const dateObj = new Date(dateKey + 'T12:00:00')
+    const dayKey = DAY_KEYS[dateObj.getDay()]
+    const templateRanges = template[dayKey]?.ranges ?? []
+    const remainingRests = existing.rest_periods.filter((_, i) => i !== idx)
+
+    if (remainingRests.length === 0) {
+      await supabase.from('working_hours_overrides')
+        .delete().eq('org_id', org.id).eq('date', dateKey)
+    } else {
+      const newRanges = applyRestPeriods(templateRanges, remainingRests)
+      await supabase.from('working_hours_overrides').upsert({
+        org_id: org.id,
+        date: dateKey,
+        is_closed: false,
+        ranges: newRanges,
+        note: JSON.stringify({ rest_periods: remainingRests }),
+      }, { onConflict: 'org_id,date' })
+    }
+
+    loadWeek()
+  }
 
   function getApptForSlot(day: Date, hour: number): Appointment[] {
     return appointments.filter(a => {
@@ -105,15 +263,31 @@ export default function CalendarPage() {
     })
   }
 
-  const weekLabel = `${format(weekStart, 'd MMM')} – ${format(addDays(weekStart, 6), 'd MMM yyyy')}`
+  function getRestsForSlot(day: Date, hour: number): Array<{ rest: RestPeriod; idx: number }> {
+    const dateKey = format(day, 'yyyy-MM-dd')
+    return (overrides[dateKey]?.rest_periods ?? [])
+      .map((rest, idx) => ({ rest, idx }))
+      .filter(({ rest }) => isHourRested(hour, rest))
+  }
+
+  const weekLabel = `${format(weekStart, 'd MMM', { locale: ka })} – ${format(addDays(weekStart, 6), 'd MMM yyyy', { locale: ka })}`
 
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
         <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>
           {t('dashboard.calendar')}
         </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<EventBusyOutlinedIcon />}
+          onClick={openRestDialog}
+          sx={{ borderRadius: 2 }}
+        >
+          დასვენება
+        </Button>
         <Tooltip title="დღეს">
           <IconButton onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>
             <TodayIcon />
@@ -131,13 +305,20 @@ export default function CalendarPage() {
       </Box>
 
       {/* Legend */}
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-        {(['pending', 'approved'] as const).map(s => (
-          <Box key={s} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: STATUS_COLOR[s] }} />
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>{STATUS_LABEL[s]}</Typography>
-          </Box>
-        ))}
+      <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
+        {(['pending', 'approved'] as const).map(s => {
+          const c = statusColors(theme, s)
+          return (
+            <Box key={s} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Box sx={{ width: 16, height: 12, borderRadius: '3px', borderLeft: `3px solid ${c.main}`, bgcolor: c.light }} />
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t(`dashboard.${s}`)}</Typography>
+            </Box>
+          )
+        })}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          <Box sx={{ width: 16, height: 12, borderRadius: '3px', borderLeft: '3px solid', borderLeftColor: 'grey.400', bgcolor: 'grey.100' }} />
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>დასვენება</Typography>
+        </Box>
       </Stack>
 
       {/* Calendar grid */}
@@ -147,6 +328,7 @@ export default function CalendarPage() {
           sx={{
             display: 'grid',
             gridTemplateColumns: '56px repeat(7, 1fr)',
+            minWidth: 640,
             borderBottom: '1px solid',
             borderColor: 'divider',
             position: 'sticky',
@@ -155,31 +337,21 @@ export default function CalendarPage() {
             zIndex: 1,
           }}
         >
-          <Box /> {/* Time gutter */}
+          <Box />
           {days.map((day, i) => {
             const isToday = isSameDay(day, new Date())
             return (
-              <Box
-                key={i}
-                sx={{
-                  py: 1.5,
-                  textAlign: 'center',
-                  borderLeft: '1px solid',
-                  borderColor: 'divider',
-                }}
-              >
-                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                  {DAY_NAMES[i]}
+              <Box key={i} sx={{ py: 1.5, textAlign: 'center', borderLeft: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', textTransform: 'capitalize' }}>
+                  {format(day, 'EEE', { locale: ka })}
                 </Typography>
-                <Box
-                  sx={{
-                    width: 28, height: 28, borderRadius: '50%',
-                    bgcolor: isToday ? 'primary.main' : 'transparent',
-                    color: isToday ? 'white' : 'text.primary',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    mx: 'auto', mt: 0.25,
-                  }}
-                >
+                <Box sx={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  bgcolor: isToday ? 'primary.main' : 'transparent',
+                  color: isToday ? 'white' : 'text.primary',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  mx: 'auto', mt: 0.25,
+                }}>
                   <Typography variant="body2" sx={{ fontWeight: isToday ? 700 : 400, lineHeight: 1 }}>
                     {format(day, 'd')}
                   </Typography>
@@ -191,32 +363,29 @@ export default function CalendarPage() {
 
         {/* Time rows */}
         {loading
-          ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <CircularProgress size={32} />
-            </Box>
-          )
+          ? <LoadingState />
           : HOURS.map(hour => (
             <Box
               key={hour}
               sx={{
                 display: 'grid',
                 gridTemplateColumns: '56px repeat(7, 1fr)',
+                minWidth: 640,
                 minHeight: 60,
                 borderBottom: '1px solid',
                 borderColor: 'divider',
               }}
             >
-              {/* Hour label */}
               <Box sx={{ pt: 0.5, pr: 1, textAlign: 'right' }}>
                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1 }}>
                   {String(hour).padStart(2, '0')}:00
                 </Typography>
               </Box>
 
-              {/* Day cells */}
               {days.map((day, di) => {
                 const slotAppts = getApptForSlot(day, hour)
+                const slotRests = getRestsForSlot(day, hour)
+
                 return (
                   <Box
                     key={di}
@@ -225,36 +394,93 @@ export default function CalendarPage() {
                       borderColor: 'divider',
                       p: 0.5,
                       display: 'flex',
-                      flexWrap: 'wrap',
+                      flexDirection: 'column',
                       gap: 0.5,
-                      alignContent: 'flex-start',
                     }}
                   >
-                    {slotAppts.map(appt => (
-                      <Tooltip
-                        key={appt.id}
-                        title={`${appt.customers?.first_name} ${appt.customers?.last_name ?? ''} · ${appt.services?.name}`}
+                    {/* Appointment pills */}
+                    {slotAppts.map(appt => {
+                      const c = statusColors(theme, appt.status)
+                      return (
+                        <Tooltip
+                          key={appt.id}
+                          title={`${appt.customers?.first_name} ${appt.customers?.last_name ?? ''} · ${appt.services?.name}`}
+                          placement="top"
+                        >
+                          <Box
+                            onClick={() => setSelected(appt)}
+                            sx={{
+                              width: '100%',
+                              borderRadius: '5px',
+                              borderLeft: `3px solid ${c.main}`,
+                              bgcolor: c.light,
+                              px: 0.75, py: 0.4,
+                              cursor: 'pointer',
+                              overflow: 'hidden',
+                              transition: 'all 0.15s',
+                              '&:hover': {
+                                filter: 'brightness(0.94)',
+                                boxShadow: `0 2px 8px ${c.main}50`,
+                                transform: 'translateY(-1px)',
+                              },
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: 700, color: c.main, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, lineHeight: 1.4 }}>
+                              {format(new Date(appt.scheduled_at), 'HH:mm')} {appt.customers?.first_name}
+                            </Typography>
+                            <Typography sx={{ color: c.main, opacity: 0.75, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, lineHeight: 1.3 }}>
+                              {appt.services?.name}
+                            </Typography>
+                          </Box>
+                        </Tooltip>
+                      )
+                    })}
+
+                    {/* Rest period pills */}
+                    {slotRests.map(({ rest, idx }) => (
+                      <Box
+                        key={idx}
+                        sx={{
+                          width: '100%',
+                          borderRadius: '5px',
+                          borderLeft: '3px solid',
+                          borderLeftColor: 'grey.300',
+                          bgcolor: 'grey.50',
+                          px: 0.75, py: 0.4,
+                          overflow: 'hidden',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          '&:hover .rest-del': { opacity: 1 },
+                        }}
                       >
+                        <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                          <Typography sx={{ fontWeight: 600, color: 'text.secondary', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, lineHeight: 1.4 }}>
+                            {rest.label}
+                          </Typography>
+                          <Typography sx={{ color: 'text.secondary', display: 'block', fontSize: 10, lineHeight: 1.3 }}>
+                            {rest.start}–{rest.end}
+                          </Typography>
+                        </Box>
                         <Box
-                          onClick={() => setSelected(appt)}
+                          className="rest-del"
+                          role="button"
+                          aria-label={t('common.delete')}
+                          onClick={() => setRestToRemove({ dateKey: format(day, 'yyyy-MM-dd'), idx })}
                           sx={{
-                            width: 28, height: 28,
-                            borderRadius: '50%',
-                            bgcolor: STATUS_BG[appt.status],
-                            border: '2px solid',
-                            borderColor: STATUS_COLOR[appt.status],
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            opacity: 0,
+                            transition: 'opacity 0.15s',
                             cursor: 'pointer',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: STATUS_COLOR[appt.status],
-                            '&:hover': { transform: 'scale(1.15)' },
-                            transition: 'transform 0.1s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                            borderRadius: '50%',
+                            '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
                           }}
                         >
-                          {format(new Date(appt.scheduled_at), 'H')}
+                          <CloseIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
                         </Box>
-                      </Tooltip>
+                      </Box>
                     ))}
                   </Box>
                 )
@@ -276,7 +502,6 @@ export default function CalendarPage() {
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
               {selected.customers?.first_name} {selected.customers?.last_name}
             </Typography>
-
             <Stack spacing={2}>
               <Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>სერვისი</Typography>
@@ -303,17 +528,7 @@ export default function CalendarPage() {
               <Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>სტატუსი</Typography>
                 <Box sx={{ mt: 0.5 }}>
-                  <Chip
-                    label={STATUS_LABEL[selected.status]}
-                    size="small"
-                    sx={{
-                      bgcolor: STATUS_BG[selected.status],
-                      color: STATUS_COLOR[selected.status],
-                      fontWeight: 600,
-                      border: '1px solid',
-                      borderColor: STATUS_COLOR[selected.status],
-                    }}
-                  />
+                  <StatusChip status={selected.status} />
                 </Box>
               </Box>
               {selected.notes && (
@@ -326,22 +541,10 @@ export default function CalendarPage() {
 
             {selected.status === 'pending' && (
               <Stack spacing={1} sx={{ mt: 4 }}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  color="success"
-                  onClick={() => changeStatus(selected.id, 'approved')}
-                  disabled={actionLoading}
-                >
+                <Button fullWidth variant="contained" color="success" onClick={() => changeStatus(selected.id, 'approved')} disabled={actionLoading}>
                   {actionLoading ? <CircularProgress size={20} color="inherit" /> : t('dashboard.approve')}
                 </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  color="error"
-                  onClick={() => changeStatus(selected.id, 'rejected')}
-                  disabled={actionLoading}
-                >
+                <Button fullWidth variant="outlined" color="error" onClick={() => changeStatus(selected.id, 'rejected')} disabled={actionLoading}>
                   {t('dashboard.reject')}
                 </Button>
               </Stack>
@@ -353,6 +556,71 @@ export default function CalendarPage() {
           </Box>
         )}
       </Drawer>
+
+      {/* Add Rest Period dialog */}
+      <Dialog open={restDialog} onClose={() => setRestDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>დასვენების პერიოდი</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2.5} sx={{ mt: 0.5 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>დღე</InputLabel>
+              <Select value={restDate} label="დღე" onChange={e => setRestDate(e.target.value)}>
+                {days.map(day => (
+                  <MenuItem key={format(day, 'yyyy-MM-dd')} value={format(day, 'yyyy-MM-dd')}>
+                    {format(day, 'EEEE, d MMM', { locale: ka })}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>დაწყება</InputLabel>
+                <Select value={restStart} label="დაწყება" onChange={e => setRestStart(e.target.value)}>
+                  {TIME_OPTIONS.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>დასრულება</InputLabel>
+                <Select value={restEnd} label="დასრულება" onChange={e => setRestEnd(e.target.value)}>
+                  {TIME_OPTIONS.filter(t => t > restStart).map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Box>
+
+            <TextField
+              fullWidth size="small"
+              label="სახელი (არასავალდებულო)"
+              placeholder="მაგ: სადილი, შესვენება"
+              value={restLabel}
+              onChange={e => setRestLabel(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setRestDialog(false)}>{t('common.cancel')}</Button>
+          <Button
+            variant="contained"
+            onClick={addRestPeriod}
+            disabled={savingRest || !restDate || restStart >= restEnd}
+          >
+            {savingRest ? <CircularProgress size={18} color="inherit" /> : 'დამატება'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm rest-period removal */}
+      <ConfirmDialog
+        open={!!restToRemove}
+        title={t('common.confirmDeleteTitle')}
+        message={t('common.confirmDeleteMessage')}
+        confirmLabel={t('common.delete')}
+        onClose={() => setRestToRemove(null)}
+        onConfirm={() => {
+          if (restToRemove) removeRestPeriod(restToRemove.dateKey, restToRemove.idx)
+          setRestToRemove(null)
+        }}
+      />
     </Box>
   )
 }

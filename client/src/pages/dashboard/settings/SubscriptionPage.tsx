@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import {
   Box, Typography, Card, CardContent, Button, LinearProgress,
-  Stack, Chip, Divider, CircularProgress,
+  Stack, Chip, Divider, CircularProgress, useTheme,
 } from '@mui/material'
+import type { Theme } from '@mui/material'
 import CheckIcon from '@mui/icons-material/Check'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
+import { PageHeader } from '@/components/ui'
 
 type Tier = 'free' | 'starter' | 'pro' | 'business'
+type TierColorKey = 'grey' | 'info' | 'primary' | 'success'
 
 interface TierInfo {
   key: Tier
@@ -16,31 +19,37 @@ interface TierInfo {
   price: string
   limit: number | null
   features: string[]
-  color: string
+  colorKey: TierColorKey
 }
 
 const TIERS: TierInfo[] = [
   {
-    key: 'free', label: 'უფასო', price: '₾0 / თვე', limit: 30, color: '#6B7280',
+    key: 'free', label: 'უფასო', price: '₾0 / თვე', limit: 30, colorKey: 'grey',
     features: ['30 ჯავშანი/თვე', 'ონლაინ ბუქინგ გვერდი', 'SMS შეტყობინებები'],
   },
   {
-    key: 'starter', label: 'სტარტერი', price: '₾15 / თვე', limit: 200, color: '#3D52D5',
+    key: 'starter', label: 'სტარტერი', price: '₾15 / თვე', limit: 200, colorKey: 'info',
     features: ['200 ჯავშანი/თვე', 'ყველა უფასო ფუნქცია', 'პრიორიტეტული მხარდაჭერა'],
   },
   {
-    key: 'pro', label: 'პრო', price: '₾40 / თვე', limit: 600, color: '#7C3AED',
+    key: 'pro', label: 'პრო', price: '₾40 / თვე', limit: 600, colorKey: 'primary',
     features: ['600 ჯავშანი/თვე', 'ყველა სტარტერის ფუნქცია', 'BOG / TBC ონლაინ გადახდა', 'გუნდის მართვა'],
   },
   {
-    key: 'business', label: 'ბიზნესი', price: '₾80 / თვე', limit: null, color: '#059669',
+    key: 'business', label: 'ბიზნესი', price: '₾80 / თვე', limit: null, colorKey: 'success',
     features: ['ულიმიტო ჯავშნები', 'ყველა პრო ფუნქცია', 'VIP მხარდაჭერა'],
   },
 ]
 
+/** Resolve a tier's accent color from the theme palette. */
+function tierColor(theme: Theme, key: TierColorKey): string {
+  return key === 'grey' ? theme.palette.text.secondary : theme.palette[key].main
+}
+
 export default function SubscriptionPage() {
   const { t } = useTranslation()
   const { org } = useOrg()
+  const theme = useTheme()
 
   const [used, setUsed] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
@@ -70,11 +79,11 @@ export default function SubscriptionPage() {
   const pct = limit && used !== null ? Math.min((used / limit) * 100, 100) : 0
   const nearLimit = limit && used !== null && used >= limit * 0.8
 
+  const currentColor = tierColor(theme, tierInfo.colorKey)
+
   return (
     <Box sx={{ maxWidth: 680 }}>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-        {t('settings.subscription')}
-      </Typography>
+      <PageHeader title={t('settings.subscription')} />
 
       {/* Current plan */}
       <Card sx={{ mb: 4 }}>
@@ -88,7 +97,7 @@ export default function SubscriptionPage() {
                 <Chip
                   label={tierInfo.label}
                   size="small"
-                  sx={{ bgcolor: tierInfo.color, color: 'white', fontWeight: 700 }}
+                  sx={{ bgcolor: currentColor, color: 'white', fontWeight: 700 }}
                 />
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   {tierInfo.price}
@@ -123,6 +132,7 @@ export default function SubscriptionPage() {
               <LinearProgress
                 variant="determinate"
                 value={pct}
+                aria-label={`${used ?? 0} / ${limit}`}
                 sx={{
                   height: 8, borderRadius: 4,
                   bgcolor: 'grey.100',
@@ -153,12 +163,13 @@ export default function SubscriptionPage() {
       <Stack spacing={2}>
         {TIERS.map(tier => {
           const isCurrent = tier.key === currentTier
+          const color = tierColor(theme, tier.colorKey)
           return (
             <Card
               key={tier.key}
               sx={{
                 border: '2px solid',
-                borderColor: isCurrent ? tier.color : 'divider',
+                borderColor: isCurrent ? color : 'divider',
                 transition: 'border-color 0.2s',
               }}
             >
@@ -170,16 +181,16 @@ export default function SubscriptionPage() {
                         {tier.label}
                       </Typography>
                       {isCurrent && (
-                        <Chip label="მიმდინარე" size="small" sx={{ bgcolor: tier.color, color: 'white', fontWeight: 600 }} />
+                        <Chip label="მიმდინარე" size="small" sx={{ bgcolor: color, color: 'white', fontWeight: 600 }} />
                       )}
                     </Box>
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: tier.color, mb: 1.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color, mb: 1.5 }}>
                       {tier.price}
                     </Typography>
                     <Stack spacing={0.5}>
                       {tier.features.map(f => (
                         <Box key={f} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                          <CheckIcon sx={{ fontSize: 14, color: tier.color }} />
+                          <CheckIcon sx={{ fontSize: 14, color }} />
                           <Typography variant="caption">{f}</Typography>
                         </Box>
                       ))}
@@ -190,7 +201,7 @@ export default function SubscriptionPage() {
                     <Button
                       variant="outlined"
                       size="small"
-                      sx={{ borderColor: tier.color, color: tier.color, whiteSpace: 'nowrap', flexShrink: 0 }}
+                      sx={{ borderColor: color, color, whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
                       {t('subscription.upgrade')}
                     </Button>

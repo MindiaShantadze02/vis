@@ -3,11 +3,14 @@ import {
   Box, Card, CardContent, TextField, Button,
   Typography, CircularProgress, Alert, Tabs, Tab,
 } from '@mui/material'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { anim } from '@/theme/animations'
 
 type Mode = 'signin' | 'signup'
 
 export default function LoginPage() {
+  const { t } = useTranslation()
   const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -31,8 +34,8 @@ export default function LoginPage() {
   }
 
   async function handleSignUp() {
-    if (password !== confirmPassword) { setError('პაროლები არ ემთხვევა'); return }
-    if (password.length < 6) { setError('პაროლი მინიმუმ 6 სიმბოლო უნდა იყოს'); return }
+    if (password.length < 6) { setError(t('validation.passwordTooShort')); return }
+    if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
     setError(null)
     setLoading(true)
     const { error: err } = await supabase.auth.signUp({ email: email.trim(), password })
@@ -41,8 +44,9 @@ export default function LoginPage() {
   }
 
   const emailValid = email.includes('@')
+  const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
   const canSignIn = emailValid && password.length >= 6
-  const canSignUp = emailValid && password.length >= 6 && confirmPassword.length >= 6
+  const canSignUp = emailValid && password.length >= 6 && confirmPassword.length >= 6 && !passwordMismatch
 
   return (
     <Box
@@ -51,20 +55,52 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #3D52D5 0%, #2A3A9E 100%)',
+        background: `
+          radial-gradient(ellipse 80% 60% at 20% 10%, rgba(124,58,237,0.40) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 50% at 80% 90%, rgba(167,139,250,0.25) 0%, transparent 55%),
+          radial-gradient(ellipse 50% 40% at 65% 45%, rgba(244,114,182,0.12) 0%, transparent 50%),
+          linear-gradient(135deg, #2E1065 0%, #4C1D95 50%, #5B21B6 100%)
+        `,
         p: 2,
       }}
     >
-      <Card sx={{ width: '100%', maxWidth: 420, borderRadius: 4 }}>
+      <Card
+        sx={{
+          width: '100%',
+          maxWidth: 420,
+          borderRadius: 4,
+          animation: anim.scaleIn,
+          background: 'rgba(255,255,255,0.97)',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.20), 0 0 0 1px rgba(255,255,255,0.10)',
+          border: 'none',
+          '&:hover': { transform: 'none', boxShadow: '0 24px 64px rgba(0,0,0,0.20), 0 0 0 1px rgba(255,255,255,0.10)' },
+        }}
+      >
         <CardContent sx={{ p: 4 }}>
+          {/* Gradient wordmark */}
           <Typography
             variant="h4"
-            sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: '-0.5px', mb: 3, textAlign: 'center' }}
+            sx={{
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '-1px',
+              mb: 3,
+              textAlign: 'center',
+            }}
           >
             Grafiki
           </Typography>
 
-          <Tabs value={mode} onChange={(_, v) => { setMode(v); reset() }} variant="fullWidth" sx={{ mb: 3 }}>
+          <Tabs
+            value={mode}
+            onChange={(_, v) => { setMode(v); reset() }}
+            variant="fullWidth"
+            sx={{ mb: 3 }}
+          >
             <Tab value="signin" label="შესვლა" />
             <Tab value="signup" label="რეგისტრაცია" />
           </Tabs>
@@ -99,7 +135,9 @@ export default function LoginPage() {
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && canSignUp && handleSignUp()}
-              sx={{ mb: 3 }}
+              error={passwordMismatch}
+              helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
+              sx={{ mb: 2 }}
             />
           )}
 

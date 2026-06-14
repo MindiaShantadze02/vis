@@ -2,10 +2,13 @@ import { useState } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import {
   Box, Button, Typography, Switch, FormControlLabel,
-  TextField, Stack, Alert, CircularProgress,
+  TextField, Stack, Alert, CircularProgress, IconButton, Tooltip,
 } from '@mui/material'
+import AddIcon from '@mui/icons-material/Add'
+import CloseIcon from '@mui/icons-material/Close'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { isEndAfterStart, hasOverlap } from '@/lib/validation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
 import type { OnboardingData } from './OnboardingLayout'
@@ -39,20 +42,69 @@ export default function WorkingHoursStep() {
   const [error, setError] = useState<string | null>(null)
 
   function toggleDay(day: string) {
-    setHours(h => ({ ...h, [day]: { ...h[day], open: !h[day].open } }))
+    setHours(h => ({
+      ...h,
+      [day]: {
+        open: !h[day].open,
+        ranges: !h[day].open && h[day].ranges.length === 0
+          ? [{ start: '09:00', end: '18:00' }]
+          : h[day].ranges,
+      },
+    }))
   }
 
-  function setTime(day: string, field: 'start' | 'end', value: string) {
-    setHours(h => ({ ...h, [day]: { ...h[day], [field]: value } }))
+  function setRangeField(day: string, idx: number, field: 'start' | 'end', value: string) {
+    setHours(h => ({
+      ...h,
+      [day]: {
+        ...h[day],
+        ranges: h[day].ranges.map((r, i) => i === idx ? { ...r, [field]: value } : r),
+      },
+    }))
+  }
+
+  function addRange(day: string) {
+    setHours(h => {
+      const ranges = h[day].ranges
+      const lastEnd = ranges.at(-1)?.end ?? '09:00'
+      const [hr, m] = lastEnd.split(':').map(Number)
+      const newEnd = `${String(Math.min(hr + 4, 22)).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      return {
+        ...h,
+        [day]: { ...h[day], ranges: [...ranges, { start: lastEnd, end: newEnd }] },
+      }
+    })
+  }
+
+  function removeRange(day: string, idx: number) {
+    setHours(h => ({
+      ...h,
+      [day]: { ...h[day], ranges: h[day].ranges.filter((_, i) => i !== idx) },
+    }))
+  }
+
+  function validateHours(): string | null {
+    for (const day of DAYS) {
+      const h = hours[day]
+      if (!h.open) continue
+      for (const r of h.ranges) {
+        if (!isEndAfterStart(r.start, r.end)) return t('validation.endBeforeStart')
+      }
+      if (hasOverlap(h.ranges)) return t('validation.rangeOverlap')
+    }
+    return null
   }
 
   async function handleFinish() {
     if (!user) return
+
+    const validationError = validateHours()
+    if (validationError) { setError(validationError); return }
+
     setLoading(true)
     setError(null)
 
     try {
-      // 1. Create organisation — if slug conflicts, append a short random suffix
       const baseSlug = data.slug || data.name.toLowerCase().replace(/\s+/g, '-').slice(0, 50)
       const suffix = Math.random().toString(36).slice(2, 6)
       const slug = baseSlug || `org-${suffix}`
@@ -72,7 +124,6 @@ export default function WorkingHoursStep() {
         .single()
 
       if (attempt.error?.code === '23505') {
-        // Unique slug conflict — retry with suffix
         attempt = await supabase
           .from('organisations')
           .insert({
@@ -90,45 +141,29 @@ export default function WorkingHoursStep() {
       if (attempt.error) throw new Error(attempt.error.message)
       orgId = attempt.data!.id
 
-      // 2. Add owner to org_members
       const { error: memberErr } = await supabase
         .from('org_members')
         .insert({ org_id: orgId, user_id: user.id, role: 'owner', joined_at: new Date().toISOString() })
-
       if (memberErr) throw new Error(memberErr.message)
 
-      // 3. Create services
       if (data.services.length > 0) {
         const { error: svcErr } = await supabase
           .from('services')
-          .insert(
-            data.services.map((s, i) => ({
-              org_id: orgId,
-              name: s.name,
-              duration_minutes: s.duration_minutes,
-              price: s.price,
-              sort_order: i,
-            }))
-          )
+          .insert(data.services.map((s, i) => ({
+            org_id: orgId, name: s.name, duration_minutes: s.duration_minutes, price: s.price, sort_order: i,
+          })))
         if (svcErr) throw new Error(svcErr.message)
       }
 
-      // 4. Create working hours template
       const templateRow: Record<string, unknown> = { org_id: orgId }
       for (const day of DAYS) {
         const h = hours[day]
-        templateRow[day] = h.open
-          ? { open: true, ranges: [{ start: h.start, end: h.end }] }
-          : { open: false, ranges: [] }
+        templateRow[day] = { open: h.open, ranges: h.open ? h.ranges : [] }
       }
 
-      const { error: hoursErr } = await supabase
-        .from('working_hours_template')
-        .insert(templateRow)
-
+      const { error: hoursErr } = await supabase.from('working_hours_template').insert(templateRow)
       if (hoursErr) throw new Error(hoursErr.message)
 
-      // 5. Reload OrgContext and redirect to dashboard
       await refresh()
       navigate('/dashboard')
     } catch (err) {
@@ -148,14 +183,11 @@ export default function WorkingHoursStep() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Stack spacing={2} sx={{ mb: 4 }}>
+      <Stack spacing={1.5} sx={{ mb: 4 }}>
         {DAYS.map(day => (
           <Box
             key={day}
             sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
               p: 1.5,
               borderRadius: 2,
               border: '1px solid',
@@ -163,39 +195,59 @@ export default function WorkingHoursStep() {
               bgcolor: hours[day].open ? 'secondary.main' : 'transparent',
             }}
           >
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={hours[day].open}
-                  onChange={() => toggleDay(day)}
-                  color="primary"
-                />
-              }
-              label={
-                <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 90 }}>
-                  {DAY_LABELS[day]}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <FormControlLabel
+                control={<Switch checked={hours[day].open} onChange={() => toggleDay(day)} color="primary" />}
+                label={
+                  <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 90 }}>
+                    {DAY_LABELS[day]}
+                  </Typography>
+                }
+                sx={{ mr: 0, flex: 1 }}
+              />
+              {!hours[day].open && (
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {t('onboarding.closed')}
                 </Typography>
-              }
-              sx={{ mr: 0, flex: 1 }}
-            />
+              )}
+            </Box>
+
             {hours[day].open && (
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <TextField
+              <Box sx={{ mt: 1.5, pl: 1 }}>
+                {hours[day].ranges.map((r, ri) => (
+                  <Box key={ri} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <TextField
+                      size="small" type="time"
+                      value={r.start}
+                      onChange={e => setRangeField(day, ri, 'start', e.target.value)}
+                      sx={{ width: 110 }}
+                    />
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>—</Typography>
+                    <TextField
+                      size="small" type="time"
+                      value={r.end}
+                      onChange={e => setRangeField(day, ri, 'end', e.target.value)}
+                      error={!isEndAfterStart(r.start, r.end)}
+                      sx={{ width: 110 }}
+                    />
+                    {hours[day].ranges.length > 1 && (
+                      <Tooltip title="ამოშლა">
+                        <IconButton size="small" onClick={() => removeRange(day, ri)}>
+                          <CloseIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
+                ))}
+                <Button
                   size="small"
-                  type="time"
-                  value={hours[day].start}
-                  onChange={e => setTime(day, 'start', e.target.value)}
-                  sx={{ width: 110 }}
-                />
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>—</Typography>
-                <TextField
-                  size="small"
-                  type="time"
-                  value={hours[day].end}
-                  onChange={e => setTime(day, 'end', e.target.value)}
-                  sx={{ width: 110 }}
-                />
-              </Stack>
+                  startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                  onClick={() => addRange(day)}
+                  sx={{ color: 'text.secondary', fontSize: 12, mt: 0.25 }}
+                >
+                  შესვენება
+                </Button>
+              </Box>
             )}
           </Box>
         ))}
@@ -205,17 +257,8 @@ export default function WorkingHoursStep() {
         <Button fullWidth variant="outlined" onClick={goBack} disabled={loading}>
           {t('common.back')}
         </Button>
-        <Button
-          fullWidth
-          variant="contained"
-          size="large"
-          onClick={handleFinish}
-          disabled={loading}
-        >
-          {loading
-            ? <CircularProgress size={20} color="inherit" />
-            : t('onboarding.finish')
-          }
+        <Button fullWidth variant="contained" size="large" onClick={handleFinish} disabled={loading}>
+          {loading ? <CircularProgress size={20} color="inherit" /> : t('onboarding.finish')}
         </Button>
       </Stack>
     </Box>

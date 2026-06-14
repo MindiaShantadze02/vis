@@ -26,7 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
+      setSession(prev => {
+        // Same user — just a token refresh. Keep the existing object so downstream
+        // effects (OrgContext, route guards) don't re-run needlessly.
+        if (prev?.user?.id !== undefined && prev?.user?.id === newSession?.user?.id) {
+          return prev
+        }
+        return newSession
+      })
     })
 
     return () => subscription.unsubscribe()

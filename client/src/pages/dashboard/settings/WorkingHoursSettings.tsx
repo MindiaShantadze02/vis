@@ -7,10 +7,13 @@ import {
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import CloseIcon from '@mui/icons-material/Close'
 import { format, parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { isEndAfterStart, hasOverlap } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
+import { PageHeader, LoadingState, ConfirmDialog, useToast } from '@/components/ui'
 
 interface DayConfig {
   open: boolean
@@ -51,14 +54,15 @@ const DEFAULT_TEMPLATE: WeekTemplate = {
 export default function WorkingHoursSettings() {
   const { t } = useTranslation()
   const { org } = useOrg()
+  const toast = useToast()
 
   const [templateId, setTemplateId] = useState<string | null>(null)
   const [template, setTemplate] = useState<WeekTemplate>(DEFAULT_TEMPLATE)
   const [overrides, setOverrides] = useState<Override[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [overrideToDelete, setOverrideToDelete] = useState<Override | null>(null)
 
   // Override dialog
   const [overrideOpen, setOverrideOpen] = useState(false)
@@ -118,11 +122,46 @@ export default function WorkingHoursSettings() {
     }))
   }
 
+  function addRange(day: keyof WeekTemplate) {
+    setTemplate(prev => {
+      const ranges = prev[day].ranges
+      const lastEnd = ranges.at(-1)?.end ?? '09:00'
+      const [h, m] = lastEnd.split(':').map(Number)
+      const newEnd = `${String(Math.min(h + 4, 22)).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      return {
+        ...prev,
+        [day]: { ...prev[day], ranges: [...ranges, { start: lastEnd, end: newEnd }] },
+      }
+    })
+  }
+
+  function removeRange(day: keyof WeekTemplate, idx: number) {
+    setTemplate(prev => ({
+      ...prev,
+      [day]: { ...prev[day], ranges: prev[day].ranges.filter((_, i) => i !== idx) },
+    }))
+  }
+
+  function validateTemplate(): string | null {
+    for (const day of DAY_KEYS) {
+      const cfg = template[day]
+      if (!cfg.open) continue
+      for (const r of cfg.ranges) {
+        if (!isEndAfterStart(r.start, r.end)) return t('validation.endBeforeStart')
+      }
+      if (hasOverlap(cfg.ranges)) return t('validation.rangeOverlap')
+    }
+    return null
+  }
+
   async function handleSave() {
     if (!org) return
+
+    const validationError = validateTemplate()
+    if (validationError) { setError(validationError); return }
+
     setSaving(true)
     setError(null)
-    setSuccess(false)
 
     const payload = { ...template, org_id: org.id, updated_at: new Date().toISOString() }
 
@@ -135,8 +174,7 @@ export default function WorkingHoursSettings() {
 
     setSaving(false)
     if (err) { setError(err.message); return }
-    setSuccess(true)
-    setTimeout(() => setSuccess(false), 3000)
+    toast.success(t('common.saved'))
   }
 
   async function addOverride() {
@@ -160,18 +198,16 @@ export default function WorkingHoursSettings() {
   async function deleteOverride(id: string) {
     await supabase.from('working_hours_overrides').delete().eq('id', id)
     setOverrides(prev => prev.filter(o => o.id !== id))
+    toast.success(t('common.deleted'))
   }
 
-  if (loading) return <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>
+  if (loading) return <LoadingState />
 
   return (
     <Box sx={{ maxWidth: 680 }}>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-        {t('settings.workingHours')}
-      </Typography>
+      <PageHeader title={t('settings.workingHours')} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>სამუშაო საათები შენახულია</Alert>}
 
       {/* Weekly template */}
       <Card sx={{ mb: 3 }}>
@@ -201,25 +237,39 @@ export default function WorkingHoursSettings() {
                     )}
                   </Box>
 
-                  {cfg.open && cfg.ranges.map((r, ri) => (
-                    <Box key={ri} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1.5, pl: '118px' }}>
-                      <TextField
-                        type="time"
+                  {cfg.open && (
+                    <Box sx={{ pl: { xs: 0, sm: '118px' }, mt: 1.5 }}>
+                      {cfg.ranges.map((r, ri) => (
+                        <Box key={ri} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <TextField
+                            type="time" size="small" value={r.start}
+                            onChange={e => setRangeField(day, ri, 'start', e.target.value)}
+                            sx={{ width: 115 }}
+                          />
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>—</Typography>
+                          <TextField
+                            type="time" size="small" value={r.end}
+                            onChange={e => setRangeField(day, ri, 'end', e.target.value)}
+                            error={!isEndAfterStart(r.start, r.end)}
+                            sx={{ width: 115 }}
+                          />
+                          {cfg.ranges.length > 1 && (
+                            <IconButton size="small" onClick={() => removeRange(day, ri)}>
+                              <CloseIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          )}
+                        </Box>
+                      ))}
+                      <Button
                         size="small"
-                        value={r.start}
-                        onChange={e => setRangeField(day, ri, 'start', e.target.value)}
-                        sx={{ width: 120 }}
-                      />
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>—</Typography>
-                      <TextField
-                        type="time"
-                        size="small"
-                        value={r.end}
-                        onChange={e => setRangeField(day, ri, 'end', e.target.value)}
-                        sx={{ width: 120 }}
-                      />
+                        startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                        onClick={() => addRange(day)}
+                        sx={{ color: 'text.secondary', fontSize: 12 }}
+                      >
+                        შესვენება
+                      </Button>
                     </Box>
-                  ))}
+                  )}
                 </Box>
               )
             })}
@@ -274,7 +324,7 @@ export default function WorkingHoursSettings() {
                   color={ov.is_closed ? 'error' : 'info'}
                   variant="outlined"
                 />
-                <IconButton size="small" color="error" onClick={() => deleteOverride(ov.id)}>
+                <IconButton size="small" color="error" aria-label={t('common.delete')} onClick={() => setOverrideToDelete(ov)}>
                   <DeleteOutlinedIcon fontSize="small" />
                 </IconButton>
               </Box>
@@ -321,6 +371,19 @@ export default function WorkingHoursSettings() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Confirm override deletion */}
+      <ConfirmDialog
+        open={!!overrideToDelete}
+        title={t('common.confirmDeleteTitle')}
+        message={t('common.confirmDeleteMessage')}
+        confirmLabel={t('common.delete')}
+        onClose={() => setOverrideToDelete(null)}
+        onConfirm={() => {
+          if (overrideToDelete) deleteOverride(overrideToDelete.id)
+          setOverrideToDelete(null)
+        }}
+      />
     </Box>
   )
 }

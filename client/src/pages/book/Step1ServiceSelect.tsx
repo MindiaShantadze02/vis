@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Box, Typography, Card, CardActionArea, CardContent, CircularProgress, Chip } from '@mui/material'
+import { Box, Typography, Card, CardActionArea, CardContent, Chip } from '@mui/material'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
+import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlined'
 import { supabase } from '@/lib/supabase'
+import { anim } from '@/theme/animations'
+import { elevation } from '@/theme/theme'
+import { LoadingState, EmptyState } from '@/components/ui'
 import type { BookingService } from './BookingLayout'
 
 interface Props {
@@ -26,15 +30,14 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
       })
   }, [orgId])
 
-  if (loading) return <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
+  if (loading) return <LoadingState />
 
   if (services.length === 0) {
     return (
-      <Box sx={{ py: 6, textAlign: 'center' }}>
-        <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-          სერვისები ჯერ არ არის დამატებული
-        </Typography>
-      </Box>
+      <EmptyState
+        icon={<DesignServicesOutlinedIcon />}
+        title="სერვისები ჯერ არ არის დამატებული"
+      />
     )
   }
 
@@ -46,14 +49,20 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
       </Typography>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        {services.map(s => (
+        {services.map((s, i) => (
           <Card
             key={s.id}
             sx={{
               border: '1px solid',
               borderColor: 'divider',
-              '&:hover': { borderColor: 'primary.main', boxShadow: 2 },
-              transition: 'all 0.15s',
+              transition: 'all 0.18s cubic-bezier(0.16,1,0.3,1)',
+              animation: anim.scaleIn,
+              animationDelay: `${i * 60}ms`,
+              '&:hover': {
+                borderColor: 'primary.main',
+                transform: 'translateY(-2px)',
+                boxShadow: elevation.cardHover,
+              },
             }}
           >
             <CardActionArea onClick={() => onSelect(s)}>
@@ -69,7 +78,14 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
                 </Box>
                 <Chip
                   label={`${s.price} ₾`}
-                  sx={{ fontWeight: 700, fontSize: 15, bgcolor: 'primary.main', color: 'white' }}
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: 15,
+                    bgcolor: 'secondary.main',
+                    color: 'primary.dark',
+                    border: '1px solid',
+                    borderColor: 'primary.light',
+                  }}
                 />
               </CardContent>
             </CardActionArea>

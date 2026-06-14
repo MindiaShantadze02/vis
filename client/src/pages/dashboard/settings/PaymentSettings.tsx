@@ -3,11 +3,15 @@ import {
   Box, Typography, Card, CardContent, Button, TextField,
   Switch, FormControlLabel, Stack, Alert, CircularProgress,
   Divider, Accordion, AccordionSummary, AccordionDetails,
+  InputAdornment, IconButton,
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
+import { PageHeader, useToast } from '@/components/ui'
 
 interface PaymentConfig {
   bog?: { merchantId?: string; apiKey?: string; enabled?: boolean }
@@ -18,6 +22,7 @@ interface PaymentConfig {
 export default function PaymentSettings() {
   const { t } = useTranslation()
   const { org } = useOrg()
+  const toast = useToast()
 
   const [config, setConfig] = useState<PaymentConfig>({
     bog: { merchantId: '', apiKey: '', enabled: false },
@@ -25,8 +30,9 @@ export default function PaymentSettings() {
     inPerson: { enabled: true },
   })
   const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showBogKey, setShowBogKey] = useState(false)
+  const [showTbcKey, setShowTbcKey] = useState(false)
 
   useEffect(() => {
     if (org) {
@@ -52,7 +58,6 @@ export default function PaymentSettings() {
     if (!org) return
     setSaving(true)
     setError(null)
-    setSuccess(false)
 
     const { error: err } = await supabase
       .from('organisations')
@@ -61,18 +66,14 @@ export default function PaymentSettings() {
 
     setSaving(false)
     if (err) { setError(err.message); return }
-    setSuccess(true)
-    setTimeout(() => setSuccess(false), 3000)
+    toast.success(t('common.saved'))
   }
 
   return (
     <Box sx={{ maxWidth: 600 }}>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-        {t('settings.payment')}
-      </Typography>
+      <PageHeader title={t('settings.payment')} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>გადახდის კონფიგურაცია შენახულია</Alert>}
 
       <Alert severity="info" sx={{ mb: 3 }}>
         API გასაღებები დაშიფვრულია Supabase-ში. ბმული გადახდის გვერდზე გაიგზავნება
@@ -131,11 +132,22 @@ export default function PaymentSettings() {
               />
               <TextField
                 label="API გასაღები"
-                type="password"
+                type={showBogKey ? 'text' : 'password'}
                 value={config.bog?.apiKey ?? ''}
                 onChange={e => setBog('apiKey', e.target.value)}
                 fullWidth
                 size="small"
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton size="small" aria-label={showBogKey ? 'hide' : 'show'} onClick={() => setShowBogKey(s => !s)} edge="end">
+                          {showBogKey ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
             </Stack>
           </AccordionDetails>
@@ -170,11 +182,22 @@ export default function PaymentSettings() {
               />
               <TextField
                 label="კლიენტ გასაღები"
-                type="password"
+                type={showTbcKey ? 'text' : 'password'}
                 value={config.tbc?.apiKey ?? ''}
                 onChange={e => setTbc('apiKey', e.target.value)}
                 fullWidth
                 size="small"
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton size="small" aria-label={showTbcKey ? 'hide' : 'show'} onClick={() => setShowTbcKey(s => !s)} edge="end">
+                          {showTbcKey ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
             </Stack>
           </AccordionDetails>

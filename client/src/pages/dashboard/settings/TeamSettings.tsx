@@ -9,8 +9,10 @@ import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { isValidGeorgianPhone } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { PageHeader, LoadingState, useToast } from '@/components/ui'
 
 interface Member {
   id: string
@@ -37,12 +39,12 @@ export default function TeamSettings() {
   const { t } = useTranslation()
   const { org, role } = useOrg()
   const { user } = useAuth()
+  const toast = useToast()
 
   const [members, setMembers] = useState<Member[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   // Invite dialog
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -99,28 +101,29 @@ export default function TeamSettings() {
 
     setInviteOpen(false)
     setInvitePhone('')
-    setSuccess(`მოწვევა გაგზავნილია ${phone}-ზე`)
-    setTimeout(() => setSuccess(null), 4000)
+    toast.success(`მოწვევა გაგზავნილია ${phone}-ზე`)
     load()
   }
 
   async function handleRemove(memberId: string) {
     await supabase.from('org_members').delete().eq('id', memberId)
     setMembers(prev => prev.filter(m => m.id !== memberId))
+    toast.success(t('common.deleted'))
   }
 
   async function cancelInvite(invId: string) {
     await supabase.from('invitations').delete().eq('id', invId)
     setInvitations(prev => prev.filter(i => i.id !== invId))
+    toast.success(t('common.deleted'))
   }
+
+  const invitePhoneInvalid = invitePhone.trim().length > 0 && !isValidGeorgianPhone(invitePhone)
 
   return (
     <Box sx={{ maxWidth: 640 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>
-          {t('settings.team')}
-        </Typography>
-        {role === 'owner' && (
+      <PageHeader
+        title={t('settings.team')}
+        action={role === 'owner' && (
           <Button
             variant="contained"
             startIcon={<PersonAddOutlinedIcon />}
@@ -129,15 +132,14 @@ export default function TeamSettings() {
             {t('settings.inviteAdmin')}
           </Button>
         )}
-      </Box>
+      />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
       {/* Members list */}
       <Card sx={{ mb: 3 }}>
         {loading
-          ? <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress size={28} /></Box>
+          ? <LoadingState />
           : members.map((m, i) => (
             <Box key={m.id}>
               {i > 0 && <Divider />}
@@ -162,7 +164,7 @@ export default function TeamSettings() {
                   variant={m.role === 'owner' ? 'filled' : 'outlined'}
                 />
                 {role === 'owner' && m.role !== 'owner' && m.user_id !== user?.id && (
-                  <IconButton size="small" color="error" onClick={() => handleRemove(m.id)}>
+                  <IconButton size="small" color="error" aria-label={t('settings.removeAdmin')} onClick={() => handleRemove(m.id)}>
                     <DeleteOutlinedIcon fontSize="small" />
                   </IconButton>
                 )}
@@ -192,7 +194,7 @@ export default function TeamSettings() {
                     )}
                   </Box>
                   <Chip label="მოლოდინში" size="small" color="warning" variant="outlined" />
-                  <IconButton size="small" onClick={() => cancelInvite(inv.id)}>
+                  <IconButton size="small" aria-label={t('common.cancel')} onClick={() => cancelInvite(inv.id)}>
                     <DeleteOutlinedIcon fontSize="small" />
                   </IconButton>
                 </Box>
@@ -216,6 +218,8 @@ export default function TeamSettings() {
               onChange={e => setInvitePhone(e.target.value)}
               fullWidth
               placeholder="599 123 456"
+              error={invitePhoneInvalid}
+              helperText={invitePhoneInvalid ? t('validation.invalidPhone') : ' '}
               slotProps={{
                 input: {
                   startAdornment: (
@@ -235,7 +239,7 @@ export default function TeamSettings() {
           <Button
             variant="contained"
             onClick={handleInvite}
-            disabled={inviting || invitePhone.length < 6}
+            disabled={inviting || !isValidGeorgianPhone(invitePhone)}
           >
             {inviting ? <CircularProgress size={20} color="inherit" /> : 'გაგზავნა'}
           </Button>

@@ -7,7 +7,6 @@ import {
 } from '@mui/material'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
-import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined'
 import MenuIcon from '@mui/icons-material/Menu'
@@ -16,22 +15,23 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { anim } from '@/theme/animations'
+import { gradient, elevation, tint } from '@/theme/theme'
 
 const DRAWER_WIDTH = 240
 
 const NAV_ITEMS = [
-  { labelKey: 'dashboard.overview',     path: '/dashboard',             icon: <DashboardOutlinedIcon /> },
-  { labelKey: 'dashboard.calendar',     path: '/dashboard/calendar',    icon: <CalendarMonthOutlinedIcon /> },
-  { labelKey: 'dashboard.appointments', path: '/dashboard/appointments',icon: <EventNoteOutlinedIcon /> },
+  { labelKey: 'dashboard.overview',     path: '/dashboard',              icon: <DashboardOutlinedIcon /> },
+  { labelKey: 'dashboard.calendar',     path: '/dashboard/calendar',     icon: <CalendarMonthOutlinedIcon /> },
 ]
 
 const SETTINGS_ITEMS = [
-  { label: 'პროფილი',        path: '/dashboard/settings/profile' },
-  { label: 'სერვისები',      path: '/dashboard/settings/services' },
-  { label: 'სამ. საათები',   path: '/dashboard/settings/hours' },
-  { label: 'გუნდი',          path: '/dashboard/settings/team' },
-  { label: 'გადახდა',        path: '/dashboard/settings/payment' },
-  { label: 'გამოწერა',       path: '/dashboard/settings/subscription' },
+  { labelKey: 'settings.profile',      path: '/dashboard/settings/profile' },
+  { labelKey: 'settings.services',     path: '/dashboard/settings/services' },
+  { labelKey: 'settings.workingHours', path: '/dashboard/settings/hours' },
+  { labelKey: 'settings.team',         path: '/dashboard/settings/team' },
+  { labelKey: 'settings.payment',      path: '/dashboard/settings/payment' },
+  { labelKey: 'settings.subscription', path: '/dashboard/settings/subscription' },
 ]
 
 export default function DashboardLayout() {
@@ -54,12 +54,25 @@ export default function DashboardLayout() {
   const sidebar = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Brand */}
-      <Box sx={{ px: 3, py: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 800, color: 'primary.main', letterSpacing: '-0.5px' }}>
-          Grafiki
-        </Typography>
+      <Box sx={{ px: 2.5, py: 2.5 }}>
+        <Box onClick={() => navigate('/dashboard')} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}>
+          <Box
+            sx={{
+              width: 32, height: 32, borderRadius: '10px',
+              background: gradient.brand,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: elevation.glowSoft,
+              flexShrink: 0,
+            }}
+          >
+            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>G</Typography>
+          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.3px' }}>
+            Grafiki
+          </Typography>
+        </Box>
         {org && (
-          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, pl: '44px' }}>
             {org.name}
           </Typography>
         )}
@@ -69,7 +82,7 @@ export default function DashboardLayout() {
 
       {/* Main nav */}
       <List sx={{ px: 1, pt: 1, flex: 1 }}>
-        {NAV_ITEMS.map(item => (
+        {NAV_ITEMS.map((item, i) => (
           <ListItemButton
             key={item.path}
             component={NavLink}
@@ -79,29 +92,55 @@ export default function DashboardLayout() {
             sx={{
               borderRadius: 2,
               mb: 0.5,
+              pl: '13px',
+              borderLeft: '3px solid transparent',
+              transition: 'all 0.15s ease',
+              animation: anim.slideInLeft,
+              animationDelay: `${i * 50}ms`,
               '&.active': {
-                bgcolor: 'primary.main',
-                color: 'white',
-                '& .MuiListItemIcon-root': { color: 'white' },
+                bgcolor: 'secondary.main',
+                color: 'primary.dark',
+                borderLeftColor: 'primary.main',
+                '& .MuiListItemIcon-root': { color: 'primary.main' },
               },
-              '&:not(.active):hover': { bgcolor: 'action.hover' },
+              '&:not(.active):hover': {
+                bgcolor: tint.hover,
+                borderLeftColor: tint.hoverBorder,
+              },
             }}
           >
             <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={t(item.labelKey)} primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }} />
+            <ListItemText
+              primary={t(item.labelKey)}
+              slotProps={{ primary: { variant: 'body2', sx: { fontWeight: 500 } } }}
+            />
           </ListItemButton>
         ))}
 
         {/* Settings section */}
         <ListItemButton
           onClick={() => setSettingsOpen(o => !o)}
-          sx={{ borderRadius: 2, mb: 0.5 }}
+          sx={{
+            borderRadius: 2,
+            mb: 0.5,
+            pl: '13px',
+            borderLeft: '3px solid transparent',
+            animation: anim.slideInLeft,
+            animationDelay: `${NAV_ITEMS.length * 50}ms`,
+            '&:hover': {
+              bgcolor: tint.hover,
+              borderLeftColor: tint.hoverBorder,
+            },
+          }}
         >
           <ListItemIcon sx={{ minWidth: 36 }}><SettingsOutlinedIcon /></ListItemIcon>
-          <ListItemText primary={t('dashboard.settings')} primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }} />
+          <ListItemText
+            primary={t('dashboard.settings')}
+            slotProps={{ primary: { variant: 'body2', sx: { fontWeight: 500 } } }}
+          />
         </ListItemButton>
 
-        {settingsOpen && SETTINGS_ITEMS.map(item => (
+        {settingsOpen && SETTINGS_ITEMS.map((item, i) => (
           <ListItemButton
             key={item.path}
             component={NavLink}
@@ -110,11 +149,23 @@ export default function DashboardLayout() {
             sx={{
               borderRadius: 2,
               mb: 0.25,
-              pl: 4,
-              '&.active': { bgcolor: 'secondary.main', color: 'primary.main' },
+              pl: '36px',
+              borderLeft: '3px solid transparent',
+              transition: 'all 0.15s ease',
+              animation: anim.fadeInUp,
+              animationDelay: `${i * 30}ms`,
+              '&.active': {
+                bgcolor: 'secondary.main',
+                color: 'primary.dark',
+                borderLeftColor: 'primary.main',
+              },
+              '&:not(.active):hover': {
+                bgcolor: tint.hover,
+                borderLeftColor: tint.hoverBorder,
+              },
             }}
           >
-            <ListItemText primary={item.label} primaryTypographyProps={{ variant: 'body2' }} />
+            <ListItemText primary={t(item.labelKey)} slotProps={{ primary: { variant: 'body2' } }} />
           </ListItemButton>
         ))}
       </List>
@@ -123,10 +174,19 @@ export default function DashboardLayout() {
 
       {/* User row */}
       <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 14 }}>
+        <Avatar sx={{ width: 32, height: 32, fontSize: 13 }}>
           {user?.email?.slice(0, 2).toUpperCase() ?? '?'}
         </Avatar>
-        <Typography variant="caption" sx={{ flex: 1, color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <Typography
+          variant="caption"
+          sx={{
+            flex: 1,
+            color: 'text.secondary',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
           {user?.email ?? ''}
         </Typography>
         <Tooltip title="გასვლა">
@@ -149,7 +209,7 @@ export default function DashboardLayout() {
             flexShrink: 0,
             borderRight: '1px solid',
             borderColor: 'divider',
-            bgcolor: 'background.paper',
+            background: gradient.panel,
           }}
         >
           {sidebar}
@@ -162,7 +222,7 @@ export default function DashboardLayout() {
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
-          sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH } }}
+          sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH, background: gradient.panel } }}
         >
           {sidebar}
         </Drawer>
@@ -213,7 +273,7 @@ export default function DashboardLayout() {
         </AppBar>
 
         {/* Page content */}
-        <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 } }}>
+        <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 }, animation: anim.fadeInUp }}>
           <Outlet />
         </Box>
       </Box>

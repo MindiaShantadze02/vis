@@ -1,103 +1,83 @@
 import { useEffect, useState } from 'react'
-import { Grid, Card, CardContent, Typography, Box, Skeleton, Chip } from '@mui/material'
+import {
+  Grid, Card, Typography, Box, Skeleton, Chip, Button,
+  TextField, Select, MenuItem, FormControl, InputLabel, Stack,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  useMediaQuery, useTheme,
+} from '@mui/material'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined'
+import SearchIcon from '@mui/icons-material/Search'
+import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
+import { format } from 'date-fns'
+import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, formatDistanceToNow } from 'date-fns'
-import { ka } from 'date-fns/locale'
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
+import { PageHeader, StatCard, StatusChip, EmptyState, useToast } from '@/components/ui'
+import type { AppointmentStatus } from '@/components/ui'
+
+// ── Types ─────────────────────────────────────────────────────
+
+interface Appointment {
+  id: string
+  scheduled_at: string
+  duration_minutes: number
+  status: AppointmentStatus
+  payment_method: string
+  payment_status: string
+  notes: string | null
+  admin_notes: string | null
+  customers: { first_name: string; last_name: string | null; phone_number: string } | null
+  services: { name: string; price: number; duration_minutes: number } | null
+}
 
 interface Stats {
   revenueThisWeek: number
   revenueThisMonth: number
   appointmentsToday: number
-  appointmentsThisWeek: number
   pendingCount: number
 }
 
-interface RecentAppointment {
-  id: string
-  scheduled_at: string
-  status: string
-  customers: { first_name: string; last_name: string | null } | null
-  services: { name: string; price: number } | null
-}
+const ALL_STATUSES: AppointmentStatus[] = ['pending', 'approved', 'rejected', 'cancelled', 'completed']
+const GRID_COLS = '140px 1fr 1fr 100px 90px 140px'
 
-function StatCard({
-  label, value, icon, color, loading,
-}: {
-  label: string
-  value: string | number
-  icon: React.ReactNode
-  color: string
-  loading: boolean
-}) {
-  return (
-    <Card>
-      <CardContent sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-        <Box
-          sx={{
-            width: 48, height: 48, borderRadius: 2,
-            bgcolor: `${color}15`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color,
-            flexShrink: 0,
-          }}
-        >
-          {icon}
-        </Box>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {label}
-          </Typography>
-          {loading
-            ? <Skeleton width={80} height={36} />
-            : (
-              <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.25 }}>
-                {value}
-              </Typography>
-            )
-          }
-        </Box>
-      </CardContent>
-    </Card>
-  )
-}
-
-const STATUS_COLOR: Record<string, 'default' | 'warning' | 'success' | 'error'> = {
-  pending:   'warning',
-  approved:  'success',
-  rejected:  'error',
-  cancelled: 'default',
-  completed: 'default',
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  pending:   'მოლოდინში',
-  approved:  'დამტკიცებული',
-  rejected:  'უარყოფილი',
-  cancelled: 'გაუქმებული',
-  completed: 'დასრულებული',
-}
+// ── Main Page ─────────────────────────────────────────────────
 
 export default function OverviewPage() {
   const { t } = useTranslation()
   const { org } = useOrg()
+  const theme = useTheme()
+  const toast = useToast()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+
   const [stats, setStats] = useState<Stats | null>(null)
-  const [recent, setRecent] = useState<RecentAppointment[]>([])
-  const [loading, setLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(true)
+
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [apptLoading, setApptLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<AppointmentStatus | 'all'>('all')
+  const [search, setSearch] = useState('')
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  const [selected, setSelected] = useState<Appointment | null>(null)
+  const [adminNote, setAdminNote] = useState('')
 
   useEffect(() => {
     if (!org) return
     loadStats()
+    loadAppointments()
   }, [org])
+
+  useEffect(() => {
+    if (org) loadAppointments()
+  }, [statusFilter])
 
   async function loadStats() {
     if (!org) return
-    setLoading(true)
+    setStatsLoading(true)
 
     const now = new Date()
     const todayStart = startOfDay(now).toISOString()
@@ -107,69 +87,96 @@ export default function OverviewPage() {
     const monthStart = startOfMonth(now).toISOString()
     const monthEnd = endOfMonth(now).toISOString()
 
-    const [todayRes, weekRes, monthRes, pendingRes, recentRes] = await Promise.all([
+    const [todayRes, weekRes, monthRes, pendingRes] = await Promise.all([
       supabase
-        .from('appointments')
-        .select('id', { count: 'exact', head: true })
-        .eq('org_id', org.id)
-        .gte('scheduled_at', todayStart)
-        .lte('scheduled_at', todayEnd)
+        .from('appointments').select('id', { count: 'exact', head: true })
+        .eq('org_id', org.id).gte('scheduled_at', todayStart).lte('scheduled_at', todayEnd)
         .not('status', 'in', '(rejected,cancelled)'),
 
       supabase
-        .from('appointments')
-        .select('id, services(price)', { count: 'exact' })
-        .eq('org_id', org.id)
-        .gte('scheduled_at', weekStart)
-        .lte('scheduled_at', weekEnd)
+        .from('appointments').select('id, services(price)', { count: 'exact' })
+        .eq('org_id', org.id).gte('scheduled_at', weekStart).lte('scheduled_at', weekEnd)
         .not('status', 'in', '(rejected,cancelled)'),
 
       supabase
-        .from('appointments')
-        .select('id, services(price)')
-        .eq('org_id', org.id)
-        .gte('scheduled_at', monthStart)
-        .lte('scheduled_at', monthEnd)
+        .from('appointments').select('id, services(price)')
+        .eq('org_id', org.id).gte('scheduled_at', monthStart).lte('scheduled_at', monthEnd)
         .eq('payment_status', 'paid'),
 
       supabase
-        .from('appointments')
-        .select('id', { count: 'exact', head: true })
-        .eq('org_id', org.id)
-        .eq('status', 'pending'),
-
-      supabase
-        .from('appointments')
-        .select('id, scheduled_at, status, customers(first_name, last_name), services(name, price)')
-        .eq('org_id', org.id)
-        .not('status', 'in', '(rejected,cancelled)')
-        .order('scheduled_at', { ascending: false })
-        .limit(5),
+        .from('appointments').select('id', { count: 'exact', head: true })
+        .eq('org_id', org.id).eq('status', 'pending'),
     ])
 
     const weekRevenue = (weekRes.data ?? []).reduce(
-      (sum, a) => sum + ((a.services as { price: number } | null)?.price ?? 0), 0
+      (sum, a) => sum + ((a.services as unknown as { price: number } | null)?.price ?? 0), 0
     )
     const monthRevenue = (monthRes.data ?? []).reduce(
-      (sum, a) => sum + ((a.services as { price: number } | null)?.price ?? 0), 0
+      (sum, a) => sum + ((a.services as unknown as { price: number } | null)?.price ?? 0), 0
     )
 
     setStats({
       revenueThisWeek: weekRevenue,
       revenueThisMonth: monthRevenue,
       appointmentsToday: todayRes.count ?? 0,
-      appointmentsThisWeek: weekRes.count ?? 0,
       pendingCount: pendingRes.count ?? 0,
     })
-    setRecent((recentRes.data ?? []) as unknown as RecentAppointment[])
-    setLoading(false)
+    setStatsLoading(false)
   }
+
+  async function loadAppointments() {
+    if (!org) return
+    setApptLoading(true)
+
+    let query = supabase
+      .from('appointments')
+      .select('id, scheduled_at, duration_minutes, status, payment_method, payment_status, notes, admin_notes, customers(first_name, last_name, phone_number), services(name, price, duration_minutes)')
+      .eq('org_id', org.id)
+      .order('scheduled_at', { ascending: false })
+      .limit(100)
+
+    if (statusFilter !== 'all') query = query.eq('status', statusFilter)
+
+    const { data } = await query
+    setAppointments((data ?? []) as unknown as Appointment[])
+    setApptLoading(false)
+  }
+
+  async function changeStatus(id: string, status: 'approved' | 'rejected') {
+    setActionLoading(id)
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status, admin_notes: adminNote || null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+
+    if (error) {
+      toast.error(error.message)
+    } else {
+      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a))
+      if (status === 'approved') {
+        setStats(prev => prev ? { ...prev, pendingCount: Math.max(0, prev.pendingCount - 1) } : prev)
+      }
+      toast.success(status === 'approved' ? t('dashboard.approved') : t('dashboard.rejected'))
+      setSelected(null)
+      setAdminNote('')
+    }
+    setActionLoading(null)
+  }
+
+  const filtered = appointments.filter(a => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return (
+      a.customers?.first_name.toLowerCase().includes(q) ||
+      a.customers?.last_name?.toLowerCase().includes(q) ||
+      a.customers?.phone_number.includes(q) ||
+      a.services?.name.toLowerCase().includes(q)
+    )
+  })
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-        {t('dashboard.overview')}
-      </Typography>
+      <PageHeader title={t('dashboard.overview')} />
 
       {/* Stat cards */}
       <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -178,8 +185,8 @@ export default function OverviewPage() {
             label={t('dashboard.revenueThisWeek')}
             value={`${stats?.revenueThisWeek ?? 0} ₾`}
             icon={<TrendingUpIcon />}
-            color="#3D52D5"
-            loading={loading}
+            color={theme.palette.primary.main}
+            loading={statsLoading}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
@@ -187,8 +194,8 @@ export default function OverviewPage() {
             label={t('dashboard.revenueThisMonth')}
             value={`${stats?.revenueThisMonth ?? 0} ₾`}
             icon={<TrendingUpIcon />}
-            color="#059669"
-            loading={loading}
+            color={theme.palette.success.main}
+            loading={statsLoading}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
@@ -196,8 +203,8 @@ export default function OverviewPage() {
             label={t('dashboard.todayAppointments')}
             value={stats?.appointmentsToday ?? 0}
             icon={<CalendarTodayIcon />}
-            color="#7C3AED"
-            loading={loading}
+            color={theme.palette.primary.main}
+            loading={statsLoading}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
@@ -205,69 +212,211 @@ export default function OverviewPage() {
             label={t('dashboard.pendingApprovals')}
             value={stats?.pendingCount ?? 0}
             icon={<AccessTimeIcon />}
-            color="#F59E0B"
-            loading={loading}
+            color={theme.palette.warning.main}
+            loading={statsLoading}
           />
         </Grid>
       </Grid>
 
-      {/* Recent appointments */}
-      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-        ბოლო ჯავშნები
-      </Typography>
+      {/* Appointments list */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>{t('dashboard.appointments')}</Typography>
+        <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap' }}>
+          <TextField
+            size="small"
+            placeholder={`${t('common.search')}...`}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            slotProps={{ input: { startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 20 }} /> } }}
+            sx={{ minWidth: 200 }}
+          />
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>სტატუსი</InputLabel>
+            <Select
+              value={statusFilter}
+              label="სტატუსი"
+              onChange={e => setStatusFilter(e.target.value as AppointmentStatus | 'all')}
+            >
+              <MenuItem value="all">ყველა</MenuItem>
+              {ALL_STATUSES.map(s => (
+                <MenuItem key={s} value={s}>{t(`dashboard.${s}`)}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
+      </Box>
+
       <Card>
-        {loading
-          ? Array.from({ length: 3 }).map((_, i) => (
-            <Box key={i} sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Skeleton height={24} width="60%" />
-              <Skeleton height={18} width="40%" />
+        {/* Desktop header row */}
+        {!isMobile && (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: GRID_COLS,
+              px: 2, py: 1.5,
+              bgcolor: 'grey.50',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            {['დრო', 'კლიენტი', 'სერვისი', 'გადახდა', 'ფასი', 'სტატუსი'].map(h => (
+              <Typography key={h} variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                {h}
+              </Typography>
+            ))}
+          </Box>
+        )}
+
+        {apptLoading
+          ? Array.from({ length: 5 }).map((_, i) => (
+            <Box key={i} sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Skeleton height={24} />
             </Box>
           ))
-          : recent.length === 0
-          ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <CheckCircleOutlineIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                ჯავშნები არ არის
-              </Typography>
-            </Box>
-          )
-          : recent.map((appt, i) => (
-            <Box
-              key={appt.id}
-              sx={{
-                p: 2,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                borderBottom: i < recent.length - 1 ? '1px solid' : 'none',
+          : filtered.length === 0
+          ? <EmptyState icon={<EventBusyOutlinedIcon />} title="ჯავშნები ვერ მოიძებნა" />
+          : filtered.map((appt, i) => {
+            const rowProps = {
+              key: appt.id,
+              onClick: () => { setSelected(appt); setAdminNote(appt.admin_notes ?? '') },
+              sx: {
+                px: 2, py: 1.5,
+                borderBottom: i < filtered.length - 1 ? '1px solid' : 'none',
                 borderColor: 'divider',
-              }}
-            >
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {appt.customers?.first_name} {appt.customers?.last_name}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {appt.services?.name} ·{' '}
-                  {formatDistanceToNow(new Date(appt.scheduled_at), { addSuffix: true, locale: ka })}
-                </Typography>
-              </Box>
-              <Box sx={{ textAlign: 'right' }}>
+                cursor: 'pointer',
+                '&:hover': { bgcolor: 'action.hover' },
+              },
+            }
+
+            // Mobile: stacked card layout
+            if (isMobile) {
+              return (
+                <Box {...rowProps}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {appt.customers?.first_name} {appt.customers?.last_name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        {format(new Date(appt.scheduled_at), 'd MMM, HH:mm', { locale: ka })} · {appt.services?.name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        {appt.services?.price} ₾
+                      </Typography>
+                    </Box>
+                    <StatusChip status={appt.status} />
+                  </Box>
+                </Box>
+              )
+            }
+
+            // Desktop: grid row
+            return (
+              <Box {...rowProps} sx={{ ...rowProps.sx, display: 'grid', gridTemplateColumns: GRID_COLS, alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {format(new Date(appt.scheduled_at), 'dd MMM', { locale: ka })}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {format(new Date(appt.scheduled_at), 'HH:mm')}
+                  </Typography>
+                </Box>
+                <Box sx={{ minWidth: 0, pr: 1 }}>
+                  <Typography variant="body2" noWrap>
+                    {appt.customers?.first_name} {appt.customers?.last_name}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {appt.customers?.phone_number}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" noWrap sx={{ pr: 1 }}>{appt.services?.name}</Typography>
+                <Chip
+                  label={appt.payment_method === 'online' ? 'ონლაინ' : 'ადგილზე'}
+                  size="small"
+                  variant="outlined"
+                  sx={{ justifySelf: 'start' }}
+                />
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   {appt.services?.price} ₾
                 </Typography>
-                <Chip
-                  label={STATUS_LABEL[appt.status] ?? appt.status}
-                  color={STATUS_COLOR[appt.status] ?? 'default'}
-                  size="small"
-                  sx={{ mt: 0.25 }}
-                />
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <StatusChip status={appt.status} />
+                </Box>
               </Box>
-            </Box>
-          ))
+            )
+          })
         }
       </Card>
+
+      {/* Detail dialog */}
+      <Dialog open={!!selected} onClose={() => setSelected(null)} maxWidth="xs" fullWidth>
+        {selected && (
+          <>
+            <DialogTitle sx={{ fontWeight: 700 }}>
+              {selected.customers?.first_name} {selected.customers?.last_name}
+            </DialogTitle>
+            <DialogContent>
+              <Stack spacing={1.5}>
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>სერვისი</Typography>
+                  <Typography variant="body2">{selected.services?.name} — {selected.services?.price} ₾</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>თარიღი / დრო</Typography>
+                  <Typography variant="body2">
+                    {format(new Date(selected.scheduled_at), 'd MMMM yyyy, HH:mm', { locale: ka })}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>ტელეფონი</Typography>
+                  <Typography variant="body2">{selected.customers?.phone_number}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>სტატუსი</Typography>
+                  <Box sx={{ mt: 0.25 }}><StatusChip status={selected.status} /></Box>
+                </Box>
+                {selected.notes && (
+                  <Box>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>შენიშვნა</Typography>
+                    <Typography variant="body2">{selected.notes}</Typography>
+                  </Box>
+                )}
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>გადახდა</Typography>
+                  <Typography variant="body2">
+                    {selected.payment_method === 'online' ? 'ონლაინ' : 'ადგილზე'} ·{' '}
+                    {selected.payment_status === 'paid' ? '✓ გადახდილია' : 'გადაუხდელი'}
+                  </Typography>
+                </Box>
+                {selected.status === 'pending' && (
+                  <TextField
+                    fullWidth size="small"
+                    label="შიდა შენიშვნა (არასავალდებულო)"
+                    value={adminNote}
+                    onChange={e => setAdminNote(e.target.value)}
+                    multiline rows={2}
+                  />
+                )}
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button onClick={() => setSelected(null)}>{t('common.cancel')}</Button>
+              {selected.status === 'pending' && (
+                <>
+                  <Button variant="outlined" color="error"
+                    onClick={() => changeStatus(selected.id, 'rejected')} disabled={!!actionLoading}>
+                    {t('dashboard.reject')}
+                  </Button>
+                  <Button variant="contained" color="success"
+                    onClick={() => changeStatus(selected.id, 'approved')} disabled={!!actionLoading}>
+                    {t('dashboard.approve')}
+                  </Button>
+                </>
+              )}
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Box>
   )
 }

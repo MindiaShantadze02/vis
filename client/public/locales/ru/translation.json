@@ -11,7 +11,20 @@
     "error": "Ошибка",
     "success": "Успех",
     "search": "Поиск",
-    "noData": "Нет данных"
+    "noData": "Нет данных",
+    "copy": "Копировать",
+    "saved": "Изменения сохранены",
+    "deleted": "Удалено",
+    "confirmDeleteTitle": "Подтвердите удаление",
+    "confirmDeleteMessage": "Вы уверены? Это действие нельзя отменить."
+  },
+  "validation": {
+    "required": "Обязательное поле",
+    "invalidPhone": "Неверный номер телефона (напр. 5XX XXX XXX)",
+    "passwordMismatch": "Пароли не совпадают",
+    "passwordTooShort": "Пароль должен быть не менее 6 символов",
+    "endBeforeStart": "Время окончания не может быть раньше времени начала",
+    "rangeOverlap": "Интервалы времени пересекаются"
   },
   "auth": {
     "phoneNumber": "Номер телефона",

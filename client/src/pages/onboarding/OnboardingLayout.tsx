@@ -5,6 +5,8 @@ import {
   Container, LinearProgress,
 } from '@mui/material'
 import { useTranslation } from 'react-i18next'
+import { anim } from '@/theme/animations'
+import { gradient } from '@/theme/theme'
 
 // ── Shared state across onboarding steps ──────────────────────
 
@@ -23,17 +25,17 @@ export interface OnboardingData {
   // Step 2
   services: OnboardingService[]
   // Step 3
-  workingHours: Record<string, { open: boolean; start: string; end: string }>
+  workingHours: Record<string, { open: boolean; ranges: { start: string; end: string }[] }>
 }
 
-const defaultWorkingHours: Record<string, { open: boolean; start: string; end: string }> = {
-  monday:    { open: true,  start: '09:00', end: '18:00' },
-  tuesday:   { open: true,  start: '09:00', end: '18:00' },
-  wednesday: { open: true,  start: '09:00', end: '18:00' },
-  thursday:  { open: true,  start: '09:00', end: '18:00' },
-  friday:    { open: true,  start: '09:00', end: '18:00' },
-  saturday:  { open: false, start: '10:00', end: '15:00' },
-  sunday:    { open: false, start: '10:00', end: '15:00' },
+const defaultWorkingHours: Record<string, { open: boolean; ranges: { start: string; end: string }[] }> = {
+  monday:    { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
+  tuesday:   { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
+  wednesday: { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
+  thursday:  { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
+  friday:    { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
+  saturday:  { open: false, ranges: [] },
+  sunday:    { open: false, ranges: [] },
 }
 
 interface OnboardingContextValue {
@@ -112,16 +114,31 @@ export default function OnboardingLayout() {
         }}
       >
         {/* Top bar */}
-        <Box sx={{ bgcolor: 'primary.main', py: 2, px: 3 }}>
-          <Typography variant="h6" color="white" sx={{ fontWeight: 700 }}>
-            Grafiki
-          </Typography>
+        <Box
+          sx={{
+            background: gradient.topbar,
+            py: 2, px: 3,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+          }}
+        >
+          <Box
+            sx={{
+              width: 28, height: 28, borderRadius: '8px',
+              bgcolor: 'rgba(255,255,255,0.18)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 13, lineHeight: 1 }}>G</Typography>
+          </Box>
+          <Typography variant="h6" sx={{ color: 'white', fontWeight: 700 }}>Grafiki</Typography>
         </Box>
 
         <LinearProgress
           variant="determinate"
           value={((activeStep + 1) / STEPS.length) * 100}
-          sx={{ height: 3 }}
         />
 
         <Container maxWidth="sm" sx={{ flex: 1, py: 5 }}>
@@ -133,8 +150,10 @@ export default function OnboardingLayout() {
             ))}
           </Stepper>
 
-          {/* Step content is rendered here */}
-          <Outlet context={{ goNext, goBack, data, update }} />
+          {/* key re-mounts on step change, re-firing the entrance animation */}
+          <Box key={activeStep} sx={{ animation: anim.fadeInUp }}>
+            <Outlet context={{ goNext, goBack, data, update }} />
+          </Box>
         </Container>
       </Box>
     </OnboardingContext.Provider>

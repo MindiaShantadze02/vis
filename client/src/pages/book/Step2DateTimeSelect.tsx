@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import {
-  Box, Typography, Button, CircularProgress, Chip,
-  IconButton,
+  Box, Typography, Button, Chip, IconButton,
 } from '@mui/material'
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import {
-  format, addDays, startOfDay, isBefore, addWeeks,
-  parseISO, isSameDay,
+  format, addDays, startOfDay, isBefore, isSameDay,
 } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
+import { anim } from '@/theme/animations'
+import { elevation } from '@/theme/theme'
+import { LoadingState } from '@/components/ui'
 import type { BookingService } from './BookingLayout'
 
 interface Props {
@@ -18,11 +19,6 @@ interface Props {
   service: BookingService
   onSelect: (date: string, time: string) => void
   onBack: () => void
-}
-
-interface SlotWindow {
-  start: string   // ISO datetime string
-  available: boolean
 }
 
 const DAY_SHORT = ['კვ', 'ორ', 'სა', 'ოთ', 'ხუ', 'პა', 'შა']
@@ -34,7 +30,6 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
   const [slots, setSlots] = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [template, setTemplate] = useState<Record<string, { open: boolean; ranges: { start: string; end: string }[] }> | null>(null)
-  const [existingTimes, setExistingTimes] = useState<Date[]>([])
 
   // Load working hours template once
   useEffect(() => {
@@ -46,22 +41,33 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
       .then(({ data }) => { if (data) setTemplate(data) })
   }, [orgId])
 
-  // Load existing appointments when date selected
+  // Load appointments + override when date selected
   useEffect(() => {
     if (!selectedDate) return
-    const dayStart = format(selectedDate, 'yyyy-MM-dd') + 'T00:00:00.000Z'
-    const dayEnd = format(selectedDate, 'yyyy-MM-dd') + 'T23:59:59.999Z'
-    supabase
-      .from('appointments')
-      .select('scheduled_at, duration_minutes')
-      .eq('org_id', orgId)
-      .gte('scheduled_at', dayStart)
-      .lte('scheduled_at', dayEnd)
-      .not('status', 'in', '(rejected,cancelled)')
-      .then(({ data }) => {
-        setExistingTimes((data ?? []).map(a => new Date(a.scheduled_at)))
-        computeSlots(selectedDate, data ?? [])
-      })
+    const dateKey = format(selectedDate, 'yyyy-MM-dd')
+    const dayStart = dateKey + 'T00:00:00.000Z'
+    const dayEnd = dateKey + 'T23:59:59.999Z'
+
+    Promise.all([
+      supabase
+        .from('appointments')
+        .select('scheduled_at, duration_minutes')
+        .eq('org_id', orgId)
+        .gte('scheduled_at', dayStart)
+        .lte('scheduled_at', dayEnd)
+        .not('status', 'in', '(rejected,cancelled)')
+        .then(({ data }) => data ?? []),
+
+      supabase
+        .from('working_hours_overrides')
+        .select('is_closed, ranges')
+        .eq('org_id', orgId)
+        .eq('date', dateKey)
+        .maybeSingle()
+        .then(({ data }) => data),
+    ]).then(([appts, override]) => {
+      computeSlots(selectedDate, appts, override)
+    })
   }, [selectedDate])
 
   function getDayKey(d: Date): string {
@@ -75,9 +81,18 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
     return cfg?.open ?? false
   }
 
-  function computeSlots(date: Date, existing: { scheduled_at: string; duration_minutes: number }[]) {
+  function computeSlots(
+    date: Date,
+    existing: { scheduled_at: string; duration_minutes: number }[],
+    override?: { is_closed: boolean; ranges: { start: string; end: string }[] | null } | null,
+  ) {
     if (!template) return
-    const cfg = template[getDayKey(date)]
+    if (override?.is_closed) { setSlots([]); return }
+
+    const cfg = override?.ranges
+      ? { open: true, ranges: override.ranges }
+      : template[getDayKey(date)]
+
     if (!cfg?.open) { setSlots([]); return }
 
     setLoadingSlots(true)
@@ -168,9 +183,10 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
                 bgcolor: isSelected ? 'primary.main' : 'background.paper',
                 border: '1px solid',
                 borderColor: isSelected ? 'primary.main' : isToday ? 'primary.light' : 'divider',
+                boxShadow: isSelected ? elevation.glow : 'none',
                 opacity: disabled ? 0.35 : 1,
                 '&:hover': disabled ? {} : { borderColor: 'primary.main' },
-                transition: 'all 0.1s',
+                transition: 'all 0.15s cubic-bezier(0.16,1,0.3,1)',
               }}
             >
               <Typography
@@ -198,7 +214,7 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
           </Typography>
 
           {loadingSlots
-            ? <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={24} /></Box>
+            ? <LoadingState py={3} size={24} />
             : slots.length === 0
             ? (
               <Box sx={{
@@ -211,8 +227,8 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
               </Box>
             )
             : (
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
-                {slots.map(time => (
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 1 }}>
+                {slots.map((time, index) => (
                   <Chip
                     key={time}
                     label={time}
@@ -220,7 +236,15 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
                     sx={{
                       fontWeight: 600, fontSize: 14, height: 40,
                       cursor: 'pointer',
-                      '&:hover': { bgcolor: 'primary.main', color: 'white' },
+                      animation: anim.scaleIn,
+                      animationDelay: `${index * 30}ms`,
+                      transition: 'all 0.18s cubic-bezier(0.16,1,0.3,1)',
+                      '&:hover': {
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        boxShadow: elevation.glowSoft,
+                        borderColor: 'primary.main',
+                      },
                     }}
                     variant="outlined"
                   />

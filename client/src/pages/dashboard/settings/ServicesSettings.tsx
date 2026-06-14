@@ -7,9 +7,11 @@ import {
 import AddIcon from '@mui/icons-material/Add'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
+import { PageHeader, LoadingState, EmptyState, ConfirmDialog, useToast } from '@/components/ui'
 
 interface Service {
   id: string
@@ -30,6 +32,7 @@ const EMPTY: Omit<Service, 'id' | 'sort_order'> = {
 export default function ServicesSettings() {
   const { t } = useTranslation()
   const { org } = useOrg()
+  const toast = useToast()
 
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,6 +44,7 @@ export default function ServicesSettings() {
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Service | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (org) load()
@@ -103,12 +107,16 @@ export default function ServicesSettings() {
 
     setSaving(false)
     setOpen(false)
+    toast.success(t('common.saved'))
     load()
   }
 
   async function handleDelete(s: Service) {
+    setDeleting(true)
     await supabase.from('services').delete().eq('id', s.id)
+    setDeleting(false)
     setConfirmDelete(null)
+    toast.success(t('common.deleted'))
     load()
   }
 
@@ -119,27 +127,27 @@ export default function ServicesSettings() {
 
   return (
     <Box sx={{ maxWidth: 680 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>
-          {t('settings.services')}
-        </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          {t('onboarding.addService')}
-        </Button>
-      </Box>
+      <PageHeader
+        title={t('settings.services')}
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+            {t('onboarding.addService')}
+          </Button>
+        }
+      />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Card>
         {loading
-          ? <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress size={28} /></Box>
+          ? <LoadingState />
           : services.length === 0
           ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                სერვისები არ არის. დაამატეთ პირველი სერვისი.
-              </Typography>
-            </Box>
+            <EmptyState
+              icon={<DesignServicesOutlinedIcon />}
+              title="სერვისები არ არის"
+              caption="დაამატეთ პირველი სერვისი"
+            />
           )
           : services.map((s, i) => (
             <Box key={s.id}>
@@ -229,25 +237,15 @@ export default function ServicesSettings() {
       </Dialog>
 
       {/* Confirm delete */}
-      <Dialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>სერვისის წაშლა</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            დარწმუნებული ხართ, რომ გსურთ წაშალოთ <strong>{confirmDelete?.name}</strong>?
-            ეს მოქმედება შეუქცევადია.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setConfirmDelete(null)}>{t('common.cancel')}</Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={() => confirmDelete && handleDelete(confirmDelete)}
-          >
-            {t('common.delete')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="სერვისის წაშლა"
+        message={confirmDelete ? `დარწმუნებული ხართ, რომ გსურთ წაშალოთ "${confirmDelete.name}"? ეს მოქმედება შეუქცევადია.` : undefined}
+        confirmLabel={t('common.delete')}
+        loading={deleting}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
     </Box>
   )
 }

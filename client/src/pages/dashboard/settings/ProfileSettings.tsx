@@ -7,10 +7,12 @@ import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
+import { PageHeader, CopyableText, useToast } from '@/components/ui'
 
 export default function ProfileSettings() {
   const { t } = useTranslation()
   const { org, refresh } = useOrg()
+  const toast = useToast()
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -19,16 +21,15 @@ export default function ProfileSettings() {
 
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (org) {
       setName(org.name ?? '')
-      setDescription((org as Record<string, string>).description ?? '')
-      setContactPhone((org as Record<string, string>).contact_phone ?? '')
-      setLogoUrl((org as Record<string, string>).logo_url ?? null)
+      setDescription((org as unknown as Record<string, string>).description ?? '')
+      setContactPhone((org as unknown as Record<string, string>).contact_phone ?? '')
+      setLogoUrl((org as unknown as Record<string, string>).logo_url ?? null)
     }
   }, [org])
 
@@ -64,7 +65,6 @@ export default function ProfileSettings() {
     if (!org) return
     setSaving(true)
     setError(null)
-    setSuccess(false)
 
     const { error: err } = await supabase
       .from('organisations')
@@ -78,19 +78,15 @@ export default function ProfileSettings() {
 
     setSaving(false)
     if (err) { setError(err.message); return }
-    setSuccess(true)
     await refresh()
-    setTimeout(() => setSuccess(false), 3000)
+    toast.success(t('common.saved'))
   }
 
   return (
     <Box sx={{ maxWidth: 600 }}>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-        {t('settings.profile')}
-      </Typography>
+      <PageHeader title={t('settings.profile')} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>ინფორმაცია შენახულია</Alert>}
 
       <Card>
         <CardContent sx={{ p: 3 }}>
@@ -160,20 +156,23 @@ export default function ProfileSettings() {
               value={contactPhone}
               onChange={e => setContactPhone(e.target.value)}
               fullWidth
+              placeholder="599 123 456"
               slotProps={{ htmlInput: { inputMode: 'tel' } }}
             />
-            <Box sx={{ pt: 0.5 }}>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                თქვენი ბუქინგ ბმული: grafiki.ge/book/{org?.slug}
-              </Typography>
-            </Box>
+            {org?.slug && (
+              <CopyableText
+                label="თქვენი ბუქინგ ბმული"
+                text={`grafiki.ge/book/${org.slug}`}
+                value={`https://grafiki.ge/book/${org.slug}`}
+              />
+            )}
           </Stack>
 
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
             <Button
               variant="contained"
               onClick={handleSave}
-              disabled={saving || !name.trim()}
+              disabled={saving || uploading || !name.trim()}
             >
               {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
             </Button>

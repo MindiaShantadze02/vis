@@ -1,6 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import '@fontsource/noto-sans-georgian/400.css'
+import '@fontsource/noto-sans-georgian/500.css'
+import '@fontsource/noto-sans-georgian/600.css'
+import '@fontsource/noto-sans-georgian/700.css'
 import { ThemeProvider, CssBaseline } from '@mui/material'
 import { LocalizationProvider } from '@mui/x-date-pickers'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
@@ -9,6 +13,7 @@ import i18n from '@/lib/i18n'
 import theme from '@/theme/theme'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { OrgProvider } from '@/contexts/OrgContext'
+import { ToastProvider } from '@/components/ui'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
@@ -16,15 +21,17 @@ createRoot(document.getElementById('root')!).render(
     <I18nextProvider i18n={i18n}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <BrowserRouter>
-            <AuthProvider>
-              <OrgProvider>
-                <App />
-              </OrgProvider>
-            </AuthProvider>
-          </BrowserRouter>
-        </LocalizationProvider>
+        <ToastProvider>
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <BrowserRouter>
+              <AuthProvider>
+                <OrgProvider>
+                  <App />
+                </OrgProvider>
+              </AuthProvider>
+            </BrowserRouter>
+          </LocalizationProvider>
+        </ToastProvider>
       </ThemeProvider>
     </I18nextProvider>
   </StrictMode>,
