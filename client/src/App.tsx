@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { CircularProgress, Box } from '@mui/material'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
@@ -50,11 +50,14 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+// Guards routes that need an organisation (calendar, settings). A user with no
+// org is allowed on the dashboard index (empty state), so bounce them there
+// rather than forcing onboarding.
 function OrgGuard({ children }: { children: React.ReactNode }) {
   const { org, loading } = useOrg()
   const { loading: authLoading } = useAuth()
   if (loading || authLoading) return <LoadingScreen />
-  if (!org) return <Navigate to="/onboarding/business" replace />
+  if (!org) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -70,7 +73,14 @@ function PublicOnlyGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const { org, loading: orgLoading } = useOrg()
   if (loading || orgLoading) return <LoadingScreen />
-  if (user) return <Navigate to={org ? '/dashboard' : '/onboarding/business'} replace />
+  if (user) {
+    // Org members go to the dashboard. A user with no org who already chose to
+    // skip onboarding also goes to the (empty) dashboard; otherwise they see
+    // onboarding first.
+    const skipped = Boolean(user.user_metadata?.onboarding_skipped)
+    const dest = org || skipped ? '/dashboard' : '/onboarding/business'
+    return <Navigate to={dest} replace />
+  }
   return <>{children}</>
 }
 
@@ -88,15 +98,19 @@ export default function App() {
         <Route path="hours" element={<WorkingHoursStep />} />
       </Route>
 
-      <Route path="/dashboard" element={<AuthGuard><OrgGuard><DashboardLayout /></OrgGuard></AuthGuard>}>
+      <Route path="/dashboard" element={<AuthGuard><DashboardLayout /></AuthGuard>}>
+        {/* Index renders for everyone — shows an empty state when the user has no org. */}
         <Route index element={<OverviewPage />} />
-        <Route path="calendar" element={<CalendarPage />} />
-        <Route path="settings/profile" element={<ProfileSettings />} />
-        <Route path="settings/services" element={<ServicesSettings />} />
-        <Route path="settings/hours" element={<WorkingHoursSettings />} />
-        <Route path="settings/team" element={<TeamSettings />} />
-        <Route path="settings/payment" element={<PaymentSettings />} />
-        <Route path="settings/subscription" element={<SubscriptionPage />} />
+        {/* Everything else needs an organisation. */}
+        <Route element={<OrgGuard><Outlet /></OrgGuard>}>
+          <Route path="calendar" element={<CalendarPage />} />
+          <Route path="settings/profile" element={<ProfileSettings />} />
+          <Route path="settings/services" element={<ServicesSettings />} />
+          <Route path="settings/hours" element={<WorkingHoursSettings />} />
+          <Route path="settings/team" element={<TeamSettings />} />
+          <Route path="settings/payment" element={<PaymentSettings />} />
+          <Route path="settings/subscription" element={<SubscriptionPage />} />
+        </Route>
       </Route>
 
       <Route path="/book/:slug" element={<BookingLayout />} />

@@ -54,7 +54,8 @@
     "closed": "Closed",
     "from": "From",
     "to": "To",
-    "finish": "Finish"
+    "finish": "Finish",
+    "skip": "Skip for now"
   },
   "booking": {
     "title": "Online Booking",
@@ -100,7 +101,10 @@
     "assignStaff": "Assign specialist",
     "dateFrom": "From date",
     "dateTo": "To date",
-    "rowsPerPage": "Rows per page"
+    "rowsPerPage": "Rows per page",
+    "noBusinessTitle": "No business yet",
+    "noBusinessCaption": "Set up a business to get started. If you're added to a team, the project will appear here.",
+    "setUpBusiness": "Set up your business"
   },
   "settings": {
     "profile": "Profile",

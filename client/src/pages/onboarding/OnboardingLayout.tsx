@@ -3,9 +3,10 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useOrg } from '@/contexts/OrgContext'
 import {
   Box, Stepper, Step, StepLabel, Typography,
-  Container, LinearProgress,
+  Container, LinearProgress, Button,
 } from '@mui/material'
 import { useTranslation } from 'react-i18next'
+import { supabase } from '@/lib/supabase'
 import { anim } from '@/theme/animations'
 import { gradient } from '@/theme/theme'
 import type { DaySchedule } from '@/lib/validation'
@@ -119,6 +120,13 @@ export default function OnboardingLayout() {
     if (prev) navigate(prev.path)
   }
 
+  // Skip onboarding: remember the choice on the user so future logins land
+  // on the (empty) dashboard instead of being sent back here, then go there.
+  async function handleSkip() {
+    await supabase.auth.updateUser({ data: { onboarding_skipped: true } })
+    navigate('/dashboard')
+  }
+
   return (
     <OnboardingContext.Provider value={{ data, update }}>
       <Box
@@ -150,6 +158,20 @@ export default function OnboardingLayout() {
             <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 13, lineHeight: 1 }}>G</Typography>
           </Box>
           <Typography variant="h6" sx={{ color: 'white', fontWeight: 700 }}>Grafiki</Typography>
+
+          <Box sx={{ flex: 1 }} />
+
+          <Button
+            onClick={handleSkip}
+            size="small"
+            sx={{
+              color: 'white',
+              fontWeight: 600,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
+            }}
+          >
+            {t('onboarding.skip')}
+          </Button>
         </Box>
 
         <LinearProgress

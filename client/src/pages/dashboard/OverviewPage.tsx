@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Grid, Card, Typography, Box, Skeleton, Chip, Button,
   TextField, Select, MenuItem, FormControl, InputLabel, Stack,
@@ -11,6 +12,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import SearchIcon from '@mui/icons-material/Search'
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
@@ -57,6 +59,7 @@ export default function OverviewPage() {
   const { org } = useOrg()
   const theme = useTheme()
   const toast = useToast()
+  const navigate = useNavigate()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 
   const [stats, setStats] = useState<Stats | null>(null)
@@ -213,6 +216,26 @@ export default function OverviewPage() {
       setAdminNote('')
     }
     setActionLoading(null)
+  }
+
+  // No organisation yet (user skipped onboarding and isn't a member of any
+  // project). Show a friendly empty state inviting them to set up a business.
+  if (!org) {
+    return (
+      <Box>
+        <PageHeader title={t('dashboard.overview')} />
+        <EmptyState
+          icon={<StorefrontOutlinedIcon />}
+          title={t('dashboard.noBusinessTitle')}
+          caption={t('dashboard.noBusinessCaption')}
+          action={
+            <Button variant="contained" onClick={() => navigate('/onboarding/business')}>
+              {t('dashboard.setUpBusiness')}
+            </Button>
+          }
+        />
+      </Box>
+    )
   }
 
   return (

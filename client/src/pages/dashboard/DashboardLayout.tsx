@@ -80,9 +80,10 @@ export default function DashboardLayout() {
 
       <Divider />
 
-      {/* Main nav */}
+      {/* Main nav. Without an org only the overview (empty state) is reachable;
+          Calendar and Settings need an organisation. */}
       <List sx={{ px: 1, pt: 1, flex: 1 }}>
-        {NAV_ITEMS.map((item, i) => (
+        {(org ? NAV_ITEMS : NAV_ITEMS.filter(item => item.path === '/dashboard')).map((item, i) => (
           <ListItemButton
             key={item.path}
             component={NavLink}
@@ -117,7 +118,8 @@ export default function DashboardLayout() {
           </ListItemButton>
         ))}
 
-        {/* Settings section */}
+        {/* Settings section — only when the user has an organisation */}
+        {org && (<>
         <ListItemButton
           onClick={() => setSettingsOpen(o => !o)}
           sx={{
@@ -168,6 +170,7 @@ export default function DashboardLayout() {
             <ListItemText primary={t(item.labelKey)} slotProps={{ primary: { variant: 'body2' } }} />
           </ListItemButton>
         ))}
+        </>)}
       </List>
 
       <Divider />
