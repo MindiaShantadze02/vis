@@ -47,18 +47,27 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     try {
       if (overrideOrgId) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('organisations')
           .select('*')
           .eq('id', overrideOrgId)
-          .single()
+          .maybeSingle()
+        if (error) console.error('[OrgContext] override org load failed:', error)
         if (data) { setOrg(data as Organisation); setRole('admin') }
+        else { setOrg(null); setRole(null) }
       } else {
-        const { data } = await supabase
+        // A user may end up with more than one membership (e.g. duplicate orgs
+        // created by repeated onboarding). .single() throws on >1 rows, which
+        // would null out `org` and bounce them back to onboarding forever — so
+        // take the most recent membership instead of assuming exactly one.
+        const { data, error } = await supabase
           .from('org_members')
           .select('role, organisations(*)')
           .eq('user_id', user.id)
-          .single()
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (error) console.error('[OrgContext] org_members load failed:', error)
         if (data) {
           setOrg(data.organisations as unknown as Organisation)
           setRole(data.role as 'owner' | 'admin')

@@ -2,22 +2,13 @@ import { useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Box, TextField, Button, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
+import { slugify } from '@/lib/slug'
 import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
   goNext: () => void
   data: OnboardingData
   update: (patch: Partial<OnboardingData>) => void
-}
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 60)
 }
 
 export default function BusinessProfileStep() {

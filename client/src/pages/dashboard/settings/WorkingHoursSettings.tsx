@@ -20,6 +20,7 @@ import {
 } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, ConfirmDialog, useToast } from '@/components/ui'
+import { LAYOUT } from '@/theme/theme'
 
 type WeekTemplate = {
   monday: DaySchedule; tuesday: DaySchedule; wednesday: DaySchedule; thursday: DaySchedule;
@@ -220,7 +221,7 @@ export default function WorkingHoursSettings() {
   if (loading) return <LoadingState />
 
   return (
-    <Box sx={{ maxWidth: 680 }}>
+    <Box sx={{ maxWidth: LAYOUT.formPage }}>
       <PageHeader title={t('settings.workingHours')} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -245,7 +246,6 @@ export default function WorkingHoursSettings() {
                     <Switch
                       checked={cfg.open}
                       onChange={e => setDayOpen(day, e.target.checked)}
-                      size="small"
                     />
                     {!cfg.open && (
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -394,7 +394,7 @@ export default function WorkingHoursSettings() {
       </Card>
 
       {/* Add override dialog */}
-      <Dialog open={overrideOpen} onClose={() => setOverrideOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={overrideOpen} onClose={() => setOverrideOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>გამონაკლის დღის დამატება</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>

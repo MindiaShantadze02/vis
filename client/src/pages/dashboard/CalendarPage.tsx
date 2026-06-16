@@ -77,6 +77,10 @@ function statusColors(theme: Theme, status: AppointmentStatus): { main: string; 
 const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8)
 
+// Intentional micro-type for the dense calendar grid pills — below the theme's
+// caption (12px) so multiple appointments fit inside a tight hour cell.
+const PILL_FONT = { primary: 11, secondary: 10 }
+
 const TIME_OPTIONS = Array.from({ length: 31 }, (_, i) => {
   const mins = 7 * 60 + i * 30
   const h = Math.floor(mins / 60)
@@ -475,10 +479,10 @@ export default function CalendarPage() {
                               },
                             }}
                           >
-                            <Typography sx={{ fontWeight: 700, color: c.main, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, lineHeight: 1.4 }}>
+                            <Typography sx={{ fontWeight: 700, color: c.main, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: PILL_FONT.primary, lineHeight: 1.4 }}>
                               {format(new Date(appt.scheduled_at), 'HH:mm')} {appt.customers?.first_name}
                             </Typography>
-                            <Typography sx={{ color: c.main, opacity: 0.75, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, lineHeight: 1.3 }}>
+                            <Typography sx={{ color: c.main, opacity: 0.75, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: PILL_FONT.secondary, lineHeight: 1.3 }}>
                               {appt.services?.name}{appt.staff?.display_name ? ` · ${appt.staff.display_name}` : ''}
                             </Typography>
                           </Box>
@@ -505,10 +509,10 @@ export default function CalendarPage() {
                         }}
                       >
                         <Box sx={{ flex: 1, overflow: 'hidden' }}>
-                          <Typography sx={{ fontWeight: 600, color: 'text.secondary', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, lineHeight: 1.4 }}>
+                          <Typography sx={{ fontWeight: 600, color: 'text.secondary', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: PILL_FONT.primary, lineHeight: 1.4 }}>
                             {rest.label}
                           </Typography>
-                          <Typography sx={{ color: 'text.secondary', display: 'block', fontSize: 10, lineHeight: 1.3 }}>
+                          <Typography sx={{ color: 'text.secondary', display: 'block', fontSize: PILL_FONT.secondary, lineHeight: 1.3 }}>
                             {rest.start}–{rest.end}
                           </Typography>
                         </Box>
@@ -627,7 +631,7 @@ export default function CalendarPage() {
       </Drawer>
 
       {/* Add Rest Period dialog */}
-      <Dialog open={restDialog} onClose={() => setRestDialog(false)} maxWidth="xs" fullWidth>
+      <Dialog open={restDialog} onClose={() => setRestDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>დასვენების პერიოდი</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 0.5 }}>
@@ -666,7 +670,7 @@ export default function CalendarPage() {
             />
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setRestDialog(false)}>{t('common.cancel')}</Button>
           <Button
             variant="contained"

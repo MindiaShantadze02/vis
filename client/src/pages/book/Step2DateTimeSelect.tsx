@@ -327,7 +327,7 @@ export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }
                       assignedStaff,
                     )}
                     sx={{
-                      fontWeight: 600, fontSize: 14, height: 40,
+                      fontWeight: 600, fontSize: '0.875rem', height: 40,
                       cursor: 'pointer',
                       animation: anim.scaleIn,
                       animationDelay: `${index * 30}ms`,

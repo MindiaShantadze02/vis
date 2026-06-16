@@ -6,6 +6,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { anim } from '@/theme/animations'
+import { LAYOUT } from '@/theme/theme'
 
 type Mode = 'signin' | 'signup'
 
@@ -67,7 +68,7 @@ export default function LoginPage() {
       <Card
         sx={{
           width: '100%',
-          maxWidth: 420,
+          maxWidth: LAYOUT.narrowCard,
           borderRadius: 4,
           animation: anim.scaleIn,
           background: 'rgba(255,255,255,0.97)',

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, useToast } from '@/components/ui'
+import { LAYOUT } from '@/theme/theme'
 
 interface PaymentConfig {
   bog?: { merchantId?: string; apiKey?: string; enabled?: boolean }
@@ -70,7 +71,7 @@ export default function PaymentSettings() {
   }
 
   return (
-    <Box sx={{ maxWidth: 600 }}>
+    <Box sx={{ maxWidth: LAYOUT.formPage }}>
       <PageHeader title={t('settings.payment')} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -114,7 +115,6 @@ export default function PaymentSettings() {
                 checked={config.bog?.enabled ?? false}
                 onChange={e => setBog('enabled', e.target.checked)}
                 onClick={e => e.stopPropagation()}
-                size="small"
               />
             </Box>
           </AccordionSummary>
@@ -164,7 +164,6 @@ export default function PaymentSettings() {
                 checked={config.tbc?.enabled ?? false}
                 onChange={e => setTbc('enabled', e.target.checked)}
                 onClick={e => e.stopPropagation()}
-                size="small"
               />
             </Box>
           </AccordionSummary>

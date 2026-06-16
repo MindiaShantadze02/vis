@@ -14,6 +14,7 @@ import { isValidGeorgianPhone } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageHeader, LoadingState, useToast } from '@/components/ui'
+import { LAYOUT } from '@/theme/theme'
 
 interface Member {
   id: string
@@ -158,7 +159,7 @@ export default function TeamSettings() {
   const invitePhoneInvalid = invitePhone.trim().length > 0 && !isValidGeorgianPhone(invitePhone)
 
   return (
-    <Box sx={{ maxWidth: 640 }}>
+    <Box sx={{ maxWidth: LAYOUT.formPage }}>
       <PageHeader
         title={t('settings.team')}
         action={role === 'owner' && (
@@ -249,7 +250,7 @@ export default function TeamSettings() {
       )}
 
       {/* Invite dialog */}
-      <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>ადმინის მოწვევა</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -291,7 +292,7 @@ export default function TeamSettings() {
       </Dialog>
 
       {/* Edit member dialog */}
-      <Dialog open={!!editMember} onClose={() => setEditMember(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!editMember} onClose={() => setEditMember(null)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.editMember')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>

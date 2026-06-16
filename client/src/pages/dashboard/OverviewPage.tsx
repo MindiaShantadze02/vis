@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
-import { PageHeader, StatCard, StatusChip, EmptyState, useToast } from '@/components/ui'
+import { PageHeader, StatCard, StatusChip, EmptyState, CopyableText, useToast } from '@/components/ui'
 import type { AppointmentStatus } from '@/components/ui'
 
 // ── Types ─────────────────────────────────────────────────────
@@ -65,6 +65,7 @@ export default function OverviewPage() {
   const [apptLoading, setApptLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | 'all'>('all')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const [selected, setSelected] = useState<Appointment | null>(null)
@@ -76,7 +77,6 @@ export default function OverviewPage() {
   useEffect(() => {
     if (!org) return
     loadStats()
-    loadAppointments()
     supabase
       .from('org_members')
       .select('id, display_name, title')
@@ -86,9 +86,18 @@ export default function OverviewPage() {
       .then(({ data }) => setBookableMembers((data ?? []) as StaffRef[]))
   }, [org])
 
+  // Debounce the search box so we issue one query after typing settles,
+  // not one per keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(id)
+  }, [search])
+
+  // Status + search are both applied server-side via the
+  // search_appointments RPC.
   useEffect(() => {
     if (org) loadAppointments()
-  }, [statusFilter])
+  }, [org, statusFilter, debouncedSearch])
 
   // Which members are assignable to the opened appointment's service.
   useEffect(() => {
@@ -161,16 +170,13 @@ export default function OverviewPage() {
     if (!org) return
     setApptLoading(true)
 
-    let query = supabase
-      .from('appointments')
-      .select('id, scheduled_at, duration_minutes, service_id, staff_id, status, payment_method, payment_status, notes, admin_notes, customers(first_name, last_name, phone_number), services(name, price, duration_minutes), staff:org_members!appointments_staff_id_fkey(id, display_name, title)')
-      .eq('org_id', org.id)
-      .order('scheduled_at', { ascending: false })
-      .limit(100)
+    const { data } = await supabase.rpc('search_appointments', {
+      p_org_id: org.id,
+      p_status: statusFilter === 'all' ? null : statusFilter,
+      p_search: debouncedSearch || null,
+      p_limit: 100,
+    })
 
-    if (statusFilter !== 'all') query = query.eq('status', statusFilter)
-
-    const { data } = await query
     setAppointments((data ?? []) as unknown as Appointment[])
     setApptLoading(false)
   }
@@ -196,20 +202,20 @@ export default function OverviewPage() {
     setActionLoading(null)
   }
 
-  const filtered = appointments.filter(a => {
-    if (!search.trim()) return true
-    const q = search.toLowerCase()
-    return (
-      a.customers?.first_name.toLowerCase().includes(q) ||
-      a.customers?.last_name?.toLowerCase().includes(q) ||
-      a.customers?.phone_number.includes(q) ||
-      a.services?.name.toLowerCase().includes(q)
-    )
-  })
-
   return (
     <Box>
       <PageHeader title={t('dashboard.overview')} />
+
+      {/* Booking link — shown prominently so the business can copy & share it */}
+      {org?.slug && (
+        <Box sx={{ mb: 4, maxWidth: 480 }}>
+          <CopyableText
+            label="თქვენი ბუქინგ ბმული"
+            text={`grafiki.ge/book/${org.slug}`}
+            value={`https://grafiki.ge/book/${org.slug}`}
+          />
+        </Box>
+      )}
 
       {/* Stat cards */}
       <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -306,15 +312,15 @@ export default function OverviewPage() {
               <Skeleton height={24} />
             </Box>
           ))
-          : filtered.length === 0
+          : appointments.length === 0
           ? <EmptyState icon={<EventBusyOutlinedIcon />} title="ჯავშნები ვერ მოიძებნა" />
-          : filtered.map((appt, i) => {
+          : appointments.map((appt, i) => {
             const rowProps = {
               key: appt.id,
               onClick: () => { setSelected(appt); setAdminNote(appt.admin_notes ?? '') },
               sx: {
                 px: 2, py: 1.5,
-                borderBottom: i < filtered.length - 1 ? '1px solid' : 'none',
+                borderBottom: i < appointments.length - 1 ? '1px solid' : 'none',
                 borderColor: 'divider',
                 cursor: 'pointer',
                 '&:hover': { bgcolor: 'action.hover' },
@@ -390,7 +396,7 @@ export default function OverviewPage() {
       </Card>
 
       {/* Detail dialog */}
-      <Dialog open={!!selected} onClose={() => setSelected(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!selected} onClose={() => setSelected(null)} maxWidth="sm" fullWidth>
         {selected && (
           <>
             <DialogTitle sx={{ fontWeight: 700 }}>

@@ -10,7 +10,7 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import { supabase } from '@/lib/supabase'
 import { anim } from '@/theme/animations'
-import { gradient } from '@/theme/theme'
+import { gradient, LAYOUT } from '@/theme/theme'
 import { LoadingState, EmptyState } from '@/components/ui'
 import Step1ServiceSelect from './Step1ServiceSelect'
 import Step2DateTimeSelect from './Step2DateTimeSelect'
@@ -218,7 +218,7 @@ export default function BookingLayout() {
         </Box>
 
         {/* Step content — key re-mounts on step change, re-firing animation */}
-        <Box key={step} sx={{ flex: 1, px: { xs: 2, md: 5 }, py: 4, maxWidth: 560, width: '100%', animation: anim.fadeInUp }}>
+        <Box key={step} sx={{ flex: 1, px: { xs: 2, md: 5 }, py: 4, maxWidth: LAYOUT.bookingStep, width: '100%', animation: anim.fadeInUp }}>
           {step === 0 && (
             <Step1ServiceSelect
               orgId={org.id}

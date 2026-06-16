@@ -29,7 +29,7 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   const { t } = useTranslation()
   return (
-    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>{title}</DialogTitle>
       {message && (
         <DialogContent>

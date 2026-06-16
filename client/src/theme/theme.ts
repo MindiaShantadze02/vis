@@ -38,6 +38,15 @@ export const tint = {
   hoverBorder: 'rgba(124,58,237,0.20)',
 }
 
+// ── Layout width tokens ───────────────────────────────────────
+// Named max-widths so page containers stay consistent within each
+// context instead of drifting across hardcoded values (600/640/680…).
+export const LAYOUT = {
+  formPage:   720, // settings + content-form pages
+  narrowCard: 460, // centered single-purpose cards (auth, confirmation)
+  bookingStep: 560, // booking step column
+}
+
 const theme = createTheme({
   palette: {
     primary: {

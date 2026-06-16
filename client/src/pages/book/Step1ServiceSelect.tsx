@@ -80,7 +80,7 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
                   label={`${s.price} ₾`}
                   sx={{
                     fontWeight: 700,
-                    fontSize: 15,
+                    fontSize: '0.875rem',
                     bgcolor: 'secondary.main',
                     color: 'primary.dark',
                     border: '1px solid',

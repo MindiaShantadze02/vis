@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader } from '@/components/ui'
+import { LAYOUT } from '@/theme/theme'
 
 type Tier = 'free' | 'starter' | 'pro' | 'business'
 type TierColorKey = 'grey' | 'info' | 'primary' | 'success'
@@ -82,7 +83,7 @@ export default function SubscriptionPage() {
   const currentColor = tierColor(theme, tierInfo.colorKey)
 
   return (
-    <Box sx={{ maxWidth: 680 }}>
+    <Box sx={{ maxWidth: LAYOUT.formPage }}>
       <PageHeader title={t('settings.subscription')} />
 
       {/* Current plan */}

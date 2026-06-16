@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, useToast } from '@/components/ui'
+import { LAYOUT } from '@/theme/theme'
 
 interface Service {
   id: string
@@ -182,7 +183,7 @@ export default function ServicesSettings() {
   }
 
   return (
-    <Box sx={{ maxWidth: 680 }}>
+    <Box sx={{ maxWidth: LAYOUT.formPage }}>
       <PageHeader
         title={t('settings.services')}
         action={
@@ -224,7 +225,6 @@ export default function ServicesSettings() {
                 <Switch
                   checked={s.is_active}
                   onChange={() => toggleActive(s)}
-                  size="small"
                 />
                 <IconButton size="small" onClick={() => openEdit(s)}>
                   <EditOutlinedIcon fontSize="small" />
@@ -239,7 +239,7 @@ export default function ServicesSettings() {
       </Card>
 
       {/* Create / Edit dialog */}
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
           {editing ? 'სერვისის რედაქტირება' : 'ახალი სერვისი'}
         </DialogTitle>

@@ -17,6 +17,7 @@ import {
 } from '@/lib/validation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
+import { slugify } from '@/lib/slug'
 import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -123,9 +124,24 @@ export default function WorkingHoursStep() {
     setError(null)
 
     try {
-      const baseSlug = data.slug || data.name.toLowerCase().replace(/\s+/g, '-').slice(0, 50)
+      // Guard against creating a duplicate org: if this user already belongs to
+      // one, just go to the dashboard instead of inserting another.
+      const { data: existing } = await supabase
+        .from('org_members')
+        .select('org_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle()
+      if (existing) {
+        await refresh()
+        navigate('/dashboard')
+        return
+      }
+
       const suffix = Math.random().toString(36).slice(2, 6)
-      const slug = baseSlug || `org-${suffix}`
+      // Prefer the slug derived during the profile step; re-derive from the
+      // name as a fallback (both now transliterate Georgian → Latin).
+      const slug = data.slug || slugify(data.name) || `org-${suffix}`
 
       let orgId: string
       let attempt = await supabase

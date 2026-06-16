@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useOrg } from '@/contexts/OrgContext'
 import {
   Box, Stepper, Step, StepLabel, Typography,
   Container, LinearProgress,
@@ -74,6 +75,14 @@ export default function OnboardingLayout() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const activeStep = useCurrentStep()
+  const { org } = useOrg()
+
+  // Once an org exists (either just created via onboarding or already present),
+  // redirect to the dashboard. This also fixes the race condition where
+  // navigate('/dashboard') fires before React commits the OrgContext state update.
+  useEffect(() => {
+    if (org) navigate('/dashboard', { replace: true })
+  }, [org])
 
   const [data, setData] = useState<OnboardingData>({
     name: '', description: '', slug: '', contact_phone: '',
@@ -141,6 +150,7 @@ export default function OnboardingLayout() {
           value={((activeStep + 1) / STEPS.length) * 100}
         />
 
+        {/* Intentionally narrower (sm ≈ 600) than settings pages — this is a focused stepper flow. */}
         <Container maxWidth="sm" sx={{ flex: 1, py: 5 }}>
           <Stepper activeStep={activeStep} sx={{ mb: 5 }}>
             {STEPS.map((s, i) => (

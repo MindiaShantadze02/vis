@@ -9,6 +9,7 @@ import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
 import { LoadingState, EmptyState, StatusChip } from '@/components/ui'
+import { LAYOUT } from '@/theme/theme'
 import type { AppointmentStatus } from '@/components/ui'
 
 interface AppointmentDetail {
@@ -71,7 +72,7 @@ export default function BookingConfirmationPage() {
         p: 2,
       }}
     >
-      <Card sx={{ maxWidth: 440, width: '100%', borderRadius: 4 }}>
+      <Card sx={{ maxWidth: LAYOUT.narrowCard, width: '100%', borderRadius: 4 }}>
         <CardContent sx={{ p: 4, textAlign: 'center' }}>
           {/* Icon */}
           <Box
