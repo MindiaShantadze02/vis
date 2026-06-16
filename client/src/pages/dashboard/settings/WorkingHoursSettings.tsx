@@ -3,7 +3,7 @@ import {
   Box, Typography, Card, CardContent, Button, TextField,
   Switch, Stack, Divider, Alert, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Chip, IconButton,
+  Chip,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
@@ -313,9 +313,9 @@ export default function WorkingHoursSettings() {
                               slotProps={{ htmlInput: { min: cfg.openTime, max: cfg.closeTime } }}
                               sx={{ width: 115 }}
                             />
-                            <IconButton size="small" aria-label={t('common.delete')} onClick={() => removeBreak(day, bi)}>
+                            <ActionIconButton tone="danger" compact aria-label={t('common.delete')} onClick={() => removeBreak(day, bi)}>
                               <CloseIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
+                            </ActionIconButton>
                           </Box>
                         )
                       })}

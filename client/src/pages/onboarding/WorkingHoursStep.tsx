@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import {
   Box, Button, Typography, Switch, FormControlLabel,
-  TextField, Stack, Alert, CircularProgress, IconButton, Tooltip,
+  TextField, Stack, Alert, CircularProgress, Tooltip,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import CloseIcon from '@mui/icons-material/Close'
@@ -17,6 +17,7 @@ import {
 } from '@/lib/validation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
+import { ActionIconButton } from '@/components/ui'
 import { slugify } from '@/lib/slug'
 import type { OnboardingData } from './OnboardingLayout'
 
@@ -318,9 +319,9 @@ export default function WorkingHoursStep() {
                           sx={{ width: 110 }}
                         />
                         <Tooltip title="ამოშლა">
-                          <IconButton size="small" aria-label="ამოშლა" onClick={() => removeBreak(day, bi)}>
+                          <ActionIconButton tone="danger" compact aria-label="ამოშლა" onClick={() => removeBreak(day, bi)}>
                             <CloseIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
+                          </ActionIconButton>
                         </Tooltip>
                       </Box>
                     )
