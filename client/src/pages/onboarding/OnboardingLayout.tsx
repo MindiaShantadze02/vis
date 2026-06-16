@@ -8,6 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { anim } from '@/theme/animations'
 import { gradient } from '@/theme/theme'
+import type { DaySchedule } from '@/lib/validation'
 
 // ── Shared state across onboarding steps ──────────────────────
 
@@ -25,18 +26,24 @@ export interface OnboardingData {
   contact_phone: string
   // Step 2
   services: OnboardingService[]
-  // Step 3
-  workingHours: Record<string, { open: boolean; ranges: { start: string; end: string }[] }>
+  // Step 3 — stored in the editable schedule shape so edits survive navigating
+  // between steps without a lossy ranges↔schedule round-trip.
+  workingHours: Record<string, DaySchedule>
 }
 
-const defaultWorkingHours: Record<string, { open: boolean; ranges: { start: string; end: string }[] }> = {
-  monday:    { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
-  tuesday:   { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
-  wednesday: { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
-  thursday:  { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
-  friday:    { open: true,  ranges: [{ start: '09:00', end: '18:00' }] },
-  saturday:  { open: false, ranges: [] },
-  sunday:    { open: false, ranges: [] },
+const open = (openTime: string, closeTime: string): DaySchedule =>
+  ({ open: true, openTime, closeTime, breaks: [] })
+const closed = (): DaySchedule =>
+  ({ open: false, openTime: '09:00', closeTime: '18:00', breaks: [] })
+
+const defaultWorkingHours: Record<string, DaySchedule> = {
+  monday:    open('09:00', '18:00'),
+  tuesday:   open('09:00', '18:00'),
+  wednesday: open('09:00', '18:00'),
+  thursday:  open('09:00', '18:00'),
+  friday:    open('09:00', '18:00'),
+  saturday:  closed(),
+  sunday:    closed(),
 }
 
 interface OnboardingContextValue {

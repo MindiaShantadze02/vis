@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import {
   Box, Button, Typography, Switch, FormControlLabel,
@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import {
   isEndAfterStart, timeToMinutes, minutesToTime, clampTime,
-  rangesToSchedule, scheduleToRanges, dayScheduleIssue,
+  scheduleToRanges, dayScheduleIssue,
   type TimeRange, type DaySchedule,
 } from '@/lib/validation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -23,6 +23,7 @@ import type { OnboardingData } from './OnboardingLayout'
 interface OutletCtx {
   goBack: () => void
   data: OnboardingData
+  update: (patch: Partial<OnboardingData>) => void
 }
 
 const DAY_LABELS: Record<string, string> = {
@@ -39,7 +40,7 @@ const DAYS = Object.keys(DAY_LABELS)
 
 export default function WorkingHoursStep() {
   const { t } = useTranslation()
-  const { goBack, data } = useOutletContext<OutletCtx>()
+  const { goBack, data, update } = useOutletContext<OutletCtx>()
   const { user } = useAuth()
   const { refresh } = useOrg()
   const navigate = useNavigate()
@@ -47,13 +48,18 @@ export default function WorkingHoursStep() {
   const [hours, setHours] = useState<Record<string, DaySchedule>>(() => {
     const init: Record<string, DaySchedule> = {}
     for (const day of DAYS) {
-      const d = data.workingHours[day]
-      init[day] = rangesToSchedule(d?.open ?? false, d?.ranges ?? [])
+      init[day] = data.workingHours[day] ?? { open: false, openTime: '09:00', closeTime: '18:00', breaks: [] }
     }
     return init
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Persist edits up to the shared onboarding state so they survive navigating
+  // back to an earlier step and returning (this step remounts on step change).
+  useEffect(() => {
+    update({ workingHours: hours })
+  }, [hours])
 
   function toggleDay(day: string) {
     setHours(h => ({ ...h, [day]: { ...h[day], open: !h[day].open } }))

@@ -18,6 +18,10 @@ import type { BookingService, BookingStaff } from './BookingLayout'
 interface Props {
   orgId: string
   service: BookingService
+  // Previously chosen date/staff, so the selection survives navigating to the
+  // details step and back (this component remounts on step change).
+  initialDate: string
+  initialStaffId: string | null
   onSelect: (date: string, time: string, staffId: string | null, assignedStaff: BookingStaff[]) => void
   onBack: () => void
 }
@@ -37,17 +41,22 @@ interface OverrideRow {
 const DAY_SHORT = ['კვ', 'ორ', 'სა', 'ოთ', 'ხუ', 'პა', 'შა']
 const ANY = 'any'
 
-export default function Step2DateTimeSelect({ orgId, service, onSelect, onBack }: Props) {
+export default function Step2DateTimeSelect({ orgId, service, initialDate, initialStaffId, onSelect, onBack }: Props) {
   const { t } = useTranslation()
   const today = startOfDay(new Date())
-  const [weekStart, setWeekStart] = useState(today)
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  // Restore a previously chosen date (yyyy-MM-dd) so it stays selected when
+  // returning from the details step.
+  const initialSelected = initialDate ? startOfDay(new Date(`${initialDate}T00:00:00`)) : null
+  const [weekStart, setWeekStart] = useState(
+    initialSelected && isBefore(addDays(today, 6), initialSelected) ? initialSelected : today,
+  )
+  const [selectedDate, setSelectedDate] = useState<Date | null>(initialSelected)
   const [slots, setSlots] = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [template, setTemplate] = useState<Record<string, { open: boolean; ranges: { start: string; end: string }[] }> | null>(null)
 
   const [assignedStaff, setAssignedStaff] = useState<BookingStaff[]>([])
-  const [selectedStaffId, setSelectedStaffId] = useState<string>(ANY)
+  const [selectedStaffId, setSelectedStaffId] = useState<string>(initialStaffId ?? ANY)
   const [dayAppts, setDayAppts] = useState<ApptRow[]>([])
   const [override, setOverride] = useState<OverrideRow | null>(null)
 

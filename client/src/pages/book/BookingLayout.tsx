@@ -229,6 +229,8 @@ export default function BookingLayout() {
             <Step2DateTimeSelect
               orgId={org.id}
               service={booking.service!}
+              initialDate={booking.date}
+              initialStaffId={booking.staffId}
               onSelect={(date, time, staffId, assignedStaff) => {
                 patch({ date, time, staffId, assignedStaff }); setStep(2)
               }}
