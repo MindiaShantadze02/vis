@@ -3,7 +3,7 @@ import {
   Box, Typography, Card, Button, TextField, Avatar,
   Stack, Divider, Alert, CircularProgress, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  IconButton, Switch, FormControlLabel,
+  Switch, FormControlLabel,
 } from '@mui/material'
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { PageHeader, LoadingState, useToast } from '@/components/ui'
+import { PageHeader, LoadingState, ActionIconButton, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 
 interface Member {
@@ -205,13 +205,13 @@ export default function TeamSettings() {
                   color={m.role === 'owner' ? 'primary' : 'default'}
                   variant={m.role === 'owner' ? 'filled' : 'outlined'}
                 />
-                <IconButton size="small" aria-label={t('settings.editMember')} onClick={() => openEdit(m)}>
+                <ActionIconButton aria-label={t('settings.editMember')} onClick={() => openEdit(m)}>
                   <EditOutlinedIcon fontSize="small" />
-                </IconButton>
+                </ActionIconButton>
                 {role === 'owner' && m.role !== 'owner' && m.user_id !== user?.id && (
-                  <IconButton size="small" color="error" aria-label={t('settings.removeAdmin')} onClick={() => handleRemove(m.id)}>
+                  <ActionIconButton tone="danger" aria-label={t('settings.removeAdmin')} onClick={() => handleRemove(m.id)}>
                     <DeleteOutlinedIcon fontSize="small" />
-                  </IconButton>
+                  </ActionIconButton>
                 )}
               </Box>
             </Box>
@@ -239,9 +239,9 @@ export default function TeamSettings() {
                     )}
                   </Box>
                   <Chip label="მოლოდინში" size="small" color="warning" variant="outlined" />
-                  <IconButton size="small" aria-label={t('common.cancel')} onClick={() => cancelInvite(inv.id)}>
+                  <ActionIconButton tone="danger" aria-label={t('common.cancel')} onClick={() => cancelInvite(inv.id)}>
                     <DeleteOutlinedIcon fontSize="small" />
-                  </IconButton>
+                  </ActionIconButton>
                 </Box>
               </Box>
             ))}

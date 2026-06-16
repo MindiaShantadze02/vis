@@ -19,7 +19,7 @@ import {
   type TimeRange, type DaySchedule,
 } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, LoadingState, ConfirmDialog, useToast } from '@/components/ui'
+import { PageHeader, LoadingState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 
 type WeekTemplate = {
@@ -384,9 +384,9 @@ export default function WorkingHoursSettings() {
                   color={ov.is_closed ? 'error' : 'info'}
                   variant="outlined"
                 />
-                <IconButton size="small" color="error" aria-label={t('common.delete')} onClick={() => setOverrideToDelete(ov)}>
+                <ActionIconButton tone="danger" aria-label={t('common.delete')} onClick={() => setOverrideToDelete(ov)}>
                   <DeleteOutlinedIcon fontSize="small" />
-                </IconButton>
+                </ActionIconButton>
               </Box>
             ))
           }

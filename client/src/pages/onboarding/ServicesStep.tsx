@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
-  Box, Button, Typography, TextField, IconButton,
+  Box, Button, Typography, TextField,
   Card, CardContent, Stack,
 } from '@mui/material'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import AddIcon from '@mui/icons-material/Add'
 import { useTranslation } from 'react-i18next'
+import { ActionIconButton } from '@/components/ui'
 import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -80,9 +81,9 @@ export default function ServicesStep() {
                   {svc.duration_minutes} წთ · {svc.price} ₾
                 </Typography>
               </Box>
-              <IconButton size="small" onClick={() => removeService(i)}>
+              <ActionIconButton tone="danger" aria-label={t('common.delete')} onClick={() => removeService(i)}>
                 <DeleteOutlinedIcon fontSize="small" />
-              </IconButton>
+              </ActionIconButton>
             </CardContent>
           </Card>
         ))}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Box, Typography, Card, Button, TextField, Stack,
-  IconButton, Switch, FormControlLabel, Divider, Alert,
+  Switch, FormControlLabel, Divider, Alert,
   CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
   Chip,
 } from '@mui/material'
@@ -12,7 +12,7 @@ import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlin
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, LoadingState, EmptyState, ConfirmDialog, useToast } from '@/components/ui'
+import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 
 interface Service {
@@ -244,12 +244,12 @@ export default function ServicesSettings() {
                   checked={s.is_active}
                   onChange={() => toggleActive(s)}
                 />
-                <IconButton size="small" onClick={() => openEdit(s)}>
+                <ActionIconButton aria-label={t('common.edit')} onClick={() => openEdit(s)}>
                   <EditOutlinedIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" color="error" onClick={() => setConfirmDelete(s)}>
+                </ActionIconButton>
+                <ActionIconButton tone="danger" aria-label={t('common.delete')} onClick={() => setConfirmDelete(s)}>
                   <DeleteOutlinedIcon fontSize="small" />
-                </IconButton>
+                </ActionIconButton>
               </Box>
             </Box>
           ))
