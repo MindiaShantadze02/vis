@@ -7,7 +7,7 @@ import {
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import AddIcon from '@mui/icons-material/Add'
 import { useTranslation } from 'react-i18next'
-import type { OnboardingData, OnboardingService } from './OnboardingLayout'
+import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
   goNext: () => void
@@ -16,16 +16,33 @@ interface OutletCtx {
   update: (patch: Partial<OnboardingData>) => void
 }
 
-const empty: OnboardingService = { name: '', duration_minutes: 30, price: 0 }
+// Numeric fields are held as strings while editing so the inputs can be
+// cleared/partially typed; they're coerced to numbers in addService().
+interface DraftService {
+  name: string
+  duration_minutes: string
+  price: string
+}
+
+const empty: DraftService = { name: '', duration_minutes: '30', price: '0' }
+
+const onlyInt = (v: string) => v.replace(/[^0-9]/g, '')
+const onlyDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
 
 export default function ServicesStep() {
   const { t } = useTranslation()
   const { goNext, goBack, data, update } = useOutletContext<OutletCtx>()
-  const [draft, setDraft] = useState<OnboardingService>({ ...empty })
+  const [draft, setDraft] = useState<DraftService>({ ...empty })
 
   function addService() {
-    if (!draft.name.trim()) return
-    update({ services: [...data.services, { ...draft }] })
+    if (!draft.name.trim() || !(Number(draft.duration_minutes) > 0)) return
+    update({
+      services: [...data.services, {
+        name: draft.name.trim(),
+        duration_minutes: Number(draft.duration_minutes),
+        price: Number(draft.price) || 0,
+      }],
+    })
     setDraft({ ...empty })
   }
 
@@ -88,26 +105,24 @@ export default function ServicesStep() {
               fullWidth
               size="small"
               label={t('onboarding.duration')}
-              type="number"
               value={draft.duration_minutes}
-              onChange={e => setDraft(d => ({ ...d, duration_minutes: Number(e.target.value) }))}
-              slotProps={{ htmlInput: { min: 5, step: 5 } }}
+              onChange={e => setDraft(d => ({ ...d, duration_minutes: onlyInt(e.target.value) }))}
+              slotProps={{ htmlInput: { inputMode: 'numeric' } }}
             />
             <TextField
               fullWidth
               size="small"
               label={t('onboarding.price')}
-              type="number"
               value={draft.price}
-              onChange={e => setDraft(d => ({ ...d, price: Number(e.target.value) }))}
-              slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
+              onChange={e => setDraft(d => ({ ...d, price: onlyDecimal(e.target.value) }))}
+              slotProps={{ htmlInput: { inputMode: 'decimal' } }}
             />
           </Stack>
           <Button
             variant="outlined"
             startIcon={<AddIcon />}
             onClick={addService}
-            disabled={!draft.name.trim()}
+            disabled={!draft.name.trim() || !(Number(draft.duration_minutes) > 0)}
           >
             {t('onboarding.addService')}
           </Button>

@@ -77,6 +77,11 @@ function statusColors(theme: Theme, status: AppointmentStatus): { main: string; 
 const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8)
 
+// Height of one hour row in px. Appointment pills are positioned and sized
+// against this so a 90-minute booking visually spans 1.5 rows. Must match the
+// row `minHeight` in the time-grid below.
+const HOUR_HEIGHT = 60
+
 // Intentional micro-type for the dense calendar grid pills — below the theme's
 // caption (12px) so multiple appointments fit inside a tight hour cell.
 const PILL_FONT = { primary: 11, secondary: 10 }
@@ -444,6 +449,7 @@ export default function CalendarPage() {
                   <Box
                     key={di}
                     sx={{
+                      position: 'relative',
                       borderLeft: '1px solid',
                       borderColor: 'divider',
                       p: 0.5,
@@ -452,9 +458,15 @@ export default function CalendarPage() {
                       gap: 0.5,
                     }}
                   >
-                    {/* Appointment pills */}
-                    {slotAppts.map(appt => {
+                    {/* Appointment pills — absolutely positioned so their height
+                        reflects duration and they span across hour rows. Pills
+                        sharing a start hour are laid out side by side. */}
+                    {slotAppts.map((appt, idx) => {
                       const c = statusColors(theme, appt.status)
+                      const start = new Date(appt.scheduled_at)
+                      const top = (start.getMinutes() / 60) * HOUR_HEIGHT
+                      const height = Math.max(16, (appt.duration_minutes / 60) * HOUR_HEIGHT - 2)
+                      const widthPct = 100 / slotAppts.length
                       return (
                         <Tooltip
                           key={appt.id}
@@ -464,18 +476,23 @@ export default function CalendarPage() {
                           <Box
                             onClick={() => setSelected(appt)}
                             sx={{
-                              width: '100%',
+                              position: 'absolute',
+                              top: `${top}px`,
+                              height: `${height}px`,
+                              left: `calc(${idx * widthPct}% + 2px)`,
+                              width: `calc(${widthPct}% - 4px)`,
+                              zIndex: 2,
                               borderRadius: '5px',
                               borderLeft: `3px solid ${c.main}`,
                               bgcolor: c.light,
                               px: 0.75, py: 0.4,
                               cursor: 'pointer',
                               overflow: 'hidden',
-                              transition: 'all 0.15s',
+                              transition: 'filter 0.15s, box-shadow 0.15s',
                               '&:hover': {
                                 filter: 'brightness(0.94)',
                                 boxShadow: `0 2px 8px ${c.main}50`,
-                                transform: 'translateY(-1px)',
+                                zIndex: 3,
                               },
                             }}
                           >

@@ -31,13 +31,28 @@ interface BookableMember {
   title: string | null
 }
 
-const EMPTY: Omit<Service, 'id' | 'sort_order'> = {
-  name: '',
-  duration_minutes: 60,
-  price: 0,
-  is_active: true,
-  max_per_slot: 1,
+// Numeric fields are held as strings while editing so the inputs can be
+// cleared/partially typed; they're coerced with Number() on save.
+interface ServiceForm {
+  name: string
+  duration_minutes: string
+  price: string
+  is_active: boolean
+  max_per_slot: string
 }
+
+const EMPTY: ServiceForm = {
+  name: '',
+  duration_minutes: '60',
+  price: '0',
+  is_active: true,
+  max_per_slot: '1',
+}
+
+// Allow only digits (integer fields) or digits with a single decimal point
+// (price). Returns the cleaned string so the field can stay empty mid-edit.
+const onlyInt = (v: string) => v.replace(/[^0-9]/g, '')
+const onlyDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
 
 export default function ServicesSettings() {
   const { t } = useTranslation()
@@ -89,8 +104,11 @@ export default function ServicesSettings() {
   async function openEdit(s: Service) {
     setEditing(s)
     setForm({
-      name: s.name, duration_minutes: s.duration_minutes, price: s.price,
-      is_active: s.is_active, max_per_slot: s.max_per_slot,
+      name: s.name,
+      duration_minutes: String(s.duration_minutes),
+      price: String(s.price),
+      is_active: s.is_active,
+      max_per_slot: String(s.max_per_slot),
     })
     const { data } = await supabase.from('service_staff').select('member_id').eq('service_id', s.id)
     setSelectedMemberIds((data ?? []).map(r => (r as { member_id: string }).member_id))
@@ -255,27 +273,24 @@ export default function ServicesSettings() {
             />
             <TextField
               label={t('onboarding.duration')}
-              type="number"
               value={form.duration_minutes}
-              onChange={e => setForm(f => ({ ...f, duration_minutes: Number(e.target.value) }))}
+              onChange={e => setForm(f => ({ ...f, duration_minutes: onlyInt(e.target.value) }))}
               fullWidth
-              slotProps={{ htmlInput: { min: 5, step: 5 } }}
+              slotProps={{ htmlInput: { inputMode: 'numeric' } }}
             />
             <TextField
               label={t('onboarding.price')}
-              type="number"
               value={form.price}
-              onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))}
+              onChange={e => setForm(f => ({ ...f, price: onlyDecimal(e.target.value) }))}
               fullWidth
-              slotProps={{ htmlInput: { min: 0, step: 1 } }}
+              slotProps={{ htmlInput: { inputMode: 'decimal' } }}
             />
             <TextField
               label={t('settings.maxPerSlot')}
-              type="number"
               value={form.max_per_slot}
-              onChange={e => setForm(f => ({ ...f, max_per_slot: Math.max(1, Number(e.target.value)) }))}
+              onChange={e => setForm(f => ({ ...f, max_per_slot: onlyInt(e.target.value) }))}
               fullWidth
-              slotProps={{ htmlInput: { min: 1, step: 1 } }}
+              slotProps={{ htmlInput: { inputMode: 'numeric' } }}
             />
             {bookableMembers.length > 0 && (
               <Box>
@@ -314,7 +329,12 @@ export default function ServicesSettings() {
           <Button
             variant="contained"
             onClick={handleSave}
-            disabled={saving || !form.name.trim()}
+            disabled={
+              saving ||
+              !form.name.trim() ||
+              !(Number(form.duration_minutes) > 0) ||
+              !(Number(form.max_per_slot) >= 1)
+            }
           >
             {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
           </Button>
