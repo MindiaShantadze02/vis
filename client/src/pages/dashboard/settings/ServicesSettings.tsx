@@ -49,6 +49,20 @@ const EMPTY: ServiceForm = {
   max_per_slot: '1',
 }
 
+// An appointment may last at most 24 hours. Mirrors the DB constraint
+// services_duration_max (migration 009) and the book-appointment guard.
+const MAX_DURATION_MINUTES = 1440
+
+// Turn a raw Supabase/Postgres error into a human-readable, translated
+// message instead of leaking DB internals (e.g. "out of range for type
+// smallint"). `tr` is the i18n t() function.
+function friendlyError(message: string | undefined, tr: (k: string) => string): string {
+  const msg = (message ?? '').toLowerCase()
+  if (msg.includes('out of range') || msg.includes('overflow')) return tr('validation.numberTooLarge')
+  if (msg.includes('services_duration_max') || msg.includes('duration_range')) return tr('validation.durationTooLong')
+  return tr('validation.saveFailed')
+}
+
 // Allow only digits (integer fields) or digits with a single decimal point
 // (price). Returns the cleaned string so the field can stay empty mid-edit.
 const onlyInt = (v: string) => v.replace(/[^0-9]/g, '')
@@ -140,8 +154,11 @@ export default function ServicesSettings() {
     }
   }
 
+  const durationTooLong = Number(form.duration_minutes) > MAX_DURATION_MINUTES
+
   async function handleSave() {
     if (!org || !form.name.trim()) return
+    if (durationTooLong) { setError(t('validation.durationTooLong')); return }
     setSaving(true)
     setError(null)
 
@@ -157,7 +174,7 @@ export default function ServicesSettings() {
           max_per_slot: Number(form.max_per_slot),
         })
         .eq('id', editing.id)
-      if (err) { setError(err.message); setSaving(false); return }
+      if (err) { setError(friendlyError(err.message, t)); setSaving(false); return }
       serviceId = editing.id
     } else {
       const maxOrder = services.reduce((m, s) => Math.max(m, s.sort_order), -1)
@@ -174,7 +191,7 @@ export default function ServicesSettings() {
         })
         .select('id')
         .single()
-      if (err || !data) { setError(err?.message ?? 'error'); setSaving(false); return }
+      if (err || !data) { setError(friendlyError(err?.message, t)); setSaving(false); return }
       serviceId = data.id
     }
 
@@ -277,6 +294,8 @@ export default function ServicesSettings() {
               onChange={e => setForm(f => ({ ...f, duration_minutes: onlyInt(e.target.value) }))}
               fullWidth
               slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+              error={durationTooLong}
+              helperText={durationTooLong ? t('validation.durationTooLong') : undefined}
             />
             <TextField
               label={t('onboarding.price')}
@@ -333,6 +352,7 @@ export default function ServicesSettings() {
               saving ||
               !form.name.trim() ||
               !(Number(form.duration_minutes) > 0) ||
+              durationTooLong ||
               !(Number(form.max_per_slot) >= 1)
             }
           >

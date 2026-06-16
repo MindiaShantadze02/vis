@@ -54,6 +54,12 @@ Deno.serve(async (req) => {
 
     if (!service) return Response.json({ error: 'Service not found' }, { status: 404, headers: corsHeaders })
 
+    // An appointment may last at most 24 hours. Mirrors the DB constraint
+    // (services_duration_max) so a misconfigured service fails fast here.
+    if (service.duration_minutes > 1440) {
+      return Response.json({ error: 'duration_too_long' }, { status: 422, headers: corsHeaders })
+    }
+
     // Check slot is still free
     const slotStart = new Date(scheduled_at)
     const slotEnd = new Date(slotStart.getTime() + service.duration_minutes * 60000)

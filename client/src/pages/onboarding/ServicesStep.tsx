@@ -27,6 +27,10 @@ interface DraftService {
 
 const empty: DraftService = { name: '', duration_minutes: '30', price: '0' }
 
+// An appointment may last at most 24 hours. Mirrors the DB constraint
+// services_duration_max (migration 009).
+const MAX_DURATION_MINUTES = 1440
+
 const onlyInt = (v: string) => v.replace(/[^0-9]/g, '')
 const onlyDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
 
@@ -35,8 +39,10 @@ export default function ServicesStep() {
   const { goNext, goBack, data, update } = useOutletContext<OutletCtx>()
   const [draft, setDraft] = useState<DraftService>({ ...empty })
 
+  const durationTooLong = Number(draft.duration_minutes) > MAX_DURATION_MINUTES
+
   function addService() {
-    if (!draft.name.trim() || !(Number(draft.duration_minutes) > 0)) return
+    if (!draft.name.trim() || !(Number(draft.duration_minutes) > 0) || durationTooLong) return
     update({
       services: [...data.services, {
         name: draft.name.trim(),
@@ -109,6 +115,8 @@ export default function ServicesStep() {
               value={draft.duration_minutes}
               onChange={e => setDraft(d => ({ ...d, duration_minutes: onlyInt(e.target.value) }))}
               slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+              error={durationTooLong}
+              helperText={durationTooLong ? t('validation.durationTooLong') : undefined}
             />
             <TextField
               fullWidth
@@ -123,7 +131,7 @@ export default function ServicesStep() {
             variant="outlined"
             startIcon={<AddIcon />}
             onClick={addService}
-            disabled={!draft.name.trim() || !(Number(draft.duration_minutes) > 0)}
+            disabled={!draft.name.trim() || !(Number(draft.duration_minutes) > 0) || durationTooLong}
           >
             {t('onboarding.addService')}
           </Button>

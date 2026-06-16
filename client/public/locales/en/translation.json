@@ -25,7 +25,10 @@
     "passwordTooShort": "Password must be at least 6 characters",
     "endBeforeStart": "End time cannot be before start time",
     "rangeOverlap": "Time ranges overlap",
-    "breakOutsideHours": "Breaks must be within working hours"
+    "breakOutsideHours": "Breaks must be within working hours",
+    "durationTooLong": "Duration cannot exceed 24 hours (1440 minutes)",
+    "numberTooLarge": "One of the values entered is too large",
+    "saveFailed": "Could not save. Please check the values and try again."
   },
   "auth": {
     "phoneNumber": "Phone number",
