@@ -8,6 +8,7 @@ import '@fontsource/noto-sans-georgian/700.css'
 import { ThemeProvider, CssBaseline } from '@mui/material'
 import { LocalizationProvider } from '@mui/x-date-pickers'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
+import { ka } from 'date-fns/locale'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '@/lib/i18n'
 import theme from '@/theme/theme'
@@ -22,7 +23,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <ToastProvider>
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ka}>
             <BrowserRouter>
               <AuthProvider>
                 <OrgProvider>

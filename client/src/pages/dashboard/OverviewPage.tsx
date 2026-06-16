@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import {
   Grid, Card, Typography, Box, Skeleton, Chip, Button,
   TextField, Select, MenuItem, FormControl, InputLabel, Stack,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Dialog, DialogTitle, DialogContent, DialogActions, TablePagination,
   useMediaQuery, useTheme,
 } from '@mui/material'
+import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
@@ -66,6 +67,11 @@ export default function OverviewPage() {
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | 'all'>('all')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [dateFrom, setDateFrom] = useState<Date | null>(null)
+  const [dateTo, setDateTo] = useState<Date | null>(null)
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(25)
+  const [total, setTotal] = useState(0)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const [selected, setSelected] = useState<Appointment | null>(null)
@@ -87,17 +93,18 @@ export default function OverviewPage() {
   }, [org])
 
   // Debounce the search box so we issue one query after typing settles,
-  // not one per keystroke.
+  // not one per keystroke. Resetting the page here (rather than in a
+  // separate effect) avoids a stale-page fetch landing on an empty page.
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    const id = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(0) }, 300)
     return () => clearTimeout(id)
   }, [search])
 
-  // Status + search are both applied server-side via the
-  // search_appointments RPC.
+  // Status, search, date range, and pagination are all applied
+  // server-side via the search_appointments RPC.
   useEffect(() => {
     if (org) loadAppointments()
-  }, [org, statusFilter, debouncedSearch])
+  }, [org, statusFilter, debouncedSearch, dateFrom, dateTo, page, rowsPerPage])
 
   // Which members are assignable to the opened appointment's service.
   useEffect(() => {
@@ -174,10 +181,16 @@ export default function OverviewPage() {
       p_org_id: org.id,
       p_status: statusFilter === 'all' ? null : statusFilter,
       p_search: debouncedSearch || null,
-      p_limit: 100,
+      p_date_from: dateFrom ? startOfDay(dateFrom).toISOString() : null,
+      p_date_to: dateTo ? endOfDay(dateTo).toISOString() : null,
+      p_limit: rowsPerPage,
+      p_offset: page * rowsPerPage,
     })
 
-    setAppointments((data ?? []) as unknown as Appointment[])
+    const rows = (data ?? []) as unknown as (Appointment & { total_count?: number })[]
+    setAppointments(rows as unknown as Appointment[])
+    // total_count is identical on every row; absent when zero rows match.
+    setTotal(rows[0]?.total_count ?? 0)
     setApptLoading(false)
   }
 
@@ -260,21 +273,25 @@ export default function OverviewPage() {
       {/* Appointments list */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 600 }}>{t('dashboard.appointments')}</Typography>
-        <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap' }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          sx={{ flexWrap: 'wrap', gap: 1.5, width: { xs: '100%', md: 'auto' } }}
+        >
           <TextField
             size="small"
             placeholder={`${t('common.search')}...`}
             value={search}
             onChange={e => setSearch(e.target.value)}
             slotProps={{ input: { startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 20 }} /> } }}
-            sx={{ minWidth: 200 }}
+            sx={{ minWidth: { sm: 200 }, width: { xs: '100%', sm: 'auto' } }}
           />
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+          <FormControl size="small" sx={{ minWidth: { sm: 140 }, width: { xs: '100%', sm: 'auto' } }}>
             <InputLabel>სტატუსი</InputLabel>
             <Select
               value={statusFilter}
               label="სტატუსი"
-              onChange={e => setStatusFilter(e.target.value as AppointmentStatus | 'all')}
+              onChange={e => { setStatusFilter(e.target.value as AppointmentStatus | 'all'); setPage(0) }}
             >
               <MenuItem value="all">ყველა</MenuItem>
               {ALL_STATUSES.map(s => (
@@ -282,6 +299,27 @@ export default function OverviewPage() {
               ))}
             </Select>
           </FormControl>
+          <DatePicker
+            label={t('dashboard.dateFrom')}
+            value={dateFrom}
+            onChange={v => { setDateFrom(v); setPage(0) }}
+            format="dd MMM yyyy"
+            slotProps={{
+              textField: { size: 'small', sx: { minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } } },
+              field: { clearable: true, onClear: () => { setDateFrom(null); setPage(0) } },
+            }}
+          />
+          <DatePicker
+            label={t('dashboard.dateTo')}
+            value={dateTo}
+            minDate={dateFrom ?? undefined}
+            onChange={v => { setDateTo(v); setPage(0) }}
+            format="dd MMM yyyy"
+            slotProps={{
+              textField: { size: 'small', sx: { minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } } },
+              field: { clearable: true, onClear: () => { setDateTo(null); setPage(0) } },
+            }}
+          />
         </Stack>
       </Box>
 
@@ -330,17 +368,17 @@ export default function OverviewPage() {
             // Mobile: stacked card layout
             if (isMobile) {
               return (
-                <Box {...rowProps}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                <Box {...rowProps} sx={{ ...rowProps.sx, py: 1.75 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.25 }}>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      <Typography variant="body2" noWrap sx={{ fontWeight: 600, fontSize: { xs: '0.9rem', md: '0.875rem' } }}>
                         {appt.customers?.first_name} {appt.customers?.last_name}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                      <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block', fontSize: { xs: '0.8rem', md: '0.75rem' } }}>
                         {format(new Date(appt.scheduled_at), 'd MMM, HH:mm', { locale: ka })} · {appt.services?.name}
                         {appt.staff?.display_name ? ` · ${appt.staff.display_name}` : ''}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', md: '0.75rem' } }}>
                         {appt.services?.price} ₾
                       </Typography>
                     </Box>
@@ -393,6 +431,27 @@ export default function OverviewPage() {
             )
           })
         }
+
+        {/* Pagination — hidden while loading or with no results */}
+        {!apptLoading && total > 0 && (
+          <TablePagination
+            component="div"
+            count={total}
+            page={page}
+            onPageChange={(_, p) => setPage(p)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={e => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0) }}
+            rowsPerPageOptions={[10, 25, 50]}
+            labelRowsPerPage={t('dashboard.rowsPerPage')}
+            labelDisplayedRows={({ from, to, count }) => `${from}–${to} / ${count}`}
+            sx={{
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              '& .MuiTablePagination-toolbar': { flexWrap: 'wrap', minHeight: 52, gap: 0.5 },
+              '& .MuiTablePagination-actions button': { p: { xs: 1.25, md: 1 } },
+            }}
+          />
+        )}
       </Card>
 
       {/* Detail dialog */}

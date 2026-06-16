@@ -97,7 +97,10 @@
     "cancelled": "Cancelled",
     "staff": "Specialist",
     "unassigned": "Unassigned",
-    "assignStaff": "Assign specialist"
+    "assignStaff": "Assign specialist",
+    "dateFrom": "From date",
+    "dateTo": "To date",
+    "rowsPerPage": "Rows per page"
   },
   "settings": {
     "profile": "Profile",

@@ -97,7 +97,10 @@
     "cancelled": "Отменено",
     "staff": "Специалист",
     "unassigned": "Не назначен",
-    "assignStaff": "Назначить специалиста"
+    "assignStaff": "Назначить специалиста",
+    "dateFrom": "Дата с",
+    "dateTo": "Дата по",
+    "rowsPerPage": "Строк на странице"
   },
   "settings": {
     "profile": "Профиль",

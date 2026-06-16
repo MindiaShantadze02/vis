@@ -100,7 +100,10 @@
     "cancelled": "გაუქმებული",
     "staff": "სპეციალისტი",
     "unassigned": "მიუნიჭებელი",
-    "assignStaff": "სპეციალისტის მინიჭება"
+    "assignStaff": "სპეციალისტის მინიჭება",
+    "dateFrom": "თარიღი (დან)",
+    "dateTo": "თარიღი (მდე)",
+    "rowsPerPage": "რიგი გვერდზე"
   },
   "settings": {
     "profile": "პროფილი",
