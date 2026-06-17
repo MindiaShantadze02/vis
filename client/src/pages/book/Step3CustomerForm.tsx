@@ -152,7 +152,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Stack spacing={2}>
-        <Stack direction="row" spacing={1.5}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
           <TextField
             label="სახელი"
             value={booking.firstName}

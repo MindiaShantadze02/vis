@@ -31,53 +31,53 @@ export interface BookingTheme {
 }
 
 export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
-  // Violet — the app default. Polished and professional.
+  // Soft indigo-violet — the app default. Calm and professional.
   classic: {
     key: 'classic',
     label: 'კლასიკური',
-    sidebar: 'linear-gradient(160deg, #2E1065 0%, #4C1D95 40%, #7C3AED 100%)',
+    sidebar: 'linear-gradient(160deg, #474270 0%, #6B5DD3 100%)',
     sidebarText: 'light',
-    pageBg: '#FAF8FF',
-    primary: '#7C3AED',
-    primaryLight: '#A78BFA',
-    primaryDark: '#5B21B6',
-    rgb: '124,58,237',
+    pageBg: '#FAF9FE',
+    primary: '#6B5DD3',
+    primaryLight: '#A9A0E8',
+    primaryDark: '#564AA8',
+    rgb: '107,93,211',
   },
-  // Blue — calm and corporate.
+  // Muted slate-blue — calm and corporate.
   ocean: {
     key: 'ocean',
     label: 'ოკეანე',
-    sidebar: 'linear-gradient(160deg, #0C2D48 0%, #145374 40%, #2E8BC0 100%)',
+    sidebar: 'linear-gradient(160deg, #314F66 0%, #4886AE 100%)',
     sidebarText: 'light',
-    pageBg: '#F4FAFE',
-    primary: '#1F7FB0',
-    primaryLight: '#5FB0D9',
-    primaryDark: '#145374',
-    rgb: '31,127,176',
+    pageBg: '#F6FAFD',
+    primary: '#4886AE',
+    primaryLight: '#93BBD6',
+    primaryDark: '#356781',
+    rgb: '72,134,174',
   },
-  // Warm pink → orange. Friendly and inviting.
+  // Soft terracotta — warm and inviting, without the neon.
   sunset: {
     key: 'sunset',
     label: 'მზის ჩასვლა',
-    sidebar: 'linear-gradient(160deg, #6A1B4D 0%, #C2185B 40%, #FF7043 100%)',
+    sidebar: 'linear-gradient(160deg, #7E5A57 0%, #BE7860 100%)',
     sidebarText: 'light',
-    pageBg: '#FFF7F3',
-    primary: '#E64A19',
-    primaryLight: '#FF8A65',
-    primaryDark: '#AC2D0E',
-    rgb: '230,74,25',
+    pageBg: '#FFF8F4',
+    primary: '#C76B54',
+    primaryLight: '#E6A892',
+    primaryDark: '#9E4F3B',
+    rgb: '199,107,84',
   },
-  // Emerald green. Fresh and energetic.
+  // Sage green — fresh but understated.
   sporty: {
     key: 'sporty',
     label: 'სპორტული',
-    sidebar: 'linear-gradient(160deg, #0B3D2E 0%, #11734A 40%, #2ECC71 100%)',
+    sidebar: 'linear-gradient(160deg, #3A5749 0%, #45986C 100%)',
     sidebarText: 'light',
-    pageBg: '#F3FBF6',
-    primary: '#0E9E55',
-    primaryLight: '#4ED88A',
-    primaryDark: '#0B7A41',
-    rgb: '14,158,85',
+    pageBg: '#F6FBF8',
+    primary: '#45986C',
+    primaryLight: '#8AC6A5',
+    primaryDark: '#327150',
+    rgb: '69,152,108',
   },
   // Clean white — minimal, with a slate accent and a light sidebar.
   white: {
@@ -125,9 +125,9 @@ export function makeBookingTheme(bt: BookingTheme): Theme {
       MuiButton: {
         styleOverrides: {
           contained: {
-            boxShadow: `0 1px 3px rgba(${rgb},0.18)`,
-            '&:hover': { boxShadow: `0 4px 16px rgba(${rgb},0.30)` },
-            '&:active': { boxShadow: `0 1px 3px rgba(${rgb},0.18)` },
+            boxShadow: `0 1px 2px rgba(${rgb},0.12)`,
+            '&:hover': { boxShadow: `0 3px 10px rgba(${rgb},0.18)` },
+            '&:active': { boxShadow: `0 1px 2px rgba(${rgb},0.12)` },
           },
           outlined: {
             borderColor: `rgba(${rgb},0.35)`,
@@ -148,7 +148,7 @@ export function makeBookingTheme(bt: BookingTheme): Theme {
           root: {
             '& .MuiOutlinedInput-root': {
               '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: primary },
-              '&.Mui-focused': { boxShadow: `0 0 0 3px rgba(${rgb},0.12)` },
+              '&.Mui-focused': { boxShadow: `0 0 0 3px rgba(${rgb},0.10)` },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: primary },
             },
             '& .MuiInputLabel-root.Mui-focused': { color: primary },
@@ -159,7 +159,7 @@ export function makeBookingTheme(bt: BookingTheme): Theme {
         styleOverrides: {
           root: {
             color: `rgba(${rgb},0.20)`,
-            '&.Mui-active': { color: primary, filter: `drop-shadow(0 2px 6px rgba(${rgb},0.35))` },
+            '&.Mui-active': { color: primary, filter: `drop-shadow(0 2px 5px rgba(${rgb},0.22))` },
             '&.Mui-completed': { color: '#059669' },
           },
         },
