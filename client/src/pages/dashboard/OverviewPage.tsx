@@ -81,6 +81,8 @@ export default function OverviewPage() {
 
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [adminNote, setAdminNote] = useState('')
+  // Inline two-step guard for cancelling an already-approved appointment.
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
 
   const [bookableMembers, setBookableMembers] = useState<StaffRef[]>([])
@@ -200,7 +202,7 @@ export default function OverviewPage() {
     setApptLoading(false)
   }
 
-  async function changeStatus(id: string, status: 'approved' | 'rejected') {
+  async function changeStatus(id: string, status: 'approved' | 'rejected' | 'cancelled') {
     setActionLoading(id)
     const { error } = await supabase
       .from('appointments')
@@ -214,9 +216,13 @@ export default function OverviewPage() {
       if (status === 'approved') {
         setStats(prev => prev ? { ...prev, pendingCount: Math.max(0, prev.pendingCount - 1) } : prev)
       }
-      toast.success(status === 'approved' ? t('dashboard.approved') : t('dashboard.rejected'))
+      // Cancelling an approved booking drops it from revenue/today counts, so
+      // refresh the stat cards from the server.
+      if (status === 'cancelled') loadStats()
+      toast.success(t(`dashboard.${status}`))
       setSelected(null)
       setAdminNote('')
+      setConfirmingCancel(false)
     }
     setActionLoading(null)
   }
@@ -388,7 +394,7 @@ export default function OverviewPage() {
           : appointments.map((appt, i) => {
             const rowProps = {
               key: appt.id,
-              onClick: () => { setSelected(appt); setAdminNote(appt.admin_notes ?? '') },
+              onClick: () => { setSelected(appt); setAdminNote(appt.admin_notes ?? ''); setConfirmingCancel(false) },
               sx: {
                 px: 2, py: 1.5,
                 borderBottom: i < appointments.length - 1 ? '1px solid' : 'none',
@@ -488,7 +494,7 @@ export default function OverviewPage() {
       </Card>
 
       {/* Detail dialog */}
-      <Dialog open={!!selected} onClose={() => setSelected(null)} maxWidth="sm" fullWidth>
+      <Dialog open={!!selected} onClose={() => { setSelected(null); setConfirmingCancel(false) }} maxWidth="sm" fullWidth>
         {selected && (
           <>
             <DialogTitle sx={{ fontWeight: 700 }}>
@@ -546,7 +552,7 @@ export default function OverviewPage() {
                     {selected.payment_status === 'paid' ? '✓ გადახდილია' : 'გადაუხდელი'}
                   </Typography>
                 </Box>
-                {selected.status === 'pending' && (
+                {(selected.status === 'pending' || selected.status === 'approved') && (
                   <TextField
                     fullWidth size="small"
                     label="შიდა შენიშვნა (არასავალდებულო)"
@@ -558,7 +564,7 @@ export default function OverviewPage() {
               </Stack>
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button onClick={() => setSelected(null)}>{t('common.cancel')}</Button>
+              <Button onClick={() => { setSelected(null); setConfirmingCancel(false) }}>{t('common.cancel')}</Button>
               {selected.status === 'pending' && (
                 <>
                   <Button variant="outlined" color="error"
@@ -570,6 +576,24 @@ export default function OverviewPage() {
                     {t('dashboard.approve')}
                   </Button>
                 </>
+              )}
+              {selected.status === 'approved' && (
+                confirmingCancel ? (
+                  <>
+                    <Button onClick={() => setConfirmingCancel(false)} disabled={!!actionLoading}>
+                      {t('dashboard.keepAppointment')}
+                    </Button>
+                    <Button variant="contained" color="error"
+                      onClick={() => changeStatus(selected.id, 'cancelled')} disabled={!!actionLoading}>
+                      {t('dashboard.confirmCancel')}
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outlined" color="error"
+                    onClick={() => setConfirmingCancel(true)} disabled={!!actionLoading}>
+                    {t('dashboard.cancelAppointment')}
+                  </Button>
+                )
               )}
             </DialogActions>
           </>
