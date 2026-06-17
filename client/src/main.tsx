@@ -23,7 +23,15 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <ToastProvider>
-          <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ka}>
+          <LocalizationProvider
+            dateAdapter={AdapterDateFns}
+            adapterLocale={ka}
+            localeText={{
+              fieldDayPlaceholder: () => 'დღე',
+              fieldMonthPlaceholder: params => (params.contentType === 'letter' ? 'თვე' : 'თვ'),
+              fieldYearPlaceholder: () => 'წელი',
+            }}
+          >
             <BrowserRouter>
               <AuthProvider>
                 <OrgProvider>
