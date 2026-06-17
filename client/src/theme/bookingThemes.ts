@@ -79,11 +79,12 @@ export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
     primaryDark: '#327150',
     rgb: '69,152,108',
   },
-  // Clean white — minimal, with a slate accent and a light sidebar.
+  // Clean white — minimal: a flat off-white sidebar (no gradient) separated
+  // from the white content by a hairline border. Slate accent.
   white: {
     key: 'white',
     label: 'თეთრი',
-    sidebar: 'linear-gradient(160deg, #F9FAFB 0%, #EEF1F4 100%)',
+    sidebar: '#F7F8FA',
     sidebarText: 'dark',
     pageBg: '#FFFFFF',
     primary: '#1F2937',
