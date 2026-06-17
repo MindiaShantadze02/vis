@@ -4,13 +4,15 @@ import {
   Box, Typography, Avatar, Stepper,
   Step, StepLabel, useMediaQuery, useTheme, Divider,
 } from '@mui/material'
+import { ThemeProvider } from '@mui/material/styles'
 import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import { supabase } from '@/lib/supabase'
 import { anim } from '@/theme/animations'
-import { gradient, LAYOUT } from '@/theme/theme'
+import { LAYOUT } from '@/theme/theme'
+import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { LoadingState, EmptyState } from '@/components/ui'
 import Step1ServiceSelect from './Step1ServiceSelect'
 import Step2DateTimeSelect from './Step2DateTimeSelect'
@@ -24,6 +26,7 @@ export interface BookingOrg {
   logo_url: string | null
   slug: string
   payment_config: Record<string, { enabled?: boolean }> | null
+  booking_theme: string | null
 }
 
 export interface BookingService {
@@ -76,7 +79,7 @@ export default function BookingLayout() {
     async function loadOrg() {
       const { data, error } = await supabase
         .from('organisations')
-        .select('id, name, description, contact_phone, logo_url, slug, payment_config')
+        .select('id, name, description, contact_phone, logo_url, slug, payment_config, booking_theme')
         .eq('slug', slug)
         .single()
       if (error || !data) { console.error('org load error', error); setNotFound(true); return }
@@ -109,12 +112,19 @@ export default function BookingLayout() {
     )
   }
 
+  const bookingTheme = getBookingTheme(org.booking_theme)
+  // Light vs. dark sidebar content (the white theme uses a light panel, so its
+  // text/overlays must flip to dark to stay legible).
+  const darkSidebar = bookingTheme.sidebarText === 'dark'
+  const sideFg = darkSidebar ? '#1F2937' : '#FFFFFF'
+  const sideOverlay = (a: number) => `rgba(${darkSidebar ? '0,0,0' : '255,255,255'},${a})`
+
   const sidebar = (
     <Box
       sx={{
         width: { xs: '100%', md: 300 },
-        background: gradient.sidebar,
-        color: 'white',
+        background: bookingTheme.sidebar,
+        color: sideFg,
         p: 4,
         display: 'flex',
         flexDirection: 'column',
@@ -128,7 +138,7 @@ export default function BookingLayout() {
           top: -60, right: -60,
           width: 200, height: 200,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(167,139,250,0.22) 0%, transparent 70%)',
+          background: `radial-gradient(circle, ${sideOverlay(0.18)} 0%, transparent 70%)`,
           pointerEvents: 'none',
         },
         '&::after': {
@@ -137,7 +147,7 @@ export default function BookingLayout() {
           bottom: -40, left: -40,
           width: 160, height: 160,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(244,114,182,0.12) 0%, transparent 70%)',
+          background: `radial-gradient(circle, ${sideOverlay(0.10)} 0%, transparent 70%)`,
           pointerEvents: 'none',
         },
       }}
@@ -147,16 +157,17 @@ export default function BookingLayout() {
           src={org.logo_url ?? undefined}
           sx={{
             width: 56, height: 56,
-            background: 'rgba(255,255,255,0.15)',
+            background: sideOverlay(darkSidebar ? 0.06 : 0.15),
+            color: sideFg,
             fontSize: 22, fontWeight: 700,
-            border: '2px solid rgba(255,255,255,0.30)',
+            border: `2px solid ${sideOverlay(0.30)}`,
             boxShadow: '0 4px 16px rgba(0,0,0,0.20)',
           }}
         >
           {org.name.charAt(0)}
         </Avatar>
         <Box>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: 'white' }}>{org.name}</Typography>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: sideFg }}>{org.name}</Typography>
           {org.contact_phone && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
               <PhoneOutlinedIcon sx={{ fontSize: 14, opacity: 0.8 }} />
@@ -168,7 +179,7 @@ export default function BookingLayout() {
 
       {org.description && (
         <>
-          <Divider sx={{ borderColor: 'rgba(255,255,255,0.15)' }} />
+          <Divider sx={{ borderColor: sideOverlay(0.15) }} />
           <Typography variant="body2" sx={{ opacity: 0.85, lineHeight: 1.65, position: 'relative' }}>
             {org.description}
           </Typography>
@@ -178,7 +189,7 @@ export default function BookingLayout() {
       {/* Selected booking summary */}
       {booking.service && (
         <Box sx={{ animation: anim.fadeInUp, position: 'relative' }}>
-          <Divider sx={{ borderColor: 'rgba(255,255,255,0.15)', mb: 2 }} />
+          <Divider sx={{ borderColor: sideOverlay(0.15), mb: 2 }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <CalendarMonthOutlinedIcon sx={{ fontSize: 16, opacity: 0.8 }} />
@@ -202,10 +213,11 @@ export default function BookingLayout() {
   )
 
   return (
+    <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: '100vh' }}>
       {sidebar}
 
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: bookingTheme.pageBg }}>
         {/* Stepper header */}
         <Box sx={{ bgcolor: 'background.paper', px: { xs: 2, md: 5 }, py: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
           <Stepper activeStep={step} alternativeLabel={isMobile}>
@@ -249,5 +261,6 @@ export default function BookingLayout() {
         </Box>
       </Box>
     </Box>
+    </ThemeProvider>
   )
 }

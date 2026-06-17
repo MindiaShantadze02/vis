@@ -10,8 +10,8 @@ import {
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { useTheme, alpha } from '@mui/material/styles'
 import { anim } from '@/theme/animations'
-import { elevation } from '@/theme/theme'
 import { LoadingState } from '@/components/ui'
 import type { BookingService, BookingStaff } from './BookingLayout'
 
@@ -43,6 +43,9 @@ const ANY = 'any'
 
 export default function Step2DateTimeSelect({ orgId, service, initialDate, initialStaffId, onSelect, onBack }: Props) {
   const { t } = useTranslation()
+  const theme = useTheme()
+  const glow = `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`
+  const glowSoft = `0 4px 12px ${alpha(theme.palette.primary.main, 0.18)}`
   const today = startOfDay(new Date())
   // Restore a previously chosen date (yyyy-MM-dd) so it stays selected when
   // returning from the details step.
@@ -280,7 +283,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                 bgcolor: isSelected ? 'primary.main' : 'background.paper',
                 border: '1px solid',
                 borderColor: isSelected ? 'primary.main' : isToday ? 'primary.light' : 'divider',
-                boxShadow: isSelected ? elevation.glow : 'none',
+                boxShadow: isSelected ? glow : 'none',
                 opacity: disabled ? 0.35 : 1,
                 '&:hover': disabled ? {} : { borderColor: 'primary.main' },
                 transition: 'all 0.15s cubic-bezier(0.16,1,0.3,1)',
@@ -344,7 +347,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                       '&:hover': {
                         bgcolor: 'primary.main',
                         color: 'white',
-                        boxShadow: elevation.glowSoft,
+                        boxShadow: glowSoft,
                         borderColor: 'primary.main',
                       },
                     }}

@@ -3,8 +3,8 @@ import { Box, Typography, Card, CardActionArea, CardContent, Chip } from '@mui/m
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlined'
 import { supabase } from '@/lib/supabase'
+import { useTheme, alpha } from '@mui/material/styles'
 import { anim } from '@/theme/animations'
-import { elevation } from '@/theme/theme'
 import { LoadingState, EmptyState } from '@/components/ui'
 import type { BookingService } from './BookingLayout'
 
@@ -29,6 +29,9 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
         setLoading(false)
       })
   }, [orgId])
+
+  const theme = useTheme()
+  const cardHover = `0 8px 24px ${alpha(theme.palette.primary.main, 0.1)}, 0 2px 8px rgba(0,0,0,0.04)`
 
   if (loading) return <LoadingState />
 
@@ -61,7 +64,7 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
               '&:hover': {
                 borderColor: 'primary.main',
                 transform: 'translateY(-2px)',
-                boxShadow: elevation.cardHover,
+                boxShadow: cardHover,
               },
             }}
           >

@@ -10,6 +10,9 @@ import { useOrg } from '@/contexts/OrgContext'
 import { isValidGeorgianPhone, formatGeorgianPhone } from '@/lib/validation'
 import { PageHeader, CopyableText, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
+import {
+  BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, type BookingThemeKey,
+} from '@/theme/bookingThemes'
 
 export default function ProfileSettings() {
   const { t } = useTranslation()
@@ -20,6 +23,7 @@ export default function ProfileSettings() {
   const [description, setDescription] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [bookingTheme, setBookingTheme] = useState<BookingThemeKey>(DEFAULT_BOOKING_THEME)
 
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -32,6 +36,7 @@ export default function ProfileSettings() {
       setDescription((org as unknown as Record<string, string>).description ?? '')
       setContactPhone((org as unknown as Record<string, string>).contact_phone ?? '')
       setLogoUrl((org as unknown as Record<string, string>).logo_url ?? null)
+      setBookingTheme((org.booking_theme as BookingThemeKey) ?? DEFAULT_BOOKING_THEME)
     }
   }, [org])
 
@@ -80,6 +85,7 @@ export default function ProfileSettings() {
         name: name.trim(),
         description: description.trim() || null,
         contact_phone: formatGeorgianPhone(contactPhone),
+        booking_theme: bookingTheme,
       })
       .eq('id', org.id)
 
@@ -169,6 +175,50 @@ export default function ProfileSettings() {
               helperText={phoneInvalid ? t('validation.invalidPhone') : undefined}
               slotProps={{ htmlInput: { inputMode: 'tel' } }}
             />
+            {/* Booking page colour theme — what customers see when booking. */}
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                ჯავშნის გვერდის ფერი
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                ფერი, რომელსაც კლიენტები ხედავენ ჯავშნისას
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 1.5 }}>
+                {BOOKING_THEME_LIST.map(th => {
+                  const selected = th.key === bookingTheme
+                  return (
+                    <Box
+                      key={th.key}
+                      onClick={() => setBookingTheme(th.key)}
+                      role="button"
+                      aria-pressed={selected}
+                      sx={{
+                        display: 'flex', alignItems: 'center', gap: 1,
+                        px: 1.5, py: 1, borderRadius: 2, cursor: 'pointer',
+                        border: '2px solid',
+                        borderColor: selected ? 'primary.main' : 'divider',
+                        bgcolor: selected ? 'action.hover' : 'transparent',
+                        transition: 'border-color 0.15s ease, background-color 0.15s ease',
+                        '&:hover': { borderColor: selected ? 'primary.main' : 'text.disabled' },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 22, height: 22, borderRadius: '50%',
+                          background: th.sidebar,
+                          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Typography variant="body2" sx={{ fontWeight: selected ? 600 : 500 }}>
+                        {th.label}
+                      </Typography>
+                    </Box>
+                  )
+                })}
+              </Box>
+            </Box>
+
             {org?.slug && (
               <CopyableText
                 label="თქვენი ბუქინგ ბმული"

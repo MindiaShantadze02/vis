@@ -10,6 +10,8 @@ import { ka } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
 import { LoadingState, EmptyState, StatusChip } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
+import { ThemeProvider } from '@mui/material/styles'
+import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import type { AppointmentStatus } from '@/components/ui'
 
 interface AppointmentDetail {
@@ -18,7 +20,7 @@ interface AppointmentDetail {
   duration_minutes: number
   status: string
   payment_method: string
-  organisations: { name: string; slug: string } | null
+  organisations: { name: string; slug: string; booking_theme: string | null } | null
   services: { name: string; price: number } | null
   customers: { first_name: string; last_name: string | null } | null
 }
@@ -33,7 +35,7 @@ export default function BookingConfirmationPage() {
     if (!id) return
     supabase
       .from('appointments')
-      .select('id, scheduled_at, duration_minutes, status, payment_method, organisations(name, slug), services(name, price), customers(first_name, last_name)')
+      .select('id, scheduled_at, duration_minutes, status, payment_method, organisations(name, slug, booking_theme), services(name, price), customers(first_name, last_name)')
       .eq('id', id)
       .single()
       .then(({ data }) => {
@@ -60,15 +62,17 @@ export default function BookingConfirmationPage() {
 
   const scheduledAt = new Date(appt.scheduled_at)
   const isPending = appt.status === 'pending'
+  const bookingTheme = getBookingTheme(appt.organisations?.booking_theme)
 
   return (
+    <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
     <Box
       sx={{
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'background.default',
+        bgcolor: bookingTheme.pageBg,
         p: 2,
       }}
     >
@@ -145,5 +149,6 @@ export default function BookingConfirmationPage() {
         </CardContent>
       </Card>
     </Box>
+    </ThemeProvider>
   )
 }
