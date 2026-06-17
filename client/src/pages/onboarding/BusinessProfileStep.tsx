@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { Box, TextField, Button, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { slugify } from '@/lib/slug'
+import { isValidGeorgianPhone } from '@/lib/validation'
 import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -20,9 +21,11 @@ export default function BusinessProfileStep() {
     if (data.name) update({ slug: slugify(data.name) })
   }, [data.name])
 
+  const phoneInvalid =
+    data.contact_phone.trim().length > 0 && !isValidGeorgianPhone(data.contact_phone)
   const canProceed =
     data.name.trim().length >= 2 &&
-    data.contact_phone.trim().length >= 6
+    isValidGeorgianPhone(data.contact_phone)
 
   return (
     <Box>
@@ -56,7 +59,10 @@ export default function BusinessProfileStep() {
         label={t('onboarding.contactPhone')}
         value={data.contact_phone}
         onChange={e => update({ contact_phone: e.target.value })}
+        required
         placeholder="555 123 456"
+        error={phoneInvalid}
+        helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
         slotProps={{ htmlInput: { inputMode: 'tel' as const } }}
         sx={{ mb: 4 }}
       />

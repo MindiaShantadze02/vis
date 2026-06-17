@@ -4,14 +4,32 @@
  */
 
 /**
- * Georgian phone numbers: 9-digit local numbers starting with 5 (mobile)
- * or 3/4 (landline), optionally prefixed with the +995 country code.
- * Spaces, dashes, and parentheses are ignored.
+ * Georgian phone numbers (country code +995). The national number is always
+ * 9 digits:
+ *   - mobile  → starts with 5 (5XX XXX XXX). All operators — Magti, Silknet
+ *     (Geocell), Cellfie (ex-Beeline) — share the 5XX space, and with number
+ *     portability the 5XX prefix no longer maps to a fixed operator, so we
+ *     only require a leading 5 rather than an operator-specific prefix list.
+ *   - landline → starts with 3 or 4 (area code + subscriber, e.g. Tbilisi 32).
+ * The +995 country code is optional on input; spaces, dashes, and parentheses
+ * are ignored.
  */
 export function isValidGeorgianPhone(raw: string): boolean {
   const digits = raw.replace(/\D/g, '')
   const local = digits.startsWith('995') ? digits.slice(3) : digits
   return local.length === 9 && /^[345]/.test(local)
+}
+
+/**
+ * Normalise any accepted Georgian phone input to the bare 9-digit national
+ * number (e.g. "599123456"). Drops spaces/dashes and a leading +995/995 if the
+ * user pasted one — we deliberately don't store the country code, as it only
+ * confuses local customers. Call only on values that pass isValidGeorgianPhone;
+ * storing one consistent form keeps lookups/dedup reliable across the app.
+ */
+export function formatGeorgianPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  return digits.startsWith('995') ? digits.slice(3) : digits
 }
 
 /** "HH:mm" → minutes since midnight. */

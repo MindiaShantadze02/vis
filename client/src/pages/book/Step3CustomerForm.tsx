@@ -11,7 +11,7 @@ import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidGeorgianPhone } from '@/lib/validation'
+import { isValidGeorgianPhone, formatGeorgianPhone } from '@/lib/validation'
 import type { BookingOrg, BookingState } from './BookingLayout'
 
 interface Props {
@@ -95,7 +95,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           id: customerId,
           first_name: booking.firstName.trim(),
           last_name: booking.lastName.trim() || null,
-          phone_number: booking.phone.trim(),
+          phone_number: formatGeorgianPhone(booking.phone),
         })
 
       if (custErr) throw new Error(custErr.message)

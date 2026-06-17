@@ -7,6 +7,7 @@ import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
+import { isValidGeorgianPhone, formatGeorgianPhone } from '@/lib/validation'
 import { PageHeader, CopyableText, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 
@@ -62,8 +63,14 @@ export default function ProfileSettings() {
     setUploading(false)
   }
 
+  // Contact phone is mandatory.
+  const phoneMissing = contactPhone.trim().length === 0
+  const phoneInvalid = !phoneMissing && !isValidGeorgianPhone(contactPhone)
+
   async function handleSave() {
     if (!org) return
+    if (phoneMissing) { setError(t('validation.required')); return }
+    if (phoneInvalid) { setError(t('validation.invalidPhone')); return }
     setSaving(true)
     setError(null)
 
@@ -72,8 +79,7 @@ export default function ProfileSettings() {
       .update({
         name: name.trim(),
         description: description.trim() || null,
-        contact_phone: contactPhone.trim() || null,
-        updated_at: new Date().toISOString(),
+        contact_phone: formatGeorgianPhone(contactPhone),
       })
       .eq('id', org.id)
 
@@ -157,7 +163,10 @@ export default function ProfileSettings() {
               value={contactPhone}
               onChange={e => setContactPhone(e.target.value)}
               fullWidth
+              required
               placeholder="599 123 456"
+              error={phoneInvalid}
+              helperText={phoneInvalid ? t('validation.invalidPhone') : undefined}
               slotProps={{ htmlInput: { inputMode: 'tel' } }}
             />
             {org?.slug && (
@@ -173,7 +182,7 @@ export default function ProfileSettings() {
             <Button
               variant="contained"
               onClick={handleSave}
-              disabled={saving || uploading || !name.trim()}
+              disabled={saving || uploading || !name.trim() || phoneMissing || phoneInvalid}
             >
               {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
             </Button>

@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import {
   isEndAfterStart, timeToMinutes, minutesToTime, clampTime,
-  scheduleToRanges, dayScheduleIssue,
+  scheduleToRanges, dayScheduleIssue, formatGeorgianPhone,
   type TimeRange, type DaySchedule,
 } from '@/lib/validation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -157,7 +157,7 @@ export default function WorkingHoursStep() {
           name: data.name,
           description: data.description || null,
           slug,
-          contact_phone: data.contact_phone || null,
+          contact_phone: data.contact_phone.trim() ? formatGeorgianPhone(data.contact_phone) : null,
           owner_id: user.id,
           subscription_tier: 'free',
         })
@@ -171,7 +171,7 @@ export default function WorkingHoursStep() {
             name: data.name,
             description: data.description || null,
             slug: `${slug}-${suffix}`,
-            contact_phone: data.contact_phone || null,
+            contact_phone: data.contact_phone.trim() ? formatGeorgianPhone(data.contact_phone) : null,
             owner_id: user.id,
             subscription_tier: 'free',
           })

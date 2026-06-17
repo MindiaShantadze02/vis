@@ -62,7 +62,7 @@ export default function PaymentSettings() {
 
     const { error: err } = await supabase
       .from('organisations')
-      .update({ payment_config: config, updated_at: new Date().toISOString() })
+      .update({ payment_config: config })
       .eq('id', org.id)
 
     setSaving(false)

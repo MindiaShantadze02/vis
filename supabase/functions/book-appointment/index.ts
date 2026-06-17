@@ -16,6 +16,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing required fields' }, { status: 400, headers: corsHeaders })
     }
 
+    // Validate & normalise the phone to a bare 9-digit Georgian number
+    // (mobile starts with 5, landline with 3/4). No country code is stored.
+    const phoneDigits = String(phone).replace(/\D/g, '')
+    const phoneLocal = phoneDigits.startsWith('995') ? phoneDigits.slice(3) : phoneDigits
+    if (!/^[345]\d{8}$/.test(phoneLocal)) {
+      return Response.json({ error: 'invalid_phone' }, { status: 400, headers: corsHeaders })
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -80,7 +88,7 @@ Deno.serve(async (req) => {
     const { data: customer, error: custErr } = await supabase
       .from('customers')
       .upsert(
-        { first_name, last_name: last_name || null, phone_number: phone },
+        { first_name, last_name: last_name || null, phone_number: phoneLocal },
         { onConflict: 'phone_number' }
       )
       .select('id')

@@ -10,7 +10,7 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidGeorgianPhone } from '@/lib/validation'
+import { isValidGeorgianPhone, formatGeorgianPhone } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageHeader, LoadingState, ActionIconButton, useToast } from '@/components/ui'
@@ -36,10 +36,6 @@ interface Invitation {
   accepted_at: string | null
 }
 
-function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '')
-  return digits.startsWith('995') ? `+${digits}` : `+995${digits}`
-}
 
 export default function TeamSettings() {
   const { t } = useTranslation()
@@ -96,7 +92,7 @@ export default function TeamSettings() {
     setInviting(true)
     setError(null)
 
-    const phone = formatPhone(invitePhone)
+    const phone = formatGeorgianPhone(invitePhone)
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
