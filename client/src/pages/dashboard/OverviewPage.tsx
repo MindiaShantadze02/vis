@@ -246,14 +246,7 @@ export default function OverviewPage() {
 
   return (
     <Box>
-      <PageHeader
-        title={t('dashboard.overview')}
-        action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddOpen(true)}>
-            ჯავშნის დამატება
-          </Button>
-        }
-      />
+      <PageHeader title={t('dashboard.overview')} />
 
       {/* Booking link — shown prominently so the business can copy & share it */}
       {org?.slug && (
@@ -308,7 +301,12 @@ export default function OverviewPage() {
 
       {/* Appointments list */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>{t('dashboard.appointments')}</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>{t('dashboard.appointments')}</Typography>
+          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setAddOpen(true)}>
+            ჯავშნის დამატება
+          </Button>
+        </Box>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1.5}
