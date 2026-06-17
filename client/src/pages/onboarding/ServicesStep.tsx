@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
   Box, Button, Typography, TextField,
-  Card, CardContent, Stack,
+  Card, CardContent, Stack, Divider,
 } from '@mui/material'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlined'
 import AddIcon from '@mui/icons-material/Add'
 import { useTranslation } from 'react-i18next'
-import { ActionIconButton } from '@/components/ui'
+import { ActionIconButton, EmptyState } from '@/components/ui'
 import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -18,7 +20,7 @@ interface OutletCtx {
 }
 
 // Numeric fields are held as strings while editing so the inputs can be
-// cleared/partially typed; they're coerced to numbers in addService().
+// cleared/partially typed; they're coerced to numbers in saveService().
 interface DraftService {
   name: string
   duration_minutes: string
@@ -38,23 +40,48 @@ export default function ServicesStep() {
   const { t } = useTranslation()
   const { goNext, goBack, data, update } = useOutletContext<OutletCtx>()
   const [draft, setDraft] = useState<DraftService>({ ...empty })
+  // null = the form is adding a new service; a number = editing that index.
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
   const durationTooLong = Number(draft.duration_minutes) > MAX_DURATION_MINUTES
+  const draftValid = !!draft.name.trim() && Number(draft.duration_minutes) > 0 && !durationTooLong
+  const isEditing = editingIndex !== null
 
-  function addService() {
-    if (!draft.name.trim() || !(Number(draft.duration_minutes) > 0) || durationTooLong) return
-    update({
-      services: [...data.services, {
-        name: draft.name.trim(),
-        duration_minutes: Number(draft.duration_minutes),
-        price: Number(draft.price) || 0,
-      }],
-    })
+  function resetForm() {
     setDraft({ ...empty })
+    setEditingIndex(null)
+  }
+
+  function saveService() {
+    if (!draftValid) return
+    const svc = {
+      name: draft.name.trim(),
+      duration_minutes: Number(draft.duration_minutes),
+      price: Number(draft.price) || 0,
+    }
+    if (isEditing) {
+      update({ services: data.services.map((s, i) => (i === editingIndex ? svc : s)) })
+    } else {
+      update({ services: [...data.services, svc] })
+    }
+    resetForm()
+  }
+
+  function startEdit(index: number) {
+    const svc = data.services[index]
+    setDraft({
+      name: svc.name,
+      duration_minutes: String(svc.duration_minutes),
+      price: String(svc.price),
+    })
+    setEditingIndex(index)
   }
 
   function removeService(index: number) {
     update({ services: data.services.filter((_, i) => i !== index) })
+    // If the row being edited is removed (or shifts), drop edit mode to avoid
+    // editing the wrong service.
+    if (editingIndex !== null && index <= editingIndex) resetForm()
   }
 
   const canProceed = data.services.length > 0
@@ -69,36 +96,53 @@ export default function ServicesStep() {
       </Typography>
 
       {/* Existing services */}
-      <Stack spacing={1.5} sx={{ mb: 3 }}>
-        {data.services.map((svc, i) => (
-          <Card key={i} variant="outlined" sx={{ borderRadius: 2 }}>
-            <CardContent
-              sx={{
-                py: 1.5,
-                '&:last-child': { pb: 1.5 },
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-              }}
-            >
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>{svc.name}</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {svc.duration_minutes} წთ · {svc.price} ₾
-                </Typography>
+      {data.services.length === 0 ? (
+        <Card variant="outlined" sx={{ borderRadius: 2, mb: 3 }}>
+          <EmptyState
+            icon={<DesignServicesOutlinedIcon />}
+            title="სერვისები ჯერ არ დაგიმატებიათ"
+            caption="დაამატეთ პირველი სერვისი ქვემოთ"
+            py={4}
+          />
+        </Card>
+      ) : (
+        <Card variant="outlined" sx={{ borderRadius: 2, mb: 3 }}>
+          {data.services.map((svc, i) => (
+            <Box key={i}>
+              {i > 0 && <Divider />}
+              <Box
+                sx={{
+                  px: 2, py: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  bgcolor: editingIndex === i ? 'action.selected' : 'transparent',
+                }}
+              >
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }} noWrap>{svc.name}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {svc.duration_minutes} წთ · {svc.price} ₾
+                  </Typography>
+                </Box>
+                <ActionIconButton aria-label={t('common.edit')} onClick={() => startEdit(i)}>
+                  <EditOutlinedIcon fontSize="small" />
+                </ActionIconButton>
+                <ActionIconButton tone="danger" aria-label={t('common.delete')} onClick={() => removeService(i)}>
+                  <DeleteOutlinedIcon fontSize="small" />
+                </ActionIconButton>
               </Box>
-              <ActionIconButton tone="danger" aria-label={t('common.delete')} onClick={() => removeService(i)}>
-                <DeleteOutlinedIcon fontSize="small" />
-              </ActionIconButton>
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
+            </Box>
+          ))}
+        </Card>
+      )}
 
-      {/* Add new service form */}
+      {/* Add / edit service form */}
       <Card variant="outlined" sx={{ borderRadius: 2, mb: 4 }}>
         <CardContent>
-          <Typography variant="subtitle2" sx={{ mb: 2 }}>{t('onboarding.addService')}</Typography>
+          <Typography variant="subtitle2" sx={{ mb: 2 }}>
+            {isEditing ? t('common.edit') : t('onboarding.addService')}
+          </Typography>
           <TextField
             fullWidth
             size="small"
@@ -127,14 +171,21 @@ export default function ServicesStep() {
               slotProps={{ htmlInput: { inputMode: 'decimal' } }}
             />
           </Stack>
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={addService}
-            disabled={!draft.name.trim() || !(Number(draft.duration_minutes) > 0) || durationTooLong}
-          >
-            {t('onboarding.addService')}
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              startIcon={isEditing ? undefined : <AddIcon />}
+              onClick={saveService}
+              disabled={!draftValid}
+            >
+              {isEditing ? t('common.save') : t('onboarding.addService')}
+            </Button>
+            {isEditing && (
+              <Button variant="text" onClick={resetForm}>
+                {t('common.cancel')}
+              </Button>
+            )}
+          </Stack>
         </CardContent>
       </Card>
 
