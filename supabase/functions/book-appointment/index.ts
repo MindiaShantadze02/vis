@@ -29,25 +29,15 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // Check org subscription limit
-    const { data: org } = await supabase
-      .from('organisations')
-      .select('subscription_tier, appointments_used_this_month')
-      .eq('id', org_id)
-      .single()
+    // Check org subscription limit. Usage is derived server-side from the
+    // appointments table against the org's rolling billing period, so it
+    // stays correct regardless of how appointments were created.
+    const { data: canAccept, error: limitErr } = await supabase
+      .rpc('org_can_accept_appointment', { p_org_id: org_id })
 
-    if (!org) return Response.json({ error: 'Organisation not found' }, { status: 404, headers: corsHeaders })
-
-    const { data: config } = await supabase
-      .from('platform_config')
-      .select('tier_limits')
-      .eq('id', 1)
-      .single()
-
-    const limits: Record<string, number | null> = config?.tier_limits ?? { free: 30, starter: 200, pro: 600, business: null }
-    const limit = limits[org.subscription_tier]
-
-    if (limit !== null && org.appointments_used_this_month >= limit) {
+    if (limitErr) return Response.json({ error: limitErr.message }, { status: 500, headers: corsHeaders })
+    if (canAccept === null) return Response.json({ error: 'Organisation not found' }, { status: 404, headers: corsHeaders })
+    if (canAccept === false) {
       return Response.json({ error: 'limit_reached' }, { status: 422, headers: corsHeaders })
     }
 
@@ -115,12 +105,7 @@ Deno.serve(async (req) => {
 
     if (apptErr) return Response.json({ error: apptErr.message }, { status: 500, headers: corsHeaders })
 
-    // Increment monthly counter
-    await supabase
-      .from('organisations')
-      .update({ appointments_used_this_month: (org.appointments_used_this_month ?? 0) + 1 })
-      .eq('id', org_id)
-
+    // No counter to bump — usage is derived from the appointments table.
     return Response.json({ appointment_id: appt.id }, { headers: corsHeaders })
   } catch (err) {
     return Response.json({ error: String(err) }, { status: 500, headers: corsHeaders })

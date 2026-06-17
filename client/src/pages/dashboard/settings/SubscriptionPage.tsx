@@ -53,6 +53,8 @@ export default function SubscriptionPage() {
   const theme = useTheme()
 
   const [used, setUsed] = useState<number | null>(null)
+  const [limit, setLimit] = useState<number | null>(null)
+  const [periodEnd, setPeriodEnd] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const currentTier = (org as unknown as Record<string, string>)?.subscription_tier as Tier ?? 'free'
@@ -66,17 +68,17 @@ export default function SubscriptionPage() {
   async function loadUsage() {
     if (!org) return
     setLoading(true)
-    const { count } = await supabase
-      .from('appointments')
-      .select('id', { count: 'exact', head: true })
-      .eq('org_id', org.id)
-      .not('status', 'in', '(rejected,cancelled)')
-      .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
-    setUsed(count ?? 0)
+    // Server-derived usage for the org's current billing period — same
+    // source the booking limit is enforced against, so the numbers match.
+    const { data } = await supabase
+      .rpc('org_usage_info', { p_org_id: org.id })
+      .maybeSingle()
+    setUsed(data?.used ?? 0)
+    setLimit(data?.appt_limit ?? null)
+    setPeriodEnd(data?.period_end ?? null)
     setLoading(false)
   }
 
-  const limit = tierInfo.limit
   const pct = limit && used !== null ? Math.min((used / limit) * 100, 100) : 0
   const nearLimit = limit && used !== null && used >= limit * 0.8
 
@@ -142,6 +144,11 @@ export default function SubscriptionPage() {
                   },
                 }}
               />
+            )}
+            {periodEnd && (
+              <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
+                განახლდება: {new Date(periodEnd).toLocaleDateString('ka-GE')}
+              </Typography>
             )}
             {nearLimit && limit && used !== null && used < limit && (
               <Typography variant="caption" sx={{ color: 'warning.main', mt: 0.5, display: 'block' }}>

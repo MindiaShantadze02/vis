@@ -11,7 +11,6 @@ export interface Organisation {
   contact_phone: string | null
   logo_url: string | null
   subscription_tier: 'free' | 'starter' | 'pro' | 'business'
-  appointments_used_this_month: number
   booking_theme: string | null
 }
 
