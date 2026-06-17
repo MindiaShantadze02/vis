@@ -213,12 +213,9 @@ export default function OverviewPage() {
       toast.error(error.message)
     } else {
       setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a))
-      if (status === 'approved') {
-        setStats(prev => prev ? { ...prev, pendingCount: Math.max(0, prev.pendingCount - 1) } : prev)
-      }
-      // Cancelling an approved booking drops it from revenue/today counts, so
-      // refresh the stat cards from the server.
-      if (status === 'cancelled') loadStats()
+      // Any status change can shift the stat cards (pending count, today's
+      // count, weekly revenue), so refresh them from the server.
+      loadStats()
       toast.success(t(`dashboard.${status}`))
       setSelected(null)
       setAdminNote('')
