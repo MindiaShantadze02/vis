@@ -13,6 +13,8 @@ import { supabase } from '@/lib/supabase'
 import { useTheme, alpha } from '@mui/material/styles'
 import { anim } from '@/theme/animations'
 import { LoadingState } from '@/components/ui'
+import { computeAvailableSlots, getDayKey } from '@/lib/slots'
+import type { SlotApptRow, SlotOverride } from '@/lib/slots'
 import type { BookingService, BookingStaff } from './BookingLayout'
 
 interface Props {
@@ -26,17 +28,8 @@ interface Props {
   onBack: () => void
 }
 
-interface ApptRow {
-  scheduled_at: string
-  duration_minutes: number
-  service_id: string
-  staff_id: string | null
-}
-
-interface OverrideRow {
-  is_closed: boolean
-  ranges: { start: string; end: string }[] | null
-}
+type ApptRow = SlotApptRow
+type OverrideRow = SlotOverride
 
 const DAY_SHORT = ['კვ', 'ორ', 'სა', 'ოთ', 'ხუ', 'პა', 'შა']
 const ANY = 'any'
@@ -129,78 +122,26 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
 
   // Recompute slots whenever the date, fetched data, or staff choice changes
   useEffect(() => {
-    setSlots(selectedDate ? computeSlots(selectedDate, dayAppts, override) : [])
+    setSlots(selectedDate
+      ? computeAvailableSlots({
+        date: selectedDate,
+        template,
+        override,
+        existing: dayAppts,
+        serviceId: service.id,
+        durationMinutes: service.duration_minutes,
+        maxPerSlot: service.max_per_slot,
+        assignedStaff,
+        selectedStaffId: selectedStaffId === ANY ? null : selectedStaffId,
+      })
+      : [])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, dayAppts, override, selectedStaffId, assignedStaff, template])
-
-  function getDayKey(d: Date): string {
-    const keys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-    return keys[d.getDay()]
-  }
 
   function isDayOpen(d: Date): boolean {
     if (!template) return false
     const cfg = template[getDayKey(d)]
     return cfg?.open ?? false
-  }
-
-  function computeSlots(date: Date, existing: ApptRow[], ov: OverrideRow | null): string[] {
-    if (!template) return []
-    if (ov?.is_closed) return []
-
-    const cfg = ov?.ranges
-      ? { open: true, ranges: ov.ranges }
-      : template[getDayKey(date)]
-
-    if (!cfg?.open) return []
-
-    const now = new Date()
-    const generated: string[] = []
-
-    for (const range of cfg.ranges) {
-      const [sh, sm] = range.start.split(':').map(Number)
-      const [eh, em] = range.end.split(':').map(Number)
-      let cur = new Date(date)
-      cur.setHours(sh, sm, 0, 0)
-      const end = new Date(date)
-      end.setHours(eh, em, 0, 0)
-
-      while (cur < end) {
-        const slotEnd = new Date(cur.getTime() + service.duration_minutes * 60000)
-        if (slotEnd > end) break
-
-        if (!isBefore(cur, now) && isSlotAvailable(cur, slotEnd, existing)) {
-          generated.push(format(cur, 'HH:mm'))
-        }
-
-        cur = new Date(cur.getTime() + service.duration_minutes * 60000)
-      }
-    }
-
-    return generated
-  }
-
-  // Combines per-service capacity (max_per_slot) with per-person availability.
-  function isSlotAvailable(cur: Date, slotEnd: Date, existing: ApptRow[]): boolean {
-    const overlapping = existing.filter(a => {
-      const aStart = new Date(a.scheduled_at).getTime()
-      const aEnd = aStart + a.duration_minutes * 60000
-      return cur.getTime() < aEnd && slotEnd.getTime() > aStart
-    })
-
-    // Per-service concurrency cap.
-    const serviceCount = overlapping.filter(a => a.service_id === service.id).length
-    if (serviceCount >= service.max_per_slot) return false
-
-    // No assigned staff → capacity is the only constraint.
-    if (assignedStaff.length === 0) return true
-
-    // A member is busy if they have ANY overlapping appointment (across services).
-    const busyIds = new Set(overlapping.map(a => a.staff_id).filter(Boolean))
-    const freeMembers = assignedStaff.filter(m => !busyIds.has(m.id))
-
-    if (selectedStaffId === ANY) return freeMembers.length >= 1
-    return freeMembers.some(m => m.id === selectedStaffId)
   }
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))

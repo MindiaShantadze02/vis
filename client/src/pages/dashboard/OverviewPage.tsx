@@ -7,6 +7,7 @@ import {
   useMediaQuery, useTheme,
 } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import AddIcon from '@mui/icons-material/Add'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
@@ -21,6 +22,7 @@ import { useOrg } from '@/contexts/OrgContext'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 import { PageHeader, StatCard, StatusChip, EmptyState, CopyableText, useToast } from '@/components/ui'
 import type { AppointmentStatus } from '@/components/ui'
+import AddAppointmentDialog from './AddAppointmentDialog'
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -79,6 +81,7 @@ export default function OverviewPage() {
 
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [adminNote, setAdminNote] = useState('')
+  const [addOpen, setAddOpen] = useState(false)
 
   const [bookableMembers, setBookableMembers] = useState<StaffRef[]>([])
   const [assignableIds, setAssignableIds] = useState<string[]>([])
@@ -240,7 +243,14 @@ export default function OverviewPage() {
 
   return (
     <Box>
-      <PageHeader title={t('dashboard.overview')} />
+      <PageHeader
+        title={t('dashboard.overview')}
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddOpen(true)}>
+            ჯავშნის დამატება
+          </Button>
+        }
+      />
 
       {/* Booking link — shown prominently so the business can copy & share it */}
       {org?.slug && (
@@ -565,6 +575,15 @@ export default function OverviewPage() {
           </>
         )}
       </Dialog>
+
+      {/* Manual appointment entry (e.g. logging a booking taken over the phone) */}
+      {addOpen && (
+        <AddAppointmentDialog
+          orgId={org.id}
+          onClose={() => setAddOpen(false)}
+          onCreated={() => { loadAppointments(); loadStats() }}
+        />
+      )}
     </Box>
   )
 }
