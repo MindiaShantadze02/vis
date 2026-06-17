@@ -10,7 +10,7 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidGeorgianPhone, formatGeorgianPhone } from '@/lib/validation'
+import { isValidEmail } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageHeader, LoadingState, ActionIconButton, useToast } from '@/components/ui'
@@ -30,7 +30,8 @@ interface Member {
 
 interface Invitation {
   id: string
-  phone_number: string
+  phone_number: string | null
+  email: string | null
   role: string
   expires_at: string | null
   accepted_at: string | null
@@ -50,7 +51,7 @@ export default function TeamSettings() {
 
   // Invite dialog
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [invitePhone, setInvitePhone] = useState('')
+  const [inviteEmail, setInviteEmail] = useState('')
   const [inviting, setInviting] = useState(false)
 
   // Edit member dialog
@@ -76,7 +77,7 @@ export default function TeamSettings() {
         .order('joined_at'),
       supabase
         .from('invitations')
-        .select('id, phone_number, role, expires_at, accepted_at')
+        .select('id, phone_number, email, role, expires_at, accepted_at')
         .eq('org_id', org.id)
         .is('accepted_at', null)
         .order('created_at', { ascending: false }),
@@ -88,17 +89,17 @@ export default function TeamSettings() {
   }
 
   async function handleInvite() {
-    if (!org || !invitePhone.trim()) return
+    if (!org || !inviteEmail.trim()) return
     setInviting(true)
     setError(null)
 
-    const phone = formatGeorgianPhone(invitePhone)
+    const email = inviteEmail.trim().toLowerCase()
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
     const { error: err } = await supabase.from('invitations').insert({
       org_id: org.id,
-      phone_number: phone,
+      email,
       role: 'admin',
       invited_by: user?.id,
       token,
@@ -109,8 +110,8 @@ export default function TeamSettings() {
     if (err) { setError(err.message); return }
 
     setInviteOpen(false)
-    setInvitePhone('')
-    toast.success(`მოწვევა გაგზავნილია ${phone}-ზე`)
+    setInviteEmail('')
+    toast.success(`მოწვევა გაგზავნილია ${email}-ზე`)
     load()
   }
 
@@ -152,7 +153,7 @@ export default function TeamSettings() {
     toast.success(t('common.saved'))
   }
 
-  const invitePhoneInvalid = invitePhone.trim().length > 0 && !isValidGeorgianPhone(invitePhone)
+  const inviteEmailInvalid = inviteEmail.trim().length > 0 && !isValidEmail(inviteEmail)
 
   return (
     <Box sx={{ maxWidth: LAYOUT.formPage }}>
@@ -227,7 +228,7 @@ export default function TeamSettings() {
                 {i > 0 && <Divider />}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2.5, py: 2 }}>
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{inv.phone_number}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{inv.email ?? inv.phone_number}</Typography>
                     {inv.expires_at && (
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                         ვადა: {new Date(inv.expires_at).toLocaleDateString('ka-GE')}
@@ -251,26 +252,18 @@ export default function TeamSettings() {
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              ადმინი მიიღებს SMS-ს რეგისტრაციის ბმულით.
+              ადმინი მიიღებს ელ. ფოსტას რეგისტრაციის ბმულით.
             </Typography>
             <TextField
-              label="ტელეფონის ნომერი"
-              value={invitePhone}
-              onChange={e => setInvitePhone(e.target.value)}
+              label="ელ. ფოსტა"
+              type="email"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
               fullWidth
-              placeholder="599 123 456"
-              error={invitePhoneInvalid}
-              helperText={invitePhoneInvalid ? t('validation.invalidPhone') : ' '}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <Typography variant="body2" sx={{ color: 'text.secondary', mr: 1 }}>
-                      🇬🇪 +995
-                    </Typography>
-                  ),
-                },
-                htmlInput: { inputMode: 'tel' as const },
-              }}
+              placeholder="admin@example.com"
+              error={inviteEmailInvalid}
+              helperText={inviteEmailInvalid ? t('validation.invalidEmail') : ' '}
+              slotProps={{ htmlInput: { inputMode: 'email' as const } }}
               autoFocus
             />
           </Stack>
@@ -280,7 +273,7 @@ export default function TeamSettings() {
           <Button
             variant="contained"
             onClick={handleInvite}
-            disabled={inviting || !isValidGeorgianPhone(invitePhone)}
+            disabled={inviting || !isValidEmail(inviteEmail)}
           >
             {inviting ? <CircularProgress size={20} color="inherit" /> : 'გაგზავნა'}
           </Button>

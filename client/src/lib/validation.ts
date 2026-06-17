@@ -32,6 +32,15 @@ export function formatGeorgianPhone(raw: string): string {
   return digits.startsWith('995') ? digits.slice(3) : digits
 }
 
+/**
+ * Pragmatic email check — a non-empty local part, an "@", and a dotted
+ * domain. Deliberately loose (full RFC 5322 is impractical and rejects valid
+ * addresses); mirrors the invitations_email_format DB constraint.
+ */
+export function isValidEmail(raw: string): boolean {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw.trim())
+}
+
 /** "HH:mm" → minutes since midnight. */
 export function timeToMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number)

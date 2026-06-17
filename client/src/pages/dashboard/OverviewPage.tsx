@@ -23,6 +23,7 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth 
 import { PageHeader, StatCard, StatusChip, EmptyState, CopyableText, useToast } from '@/components/ui'
 import type { AppointmentStatus } from '@/components/ui'
 import AddAppointmentDialog from './AddAppointmentDialog'
+import PendingInvites from './PendingInvites'
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -230,6 +231,7 @@ export default function OverviewPage() {
     return (
       <Box>
         <PageHeader title={t('dashboard.overview')} />
+        <PendingInvites />
         <EmptyState
           icon={<StorefrontOutlinedIcon />}
           title={t('dashboard.noBusinessTitle')}

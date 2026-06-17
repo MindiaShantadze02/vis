@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { anim } from '@/theme/animations'
 import { gradient } from '@/theme/theme'
 import type { DaySchedule } from '@/lib/validation'
+import PendingInvites from '@/pages/dashboard/PendingInvites'
 
 // ── Shared state across onboarding steps ──────────────────────
 
@@ -181,6 +182,10 @@ export default function OnboardingLayout() {
 
         {/* Intentionally narrower (sm ≈ 600) than settings pages — this is a focused stepper flow. */}
         <Container maxWidth="sm" sx={{ flex: 1, py: 5 }}>
+          {/* If this user was invited to an existing org, offer to join it here
+              rather than letting them create a redundant one. */}
+          <PendingInvites />
+
           <Stepper activeStep={activeStep} sx={{ mb: 5 }}>
             {STEPS.map((s, i) => (
               <Step key={i}>

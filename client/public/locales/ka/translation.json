@@ -21,6 +21,7 @@
   "validation": {
     "required": "სავალდებულო ველი",
     "invalidPhone": "ტელეფონის ნომერი არასწორია (მაგ. 5XX XXX XXX)",
+    "invalidEmail": "ელ. ფოსტა არასწორია",
     "passwordMismatch": "პაროლები არ ემთხვევა",
     "passwordTooShort": "პაროლი მინიმუმ 6 სიმბოლო უნდა იყოს",
     "endBeforeStart": "დასრულების დრო დაწყების დროზე ადრე ვერ იქნება",

@@ -21,6 +21,7 @@
   "validation": {
     "required": "Required field",
     "invalidPhone": "Invalid phone number (e.g. 5XX XXX XXX)",
+    "invalidEmail": "Invalid email address",
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 6 characters",
     "endBeforeStart": "End time cannot be before start time",
