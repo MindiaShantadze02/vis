@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Box, Typography, IconButton, Card, Tooltip,
   Drawer, Stack, Button, CircularProgress, useTheme,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Select, MenuItem, FormControl, InputLabel, TextField,
 } from '@mui/material'
-import type { Theme } from '@mui/material'
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import TodayIcon from '@mui/icons-material/Today'
@@ -17,7 +16,6 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { StatusChip, ConfirmDialog, LoadingState } from '@/components/ui'
-import type { AppointmentStatus } from '@/components/ui'
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -57,22 +55,23 @@ type Template = Record<string, TemplateDay>
 
 // ── Constants ─────────────────────────────────────────────────
 
-// Maps each status to a semantic theme palette key so the event pills
-// derive their colors from the same tokens as the rest of the app.
-const STATUS_PALETTE: Record<AppointmentStatus, 'warning' | 'success' | 'error' | 'info' | 'grey'> = {
-  pending:   'warning',
-  approved:  'success',
-  rejected:  'error',
-  cancelled: 'grey',
-  completed: 'info',
-}
-
-/** Resolve a status to its main/light colors from the theme. */
-function statusColors(theme: Theme, status: AppointmentStatus): { main: string; light: string } {
-  const key = STATUS_PALETTE[status]
-  if (key === 'grey') return { main: theme.palette.grey[500], light: theme.palette.grey[100] }
-  return { main: theme.palette[key].main, light: theme.palette[key].light }
-}
+// Distinct, evenly-spread hues for appointment types (services). Each entry
+// pairs an accent (`main`, used for the left bar + text) with a soft tint
+// (`light`, the pill background) so different services read at a glance.
+// Services are mapped to a slot by their stable order within the org, so a
+// given service always keeps the same color across weeks.
+const SERVICE_PALETTE: ReadonlyArray<{ main: string; light: string }> = [
+  { main: '#6366f1', light: '#eef2ff' }, // indigo
+  { main: '#ec4899', light: '#fce7f3' }, // pink
+  { main: '#14b8a6', light: '#f0fdfa' }, // teal
+  { main: '#f59e0b', light: '#fffbeb' }, // amber
+  { main: '#8b5cf6', light: '#f5f3ff' }, // violet
+  { main: '#06b6d4', light: '#ecfeff' }, // cyan
+  { main: '#ef4444', light: '#fef2f2' }, // red
+  { main: '#10b981', light: '#ecfdf5' }, // emerald
+  { main: '#f97316', light: '#fff7ed' }, // orange
+  { main: '#3b82f6', light: '#eff6ff' }, // blue
+]
 
 const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8)
@@ -142,6 +141,32 @@ export default function CalendarPage() {
   const [bookableMembers, setBookableMembers] = useState<StaffRef[]>([])
   const [assignableIds, setAssignableIds] = useState<string[]>([])
 
+  // Org services, in their stable display order, used to assign a consistent
+  // color per appointment type.
+  const [services, setServices] = useState<Array<{ id: string; name: string }>>([])
+
+  // service_id → palette color. Keyed off the org's own service order so each
+  // service keeps the same color regardless of which ones appear this week.
+  const serviceColorMap = useMemo(() => {
+    const map = new Map<string, { main: string; light: string }>()
+    services.forEach((s, i) => map.set(s.id, SERVICE_PALETTE[i % SERVICE_PALETTE.length]))
+    return map
+  }, [services])
+
+  const NEUTRAL = { main: theme.palette.grey[500], light: theme.palette.grey[100] }
+  const serviceColors = (id: string) => serviceColorMap.get(id) ?? NEUTRAL
+
+  // Legend entries: the distinct types actually present in the loaded week.
+  const weekServices = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const a of appointments) {
+      if (a.service_id && !seen.has(a.service_id)) {
+        seen.set(a.service_id, a.services?.name ?? '—')
+      }
+    }
+    return [...seen.entries()].map(([id, name]) => ({ id, name }))
+  }, [appointments])
+
   // Rest period dialog
   const [restDialog, setRestDialog] = useState(false)
   const [restDate, setRestDate] = useState('')
@@ -162,7 +187,7 @@ export default function CalendarPage() {
 
   async function loadTemplate() {
     if (!org) return
-    const [tplRes, memRes] = await Promise.all([
+    const [tplRes, memRes, svcRes] = await Promise.all([
       supabase
         .from('working_hours_template')
         .select('monday,tuesday,wednesday,thursday,friday,saturday,sunday')
@@ -174,9 +199,15 @@ export default function CalendarPage() {
         .eq('org_id', org.id)
         .eq('is_bookable', true)
         .order('sort_order'),
+      supabase
+        .from('services')
+        .select('id, name')
+        .eq('org_id', org.id)
+        .order('sort_order'),
     ])
     if (tplRes.data) setTemplate(tplRes.data as unknown as Template)
     setBookableMembers((memRes.data ?? []) as StaffRef[])
+    setServices((svcRes.data ?? []) as Array<{ id: string; name: string }>)
   }
 
   // When an appointment is opened, load which members are assignable to its service.
@@ -363,17 +394,22 @@ export default function CalendarPage() {
         </IconButton>
       </Box>
 
-      {/* Legend */}
-      <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
-        {(['pending', 'approved'] as const).map(s => {
-          const c = statusColors(theme, s)
+      {/* Legend — one swatch per appointment type present this week, plus the
+          pending accent (left bar) and rest period. */}
+      <Stack direction="row" spacing={1.5} sx={{ mb: 2, flexWrap: 'wrap', rowGap: 1 }}>
+        {weekServices.map(s => {
+          const c = serviceColors(s.id)
           return (
-            <Box key={s} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Box key={s.id} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{ width: 16, height: 12, borderRadius: '3px', borderLeft: `3px solid ${c.main}`, bgcolor: c.light }} />
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t(`dashboard.${s}`)}</Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{s.name}</Typography>
             </Box>
           )
         })}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          <Box sx={{ width: 16, height: 12, borderRadius: '3px', borderLeft: `3px solid ${theme.palette.warning.main}`, bgcolor: 'grey.50' }} />
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('dashboard.pending')} (დასადასტურებელი)</Typography>
+        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
           <Box sx={{ width: 16, height: 12, borderRadius: '3px', borderLeft: '3px solid', borderLeftColor: 'grey.400', bgcolor: 'grey.100' }} />
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>დასვენება</Typography>
@@ -462,7 +498,12 @@ export default function CalendarPage() {
                         reflects duration and they span across hour rows. Pills
                         sharing a start hour are laid out side by side. */}
                     {slotAppts.map((appt, idx) => {
-                      const c = statusColors(theme, appt.status)
+                      // Background reflects the appointment type (service); the
+                      // left bar turns orange for pending bookings so the ones
+                      // needing action still stand out against any type color.
+                      const c = serviceColors(appt.service_id)
+                      const isPending = appt.status === 'pending'
+                      const accent = isPending ? theme.palette.warning.main : c.main
                       const start = new Date(appt.scheduled_at)
                       const top = (start.getMinutes() / 60) * HOUR_HEIGHT
                       const height = Math.max(16, (appt.duration_minutes / 60) * HOUR_HEIGHT - 2)
@@ -483,7 +524,7 @@ export default function CalendarPage() {
                               width: `calc(${widthPct}% - 4px)`,
                               zIndex: 2,
                               borderRadius: '5px',
-                              borderLeft: `3px solid ${c.main}`,
+                              borderLeft: `3px solid ${accent}`,
                               bgcolor: c.light,
                               px: 0.75, py: 0.4,
                               cursor: 'pointer',
@@ -491,7 +532,7 @@ export default function CalendarPage() {
                               transition: 'filter 0.15s, box-shadow 0.15s',
                               '&:hover': {
                                 filter: 'brightness(0.94)',
-                                boxShadow: `0 2px 8px ${c.main}50`,
+                                boxShadow: `0 2px 8px ${accent}50`,
                                 zIndex: 3,
                               },
                             }}
