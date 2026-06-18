@@ -3,7 +3,7 @@ import {
   Box, Typography, Card, Button, TextField, Stack,
   Switch, FormControlLabel, Divider, Alert,
   CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
-  Chip,
+  Chip, ToggleButtonGroup, ToggleButton,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
@@ -15,6 +15,8 @@ import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 
+type LocationType = 'in_person' | 'online'
+
 interface Service {
   id: string
   name: string
@@ -23,6 +25,8 @@ interface Service {
   is_active: boolean
   sort_order: number
   max_per_slot: number
+  location_type: LocationType
+  meeting_link: string | null
 }
 
 interface BookableMember {
@@ -39,6 +43,8 @@ interface ServiceForm {
   price: string
   is_active: boolean
   max_per_slot: string
+  location_type: LocationType
+  meeting_link: string
 }
 
 const EMPTY: ServiceForm = {
@@ -47,6 +53,8 @@ const EMPTY: ServiceForm = {
   price: '0',
   is_active: true,
   max_per_slot: '1',
+  location_type: 'in_person',
+  meeting_link: '',
 }
 
 // An appointment may last at most 24 hours. Mirrors the DB constraint
@@ -123,6 +131,8 @@ export default function ServicesSettings() {
       price: String(s.price),
       is_active: s.is_active,
       max_per_slot: String(s.max_per_slot),
+      location_type: s.location_type,
+      meeting_link: s.meeting_link ?? '',
     })
     const { data } = await supabase.from('service_staff').select('member_id').eq('service_id', s.id)
     setSelectedMemberIds((data ?? []).map(r => (r as { member_id: string }).member_id))
@@ -162,6 +172,12 @@ export default function ServicesSettings() {
     setSaving(true)
     setError(null)
 
+    // A meeting link only applies to online services. The DB enforces this
+    // too (services_meeting_link_online_only), so drop it for in_person.
+    const meetingLink = form.location_type === 'online'
+      ? (form.meeting_link.trim() || null)
+      : null
+
     let serviceId: string
     if (editing) {
       const { error: err } = await supabase
@@ -172,6 +188,8 @@ export default function ServicesSettings() {
           price: Number(form.price),
           is_active: form.is_active,
           max_per_slot: Number(form.max_per_slot),
+          location_type: form.location_type,
+          meeting_link: meetingLink,
         })
         .eq('id', editing.id)
       if (err) { setError(friendlyError(err.message, t)); setSaving(false); return }
@@ -187,6 +205,8 @@ export default function ServicesSettings() {
           price: Number(form.price),
           is_active: form.is_active,
           max_per_slot: Number(form.max_per_slot),
+          location_type: form.location_type,
+          meeting_link: meetingLink,
           sort_order: maxOrder + 1,
         })
         .select('id')
@@ -252,7 +272,12 @@ export default function ServicesSettings() {
                 }}
               >
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{s.name}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{s.name}</Typography>
+                    {s.location_type === 'online' && (
+                      <Chip label={t('settings.locationOnline')} size="small" color="primary" variant="outlined" />
+                    )}
+                  </Box>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {s.duration_minutes} წთ · {s.price} ₾
                   </Typography>
@@ -311,6 +336,34 @@ export default function ServicesSettings() {
               fullWidth
               slotProps={{ htmlInput: { inputMode: 'numeric' } }}
             />
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                {t('settings.location')}
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                size="small"
+                value={form.location_type}
+                onChange={(_, v: LocationType | null) => {
+                  if (v) setForm(f => ({ ...f, location_type: v }))
+                }}
+              >
+                <ToggleButton value="in_person">{t('settings.locationInPerson')}</ToggleButton>
+                <ToggleButton value="online">{t('settings.locationOnline')}</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+            {form.location_type === 'online' && (
+              <TextField
+                label={t('settings.meetingLink')}
+                value={form.meeting_link}
+                onChange={e => setForm(f => ({ ...f, meeting_link: e.target.value }))}
+                fullWidth
+                placeholder="https://"
+                helperText={t('settings.meetingLinkHelp')}
+                slotProps={{ htmlInput: { inputMode: 'url' } }}
+              />
+            )}
             {bookableMembers.length > 0 && (
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>

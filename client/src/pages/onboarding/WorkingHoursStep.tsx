@@ -192,6 +192,7 @@ export default function WorkingHoursStep() {
           .from('services')
           .insert(data.services.map((s, i) => ({
             org_id: orgId, name: s.name, duration_minutes: s.duration_minutes, price: s.price, sort_order: i,
+            location_type: s.location_type, meeting_link: s.meeting_link,
           })))
         if (svcErr) throw new Error(svcErr.message)
       }

@@ -14,10 +14,15 @@ import PendingInvites from '@/pages/dashboard/PendingInvites'
 
 // ── Shared state across onboarding steps ──────────────────────
 
+export type ServiceLocationType = 'in_person' | 'online'
+
 export interface OnboardingService {
   name: string
   duration_minutes: number
   price: number
+  location_type: ServiceLocationType
+  // Only meaningful for online services; null otherwise.
+  meeting_link: string | null
 }
 
 export interface OnboardingData {

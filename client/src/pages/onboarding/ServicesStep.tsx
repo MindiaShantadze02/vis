@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import {
   Box, Button, Typography, TextField,
   Card, CardContent, Stack, Divider,
+  Chip, ToggleButtonGroup, ToggleButton,
 } from '@mui/material'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
@@ -10,7 +11,7 @@ import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlin
 import AddIcon from '@mui/icons-material/Add'
 import { useTranslation } from 'react-i18next'
 import { ActionIconButton, EmptyState } from '@/components/ui'
-import type { OnboardingData } from './OnboardingLayout'
+import type { OnboardingData, ServiceLocationType } from './OnboardingLayout'
 
 interface OutletCtx {
   goNext: () => void
@@ -25,9 +26,14 @@ interface DraftService {
   name: string
   duration_minutes: string
   price: string
+  location_type: ServiceLocationType
+  meeting_link: string
 }
 
-const empty: DraftService = { name: '', duration_minutes: '30', price: '0' }
+const empty: DraftService = {
+  name: '', duration_minutes: '30', price: '0',
+  location_type: 'in_person', meeting_link: '',
+}
 
 // An appointment may last at most 24 hours. Mirrors the DB constraint
 // services_duration_max (migration 009).
@@ -58,6 +64,9 @@ export default function ServicesStep() {
       name: draft.name.trim(),
       duration_minutes: Number(draft.duration_minutes),
       price: Number(draft.price) || 0,
+      location_type: draft.location_type,
+      // A meeting link only applies to online services (DB enforces this too).
+      meeting_link: draft.location_type === 'online' ? (draft.meeting_link.trim() || null) : null,
     }
     if (isEditing) {
       update({ services: data.services.map((s, i) => (i === editingIndex ? svc : s)) })
@@ -73,6 +82,8 @@ export default function ServicesStep() {
       name: svc.name,
       duration_minutes: String(svc.duration_minutes),
       price: String(svc.price),
+      location_type: svc.location_type,
+      meeting_link: svc.meeting_link ?? '',
     })
     setEditingIndex(index)
   }
@@ -120,7 +131,12 @@ export default function ServicesStep() {
                 }}
               >
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }} noWrap>{svc.name}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }} noWrap>{svc.name}</Typography>
+                    {svc.location_type === 'online' && (
+                      <Chip label={t('settings.locationOnline')} size="small" color="primary" variant="outlined" />
+                    )}
+                  </Box>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {svc.duration_minutes} წთ · {svc.price} ₾
                   </Typography>
@@ -171,6 +187,36 @@ export default function ServicesStep() {
               slotProps={{ htmlInput: { inputMode: 'decimal' } }}
             />
           </Stack>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+              {t('settings.location')}
+            </Typography>
+            <ToggleButtonGroup
+              exclusive
+              fullWidth
+              size="small"
+              value={draft.location_type}
+              onChange={(_, v: ServiceLocationType | null) => {
+                if (v) setDraft(d => ({ ...d, location_type: v }))
+              }}
+            >
+              <ToggleButton value="in_person">{t('settings.locationInPerson')}</ToggleButton>
+              <ToggleButton value="online">{t('settings.locationOnline')}</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+          {draft.location_type === 'online' && (
+            <TextField
+              fullWidth
+              size="small"
+              label={t('settings.meetingLink')}
+              value={draft.meeting_link}
+              onChange={e => setDraft(d => ({ ...d, meeting_link: e.target.value }))}
+              placeholder="https://"
+              helperText={t('settings.meetingLinkHelp')}
+              slotProps={{ htmlInput: { inputMode: 'url' } }}
+              sx={{ mb: 2 }}
+            />
+          )}
           <Stack direction="row" spacing={1}>
             <Button
               variant="contained"
