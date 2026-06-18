@@ -42,6 +42,20 @@ export function isValidEmail(raw: string): boolean {
 }
 
 /**
+ * A person's name: letters only — no digits or punctuation/symbols. Spaces,
+ * hyphens and apostrophes are allowed because real names use them
+ * (e.g. "Anne-Marie", "O'Brien", composite Georgian names), but at least one
+ * actual letter is required so " - " or "''" don't pass. Uses the Unicode
+ * letter class (\p{L}) so Georgian (მარიამ) and Latin names both validate.
+ * Mirrors the customers_*_name_letters DB constraint.
+ */
+export function isValidPersonName(raw: string): boolean {
+  const trimmed = raw.trim()
+  if (!trimmed) return false
+  return /\p{L}/u.test(trimmed) && /^[\p{L}\p{M} '’-]+$/u.test(trimmed)
+}
+
+/**
  * True when `raw` is a well-formed http(s) URL. Used to validate the meeting
  * link required for online services. We rely on the URL constructor (handles
  * the awkward edge cases) and only insist on an http/https scheme so users

@@ -33,6 +33,7 @@
     "invalidUrl": "Enter a valid link (starting with https://)",
     "meetingLinkRequired": "A meeting link is required for online services",
     "minLength": "Must be at least {{min}} characters",
+    "lettersOnly": "Letters only",
     "fileTooLarge": "File is too large (max {{max}} MB)",
     "invalidImage": "Please choose an image file (PNG, JPG, GIF)",
     "requiredWhenEnabled": "Required when this method is enabled"

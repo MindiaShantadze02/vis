@@ -8,7 +8,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { format, isValid } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidGeorgianPhone, formatGeorgianPhone, FIELD_LIMITS } from '@/lib/validation'
+import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
 import { computeAvailableSlots, getDayKey } from '@/lib/slots'
 import type { SlotApptRow, SlotOverride, WeekTemplate } from '@/lib/slots'
 import { useToast } from '@/components/ui'
@@ -190,9 +190,13 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
 
   const phoneInvalid = phone.trim().length > 0 && !isValidGeorgianPhone(phone)
   const firstNameTooShort = firstName.trim().length > 0 && firstName.trim().length < 2
+  const firstNameInvalid = firstName.trim().length >= 2 && !isValidPersonName(firstName)
+  const lastNameInvalid = lastName.trim().length > 0 && !isValidPersonName(lastName)
   const canSave =
     !!serviceId &&
     firstName.trim().length >= 2 &&
+    isValidPersonName(firstName) &&
+    !lastNameInvalid &&
     isValidGeorgianPhone(phone) &&
     !!scheduledAt
 
@@ -290,8 +294,12 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               fullWidth required size="small"
-              error={firstNameTooShort}
-              helperText={firstNameTooShort ? t('validation.minLength', { min: 2 }) : undefined}
+              error={firstNameTooShort || firstNameInvalid}
+              helperText={
+                firstNameTooShort ? t('validation.minLength', { min: 2 })
+                : firstNameInvalid ? t('validation.lettersOnly')
+                : undefined
+              }
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'add-appt-first-name' } }}
             />
             <TextField
@@ -299,6 +307,8 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               value={lastName}
               onChange={e => setLastName(e.target.value)}
               fullWidth size="small"
+              error={lastNameInvalid}
+              helperText={lastNameInvalid ? t('validation.lettersOnly') : undefined}
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName } }}
             />
           </Stack>

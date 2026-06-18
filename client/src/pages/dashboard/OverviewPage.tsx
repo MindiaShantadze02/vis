@@ -154,12 +154,12 @@ export default function OverviewPage() {
       supabase
         .from('appointments').select('id, services(price)', { count: 'exact' })
         .eq('org_id', org.id).gte('scheduled_at', weekStart).lte('scheduled_at', weekEnd)
-        .eq('status', 'approved'),
+        .in('status', ['approved', 'completed']),
 
       supabase
         .from('appointments').select('id, services(price)')
         .eq('org_id', org.id).gte('scheduled_at', monthStart).lte('scheduled_at', monthEnd)
-        .eq('status', 'approved'),
+        .in('status', ['approved', 'completed']),
 
       supabase
         .from('appointments').select('id', { count: 'exact', head: true })

@@ -11,7 +11,7 @@ import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidGeorgianPhone, formatGeorgianPhone, FIELD_LIMITS } from '@/lib/validation'
+import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
 import type { BookingOrg, BookingState } from './BookingLayout'
 
 interface Props {
@@ -128,8 +128,12 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
 
   const phoneInvalid = booking.phone.trim().length > 0 && !isValidGeorgianPhone(booking.phone)
   const firstNameTooShort = booking.firstName.trim().length > 0 && booking.firstName.trim().length < 2
+  const firstNameInvalid = booking.firstName.trim().length >= 2 && !isValidPersonName(booking.firstName)
+  const lastNameInvalid = booking.lastName.trim().length > 0 && !isValidPersonName(booking.lastName)
   const canBook =
     booking.firstName.trim().length >= 2 &&
+    isValidPersonName(booking.firstName) &&
+    !lastNameInvalid &&
     isValidGeorgianPhone(booking.phone)
 
   return (
@@ -161,8 +165,12 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
             fullWidth
             required
             autoFocus
-            error={firstNameTooShort}
-            helperText={firstNameTooShort ? t('validation.minLength', { min: 2 }) : ' '}
+            error={firstNameTooShort || firstNameInvalid}
+            helperText={
+              firstNameTooShort ? t('validation.minLength', { min: 2 })
+              : firstNameInvalid ? t('validation.lettersOnly')
+              : ' '
+            }
             slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'book-first-name' } }}
           />
           <TextField
@@ -170,6 +178,8 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
             value={booking.lastName}
             onChange={e => onChange({ lastName: e.target.value })}
             fullWidth
+            error={lastNameInvalid}
+            helperText={lastNameInvalid ? t('validation.lettersOnly') : ' '}
             slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'book-last-name' } }}
           />
         </Stack>
