@@ -163,7 +163,7 @@ export function makeBookingTheme(bt: BookingTheme): Theme {
           root: {
             color: `rgba(${rgb},0.20)`,
             '&.Mui-active': { color: primary, filter: `drop-shadow(0 2px 5px rgba(${rgb},0.22))` },
-            '&.Mui-completed': { color: '#059669' },
+            '&.Mui-completed': { color: '#0E9F6E' },
           },
         },
       },

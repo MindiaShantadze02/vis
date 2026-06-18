@@ -65,28 +65,33 @@ const theme = createTheme({
       default: '#F4F8FD',
       paper:   '#FFFFFF',
     },
+    // ── Status palette ──────────────────────────────────────────
+    // Cool, harmonized status tones tuned to sit calmly beside the
+    // blue brand. Drive appointment status presentation (see
+    // StatusChip): approved→success, pending→warning, rejected→error,
+    // completed→info. `light` values are pale tints used as surfaces.
     success: {
-      main:         '#059669',
-      light:        '#D1FAE5',
-      dark:         '#047857',
+      main:         '#0E9F6E', // approved — teal-green
+      light:        '#D6F3E7',
+      dark:         '#0A7D55',
       contrastText: '#FFFFFF',
     },
     warning: {
-      main:         '#D97706',
-      light:        '#FEF3C7',
-      dark:         '#B45309',
+      main:         '#B7791F', // pending — muted amber
+      light:        '#FBF1DD',
+      dark:         '#8C5A12',
       contrastText: '#FFFFFF',
     },
     error: {
-      main:         '#DC2626',
-      light:        '#FEE2E2',
-      dark:         '#B91C1C',
+      main:         '#E0524B', // rejected — soft coral-red
+      light:        '#FBE2E0',
+      dark:         '#BE3B34',
       contrastText: '#FFFFFF',
     },
     info: {
-      main:         '#0891B2',
-      light:        '#CFFAFE',
-      dark:         '#0E7490',
+      main:         '#4F7BD9', // completed — brand indigo-blue
+      light:        '#E2EAF9',
+      dark:         '#3A5FB0',
       contrastText: '#FFFFFF',
     },
     text: {
@@ -218,7 +223,7 @@ const theme = createTheme({
             color: BLUE[600],
             filter: 'drop-shadow(0 2px 6px rgba(25,118,210,0.35))',
           },
-          '&.Mui-completed': { color: '#059669' },
+          '&.Mui-completed': { color: '#0E9F6E' },
         },
       },
     },
