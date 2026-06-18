@@ -122,6 +122,7 @@ export default function ServicesStep() {
             <Box key={i}>
               {i > 0 && <Divider />}
               <Box
+                data-testid="onb-service-row"
                 sx={{
                   px: 2, py: 1.5,
                   display: 'flex',
@@ -141,10 +142,10 @@ export default function ServicesStep() {
                     {svc.duration_minutes} წთ · {svc.price} ₾
                   </Typography>
                 </Box>
-                <ActionIconButton aria-label={t('common.edit')} onClick={() => startEdit(i)}>
+                <ActionIconButton aria-label={t('common.edit')} data-testid="onb-service-edit" onClick={() => startEdit(i)}>
                   <EditOutlinedIcon fontSize="small" />
                 </ActionIconButton>
-                <ActionIconButton tone="danger" aria-label={t('common.delete')} onClick={() => removeService(i)}>
+                <ActionIconButton tone="danger" aria-label={t('common.delete')} data-testid="onb-service-delete" onClick={() => removeService(i)}>
                   <DeleteOutlinedIcon fontSize="small" />
                 </ActionIconButton>
               </Box>
@@ -166,6 +167,7 @@ export default function ServicesStep() {
             value={draft.name}
             onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
             sx={{ mb: 2 }}
+            slotProps={{ htmlInput: { 'data-testid': 'onb-service-name' } }}
           />
           <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
             <TextField
@@ -174,7 +176,7 @@ export default function ServicesStep() {
               label={t('onboarding.duration')}
               value={draft.duration_minutes}
               onChange={e => setDraft(d => ({ ...d, duration_minutes: onlyInt(e.target.value) }))}
-              slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+              slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'onb-service-duration' } }}
               error={durationTooLong}
               helperText={durationTooLong ? t('validation.durationTooLong') : undefined}
             />
@@ -184,7 +186,7 @@ export default function ServicesStep() {
               label={t('onboarding.price')}
               value={draft.price}
               onChange={e => setDraft(d => ({ ...d, price: onlyDecimal(e.target.value) }))}
-              slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+              slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'onb-service-price' } }}
             />
           </Stack>
           <Box sx={{ mb: 2 }}>
@@ -223,6 +225,7 @@ export default function ServicesStep() {
               startIcon={isEditing ? undefined : <AddIcon />}
               onClick={saveService}
               disabled={!draftValid}
+              data-testid="onb-service-save"
             >
               {isEditing ? t('common.save') : t('onboarding.addService')}
             </Button>
@@ -245,6 +248,7 @@ export default function ServicesStep() {
           size="large"
           disabled={!canProceed}
           onClick={goNext}
+          data-testid="onb-services-next"
         >
           {t('common.next')}
         </Button>

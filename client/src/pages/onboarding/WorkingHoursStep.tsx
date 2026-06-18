@@ -226,7 +226,7 @@ export default function WorkingHoursStep() {
         {t('onboarding.workingHours')}
       </Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="hours-error">{error}</Alert>}
 
       <Stack spacing={1.5} sx={{ mb: 4 }}>
         {DAYS.map(day => {
@@ -245,7 +245,7 @@ export default function WorkingHoursStep() {
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <FormControlLabel
-                  control={<Switch checked={cfg.open} onChange={() => toggleDay(day)} color="primary" />}
+                  control={<Switch checked={cfg.open} onChange={() => toggleDay(day)} color="primary" data-testid={`hours-toggle-${day}`} />}
                   label={
                     <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 90 }}>
                       {DAY_LABELS[day]}
@@ -277,6 +277,7 @@ export default function WorkingHoursStep() {
                       size="small" type="time" value={cfg.openTime}
                       onChange={e => setDayTime(day, 'openTime', e.target.value)}
                       sx={{ width: 110 }}
+                      slotProps={{ htmlInput: { 'data-testid': `hours-${day}-open` } }}
                     />
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>—</Typography>
                     <TextField
@@ -284,6 +285,7 @@ export default function WorkingHoursStep() {
                       onChange={e => setDayTime(day, 'closeTime', e.target.value)}
                       error={!windowValid}
                       sx={{ width: 110 }}
+                      slotProps={{ htmlInput: { 'data-testid': `hours-${day}-close` } }}
                     />
                   </Box>
 
@@ -344,10 +346,10 @@ export default function WorkingHoursStep() {
       </Stack>
 
       <Stack direction="row" spacing={2}>
-        <Button fullWidth variant="outlined" onClick={goBack} disabled={loading}>
+        <Button fullWidth variant="outlined" onClick={goBack} disabled={loading} data-testid="hours-back">
           {t('common.back')}
         </Button>
-        <Button fullWidth variant="contained" size="large" onClick={handleFinish} disabled={loading}>
+        <Button fullWidth variant="contained" size="large" onClick={handleFinish} disabled={loading} data-testid="hours-finish">
           {loading ? <CircularProgress size={20} color="inherit" /> : t('onboarding.finish')}
         </Button>
       </Stack>

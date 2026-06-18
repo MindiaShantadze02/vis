@@ -242,7 +242,7 @@ export default function ServicesSettings() {
       <PageHeader
         title={t('settings.services')}
         action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} data-testid="service-add">
             {t('onboarding.addService')}
           </Button>
         }
@@ -265,6 +265,7 @@ export default function ServicesSettings() {
             <Box key={s.id}>
               {i > 0 && <Divider />}
               <Box
+                data-testid="service-row"
                 sx={{
                   px: 2.5, py: 2,
                   display: 'flex', alignItems: 'center', gap: 2,
@@ -285,11 +286,12 @@ export default function ServicesSettings() {
                 <Switch
                   checked={s.is_active}
                   onChange={() => toggleActive(s)}
+                  data-testid="service-active-toggle"
                 />
-                <ActionIconButton aria-label={t('common.edit')} onClick={() => openEdit(s)}>
+                <ActionIconButton aria-label={t('common.edit')} data-testid="service-edit" onClick={() => openEdit(s)}>
                   <EditOutlinedIcon fontSize="small" />
                 </ActionIconButton>
-                <ActionIconButton tone="danger" aria-label={t('common.delete')} onClick={() => setConfirmDelete(s)}>
+                <ActionIconButton tone="danger" aria-label={t('common.delete')} data-testid="service-delete" onClick={() => setConfirmDelete(s)}>
                   <DeleteOutlinedIcon fontSize="small" />
                 </ActionIconButton>
               </Box>
@@ -312,13 +314,14 @@ export default function ServicesSettings() {
               fullWidth
               required
               autoFocus
+              slotProps={{ htmlInput: { 'data-testid': 'service-name' } }}
             />
             <TextField
               label={t('onboarding.duration')}
               value={form.duration_minutes}
               onChange={e => setForm(f => ({ ...f, duration_minutes: onlyInt(e.target.value) }))}
               fullWidth
-              slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+              slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'service-duration' } }}
               error={durationTooLong}
               helperText={durationTooLong ? t('validation.durationTooLong') : undefined}
             />
@@ -327,14 +330,14 @@ export default function ServicesSettings() {
               value={form.price}
               onChange={e => setForm(f => ({ ...f, price: onlyDecimal(e.target.value) }))}
               fullWidth
-              slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+              slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-price' } }}
             />
             <TextField
               label={t('settings.maxPerSlot')}
               value={form.max_per_slot}
               onChange={e => setForm(f => ({ ...f, max_per_slot: onlyInt(e.target.value) }))}
               fullWidth
-              slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+              slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'service-max-per-slot' } }}
             />
             <Box>
               <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
@@ -376,6 +379,7 @@ export default function ServicesSettings() {
                       <Chip
                         key={m.id}
                         label={m.display_name || '—'}
+                        data-testid="service-staff-chip"
                         onClick={() => toggleMember(m.id)}
                         color={sel ? 'primary' : 'default'}
                         variant={sel ? 'filled' : 'outlined'}
@@ -401,6 +405,7 @@ export default function ServicesSettings() {
           <Button
             variant="contained"
             onClick={handleSave}
+            data-testid="service-save"
             disabled={
               saving ||
               !form.name.trim() ||

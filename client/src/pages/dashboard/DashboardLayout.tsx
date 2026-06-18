@@ -122,6 +122,7 @@ export default function DashboardLayout() {
         {org && (<>
         <ListItemButton
           onClick={() => setSettingsOpen(o => !o)}
+          data-testid="nav-settings"
           sx={{
             borderRadius: 2,
             mb: 0.5,
@@ -193,7 +194,7 @@ export default function DashboardLayout() {
           {user?.email ?? ''}
         </Typography>
         <Tooltip title="გასვლა">
-          <IconButton size="small" onClick={handleLogout}>
+          <IconButton size="small" onClick={handleLogout} data-testid="logout-btn">
             <LogoutIcon fontSize="small" />
           </IconButton>
         </Tooltip>

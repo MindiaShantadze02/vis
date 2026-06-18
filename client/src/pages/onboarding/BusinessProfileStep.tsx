@@ -42,6 +42,7 @@ export default function BusinessProfileStep() {
         value={data.name}
         onChange={e => update({ name: e.target.value })}
         sx={{ mb: 2 }}
+        slotProps={{ htmlInput: { 'data-testid': 'biz-name' } }}
       />
 
       <TextField
@@ -52,6 +53,7 @@ export default function BusinessProfileStep() {
         multiline
         rows={2}
         sx={{ mb: 2 }}
+        slotProps={{ htmlInput: { 'data-testid': 'biz-description' } }}
       />
 
       <TextField
@@ -63,7 +65,7 @@ export default function BusinessProfileStep() {
         placeholder="555 123 456"
         error={phoneInvalid}
         helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
-        slotProps={{ htmlInput: { inputMode: 'tel' as const } }}
+        slotProps={{ htmlInput: { inputMode: 'tel' as const, 'data-testid': 'biz-phone' } }}
         sx={{ mb: 4 }}
       />
 
@@ -73,6 +75,7 @@ export default function BusinessProfileStep() {
         size="large"
         disabled={!canProceed}
         onClick={goNext}
+        data-testid="biz-next"
       >
         {t('common.next')}
       </Button>

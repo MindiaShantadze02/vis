@@ -89,7 +89,7 @@ export default function PendingInvites() {
   return (
     <Stack spacing={1.5} sx={{ mb: 3 }}>
       {invites.map(inv => (
-        <Card key={inv.id} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderLeft: '3px solid', borderColor: 'primary.main' }}>
+        <Card key={inv.id} data-testid="pending-invite" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderLeft: '3px solid', borderColor: 'primary.main' }}>
           <MailOutlineIcon sx={{ color: 'primary.main' }} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -104,6 +104,7 @@ export default function PendingInvites() {
             size="small"
             onClick={() => accept(inv)}
             disabled={accepting !== null}
+            data-testid="pending-invite-accept"
           >
             {accepting === inv.id ? <CircularProgress size={18} color="inherit" /> : 'მიღება'}
           </Button>

@@ -102,11 +102,11 @@ export default function LoginPage() {
             variant="fullWidth"
             sx={{ mb: 3 }}
           >
-            <Tab value="signin" label="შესვლა" />
-            <Tab value="signup" label="რეგისტრაცია" />
+            <Tab value="signin" label="შესვლა" data-testid="login-tab-signin" />
+            <Tab value="signup" label="რეგისტრაცია" data-testid="login-tab-signup" />
           </Tabs>
 
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="login-error">{error}</Alert>}
 
           <TextField
             fullWidth
@@ -116,6 +116,7 @@ export default function LoginPage() {
             onChange={e => setEmail(e.target.value)}
             sx={{ mb: 2 }}
             autoFocus
+            slotProps={{ htmlInput: { 'data-testid': 'login-email' } }}
           />
 
           <TextField
@@ -126,6 +127,7 @@ export default function LoginPage() {
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => mode === 'signin' && e.key === 'Enter' && canSignIn && handleSignIn()}
             sx={{ mb: mode === 'signup' ? 2 : 3 }}
+            slotProps={{ htmlInput: { 'data-testid': 'login-password' } }}
           />
 
           {mode === 'signup' && (
@@ -139,6 +141,7 @@ export default function LoginPage() {
               error={passwordMismatch}
               helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
               sx={{ mb: 2 }}
+              slotProps={{ htmlInput: { 'data-testid': 'login-confirm-password' } }}
             />
           )}
 
@@ -148,6 +151,7 @@ export default function LoginPage() {
             size="large"
             onClick={mode === 'signin' ? handleSignIn : handleSignUp}
             disabled={loading || (mode === 'signin' ? !canSignIn : !canSignUp)}
+            data-testid="login-submit"
           >
             {loading
               ? <CircularProgress size={20} color="inherit" />

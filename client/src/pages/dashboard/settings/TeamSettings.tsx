@@ -164,6 +164,7 @@ export default function TeamSettings() {
             variant="contained"
             startIcon={<PersonAddOutlinedIcon />}
             onClick={() => setInviteOpen(true)}
+            data-testid="team-invite-btn"
           >
             {t('settings.inviteAdmin')}
           </Button>
@@ -179,7 +180,7 @@ export default function TeamSettings() {
           : members.map((m, i) => (
             <Box key={m.id}>
               {i > 0 && <Divider />}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2.5, py: 2 }}>
+              <Box data-testid="member-row" sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2.5, py: 2 }}>
                 <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
                   {(m.display_name?.trim() || m.user_id).slice(0, 2).toUpperCase()}
                 </Avatar>
@@ -202,11 +203,11 @@ export default function TeamSettings() {
                   color={m.role === 'owner' ? 'primary' : 'default'}
                   variant={m.role === 'owner' ? 'filled' : 'outlined'}
                 />
-                <ActionIconButton aria-label={t('settings.editMember')} onClick={() => openEdit(m)}>
+                <ActionIconButton aria-label={t('settings.editMember')} data-testid="member-edit" onClick={() => openEdit(m)}>
                   <EditOutlinedIcon fontSize="small" />
                 </ActionIconButton>
                 {role === 'owner' && m.role !== 'owner' && m.user_id !== user?.id && (
-                  <ActionIconButton tone="danger" aria-label={t('settings.removeAdmin')} onClick={() => handleRemove(m.id)}>
+                  <ActionIconButton tone="danger" aria-label={t('settings.removeAdmin')} data-testid="member-delete" onClick={() => handleRemove(m.id)}>
                     <DeleteOutlinedIcon fontSize="small" />
                   </ActionIconButton>
                 )}
@@ -235,8 +236,8 @@ export default function TeamSettings() {
                       </Typography>
                     )}
                   </Box>
-                  <Chip label="მოლოდინში" size="small" color="warning" variant="outlined" />
-                  <ActionIconButton tone="danger" aria-label={t('common.cancel')} onClick={() => cancelInvite(inv.id)}>
+                  <Chip label="მოლოდინში" size="small" color="warning" variant="outlined" data-testid="invite-row" />
+                  <ActionIconButton tone="danger" aria-label={t('common.cancel')} data-testid="invite-cancel" onClick={() => cancelInvite(inv.id)}>
                     <DeleteOutlinedIcon fontSize="small" />
                   </ActionIconButton>
                 </Box>
@@ -263,7 +264,7 @@ export default function TeamSettings() {
               placeholder="admin@example.com"
               error={inviteEmailInvalid}
               helperText={inviteEmailInvalid ? t('validation.invalidEmail') : ' '}
-              slotProps={{ htmlInput: { inputMode: 'email' as const } }}
+              slotProps={{ htmlInput: { inputMode: 'email' as const, 'data-testid': 'invite-email' } }}
               autoFocus
             />
           </Stack>
@@ -274,6 +275,7 @@ export default function TeamSettings() {
             variant="contained"
             onClick={handleInvite}
             disabled={inviting || !isValidEmail(inviteEmail)}
+            data-testid="invite-send"
           >
             {inviting ? <CircularProgress size={20} color="inherit" /> : 'გაგზავნა'}
           </Button>
@@ -291,22 +293,24 @@ export default function TeamSettings() {
               onChange={e => setEditName(e.target.value)}
               fullWidth
               autoFocus
+              slotProps={{ htmlInput: { 'data-testid': 'member-name' } }}
             />
             <TextField
               label={t('settings.staffTitle')}
               value={editTitle}
               onChange={e => setEditTitle(e.target.value)}
               fullWidth
+              slotProps={{ htmlInput: { 'data-testid': 'member-title' } }}
             />
             <FormControlLabel
-              control={<Switch checked={editBookable} onChange={e => setEditBookable(e.target.checked)} />}
+              control={<Switch checked={editBookable} onChange={e => setEditBookable(e.target.checked)} data-testid="member-bookable" />}
               label={t('settings.bookable')}
             />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setEditMember(null)}>{t('common.cancel')}</Button>
-          <Button variant="contained" onClick={saveMember} disabled={savingMember}>
+          <Button variant="contained" onClick={saveMember} disabled={savingMember} data-testid="member-save">
             {savingMember ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
           </Button>
         </DialogActions>
