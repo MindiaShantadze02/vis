@@ -16,6 +16,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing required fields' }, { status: 400, headers: corsHeaders })
     }
 
+    // Validate name/notes lengths to mirror the client + DB constraints
+    // (customers_first_name_min_length, appointments_notes_max_length).
+    const firstNameTrim = String(first_name).trim()
+    if (firstNameTrim.length < 2 || firstNameTrim.length > 100) {
+      return Response.json({ error: 'invalid_name' }, { status: 400, headers: corsHeaders })
+    }
+    if (last_name && String(last_name).length > 100) {
+      return Response.json({ error: 'invalid_name' }, { status: 400, headers: corsHeaders })
+    }
+    if (notes && String(notes).length > 500) {
+      return Response.json({ error: 'notes_too_long' }, { status: 400, headers: corsHeaders })
+    }
+
     // Validate & normalise the phone to a bare 9-digit Georgian number
     // (mobile starts with 5, landline with 3/4). No country code is stored.
     const phoneDigits = String(phone).replace(/\D/g, '')
@@ -78,7 +91,7 @@ Deno.serve(async (req) => {
     const { data: customer, error: custErr } = await supabase
       .from('customers')
       .upsert(
-        { first_name, last_name: last_name || null, phone_number: phoneLocal },
+        { first_name: firstNameTrim, last_name: last_name?.trim() || null, phone_number: phoneLocal },
         { onConflict: 'phone_number' }
       )
       .select('id')
