@@ -375,21 +375,22 @@ export default function CalendarPage() {
           startIcon={<EventBusyOutlinedIcon />}
           onClick={openRestDialog}
           sx={{ borderRadius: 2 }}
+          data-testid="cal-rest-btn"
         >
           დასვენება
         </Button>
         <Tooltip title="დღეს">
-          <IconButton onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>
+          <IconButton onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))} data-testid="cal-today">
             <TodayIcon />
           </IconButton>
         </Tooltip>
-        <IconButton onClick={() => setWeekStart(w => addWeeks(w, -1))}>
+        <IconButton onClick={() => setWeekStart(w => addWeeks(w, -1))} data-testid="cal-prev">
           <ArrowBackIosNewIcon fontSize="small" />
         </IconButton>
-        <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 160, textAlign: 'center' }}>
+        <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 160, textAlign: 'center' }} data-testid="cal-week-label">
           {weekLabel}
         </Typography>
-        <IconButton onClick={() => setWeekStart(w => addWeeks(w, 1))}>
+        <IconButton onClick={() => setWeekStart(w => addWeeks(w, 1))} data-testid="cal-next">
           <ArrowForwardIosIcon fontSize="small" />
         </IconButton>
       </Box>
@@ -516,6 +517,7 @@ export default function CalendarPage() {
                         >
                           <Box
                             onClick={() => setSelected(appt)}
+                            data-testid="cal-appt"
                             sx={{
                               position: 'absolute',
                               top: `${top}px`,
@@ -672,10 +674,10 @@ export default function CalendarPage() {
 
             {selected.status === 'pending' && (
               <Stack spacing={1} sx={{ mt: 4 }}>
-                <Button fullWidth variant="contained" color="success" onClick={() => changeStatus(selected.id, 'approved')} disabled={actionLoading}>
+                <Button fullWidth variant="contained" color="success" onClick={() => changeStatus(selected.id, 'approved')} disabled={actionLoading} data-testid="cal-approve">
                   {actionLoading ? <CircularProgress size={20} color="inherit" /> : t('dashboard.approve')}
                 </Button>
-                <Button fullWidth variant="outlined" color="error" onClick={() => changeStatus(selected.id, 'rejected')} disabled={actionLoading}>
+                <Button fullWidth variant="outlined" color="error" onClick={() => changeStatus(selected.id, 'rejected')} disabled={actionLoading} data-testid="cal-reject">
                   {t('dashboard.reject')}
                 </Button>
               </Stack>

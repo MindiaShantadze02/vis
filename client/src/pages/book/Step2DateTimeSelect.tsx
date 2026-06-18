@@ -181,6 +181,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                 <Chip
                   key={opt.id}
                   label={opt.label}
+                  data-testid="book-staff"
+                  data-staff-id={opt.id}
                   onClick={() => setSelectedStaffId(opt.id)}
                   color={selected ? 'primary' : 'default'}
                   variant={selected ? 'filled' : 'outlined'}
@@ -217,6 +219,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
           return (
             <Box
               key={i}
+              data-testid={`book-day-${format(day, 'yyyy-MM-dd')}`}
+              data-disabled={disabled ? 'true' : 'false'}
               onClick={() => !disabled && setSelectedDate(day)}
               sx={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -273,6 +277,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                   <Chip
                     key={time}
                     label={time}
+                    data-testid="book-slot"
                     onClick={() => onSelect(
                       format(selectedDate, 'yyyy-MM-dd'),
                       time,

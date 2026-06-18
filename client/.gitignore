@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Cypress
+cypress/videos
+cypress/screenshots
+cypress/downloads
 .env
 .env.*
 

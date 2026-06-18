@@ -32,6 +32,7 @@ export default function StatusChip({ status, size = 'small', variant = 'filled' 
       color={STATUS_COLOR[status]}
       size={size}
       variant={variant}
+      data-testid={`status-${status}`}
     />
   )
 }

@@ -243,10 +243,10 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
   }
 
   return (
-    <Dialog open onClose={saving ? undefined : onClose} maxWidth="sm" fullWidth>
+    <Dialog open onClose={saving ? undefined : onClose} maxWidth="sm" fullWidth data-testid="add-appt-dialog">
       <DialogTitle sx={{ fontWeight: 700 }}>ჯავშნის დამატება</DialogTitle>
       <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="add-appt-error">{error}</Alert>}
 
         <Stack spacing={2} sx={{ mt: 1 }}>
           <FormControl fullWidth size="small">
@@ -254,6 +254,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
             <Select
               value={serviceId}
               label="სერვისი"
+              data-testid="add-appt-service"
               onChange={e => { setServiceId(e.target.value); setStaffId(''); setTimeStr('') }}
             >
               {services.map(s => (
@@ -286,6 +287,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               fullWidth required size="small"
+              slotProps={{ htmlInput: { 'data-testid': 'add-appt-first-name' } }}
             />
             <TextField
               label="გვარი"
@@ -303,7 +305,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
             placeholder="599 123 456"
             error={phoneInvalid}
             helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
-            slotProps={{ htmlInput: { inputMode: 'tel' as const } }}
+            slotProps={{ htmlInput: { inputMode: 'tel' as const, 'data-testid': 'add-appt-phone' } }}
           />
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
@@ -357,8 +359,8 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={saving}>{t('common.cancel')}</Button>
-        <Button variant="contained" onClick={handleSave} disabled={!canSave || saving}>
+        <Button onClick={onClose} disabled={saving} data-testid="add-appt-cancel">{t('common.cancel')}</Button>
+        <Button variant="contained" onClick={handleSave} disabled={!canSave || saving} data-testid="add-appt-save">
           {saving ? <CircularProgress size={22} color="inherit" /> : 'დამატება'}
         </Button>
       </DialogActions>

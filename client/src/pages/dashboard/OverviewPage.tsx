@@ -305,7 +305,7 @@ export default function OverviewPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>{t('dashboard.appointments')}</Typography>
-          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setAddOpen(true)}>
+          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setAddOpen(true)} data-testid="appt-add-btn">
             ჯავშნის დამატება
           </Button>
         </Box>
@@ -319,7 +319,10 @@ export default function OverviewPage() {
             placeholder={`${t('common.search')}...`}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            slotProps={{ input: { startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 20 }} /> } }}
+            slotProps={{
+              input: { startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 20 }} /> },
+              htmlInput: { 'data-testid': 'appt-search' },
+            }}
             sx={{ minWidth: { sm: 200 }, width: { xs: '100%', sm: 'auto' } }}
           />
           <FormControl size="small" sx={{ minWidth: { sm: 140 }, width: { xs: '100%', sm: 'auto' } }}>
@@ -328,6 +331,7 @@ export default function OverviewPage() {
               value={statusFilter}
               label="სტატუსი"
               onChange={e => { setStatusFilter(e.target.value as AppointmentStatus | 'all'); setPage(0) }}
+              data-testid="appt-status-filter"
             >
               <MenuItem value="all">ყველა</MenuItem>
               {ALL_STATUSES.map(s => (
@@ -391,6 +395,7 @@ export default function OverviewPage() {
           : appointments.map((appt, i) => {
             const rowProps = {
               key: appt.id,
+              'data-testid': 'appt-row',
               onClick: () => { setSelected(appt); setAdminNote(appt.admin_notes ?? ''); setConfirmingCancel(false) },
               sx: {
                 px: 2, py: 1.5,
@@ -526,6 +531,7 @@ export default function OverviewPage() {
                       <Select
                         value={selected.staff_id ?? ''}
                         label={t('dashboard.staff')}
+                        data-testid="appt-staff-select"
                         onChange={e => reassignStaff(e.target.value === '' ? null : e.target.value)}
                       >
                         <MenuItem value=""><em>{t('dashboard.unassigned')}</em></MenuItem>
@@ -556,6 +562,7 @@ export default function OverviewPage() {
                     value={adminNote}
                     onChange={e => setAdminNote(e.target.value)}
                     multiline rows={2}
+                    slotProps={{ htmlInput: { 'data-testid': 'appt-admin-note' } }}
                   />
                 )}
               </Stack>
@@ -564,11 +571,11 @@ export default function OverviewPage() {
               <Button onClick={() => { setSelected(null); setConfirmingCancel(false) }}>{t('common.cancel')}</Button>
               {selected.status === 'pending' && (
                 <>
-                  <Button variant="outlined" color="error"
+                  <Button variant="outlined" color="error" data-testid="appt-reject"
                     onClick={() => changeStatus(selected.id, 'rejected')} disabled={!!actionLoading}>
                     {t('dashboard.reject')}
                   </Button>
-                  <Button variant="contained" color="success"
+                  <Button variant="contained" color="success" data-testid="appt-approve"
                     onClick={() => changeStatus(selected.id, 'approved')} disabled={!!actionLoading}>
                     {t('dashboard.approve')}
                   </Button>
@@ -577,16 +584,16 @@ export default function OverviewPage() {
               {selected.status === 'approved' && (
                 confirmingCancel ? (
                   <>
-                    <Button onClick={() => setConfirmingCancel(false)} disabled={!!actionLoading}>
+                    <Button onClick={() => setConfirmingCancel(false)} disabled={!!actionLoading} data-testid="appt-keep">
                       {t('dashboard.keepAppointment')}
                     </Button>
-                    <Button variant="contained" color="error"
+                    <Button variant="contained" color="error" data-testid="appt-confirm-cancel"
                       onClick={() => changeStatus(selected.id, 'cancelled')} disabled={!!actionLoading}>
                       {t('dashboard.confirmCancel')}
                     </Button>
                   </>
                 ) : (
-                  <Button variant="outlined" color="error"
+                  <Button variant="outlined" color="error" data-testid="appt-cancel"
                     onClick={() => setConfirmingCancel(true)} disabled={!!actionLoading}>
                     {t('dashboard.cancelAppointment')}
                   </Button>
