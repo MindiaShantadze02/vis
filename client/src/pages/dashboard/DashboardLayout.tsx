@@ -11,10 +11,13 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined'
 import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
+import { formatDistanceToNow } from 'date-fns'
+import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { useNotifications } from '@/hooks/useNotifications'
 import { anim } from '@/theme/animations'
 import { gradient, elevation, tint } from '@/theme/theme'
 
@@ -41,6 +44,7 @@ export default function DashboardLayout() {
   const { org } = useOrg()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { items: notifications, unreadCount, markAllRead } = useNotifications()
 
   const [mobileOpen, setMobileOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -49,6 +53,21 @@ export default function DashboardLayout() {
   async function handleLogout() {
     await supabase.auth.signOut()
     navigate('/login')
+  }
+
+  // Opening the menu marks everything read (clearing the badge); the list
+  // itself stays visible until reload.
+  function openNotifications(e: React.MouseEvent<HTMLElement>) {
+    setAnchorEl(e.currentTarget)
+    markAllRead()
+  }
+
+  function openAppointment(appointmentId: string | null) {
+    setAnchorEl(null)
+    // The overview lists pending requests first; that's where an admin acts on
+    // a booking. (We don't deep-link to a single appointment yet.)
+    navigate('/dashboard')
+    void appointmentId
   }
 
   const sidebar = (
@@ -254,8 +273,8 @@ export default function DashboardLayout() {
             <Box sx={{ flex: 1 }} />
 
             {/* Notification bell */}
-            <IconButton onClick={e => setAnchorEl(e.currentTarget)}>
-              <Badge badgeContent={0} color="error">
+            <IconButton onClick={openNotifications} data-testid="notifications-btn">
+              <Badge badgeContent={unreadCount} color="error" max={99}>
                 <NotificationsOutlinedIcon />
               </Badge>
             </IconButton>
@@ -265,13 +284,50 @@ export default function DashboardLayout() {
               onClose={() => setAnchorEl(null)}
               transformOrigin={{ horizontal: 'right', vertical: 'top' }}
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-              slotProps={{ paper: { sx: { width: 320, maxHeight: 400 } } }}
+              slotProps={{ paper: { sx: { width: 340, maxHeight: 420 } } }}
             >
-              <MenuItem disabled>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  შეტყობინებები არ არის
+              <Box sx={{ px: 2, py: 1.25 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  {t('notifications.title')}
                 </Typography>
-              </MenuItem>
+              </Box>
+              <Divider />
+
+              {notifications.length === 0 ? (
+                <MenuItem disabled>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    {t('notifications.empty')}
+                  </Typography>
+                </MenuItem>
+              ) : (
+                notifications.map(n => (
+                  <MenuItem
+                    key={n.id}
+                    data-testid="notification-item"
+                    onClick={() => openAppointment(n.appointment_id)}
+                    sx={{
+                      alignItems: 'flex-start',
+                      whiteSpace: 'normal',
+                      py: 1.25,
+                      ...(n.read_at ? {} : { bgcolor: tint.hover }),
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {n.title}
+                      </Typography>
+                      {n.body && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                          {n.body}
+                        </Typography>
+                      )}
+                      <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ka })}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                ))
+              )}
             </Menu>
           </Toolbar>
         </AppBar>

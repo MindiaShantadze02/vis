@@ -106,6 +106,8 @@ Deno.serve(async (req) => {
     if (apptErr) return Response.json({ error: apptErr.message }, { status: 500, headers: corsHeaders })
 
     // No counter to bump — usage is derived from the appointments table.
+    // Admin notifications are created by the notify_new_appointment DB trigger
+    // (fires for every appointment insert, including this path).
     return Response.json({ appointment_id: appt.id }, { headers: corsHeaders })
   } catch (err) {
     return Response.json({ error: String(err) }, { status: 500, headers: corsHeaders })

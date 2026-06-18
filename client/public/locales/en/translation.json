@@ -113,6 +113,10 @@
     "noBusinessCaption": "Set up a business to get started. If you're added to a team, the project will appear here.",
     "setUpBusiness": "Set up your business"
   },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications"
+  },
   "settings": {
     "profile": "Profile",
     "services": "Services",

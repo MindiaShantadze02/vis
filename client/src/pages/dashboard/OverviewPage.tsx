@@ -394,7 +394,6 @@ export default function OverviewPage() {
           ? <EmptyState icon={<EventBusyOutlinedIcon />} title="ჯავშნები ვერ მოიძებნა" />
           : appointments.map((appt, i) => {
             const rowProps = {
-              key: appt.id,
               'data-testid': 'appt-row',
               onClick: () => { setSelected(appt); setAdminNote(appt.admin_notes ?? ''); setConfirmingCancel(false) },
               sx: {
@@ -409,7 +408,7 @@ export default function OverviewPage() {
             // Mobile: stacked card layout
             if (isMobile) {
               return (
-                <Box {...rowProps} sx={{ ...rowProps.sx, py: 1.75 }}>
+                <Box key={appt.id} {...rowProps} sx={{ ...rowProps.sx, py: 1.75 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.25 }}>
                     <Box sx={{ minWidth: 0 }}>
                       <Typography variant="body2" noWrap sx={{ fontWeight: 600, fontSize: { xs: '0.9rem', md: '0.875rem' } }}>
@@ -431,7 +430,7 @@ export default function OverviewPage() {
 
             // Desktop: grid row
             return (
-              <Box {...rowProps} sx={{ ...rowProps.sx, display: 'grid', gridTemplateColumns: GRID_COLS, alignItems: 'center' }}>
+              <Box key={appt.id} {...rowProps} sx={{ ...rowProps.sx, display: 'grid', gridTemplateColumns: GRID_COLS, alignItems: 'center' }}>
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {format(new Date(appt.scheduled_at), 'dd MMM', { locale: ka })}

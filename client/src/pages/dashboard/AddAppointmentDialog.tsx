@@ -5,7 +5,7 @@ import {
   FormHelperText, Alert, CircularProgress, Box, Typography,
 } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
-import { format } from 'date-fns'
+import { format, isValid } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, formatGeorgianPhone } from '@/lib/validation'
@@ -111,7 +111,9 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
 
   // Fetch the chosen day's appointments + override so slots reflect real load.
   useEffect(() => {
-    if (!date) return
+    // The DatePicker hands back an Invalid Date while the user is mid-typing;
+    // it's truthy but format() throws on it, so bail until it's a real date.
+    if (!date || !isValid(date)) return
     const dateKey = format(date, 'yyyy-MM-dd')
     const dayStart = dateKey + 'T00:00:00.000Z'
     const dayEnd = dateKey + 'T23:59:59.999Z'
@@ -137,7 +139,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
   }, [date, orgId])
 
   const selectedService = services.find(s => s.id === serviceId)
-  const dateKey = date ? format(date, 'yyyy-MM-dd') : null
+  const dateKey = date && isValid(date) ? format(date, 'yyyy-MM-dd') : null
 
   // Predefined start times for the chosen date/service/staff — derived, so no
   // effect writes slot state. Computed from the org's working hours; if the day
