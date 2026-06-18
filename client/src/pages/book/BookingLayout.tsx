@@ -118,9 +118,10 @@ export default function BookingLayout() {
   const darkSidebar = bookingTheme.sidebarText === 'dark'
   const sideFg = darkSidebar ? '#1F2937' : '#FFFFFF'
   const sideOverlay = (a: number) => `rgba(${darkSidebar ? '0,0,0' : '255,255,255'},${a})`
-  // The white theme is a flat panel — no gradient, no decorative blobs; a
-  // hairline border separates it from the white content area instead.
-  const flatSidebar = bookingTheme.key === 'white'
+  // Flat panels, no gradients/blobs. The light "minimal" theme needs a hairline
+  // border to separate its near-white sidebar from the white content; the rich
+  // colour panels separate by colour alone.
+  const flatSidebar = darkSidebar
 
   const sidebar = (
     <Box
@@ -135,31 +136,11 @@ export default function BookingLayout() {
         flexShrink: 0,
         position: 'relative',
         overflow: 'hidden',
+        // Hairline separation only for the light "minimal" panel; colour panels
+        // separate from the white content on their own.
         ...(flatSidebar && {
           borderRight: { md: '1px solid #E5E7EB' },
           borderBottom: { xs: '1px solid #E5E7EB', md: 'none' },
-        }),
-        // Decorative blobs only on the gradient themes — on the flat white
-        // panel they read as smudges.
-        ...(!flatSidebar && {
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: -60, right: -60,
-            width: 200, height: 200,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${sideOverlay(0.18)} 0%, transparent 70%)`,
-            pointerEvents: 'none',
-          },
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            bottom: -40, left: -40,
-            width: 160, height: 160,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${sideOverlay(0.10)} 0%, transparent 70%)`,
-            pointerEvents: 'none',
-          },
         }),
       }}
     >

@@ -11,7 +11,7 @@ import { isValidGeorgianPhone, formatGeorgianPhone } from '@/lib/validation'
 import { PageHeader, CopyableText, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 import {
-  BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, type BookingThemeKey,
+  BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, getBookingTheme, type BookingThemeKey,
 } from '@/theme/bookingThemes'
 
 export default function ProfileSettings() {
@@ -36,7 +36,8 @@ export default function ProfileSettings() {
       setDescription((org as unknown as Record<string, string>).description ?? '')
       setContactPhone((org as unknown as Record<string, string>).contact_phone ?? '')
       setLogoUrl((org as unknown as Record<string, string>).logo_url ?? null)
-      setBookingTheme((org.booking_theme as BookingThemeKey) ?? DEFAULT_BOOKING_THEME)
+      // Resolve any stored key (incl. the retired 'classic') to a current theme.
+      setBookingTheme(getBookingTheme(org.booking_theme).key)
     }
   }, [org])
 
@@ -207,7 +208,7 @@ export default function ProfileSettings() {
                       <Box
                         sx={{
                           width: 22, height: 22, borderRadius: '50%',
-                          background: th.sidebar,
+                          background: th.primary,
                           boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
                           flexShrink: 0,
                         }}

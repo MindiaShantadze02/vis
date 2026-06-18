@@ -6,17 +6,19 @@ import baseTheme from './theme'
 // professional/business to fresh/sporty, plus a clean white — so owners get
 // personality without an overwhelming colour-picker.
 //
-// Each theme drives the *whole* booking page: the sidebar gradient, the page
-// background, AND the accent colour applied to buttons, inputs, the stepper,
-// selected cards, etc. via a derived MUI theme (see makeBookingTheme).
+// All themes are flat (no gradients). Four use a rich, confident solid colour
+// panel with light text; 'white' is a clean minimal light panel. Each pairs the
+// sidebar with a near-white page background and a refined accent colour applied
+// to buttons, inputs, the stepper, selected cards, etc. via a derived MUI theme
+// (see makeBookingTheme).
 
-export type BookingThemeKey = 'classic' | 'ocean' | 'sunset' | 'sporty' | 'white'
+export type BookingThemeKey = 'blue' | 'ocean' | 'sunset' | 'sporty' | 'white'
 
 export interface BookingTheme {
   key: BookingThemeKey
   /** Georgian label shown in the settings picker. */
   label: string
-  /** Gradient for the booking sidebar panel. */
+  /** Solid (flat) background colour for the booking sidebar panel. */
   sidebar: string
   /** Whether the sidebar content (logo, name, text) is light or dark. */
   sidebarText: 'light' | 'dark'
@@ -31,72 +33,72 @@ export interface BookingTheme {
 }
 
 export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
-  // Soft indigo-violet — the app default. Calm and professional.
-  classic: {
-    key: 'classic',
-    label: 'კლასიკური',
-    sidebar: 'linear-gradient(160deg, #474270 0%, #6B5DD3 100%)',
+  // Azure blue — the app default. Confident, trustworthy, professional.
+  blue: {
+    key: 'blue',
+    label: 'ლურჯი',
+    sidebar: '#1D4ED8',
     sidebarText: 'light',
-    pageBg: '#FAF9FE',
-    primary: '#6B5DD3',
-    primaryLight: '#A9A0E8',
-    primaryDark: '#564AA8',
-    rgb: '107,93,211',
+    pageBg: '#F5F8FE',
+    primary: '#2563EB',
+    primaryLight: '#93C5FD',
+    primaryDark: '#1E40AF',
+    rgb: '37,99,235',
   },
-  // Muted slate-blue — calm and corporate.
+  // Deep teal — calm, fresh and clean. Great for spas and clinics.
   ocean: {
     key: 'ocean',
     label: 'ოკეანე',
-    sidebar: 'linear-gradient(160deg, #314F66 0%, #4886AE 100%)',
+    sidebar: '#0E7490',
     sidebarText: 'light',
-    pageBg: '#F6FAFD',
-    primary: '#4886AE',
-    primaryLight: '#93BBD6',
-    primaryDark: '#356781',
-    rgb: '72,134,174',
+    pageBg: '#F1FAFC',
+    primary: '#0891B2',
+    primaryLight: '#67E8F9',
+    primaryDark: '#155E75',
+    rgb: '8,145,178',
   },
-  // Soft terracotta — warm and inviting, without the neon.
+  // Burnt amber — warm and inviting, with a premium feel.
   sunset: {
     key: 'sunset',
     label: 'მზის ჩასვლა',
-    sidebar: 'linear-gradient(160deg, #7E5A57 0%, #BE7860 100%)',
+    sidebar: '#C2410C',
     sidebarText: 'light',
-    pageBg: '#FFF8F4',
-    primary: '#C76B54',
-    primaryLight: '#E6A892',
-    primaryDark: '#9E4F3B',
-    rgb: '199,107,84',
+    pageBg: '#FFF7F2',
+    primary: '#EA580C',
+    primaryLight: '#FDBA74',
+    primaryDark: '#9A3412',
+    rgb: '234,88,12',
   },
-  // Sage green — fresh but understated.
+  // Emerald green — fresh and energetic without being loud.
   sporty: {
     key: 'sporty',
     label: 'სპორტული',
-    sidebar: 'linear-gradient(160deg, #3A5749 0%, #45986C 100%)',
+    sidebar: '#047857',
     sidebarText: 'light',
-    pageBg: '#F6FBF8',
-    primary: '#45986C',
-    primaryLight: '#8AC6A5',
-    primaryDark: '#327150',
-    rgb: '69,152,108',
+    pageBg: '#F1FBF6',
+    primary: '#059669',
+    primaryLight: '#6EE7B7',
+    primaryDark: '#065F46',
+    rgb: '5,150,105',
   },
-  // Clean white — minimal: a flat off-white sidebar (no gradient) separated
-  // from the white content by a hairline border. Slate accent.
+  // Minimal — a clean light panel separated from the white content by a
+  // hairline border, with a sleek near-black slate accent.
   white: {
     key: 'white',
-    label: 'თეთრი',
-    sidebar: '#F7F8FA',
+    label: 'მინიმალური',
+    sidebar: '#F8FAFC',
     sidebarText: 'dark',
     pageBg: '#FFFFFF',
-    primary: '#1F2937',
-    primaryLight: '#6B7280',
-    primaryDark: '#111827',
-    rgb: '31,41,55',
+    primary: '#1E293B',
+    primaryLight: '#94A3B8',
+    primaryDark: '#0F172A',
+    rgb: '30,41,59',
   },
 }
 
 export const BOOKING_THEME_LIST: BookingTheme[] = Object.values(BOOKING_THEMES)
 
-export const DEFAULT_BOOKING_THEME: BookingThemeKey = 'classic'
+export const DEFAULT_BOOKING_THEME: BookingThemeKey = 'blue'
 
 /** Resolve a stored key (possibly null/unknown) to a theme, falling back to default. */
 export function getBookingTheme(key: string | null | undefined): BookingTheme {
@@ -108,9 +110,9 @@ const muiThemeCache = new Map<BookingThemeKey, Theme>()
 
 /**
  * Build an MUI theme variant whose accent (primary) follows the booking theme.
- * Re-points every violet-hardcoded component override (buttons, inputs, stepper,
- * toggles, progress) at the theme's colour so the entire booking page is themed,
- * not just the sidebar.
+ * Re-points every base component override (buttons, inputs, stepper, toggles,
+ * progress) at the theme's colour so the entire booking page is themed, not
+ * just the sidebar.
  */
 export function makeBookingTheme(bt: BookingTheme): Theme {
   const cached = muiThemeCache.get(bt.key)
@@ -189,12 +191,12 @@ export function makeBookingTheme(bt: BookingTheme): Theme {
       MuiLinearProgress: {
         styleOverrides: {
           root: { backgroundColor: `rgba(${rgb},0.10)` },
-          bar: { background: `linear-gradient(90deg, ${primary} 0%, ${primaryLight} 100%)` },
+          bar: { backgroundColor: primary },
         },
       },
       MuiAvatar: {
         styleOverrides: {
-          root: { background: `linear-gradient(135deg, ${primary} 0%, ${primaryLight} 100%)` },
+          root: { backgroundColor: primary },
         },
       },
     },

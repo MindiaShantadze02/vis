@@ -56,12 +56,7 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: `
-          radial-gradient(ellipse 80% 60% at 20% 10%, rgba(124,58,237,0.40) 0%, transparent 60%),
-          radial-gradient(ellipse 60% 50% at 80% 90%, rgba(167,139,250,0.25) 0%, transparent 55%),
-          radial-gradient(ellipse 50% 40% at 65% 45%, rgba(244,114,182,0.12) 0%, transparent 50%),
-          linear-gradient(135deg, #2E1065 0%, #4C1D95 50%, #5B21B6 100%)
-        `,
+        background: '#1565C0',
         p: 2,
       }}
     >
@@ -79,15 +74,12 @@ export default function LoginPage() {
         }}
       >
         <CardContent sx={{ p: 4 }}>
-          {/* Gradient wordmark */}
+          {/* Wordmark */}
           <Typography
             variant="h4"
             sx={{
               fontWeight: 800,
-              background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              color: 'primary.main',
               letterSpacing: '-1px',
               mb: 3,
               textAlign: 'center',
