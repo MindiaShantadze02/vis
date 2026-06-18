@@ -5,7 +5,7 @@ import {
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import {
-  format, addDays, startOfDay, isBefore, isSameDay,
+  format, addDays, startOfDay, isBefore, isAfter, isSameDay,
 } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
@@ -50,6 +50,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   const [slots, setSlots] = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [template, setTemplate] = useState<Record<string, { open: boolean; ranges: { start: string; end: string }[] }> | null>(null)
+  // How far ahead this org allows booking; null = no limit.
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState<number | null>(null)
 
   const [assignedStaff, setAssignedStaff] = useState<BookingStaff[]>([])
   const [selectedStaffId, setSelectedStaffId] = useState<string>(initialStaffId ?? ANY)
@@ -60,10 +62,15 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   useEffect(() => {
     supabase
       .from('working_hours_template')
-      .select('monday,tuesday,wednesday,thursday,friday,saturday,sunday')
+      .select('monday,tuesday,wednesday,thursday,friday,saturday,sunday,max_advance_days')
       .eq('org_id', orgId)
       .single()
-      .then(({ data }) => { if (data) setTemplate(data) })
+      .then(({ data }) => {
+        if (!data) return
+        const { max_advance_days, ...days } = data as typeof data & { max_advance_days: number | null }
+        setTemplate(days)
+        setMaxAdvanceDays(max_advance_days ?? null)
+      })
   }, [orgId])
 
   // Load bookable members assigned to this service once
@@ -145,7 +152,11 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   }
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  // Last bookable day (inclusive); null when the org sets no advance limit.
+  const maxDate = maxAdvanceDays != null ? addDays(today, maxAdvanceDays) : null
   const canGoPrev = !isBefore(addDays(weekStart, -1), today)
+  // No point advancing once the visible week already reaches the limit.
+  const canGoNext = !maxDate || isBefore(addDays(weekStart, 6), maxDate)
 
   const staffOptions = [
     { id: ANY, label: t('booking.anyAvailable') },
@@ -202,7 +213,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         <Typography variant="body2" sx={{ flex: 1, textAlign: 'center', fontWeight: 500 }}>
           {format(weekStart, 'd MMM', { locale: ka })} – {format(addDays(weekStart, 6), 'd MMM yyyy', { locale: ka })}
         </Typography>
-        <IconButton size="small" onClick={() => setWeekStart(w => addDays(w, 7))}>
+        <IconButton size="small" onClick={() => setWeekStart(w => addDays(w, 7))} disabled={!canGoNext}>
           <ArrowForwardIosIcon fontSize="small" />
         </IconButton>
       </Box>
@@ -212,9 +223,10 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         {days.map((day, i) => {
           const isOpen = isDayOpen(day)
           const isPast = isBefore(day, today)
+          const beyondMax = maxDate ? isAfter(day, maxDate) : false
           const isSelected = selectedDate && isSameDay(day, selectedDate)
           const isToday = isSameDay(day, today)
-          const disabled = !isOpen || isPast
+          const disabled = !isOpen || isPast || beyondMax
 
           return (
             <Box

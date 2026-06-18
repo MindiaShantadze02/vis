@@ -58,6 +58,8 @@ export default function WorkingHoursSettings() {
 
   const [templateId, setTemplateId] = useState<string | null>(null)
   const [template, setTemplate] = useState<WeekTemplate>(DEFAULT_TEMPLATE)
+  // Max days in advance a customer may book. Empty string = no limit.
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState<string>('')
   const [overrides, setOverrides] = useState<Override[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -91,6 +93,7 @@ export default function WorkingHoursSettings() {
 
     if (tplRes.data) {
       setTemplateId(tplRes.data.id)
+      setMaxAdvanceDays(tplRes.data.max_advance_days != null ? String(tplRes.data.max_advance_days) : '')
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id, org_id, updated_at, max_appointments_per_slot, ...days } = tplRes.data
       const next = {} as WeekTemplate
@@ -169,6 +172,18 @@ export default function WorkingHoursSettings() {
     const validationError = validateTemplate()
     if (validationError) { setError(validationError); return }
 
+    // Advance-booking window: blank = no limit, otherwise a positive whole
+    // number (capped at 730 — two years is well beyond any real use).
+    const trimmedMax = maxAdvanceDays.trim()
+    let maxAdvance: number | null = null
+    if (trimmedMax !== '') {
+      maxAdvance = Number(trimmedMax)
+      if (!Number.isInteger(maxAdvance) || maxAdvance < 1 || maxAdvance > 730) {
+        setError(t('settings.maxAdvanceDaysInvalid'))
+        return
+      }
+    }
+
     setSaving(true)
     setError(null)
 
@@ -180,7 +195,7 @@ export default function WorkingHoursSettings() {
         ranges: s.open ? scheduleToRanges(s.openTime, s.closeTime, s.breaks) : [],
       }
     }
-    const payload = { ...daysPayload, org_id: org.id, updated_at: new Date().toISOString() }
+    const payload = { ...daysPayload, max_advance_days: maxAdvance, org_id: org.id, updated_at: new Date().toISOString() }
 
     let err
     if (templateId) {
@@ -342,6 +357,25 @@ export default function WorkingHoursSettings() {
               )
             })}
           </Stack>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Advance-booking window */}
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+            {t('settings.maxAdvanceDays')}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            {t('settings.maxAdvanceDaysHelp')}
+          </Typography>
+          <TextField
+            type="number"
+            size="small"
+            value={maxAdvanceDays}
+            onChange={e => setMaxAdvanceDays(e.target.value)}
+            placeholder={t('settings.noLimit')}
+            slotProps={{ htmlInput: { min: 1, max: 730, 'data-testid': 'wh-max-advance' } }}
+            sx={{ width: 200 }}
+          />
 
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
             <Button variant="contained" onClick={handleSave} disabled={saving} data-testid="wh-save">
