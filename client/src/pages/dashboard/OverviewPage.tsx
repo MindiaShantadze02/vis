@@ -154,23 +154,25 @@ export default function OverviewPage() {
       supabase
         .from('appointments').select('id, services(price)', { count: 'exact' })
         .eq('org_id', org.id).gte('scheduled_at', weekStart).lte('scheduled_at', weekEnd)
-        .not('status', 'in', '(rejected,cancelled)'),
+        .eq('status', 'approved'),
 
       supabase
         .from('appointments').select('id, services(price)')
         .eq('org_id', org.id).gte('scheduled_at', monthStart).lte('scheduled_at', monthEnd)
-        .eq('payment_status', 'paid'),
+        .eq('status', 'approved'),
 
       supabase
         .from('appointments').select('id', { count: 'exact', head: true })
         .eq('org_id', org.id).eq('status', 'pending'),
     ])
 
+    // price is a numeric(10,2) column, which PostgREST returns as a string
+    // (e.g. "50.00"). Coerce to a number so we sum rather than concatenate.
     const weekRevenue = (weekRes.data ?? []).reduce(
-      (sum, a) => sum + ((a.services as unknown as { price: number } | null)?.price ?? 0), 0
+      (sum, a) => sum + Number((a.services as unknown as { price: number } | null)?.price ?? 0), 0
     )
     const monthRevenue = (monthRes.data ?? []).reduce(
-      (sum, a) => sum + ((a.services as unknown as { price: number } | null)?.price ?? 0), 0
+      (sum, a) => sum + Number((a.services as unknown as { price: number } | null)?.price ?? 0), 0
     )
 
     setStats({
