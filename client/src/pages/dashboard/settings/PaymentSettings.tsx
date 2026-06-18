@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, useToast } from '@/components/ui'
+import { FIELD_LIMITS } from '@/lib/validation'
 import { LAYOUT } from '@/theme/theme'
 
 interface PaymentConfig {
@@ -55,8 +56,19 @@ export default function PaymentSettings() {
     setConfig(c => ({ ...c, tbc: { ...c.tbc, [field]: val } }))
   }
 
+  // When a provider is enabled, its credentials are required.
+  const bogEnabled = config.bog?.enabled ?? false
+  const tbcEnabled = config.tbc?.enabled ?? false
+  const bogMerchantMissing = bogEnabled && !(config.bog?.merchantId ?? '').trim()
+  const bogKeyMissing = bogEnabled && !(config.bog?.apiKey ?? '').trim()
+  const tbcMerchantMissing = tbcEnabled && !(config.tbc?.merchantId ?? '').trim()
+  const tbcKeyMissing = tbcEnabled && !(config.tbc?.apiKey ?? '').trim()
+  const credentialsMissing =
+    bogMerchantMissing || bogKeyMissing || tbcMerchantMissing || tbcKeyMissing
+
   async function handleSave() {
     if (!org) return
+    if (credentialsMissing) { setError(t('validation.requiredWhenEnabled')); return }
     setSaving(true)
     setError(null)
 
@@ -129,6 +141,9 @@ export default function PaymentSettings() {
                 onChange={e => setBog('merchantId', e.target.value)}
                 fullWidth
                 size="small"
+                error={bogMerchantMissing}
+                helperText={bogMerchantMissing ? t('validation.requiredWhenEnabled') : undefined}
+                slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.paymentField } }}
               />
               <TextField
                 label="API გასაღები"
@@ -137,7 +152,10 @@ export default function PaymentSettings() {
                 onChange={e => setBog('apiKey', e.target.value)}
                 fullWidth
                 size="small"
+                error={bogKeyMissing}
+                helperText={bogKeyMissing ? t('validation.requiredWhenEnabled') : undefined}
                 slotProps={{
+                  htmlInput: { maxLength: FIELD_LIMITS.paymentField },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
@@ -178,6 +196,9 @@ export default function PaymentSettings() {
                 onChange={e => setTbc('merchantId', e.target.value)}
                 fullWidth
                 size="small"
+                error={tbcMerchantMissing}
+                helperText={tbcMerchantMissing ? t('validation.requiredWhenEnabled') : undefined}
+                slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.paymentField } }}
               />
               <TextField
                 label="კლიენტ გასაღები"
@@ -186,7 +207,10 @@ export default function PaymentSettings() {
                 onChange={e => setTbc('apiKey', e.target.value)}
                 fullWidth
                 size="small"
+                error={tbcKeyMissing}
+                helperText={tbcKeyMissing ? t('validation.requiredWhenEnabled') : undefined}
                 slotProps={{
+                  htmlInput: { maxLength: FIELD_LIMITS.paymentField },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
@@ -206,7 +230,7 @@ export default function PaymentSettings() {
       <Divider sx={{ my: 3 }} />
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button variant="contained" onClick={handleSave} disabled={saving}>
+        <Button variant="contained" onClick={handleSave} disabled={saving || credentialsMissing}>
           {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
         </Button>
       </Box>

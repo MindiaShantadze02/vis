@@ -284,6 +284,7 @@ export default function WorkingHoursStep() {
                       size="small" type="time" value={cfg.closeTime}
                       onChange={e => setDayTime(day, 'closeTime', e.target.value)}
                       error={!windowValid}
+                      helperText={!windowValid ? t('validation.endBeforeStart') : undefined}
                       sx={{ width: 110 }}
                       slotProps={{ htmlInput: { 'data-testid': `hours-${day}-close` } }}
                     />
@@ -291,9 +292,12 @@ export default function WorkingHoursStep() {
 
                   {/* Breaks — editable, constrained to the working window */}
                   {cfg.breaks.map((b, bi) => {
-                    const breakInvalid = !isEndAfterStart(b.start, b.end)
-                      || timeToMinutes(b.start) < timeToMinutes(cfg.openTime)
+                    const breakEndsBeforeStart = !isEndAfterStart(b.start, b.end)
+                    const breakOutsideHours =
+                      timeToMinutes(b.start) < timeToMinutes(cfg.openTime)
                       || timeToMinutes(b.end) > timeToMinutes(cfg.closeTime)
+                    const breakInvalid = breakEndsBeforeStart || breakOutsideHours
+                    const breakIssue = breakEndsBeforeStart ? 'endBeforeStart' : 'breakOutsideHours'
                     return (
                       <Box
                         key={bi}
@@ -318,6 +322,7 @@ export default function WorkingHoursStep() {
                           size="small" type="time" value={b.end}
                           onChange={e => setBreakField(day, bi, 'end', e.target.value)}
                           error={breakInvalid}
+                          helperText={breakInvalid ? t(`validation.${breakIssue}`) : undefined}
                           slotProps={{ htmlInput: { min: cfg.openTime, max: cfg.closeTime } }}
                           sx={{ width: 110 }}
                         />

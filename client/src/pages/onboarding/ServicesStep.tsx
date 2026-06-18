@@ -11,6 +11,7 @@ import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlin
 import AddIcon from '@mui/icons-material/Add'
 import { useTranslation } from 'react-i18next'
 import { ActionIconButton, EmptyState } from '@/components/ui'
+import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import type { OnboardingData, ServiceLocationType } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -50,7 +51,20 @@ export default function ServicesStep() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
   const durationTooLong = Number(draft.duration_minutes) > MAX_DURATION_MINUTES
-  const draftValid = !!draft.name.trim() && Number(draft.duration_minutes) > 0 && !durationTooLong
+  const nameTooShort = draft.name.trim().length > 0 && draft.name.trim().length < 2
+  const priceInvalid = draft.price.trim().length > 0 &&
+    (!isNonNegativeNumber(Number(draft.price)) || Number(draft.price) > MAX_PRICE)
+  // Online services must carry a valid meeting link; in-person services ignore it.
+  const isOnline = draft.location_type === 'online'
+  const meetingLinkMissing = isOnline && draft.meeting_link.trim().length === 0
+  const meetingLinkInvalid = isOnline && draft.meeting_link.trim().length > 0 && !isValidUrl(draft.meeting_link)
+  const draftValid =
+    draft.name.trim().length >= 2 &&
+    Number(draft.duration_minutes) > 0 &&
+    !durationTooLong &&
+    !priceInvalid &&
+    !meetingLinkMissing &&
+    !meetingLinkInvalid
   const isEditing = editingIndex !== null
 
   function resetForm() {
@@ -166,8 +180,10 @@ export default function ServicesStep() {
             label={t('onboarding.serviceName')}
             value={draft.name}
             onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
+            error={nameTooShort}
+            helperText={nameTooShort ? t('validation.minLength', { min: 2 }) : undefined}
             sx={{ mb: 2 }}
-            slotProps={{ htmlInput: { 'data-testid': 'onb-service-name' } }}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.serviceName, 'data-testid': 'onb-service-name' } }}
           />
           <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
             <TextField
@@ -186,6 +202,8 @@ export default function ServicesStep() {
               label={t('onboarding.price')}
               value={draft.price}
               onChange={e => setDraft(d => ({ ...d, price: onlyDecimal(e.target.value) }))}
+              error={priceInvalid}
+              helperText={priceInvalid ? t('validation.numberTooLarge') : undefined}
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'onb-service-price' } }}
             />
           </Stack>
@@ -214,8 +232,14 @@ export default function ServicesStep() {
               value={draft.meeting_link}
               onChange={e => setDraft(d => ({ ...d, meeting_link: e.target.value }))}
               placeholder="https://"
-              helperText={t('settings.meetingLinkHelp')}
-              slotProps={{ htmlInput: { inputMode: 'url' } }}
+              required
+              error={meetingLinkMissing || meetingLinkInvalid}
+              helperText={
+                meetingLinkMissing ? t('validation.meetingLinkRequired')
+                : meetingLinkInvalid ? t('validation.invalidUrl')
+                : t('settings.meetingLinkHelp')
+              }
+              slotProps={{ htmlInput: { inputMode: 'url', maxLength: FIELD_LIMITS.meetingLink } }}
               sx={{ mb: 2 }}
             />
           )}

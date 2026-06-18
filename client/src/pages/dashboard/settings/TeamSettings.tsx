@@ -10,7 +10,7 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidEmail } from '@/lib/validation'
+import { isValidEmail, FIELD_LIMITS } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageHeader, LoadingState, ActionIconButton, useToast } from '@/components/ui'
@@ -264,7 +264,7 @@ export default function TeamSettings() {
               placeholder="admin@example.com"
               error={inviteEmailInvalid}
               helperText={inviteEmailInvalid ? t('validation.invalidEmail') : ' '}
-              slotProps={{ htmlInput: { inputMode: 'email' as const, 'data-testid': 'invite-email' } }}
+              slotProps={{ htmlInput: { inputMode: 'email' as const, maxLength: FIELD_LIMITS.email, 'data-testid': 'invite-email' } }}
               autoFocus
             />
           </Stack>
@@ -293,14 +293,14 @@ export default function TeamSettings() {
               onChange={e => setEditName(e.target.value)}
               fullWidth
               autoFocus
-              slotProps={{ htmlInput: { 'data-testid': 'member-name' } }}
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'member-name' } }}
             />
             <TextField
               label={t('settings.staffTitle')}
               value={editTitle}
               onChange={e => setEditTitle(e.target.value)}
               fullWidth
-              slotProps={{ htmlInput: { 'data-testid': 'member-title' } }}
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.title, 'data-testid': 'member-title' } }}
             />
             <FormControlLabel
               control={<Switch checked={editBookable} onChange={e => setEditBookable(e.target.checked)} data-testid="member-bookable" />}

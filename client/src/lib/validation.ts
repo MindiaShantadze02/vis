@@ -41,6 +41,62 @@ export function isValidEmail(raw: string): boolean {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw.trim())
 }
 
+/**
+ * True when `raw` is a well-formed http(s) URL. Used to validate the meeting
+ * link required for online services. We rely on the URL constructor (handles
+ * the awkward edge cases) and only insist on an http/https scheme so users
+ * can't paste a bare host or a `mailto:`/`javascript:` value.
+ */
+export function isValidUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw.trim())
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Maximum lengths for free-text fields, in one place so forms cap inputs
+ * consistently. Values mirror the DB `varchar(N)` columns where they exist
+ * (organisations/services name 255, customer names 100, slug 100); `text`
+ * columns have no DB cap, so these are sensible app-level limits.
+ */
+export const FIELD_LIMITS = {
+  orgName: 255,
+  serviceName: 255,
+  personName: 100,
+  description: 1000,
+  notes: 500,
+  title: 100,
+  note: 300,
+  meetingLink: 500,
+  email: 254,
+  password: 72,
+  paymentField: 255,
+} as const
+
+/** Largest value the numeric(10,2) price column can hold. */
+export const MAX_PRICE = 99999999.99
+
+/** True for a finite number ≥ 0 (rejects negatives and NaN). */
+export function isNonNegativeNumber(value: number): boolean {
+  return Number.isFinite(value) && value >= 0
+}
+
+/** Logos must be an image no larger than this. */
+const MAX_LOGO_BYTES = 2 * 1024 * 1024
+
+/**
+ * Validate a logo/image upload before sending it to storage. Returns a
+ * `validation.*` i18n key suffix describing the problem, or null when fine.
+ */
+export function imageFileError(file: File): 'invalidImage' | 'fileTooLarge' | null {
+  if (!file.type.startsWith('image/')) return 'invalidImage'
+  if (file.size > MAX_LOGO_BYTES) return 'fileTooLarge'
+  return null
+}
+
 /** "HH:mm" → minutes since midnight. */
 export function timeToMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number)

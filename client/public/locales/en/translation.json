@@ -29,7 +29,21 @@
     "breakOutsideHours": "Breaks must be within working hours",
     "durationTooLong": "Duration cannot exceed 24 hours (1440 minutes)",
     "numberTooLarge": "One of the values entered is too large",
-    "saveFailed": "Could not save. Please check the values and try again."
+    "saveFailed": "Could not save. Please check the values and try again.",
+    "invalidUrl": "Enter a valid link (starting with https://)",
+    "meetingLinkRequired": "A meeting link is required for online services",
+    "minLength": "Must be at least {{min}} characters",
+    "fileTooLarge": "File is too large (max {{max}} MB)",
+    "invalidImage": "Please choose an image file (PNG, JPG, GIF)",
+    "requiredWhenEnabled": "Required when this method is enabled"
+  },
+  "authErrors": {
+    "invalidCredentials": "Wrong email or password",
+    "emailTaken": "This email is already registered — try signing in",
+    "emailNotConfirmed": "Please confirm your email before signing in",
+    "rateLimited": "Too many attempts. Please wait a moment and try again",
+    "checkInbox": "Account created — check your inbox to confirm your email",
+    "generic": "Something went wrong. Please try again"
   },
   "auth": {
     "phoneNumber": "Phone number",

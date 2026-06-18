@@ -5,6 +5,8 @@ import {
 } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { isValidEmail, FIELD_LIMITS } from '@/lib/validation'
+import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
 import { LAYOUT } from '@/theme/theme'
 
@@ -18,33 +20,48 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
 
   function reset() {
     setEmail('')
     setPassword('')
     setConfirmPassword('')
     setError(null)
+    setInfo(null)
   }
 
   async function handleSignIn() {
     setError(null)
+    setInfo(null)
     setLoading(true)
     const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     setLoading(false)
-    if (err) setError(err.message)
+    if (err) setError(t(mapAuthError(err)))
   }
 
   async function handleSignUp() {
     if (password.length < 6) { setError(t('validation.passwordTooShort')); return }
     if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
     setError(null)
+    setInfo(null)
     setLoading(true)
-    const { error: err } = await supabase.auth.signUp({ email: email.trim(), password })
+    const { data, error: err } = await supabase.auth.signUp({ email: email.trim(), password })
     setLoading(false)
-    if (err) setError(err.message)
+    if (err) { setError(t(mapAuthError(err))); return }
+    // Supabase returns a user with an empty `identities` array when the email is
+    // already registered (no error, to avoid leaking account existence). Surface
+    // a friendly hint instead of leaving the form looking inert.
+    if (data.user && data.user.identities?.length === 0) {
+      setError(t('authErrors.emailTaken')); return
+    }
+    // No session means email confirmation is required — tell the user to check
+    // their inbox rather than silently doing nothing.
+    if (!data.session) setInfo(t('authErrors.checkInbox'))
   }
 
-  const emailValid = email.includes('@')
+  const emailValid = isValidEmail(email)
+  const emailInvalid = email.trim().length > 0 && !emailValid
+  const passwordTooShort = password.length > 0 && password.length < 6
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
   const canSignIn = emailValid && password.length >= 6
   const canSignUp = emailValid && password.length >= 6 && confirmPassword.length >= 6 && !passwordMismatch
@@ -99,6 +116,7 @@ export default function LoginPage() {
           </Tabs>
 
           {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="login-error">{error}</Alert>}
+          {info && <Alert severity="success" sx={{ mb: 2 }} data-testid="login-info">{info}</Alert>}
 
           <TextField
             fullWidth
@@ -106,9 +124,11 @@ export default function LoginPage() {
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            sx={{ mb: 2 }}
+            error={emailInvalid}
+            helperText={emailInvalid ? t('validation.invalidEmail') : ' '}
+            sx={{ mb: 1 }}
             autoFocus
-            slotProps={{ htmlInput: { 'data-testid': 'login-email' } }}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.email, 'data-testid': 'login-email' } }}
           />
 
           <TextField
@@ -118,8 +138,10 @@ export default function LoginPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => mode === 'signin' && e.key === 'Enter' && canSignIn && handleSignIn()}
-            sx={{ mb: mode === 'signup' ? 2 : 3 }}
-            slotProps={{ htmlInput: { 'data-testid': 'login-password' } }}
+            error={mode === 'signup' && passwordTooShort}
+            helperText={mode === 'signup' && passwordTooShort ? t('validation.passwordTooShort') : ' '}
+            sx={{ mb: mode === 'signup' ? 1 : 2 }}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' } }}
           />
 
           {mode === 'signup' && (
@@ -133,7 +155,7 @@ export default function LoginPage() {
               error={passwordMismatch}
               helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
               sx={{ mb: 2 }}
-              slotProps={{ htmlInput: { 'data-testid': 'login-confirm-password' } }}
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-confirm-password' } }}
             />
           )}
 

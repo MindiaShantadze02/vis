@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
+import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import { LAYOUT } from '@/theme/theme'
 
 type LocationType = 'in_person' | 'online'
@@ -165,10 +166,21 @@ export default function ServicesSettings() {
   }
 
   const durationTooLong = Number(form.duration_minutes) > MAX_DURATION_MINUTES
+  const nameTooShort = form.name.trim().length > 0 && form.name.trim().length < 2
+  const priceInvalid = form.price.trim().length > 0 &&
+    (!isNonNegativeNumber(Number(form.price)) || Number(form.price) > MAX_PRICE)
+  const maxPerSlotInvalid = !(Number(form.max_per_slot) >= 1)
+  // Online services must carry a valid meeting link; in-person services ignore it.
+  const isOnline = form.location_type === 'online'
+  const meetingLinkMissing = isOnline && form.meeting_link.trim().length === 0
+  const meetingLinkInvalid = isOnline && form.meeting_link.trim().length > 0 && !isValidUrl(form.meeting_link)
 
   async function handleSave() {
-    if (!org || !form.name.trim()) return
+    if (!org || form.name.trim().length < 2) return
     if (durationTooLong) { setError(t('validation.durationTooLong')); return }
+    if (priceInvalid) { setError(t('validation.numberTooLarge')); return }
+    if (meetingLinkMissing) { setError(t('validation.meetingLinkRequired')); return }
+    if (meetingLinkInvalid) { setError(t('validation.invalidUrl')); return }
     setSaving(true)
     setError(null)
 
@@ -314,7 +326,9 @@ export default function ServicesSettings() {
               fullWidth
               required
               autoFocus
-              slotProps={{ htmlInput: { 'data-testid': 'service-name' } }}
+              error={nameTooShort}
+              helperText={nameTooShort ? t('validation.minLength', { min: 2 }) : undefined}
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.serviceName, 'data-testid': 'service-name' } }}
             />
             <TextField
               label={t('onboarding.duration')}
@@ -330,6 +344,8 @@ export default function ServicesSettings() {
               value={form.price}
               onChange={e => setForm(f => ({ ...f, price: onlyDecimal(e.target.value) }))}
               fullWidth
+              error={priceInvalid}
+              helperText={priceInvalid ? t('validation.numberTooLarge') : undefined}
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-price' } }}
             />
             <TextField
@@ -337,6 +353,8 @@ export default function ServicesSettings() {
               value={form.max_per_slot}
               onChange={e => setForm(f => ({ ...f, max_per_slot: onlyInt(e.target.value) }))}
               fullWidth
+              error={maxPerSlotInvalid}
+              helperText={maxPerSlotInvalid ? t('validation.required') : undefined}
               slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'service-max-per-slot' } }}
             />
             <Box>
@@ -362,9 +380,15 @@ export default function ServicesSettings() {
                 value={form.meeting_link}
                 onChange={e => setForm(f => ({ ...f, meeting_link: e.target.value }))}
                 fullWidth
+                required
                 placeholder="https://"
-                helperText={t('settings.meetingLinkHelp')}
-                slotProps={{ htmlInput: { inputMode: 'url' } }}
+                error={meetingLinkMissing || meetingLinkInvalid}
+                helperText={
+                  meetingLinkMissing ? t('validation.meetingLinkRequired')
+                  : meetingLinkInvalid ? t('validation.invalidUrl')
+                  : t('settings.meetingLinkHelp')
+                }
+                slotProps={{ htmlInput: { inputMode: 'url', maxLength: FIELD_LIMITS.meetingLink } }}
               />
             )}
             {bookableMembers.length > 0 && (
@@ -408,10 +432,13 @@ export default function ServicesSettings() {
             data-testid="service-save"
             disabled={
               saving ||
-              !form.name.trim() ||
+              form.name.trim().length < 2 ||
               !(Number(form.duration_minutes) > 0) ||
               durationTooLong ||
-              !(Number(form.max_per_slot) >= 1)
+              priceInvalid ||
+              meetingLinkMissing ||
+              meetingLinkInvalid ||
+              maxPerSlotInvalid
             }
           >
             {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}

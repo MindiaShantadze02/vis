@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { Box, TextField, Button, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { slugify } from '@/lib/slug'
-import { isValidGeorgianPhone } from '@/lib/validation'
+import { isValidGeorgianPhone, FIELD_LIMITS } from '@/lib/validation'
 import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -23,6 +23,7 @@ export default function BusinessProfileStep() {
 
   const phoneInvalid =
     data.contact_phone.trim().length > 0 && !isValidGeorgianPhone(data.contact_phone)
+  const nameTooShort = data.name.trim().length > 0 && data.name.trim().length < 2
   const canProceed =
     data.name.trim().length >= 2 &&
     isValidGeorgianPhone(data.contact_phone)
@@ -41,8 +42,10 @@ export default function BusinessProfileStep() {
         label={t('onboarding.businessName')}
         value={data.name}
         onChange={e => update({ name: e.target.value })}
+        error={nameTooShort}
+        helperText={nameTooShort ? t('validation.minLength', { min: 2 }) : ' '}
         sx={{ mb: 2 }}
-        slotProps={{ htmlInput: { 'data-testid': 'biz-name' } }}
+        slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.orgName, 'data-testid': 'biz-name' } }}
       />
 
       <TextField
@@ -53,7 +56,7 @@ export default function BusinessProfileStep() {
         multiline
         rows={2}
         sx={{ mb: 2 }}
-        slotProps={{ htmlInput: { 'data-testid': 'biz-description' } }}
+        slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.description, 'data-testid': 'biz-description' } }}
       />
 
       <TextField

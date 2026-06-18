@@ -11,7 +11,7 @@ import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidGeorgianPhone, formatGeorgianPhone } from '@/lib/validation'
+import { isValidGeorgianPhone, formatGeorgianPhone, FIELD_LIMITS } from '@/lib/validation'
 import type { BookingOrg, BookingState } from './BookingLayout'
 
 interface Props {
@@ -127,6 +127,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
   }
 
   const phoneInvalid = booking.phone.trim().length > 0 && !isValidGeorgianPhone(booking.phone)
+  const firstNameTooShort = booking.firstName.trim().length > 0 && booking.firstName.trim().length < 2
   const canBook =
     booking.firstName.trim().length >= 2 &&
     isValidGeorgianPhone(booking.phone)
@@ -160,14 +161,16 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
             fullWidth
             required
             autoFocus
-            slotProps={{ htmlInput: { 'data-testid': 'book-first-name' } }}
+            error={firstNameTooShort}
+            helperText={firstNameTooShort ? t('validation.minLength', { min: 2 }) : ' '}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'book-first-name' } }}
           />
           <TextField
             label="გვარი"
             value={booking.lastName}
             onChange={e => onChange({ lastName: e.target.value })}
             fullWidth
-            slotProps={{ htmlInput: { 'data-testid': 'book-last-name' } }}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'book-last-name' } }}
           />
         </Stack>
 
@@ -190,7 +193,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           fullWidth
           multiline
           rows={2}
-          slotProps={{ htmlInput: { 'data-testid': 'book-notes' } }}
+          slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.notes, 'data-testid': 'book-notes' } }}
         />
 
         {/* Payment method */}

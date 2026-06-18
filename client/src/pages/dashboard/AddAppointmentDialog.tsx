@@ -8,7 +8,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { format, isValid } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidGeorgianPhone, formatGeorgianPhone } from '@/lib/validation'
+import { isValidGeorgianPhone, formatGeorgianPhone, FIELD_LIMITS } from '@/lib/validation'
 import { computeAvailableSlots, getDayKey } from '@/lib/slots'
 import type { SlotApptRow, SlotOverride, WeekTemplate } from '@/lib/slots'
 import { useToast } from '@/components/ui'
@@ -189,6 +189,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
     : null
 
   const phoneInvalid = phone.trim().length > 0 && !isValidGeorgianPhone(phone)
+  const firstNameTooShort = firstName.trim().length > 0 && firstName.trim().length < 2
   const canSave =
     !!serviceId &&
     firstName.trim().length >= 2 &&
@@ -289,13 +290,16 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               fullWidth required size="small"
-              slotProps={{ htmlInput: { 'data-testid': 'add-appt-first-name' } }}
+              error={firstNameTooShort}
+              helperText={firstNameTooShort ? t('validation.minLength', { min: 2 }) : undefined}
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'add-appt-first-name' } }}
             />
             <TextField
               label="გვარი"
               value={lastName}
               onChange={e => setLastName(e.target.value)}
               fullWidth size="small"
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName } }}
             />
           </Stack>
 
@@ -346,6 +350,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
             value={notes}
             onChange={e => setNotes(e.target.value)}
             fullWidth multiline rows={2} size="small"
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.notes } }}
           />
 
           {selectedService && (

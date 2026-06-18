@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import {
   isEndAfterStart, timeToMinutes, minutesToTime, clampTime,
-  rangesToSchedule, scheduleToRanges, dayScheduleIssue,
+  rangesToSchedule, scheduleToRanges, dayScheduleIssue, FIELD_LIMITS,
   type TimeRange, type DaySchedule,
 } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
@@ -279,6 +279,7 @@ export default function WorkingHoursSettings() {
                           type="time" size="small" value={cfg.closeTime}
                           onChange={e => setDayTime(day, 'closeTime', e.target.value)}
                           error={!windowValid}
+                          helperText={!windowValid ? t('validation.endBeforeStart') : undefined}
                           sx={{ width: 115 }}
                           slotProps={{ htmlInput: { 'data-testid': `wh-${day}-close` } }}
                         />
@@ -286,9 +287,12 @@ export default function WorkingHoursSettings() {
 
                       {/* Breaks — editable, constrained to the working window */}
                       {cfg.breaks.map((b, bi) => {
-                        const breakInvalid = !isEndAfterStart(b.start, b.end)
-                          || timeToMinutes(b.start) < timeToMinutes(cfg.openTime)
+                        const breakEndsBeforeStart = !isEndAfterStart(b.start, b.end)
+                        const breakOutsideHours =
+                          timeToMinutes(b.start) < timeToMinutes(cfg.openTime)
                           || timeToMinutes(b.end) > timeToMinutes(cfg.closeTime)
+                        const breakInvalid = breakEndsBeforeStart || breakOutsideHours
+                        const breakIssue = breakEndsBeforeStart ? 'endBeforeStart' : 'breakOutsideHours'
                         return (
                           <Box
                             key={bi}
@@ -313,6 +317,7 @@ export default function WorkingHoursSettings() {
                               type="time" size="small" value={b.end}
                               onChange={e => setBreakField(day, bi, 'end', e.target.value)}
                               error={breakInvalid}
+                              helperText={breakInvalid ? t(`validation.${breakIssue}`) : undefined}
                               slotProps={{ htmlInput: { min: cfg.openTime, max: cfg.closeTime } }}
                               sx={{ width: 115 }}
                             />
@@ -408,7 +413,7 @@ export default function WorkingHoursSettings() {
               value={ovDate}
               onChange={e => setOvDate(e.target.value)}
               fullWidth
-              slotProps={{ inputLabel: { shrink: true }, htmlInput: { 'data-testid': 'wh-ov-date' } }}
+              slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: format(new Date(), 'yyyy-MM-dd'), 'data-testid': 'wh-ov-date' } }}
             />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Switch checked={ovClosed} onChange={e => setOvClosed(e.target.checked)} />
@@ -421,6 +426,7 @@ export default function WorkingHoursSettings() {
               value={ovNote}
               onChange={e => setOvNote(e.target.value)}
               fullWidth
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.note } }}
             />
           </Stack>
         </DialogContent>

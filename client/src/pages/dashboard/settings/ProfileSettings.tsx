@@ -7,7 +7,7 @@ import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { isValidGeorgianPhone, formatGeorgianPhone } from '@/lib/validation'
+import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
 import { PageHeader, CopyableText, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 import {
@@ -44,6 +44,13 @@ export default function ProfileSettings() {
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !org) return
+    // Reject non-images / oversized files before hitting storage.
+    const fileErr = imageFileError(file)
+    if (fileErr) {
+      setError(fileErr === 'fileTooLarge' ? t('validation.fileTooLarge', { max: 2 }) : t('validation.invalidImage'))
+      e.target.value = ''
+      return
+    }
     setUploading(true)
     setError(null)
 
@@ -69,12 +76,14 @@ export default function ProfileSettings() {
     setUploading(false)
   }
 
-  // Contact phone is mandatory.
+  // Business name is required; contact phone is mandatory.
+  const nameTooShort = name.trim().length > 0 && name.trim().length < 2
   const phoneMissing = contactPhone.trim().length === 0
   const phoneInvalid = !phoneMissing && !isValidGeorgianPhone(contactPhone)
 
   async function handleSave() {
     if (!org) return
+    if (name.trim().length < 2) { setError(t('validation.minLength', { min: 2 })); return }
     if (phoneMissing) { setError(t('validation.required')); return }
     if (phoneInvalid) { setError(t('validation.invalidPhone')); return }
     setSaving(true)
@@ -156,7 +165,9 @@ export default function ProfileSettings() {
               onChange={e => setName(e.target.value)}
               fullWidth
               required
-              slotProps={{ htmlInput: { 'data-testid': 'profile-name' } }}
+              error={nameTooShort}
+              helperText={nameTooShort ? t('validation.minLength', { min: 2 }) : undefined}
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.orgName, 'data-testid': 'profile-name' } }}
             />
             <TextField
               label="აღწერა"
@@ -165,7 +176,7 @@ export default function ProfileSettings() {
               fullWidth
               multiline
               rows={3}
-              slotProps={{ htmlInput: { 'data-testid': 'profile-description' } }}
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.description, 'data-testid': 'profile-description' } }}
             />
             <TextField
               label="საკონტაქტო ტელეფონი"
@@ -176,7 +187,7 @@ export default function ProfileSettings() {
               placeholder="599 123 456"
               error={phoneInvalid}
               helperText={phoneInvalid ? t('validation.invalidPhone') : undefined}
-              slotProps={{ htmlInput: { inputMode: 'tel', 'data-testid': 'profile-phone' } }}
+              slotProps={{ htmlInput: { inputMode: 'tel', maxLength: 20, 'data-testid': 'profile-phone' } }}
             />
             {/* Booking page colour theme — what customers see when booking. */}
             <Box>
@@ -235,7 +246,7 @@ export default function ProfileSettings() {
             <Button
               variant="contained"
               onClick={handleSave}
-              disabled={saving || uploading || !name.trim() || phoneMissing || phoneInvalid}
+              disabled={saving || uploading || name.trim().length < 2 || phoneMissing || phoneInvalid}
               data-testid="profile-save"
             >
               {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
