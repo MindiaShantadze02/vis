@@ -18,7 +18,7 @@ interface StatCardProps {
  */
 export default function StatCard({ label, value, icon, color, loading }: StatCardProps) {
   return (
-    <Card>
+    <Card data-testid="stat-card">
       <CardContent sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
         <Box
           sx={{

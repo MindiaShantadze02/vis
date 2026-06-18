@@ -149,7 +149,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
         </Typography>
       )}
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="book-error">{error}</Alert>}
 
       <Stack spacing={2}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
@@ -160,12 +160,14 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
             fullWidth
             required
             autoFocus
+            slotProps={{ htmlInput: { 'data-testid': 'book-first-name' } }}
           />
           <TextField
             label="გვარი"
             value={booking.lastName}
             onChange={e => onChange({ lastName: e.target.value })}
             fullWidth
+            slotProps={{ htmlInput: { 'data-testid': 'book-last-name' } }}
           />
         </Stack>
 
@@ -178,7 +180,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           placeholder="599 123 456"
           error={phoneInvalid}
           helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
-          slotProps={{ htmlInput: { inputMode: 'tel' as const } }}
+          slotProps={{ htmlInput: { inputMode: 'tel' as const, 'data-testid': 'book-phone' } }}
         />
 
         <TextField
@@ -188,6 +190,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           fullWidth
           multiline
           rows={2}
+          slotProps={{ htmlInput: { 'data-testid': 'book-notes' } }}
         />
 
         {/* Payment method */}
@@ -201,13 +204,13 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
               fullWidth
             >
               {inPersonEnabled && (
-                <ToggleButton value="in_person">
+                <ToggleButton value="in_person" data-testid="book-pay-in_person">
                   <StorefrontOutlinedIcon sx={{ mr: 1, fontSize: 18 }} />
                   ადგილზე
                 </ToggleButton>
               )}
               {onlineEnabled && (
-                <ToggleButton value="online">
+                <ToggleButton value="online" data-testid="book-pay-online">
                   <CreditCardOutlinedIcon sx={{ mr: 1, fontSize: 18 }} />
                   ონლაინ
                 </ToggleButton>
@@ -255,6 +258,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           size="large"
           onClick={handleBook}
           disabled={loading || !canBook}
+          data-testid="book-submit"
         >
           {loading
             ? <CircularProgress size={22} color="inherit" />

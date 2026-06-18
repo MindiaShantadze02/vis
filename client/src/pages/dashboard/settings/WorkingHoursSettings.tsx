@@ -224,7 +224,7 @@ export default function WorkingHoursSettings() {
     <Box sx={{ maxWidth: LAYOUT.formPage }}>
       <PageHeader title={t('settings.workingHours')} />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="wh-error">{error}</Alert>}
 
       {/* Weekly template */}
       <Card sx={{ mb: 3 }}>
@@ -246,6 +246,7 @@ export default function WorkingHoursSettings() {
                     <Switch
                       checked={cfg.open}
                       onChange={e => setDayOpen(day, e.target.checked)}
+                      data-testid={`wh-toggle-${day}`}
                     />
                     {!cfg.open && (
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -271,6 +272,7 @@ export default function WorkingHoursSettings() {
                           type="time" size="small" value={cfg.openTime}
                           onChange={e => setDayTime(day, 'openTime', e.target.value)}
                           sx={{ width: 115 }}
+                          slotProps={{ htmlInput: { 'data-testid': `wh-${day}-open` } }}
                         />
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>—</Typography>
                         <TextField
@@ -278,6 +280,7 @@ export default function WorkingHoursSettings() {
                           onChange={e => setDayTime(day, 'closeTime', e.target.value)}
                           error={!windowValid}
                           sx={{ width: 115 }}
+                          slotProps={{ htmlInput: { 'data-testid': `wh-${day}-close` } }}
                         />
                       </Box>
 
@@ -336,7 +339,7 @@ export default function WorkingHoursSettings() {
           </Stack>
 
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="contained" onClick={handleSave} disabled={saving}>
+            <Button variant="contained" onClick={handleSave} disabled={saving} data-testid="wh-save">
               {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
             </Button>
           </Box>
@@ -350,7 +353,7 @@ export default function WorkingHoursSettings() {
             <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
               გამონაკლისები (არდადეგები / სპეც. დღეები)
             </Typography>
-            <Button size="small" startIcon={<AddIcon />} onClick={() => setOverrideOpen(true)}>
+            <Button size="small" startIcon={<AddIcon />} onClick={() => setOverrideOpen(true)} data-testid="wh-override-add">
               დამატება
             </Button>
           </Box>
@@ -364,6 +367,7 @@ export default function WorkingHoursSettings() {
             : overrides.map(ov => (
               <Box
                 key={ov.id}
+                data-testid="wh-override-row"
                 sx={{
                   display: 'flex', alignItems: 'center', gap: 2,
                   py: 1.5, borderBottom: '1px solid', borderColor: 'divider',
@@ -384,7 +388,7 @@ export default function WorkingHoursSettings() {
                   color={ov.is_closed ? 'error' : 'info'}
                   variant="outlined"
                 />
-                <ActionIconButton tone="danger" aria-label={t('common.delete')} onClick={() => setOverrideToDelete(ov)}>
+                <ActionIconButton tone="danger" aria-label={t('common.delete')} data-testid="wh-override-delete" onClick={() => setOverrideToDelete(ov)}>
                   <DeleteOutlinedIcon fontSize="small" />
                 </ActionIconButton>
               </Box>
@@ -404,7 +408,7 @@ export default function WorkingHoursSettings() {
               value={ovDate}
               onChange={e => setOvDate(e.target.value)}
               fullWidth
-              slotProps={{ inputLabel: { shrink: true } }}
+              slotProps={{ inputLabel: { shrink: true }, htmlInput: { 'data-testid': 'wh-ov-date' } }}
             />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Switch checked={ovClosed} onChange={e => setOvClosed(e.target.checked)} />
@@ -426,6 +430,7 @@ export default function WorkingHoursSettings() {
             variant="contained"
             onClick={addOverride}
             disabled={ovSaving || !ovDate}
+            data-testid="wh-ov-save"
           >
             {ovSaving ? <CircularProgress size={20} color="inherit" /> : 'შენახვა'}
           </Button>

@@ -68,7 +68,7 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
               },
             }}
           >
-            <CardActionArea onClick={() => onSelect(s)}>
+            <CardActionArea onClick={() => onSelect(s)} data-testid="book-service">
               <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2 }}>
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="body1" sx={{ fontWeight: 600 }}>{s.name}</Typography>

@@ -143,6 +143,7 @@ export default function BookingConfirmationPage() {
             fullWidth
             variant="contained"
             onClick={() => navigate(`/book/${appt.organisations?.slug}`)}
+            data-testid="confirm-book-another"
           >
             კიდევ ერთი ჯავშანი
           </Button>

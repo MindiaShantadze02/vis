@@ -99,7 +99,7 @@ export default function ProfileSettings() {
     <Box sx={{ maxWidth: LAYOUT.formPage }}>
       <PageHeader title={t('settings.profile')} />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="profile-error">{error}</Alert>}
 
       <Card>
         <CardContent sx={{ p: 3 }}>
@@ -155,6 +155,7 @@ export default function ProfileSettings() {
               onChange={e => setName(e.target.value)}
               fullWidth
               required
+              slotProps={{ htmlInput: { 'data-testid': 'profile-name' } }}
             />
             <TextField
               label="აღწერა"
@@ -163,6 +164,7 @@ export default function ProfileSettings() {
               fullWidth
               multiline
               rows={3}
+              slotProps={{ htmlInput: { 'data-testid': 'profile-description' } }}
             />
             <TextField
               label="საკონტაქტო ტელეფონი"
@@ -173,7 +175,7 @@ export default function ProfileSettings() {
               placeholder="599 123 456"
               error={phoneInvalid}
               helperText={phoneInvalid ? t('validation.invalidPhone') : undefined}
-              slotProps={{ htmlInput: { inputMode: 'tel' } }}
+              slotProps={{ htmlInput: { inputMode: 'tel', 'data-testid': 'profile-phone' } }}
             />
             {/* Booking page colour theme — what customers see when booking. */}
             <Box>
@@ -233,6 +235,7 @@ export default function ProfileSettings() {
               variant="contained"
               onClick={handleSave}
               disabled={saving || uploading || !name.trim() || phoneMissing || phoneInvalid}
+              data-testid="profile-save"
             >
               {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
             </Button>

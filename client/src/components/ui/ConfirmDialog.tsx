@@ -45,6 +45,7 @@ export default function ConfirmDialog({
           disabled={loading}
           variant="contained"
           color={destructive ? 'error' : 'primary'}
+          data-testid="confirm-dialog-confirm"
         >
           {loading ? <CircularProgress size={20} color="inherit" /> : (confirmLabel ?? t('common.confirm'))}
         </Button>
