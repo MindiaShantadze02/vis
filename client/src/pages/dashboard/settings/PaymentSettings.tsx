@@ -89,8 +89,7 @@ export default function PaymentSettings() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        API გასაღებები დაშიფვრულია Supabase-ში. ბმული გადახდის გვერდზე გაიგზავნება
-        კლიენტის სათითაოდ დაჯავშნისას.
+        {t('settings.paymentInfo')}
       </Alert>
 
       <Stack spacing={2}>
@@ -106,9 +105,9 @@ export default function PaymentSettings() {
               }
               label={
                 <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>ადგილზე გადახდა</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.inPersonPayment')}</Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    კლიენტი ადგილზე გადაიხდის — ჯავშანი წინასწარ დადასტურებას საჭიროებს
+                    {t('settings.inPersonPaymentHelp')}
                   </Typography>
                 </Box>
               }
@@ -121,7 +120,7 @@ export default function PaymentSettings() {
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                BOG Pay (საქართველოს ბანკი)
+                {t('settings.bogTitle')}
               </Typography>
               <Switch
                 checked={config.bog?.enabled ?? false}
@@ -133,10 +132,10 @@ export default function PaymentSettings() {
           <AccordionDetails>
             <Stack spacing={2}>
               <Alert severity="warning" sx={{ mb: 1 }}>
-                BOG Pay API კავშირი მალე — გამოიყენეთ BOG Merchant Portal-ი გასაღებებისთვის.
+                {t('settings.bogComingSoon')}
               </Alert>
               <TextField
-                label="მერჩანტ ID"
+                label={t('settings.merchantId')}
                 value={config.bog?.merchantId ?? ''}
                 onChange={e => setBog('merchantId', e.target.value)}
                 fullWidth
@@ -146,7 +145,7 @@ export default function PaymentSettings() {
                 slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.paymentField } }}
               />
               <TextField
-                label="API გასაღები"
+                label={t('settings.apiKey')}
                 type={showBogKey ? 'text' : 'password'}
                 value={config.bog?.apiKey ?? ''}
                 onChange={e => setBog('apiKey', e.target.value)}
@@ -176,7 +175,7 @@ export default function PaymentSettings() {
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                TBC Pay (TBC ბანკი)
+                {t('settings.tbcTitle')}
               </Typography>
               <Switch
                 checked={config.tbc?.enabled ?? false}
@@ -188,10 +187,10 @@ export default function PaymentSettings() {
           <AccordionDetails>
             <Stack spacing={2}>
               <Alert severity="warning" sx={{ mb: 1 }}>
-                TBC Pay API კავშირი მალე — გამოიყენეთ TBC Developer Portal-ი გასაღებებისთვის.
+                {t('settings.tbcComingSoon')}
               </Alert>
               <TextField
-                label="კლიენტ ID"
+                label={t('settings.clientId')}
                 value={config.tbc?.merchantId ?? ''}
                 onChange={e => setTbc('merchantId', e.target.value)}
                 fullWidth
@@ -201,7 +200,7 @@ export default function PaymentSettings() {
                 slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.paymentField } }}
               />
               <TextField
-                label="კლიენტ გასაღები"
+                label={t('settings.clientKey')}
                 type={showTbcKey ? 'text' : 'password'}
                 value={config.tbc?.apiKey ?? ''}
                 onChange={e => setTbc('apiKey', e.target.value)}

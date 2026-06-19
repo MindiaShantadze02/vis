@@ -1,15 +1,30 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import HttpBackend from 'i18next-http-backend'
+import LanguageDetector from 'i18next-browser-languagedetector'
+
+export const SUPPORTED_LANGUAGES = [
+  { code: 'ka', label: 'ქართული' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'en', label: 'English' },
+] as const
+
+export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]['code']
 
 i18n
   .use(HttpBackend)
+  .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    lng: 'ka',
     fallbackLng: 'ka',
-    supportedLngs: ['ka', 'ru', 'en'],
+    supportedLngs: SUPPORTED_LANGUAGES.map(l => l.code),
     defaultNS: 'translation',
+    detection: {
+      // Remember the admin's choice across reloads; fall back to Georgian.
+      order: ['localStorage'],
+      caches: ['localStorage'],
+      lookupLocalStorage: 'grafiki-lang',
+    },
     backend: {
       loadPath: '/locales/{{lng}}/{{ns}}.json',
     },

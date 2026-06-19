@@ -3,52 +3,16 @@ import {
   Box, Typography, Card, CardContent, Button, LinearProgress,
   Stack, Chip, Divider, CircularProgress, useTheme,
 } from '@mui/material'
-import type { Theme } from '@mui/material'
 import CheckIcon from '@mui/icons-material/Check'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
-
-type Tier = 'free' | 'starter' | 'pro' | 'business'
-type TierColorKey = 'grey' | 'info' | 'primary' | 'success'
-
-interface TierInfo {
-  key: Tier
-  label: string
-  price: string
-  limit: number | null
-  features: string[]
-  colorKey: TierColorKey
-}
-
-const TIERS: TierInfo[] = [
-  {
-    key: 'free', label: 'უფასო', price: '₾0 / თვე', limit: 30, colorKey: 'grey',
-    features: ['30 ჯავშანი/თვე', 'ონლაინ ბუქინგ გვერდი', 'SMS შეტყობინებები'],
-  },
-  {
-    key: 'starter', label: 'სტარტერი', price: '₾15 / თვე', limit: 200, colorKey: 'info',
-    features: ['200 ჯავშანი/თვე', 'ყველა უფასო ფუნქცია', 'პრიორიტეტული მხარდაჭერა'],
-  },
-  {
-    key: 'pro', label: 'პრო', price: '₾40 / თვე', limit: 600, colorKey: 'primary',
-    features: ['600 ჯავშანი/თვე', 'ყველა სტარტერის ფუნქცია', 'BOG / TBC ონლაინ გადახდა', 'გუნდის მართვა'],
-  },
-  {
-    key: 'business', label: 'ბიზნესი', price: '₾80 / თვე', limit: null, colorKey: 'success',
-    features: ['ულიმიტო ჯავშნები', 'ყველა პრო ფუნქცია', 'VIP მხარდაჭერა'],
-  },
-]
-
-/** Resolve a tier's accent color from the theme palette. */
-function tierColor(theme: Theme, key: TierColorKey): string {
-  return key === 'grey' ? theme.palette.text.secondary : theme.palette[key].main
-}
+import { TIERS, tierColor, type Tier } from '@/lib/tiers'
 
 export default function SubscriptionPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { org } = useOrg()
   const theme = useTheme()
 
@@ -94,21 +58,21 @@ export default function SubscriptionPage() {
           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
             <Box sx={{ flex: 1 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                მიმდინარე გეგმა
+                {t('subscription.currentPlan')}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                 <Chip
-                  label={tierInfo.label}
+                  label={t(`tiers.${currentTier}.label`)}
                   size="small"
                   sx={{ bgcolor: currentColor, color: 'white', fontWeight: 700 }}
                 />
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {tierInfo.price}
+                  {t(`tiers.${currentTier}.price`)}
                 </Typography>
               </Box>
               {expires && (
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  ვადა: {new Date(expires).toLocaleDateString('ka-GE')}
+                  {t('subscription.expiresOn', { date: new Date(expires).toLocaleDateString(i18n.language) })}
                 </Typography>
               )}
             </Box>
@@ -120,7 +84,7 @@ export default function SubscriptionPage() {
           <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                ჯავშნები ამ თვეში
+                {t('subscription.bookingsThisMonth')}
               </Typography>
               {loading
                 ? <CircularProgress size={14} />
@@ -147,17 +111,17 @@ export default function SubscriptionPage() {
             )}
             {periodEnd && (
               <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
-                განახლდება: {new Date(periodEnd).toLocaleDateString('ka-GE')}
+                {t('subscription.renews', { date: new Date(periodEnd).toLocaleDateString(i18n.language) })}
               </Typography>
             )}
             {nearLimit && limit && used !== null && used < limit && (
               <Typography variant="caption" sx={{ color: 'warning.main', mt: 0.5, display: 'block' }}>
-                ლიმიტის 80% გამოყენებულია — განიხილეთ გაუმჯობესება
+                {t('subscription.nearLimit')}
               </Typography>
             )}
             {limit && used !== null && used >= limit && (
               <Typography variant="caption" sx={{ color: 'error.main', mt: 0.5, display: 'block' }}>
-                {t('subscription.limitReached')} — ახალი ჯავშნები დაბლოკილია
+                {t('subscription.limitReached')} — {t('subscription.bookingsBlocked')}
               </Typography>
             )}
           </Box>
@@ -166,7 +130,7 @@ export default function SubscriptionPage() {
 
       {/* Tier cards */}
       <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-        გეგმების შედარება
+        {t('subscription.comparePlans')}
       </Typography>
       <Stack spacing={2}>
         {TIERS.map(tier => {
@@ -186,17 +150,17 @@ export default function SubscriptionPage() {
                   <Box sx={{ flex: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                        {tier.label}
+                        {t(`tiers.${tier.key}.label`)}
                       </Typography>
                       {isCurrent && (
-                        <Chip label="მიმდინარე" size="small" sx={{ bgcolor: color, color: 'white', fontWeight: 600 }} />
+                        <Chip label={t('subscription.current')} size="small" sx={{ bgcolor: color, color: 'white', fontWeight: 600 }} />
                       )}
                     </Box>
                     <Typography variant="body2" sx={{ fontWeight: 700, color, mb: 1.5 }}>
-                      {tier.price}
+                      {t(`tiers.${tier.key}.price`)}
                     </Typography>
                     <Stack spacing={0.5}>
-                      {tier.features.map(f => (
+                      {(t(`tiers.${tier.key}.features`, { returnObjects: true }) as string[]).map(f => (
                         <Box key={f} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                           <CheckIcon sx={{ fontSize: 14, color }} />
                           <Typography variant="caption">{f}</Typography>
@@ -222,7 +186,7 @@ export default function SubscriptionPage() {
       </Stack>
 
       <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 3, textAlign: 'center' }}>
-        გადახდა ხდება ყოველთვიურად · გაუქმება ნებისმიერ დროს · საჭიროების შემთხვევაში დაგვიკავშირდით
+        {t('subscription.footer')}
       </Typography>
     </Box>
   )

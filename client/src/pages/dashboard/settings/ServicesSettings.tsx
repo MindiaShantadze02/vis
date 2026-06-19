@@ -269,8 +269,8 @@ export default function ServicesSettings() {
           ? (
             <EmptyState
               icon={<DesignServicesOutlinedIcon />}
-              title="სერვისები არ არის"
-              caption="დაამატეთ პირველი სერვისი"
+              title={t('settings.noServices')}
+              caption={t('settings.noServicesCaption')}
             />
           )
           : services.map((s, i) => (
@@ -292,7 +292,7 @@ export default function ServicesSettings() {
                     )}
                   </Box>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    {s.duration_minutes} წთ · {s.price} ₾
+                    {s.duration_minutes} {t('common.minutesShort')} · {s.price} ₾
                   </Typography>
                 </Box>
                 <Switch
@@ -315,7 +315,7 @@ export default function ServicesSettings() {
       {/* Create / Edit dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
-          {editing ? 'სერვისის რედაქტირება' : 'ახალი სერვისი'}
+          {editing ? t('settings.editService') : t('settings.newService')}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>
@@ -420,7 +420,7 @@ export default function ServicesSettings() {
                   onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
                 />
               }
-              label="სერვისი აქტიურია"
+              label={t('settings.serviceActive')}
             />
           </Stack>
         </DialogContent>
@@ -449,8 +449,8 @@ export default function ServicesSettings() {
       {/* Confirm delete */}
       <ConfirmDialog
         open={!!confirmDelete}
-        title="სერვისის წაშლა"
-        message={confirmDelete ? `დარწმუნებული ხართ, რომ გსურთ წაშალოთ "${confirmDelete.name}"? ეს მოქმედება შეუქცევადია.` : undefined}
+        title={t('settings.deleteService')}
+        message={confirmDelete ? t('settings.deleteServiceConfirm', { name: confirmDelete.name }) : undefined}
         confirmLabel={t('common.delete')}
         loading={deleting}
         onClose={() => setConfirmDelete(null)}

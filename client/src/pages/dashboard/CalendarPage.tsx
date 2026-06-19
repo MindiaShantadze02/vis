@@ -11,11 +11,11 @@ import TodayIcon from '@mui/icons-material/Today'
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
 import CloseIcon from '@mui/icons-material/Close'
 import { format, startOfWeek, addWeeks, addDays, isSameDay } from 'date-fns'
-import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { StatusChip, ConfirmDialog, LoadingState } from '@/components/ui'
+import { dateLocale } from '@/lib/dateLocale'
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -302,7 +302,7 @@ export default function CalendarPage() {
     const baseRanges = existing?.ranges ?? template[dayKey]?.ranges ?? []
     const existingRests = existing?.rest_periods ?? []
 
-    const newRest: RestPeriod = { start: restStart, end: restEnd, label: restLabel.trim() || 'დასვენება' }
+    const newRest: RestPeriod = { start: restStart, end: restEnd, label: restLabel.trim() || t('calendar.rest') }
     const newRests = [...existingRests, newRest]
     const newRanges = applyRestPeriods(baseRanges, [newRest])
 
@@ -360,7 +360,7 @@ export default function CalendarPage() {
       .filter(({ rest }) => isHourRested(hour, rest))
   }
 
-  const weekLabel = `${format(weekStart, 'd MMM', { locale: ka })} – ${format(addDays(weekStart, 6), 'd MMM yyyy', { locale: ka })}`
+  const weekLabel = `${format(weekStart, 'd MMM', { locale: dateLocale() })} – ${format(addDays(weekStart, 6), 'd MMM yyyy', { locale: dateLocale() })}`
 
   return (
     <Box>
@@ -377,9 +377,9 @@ export default function CalendarPage() {
           sx={{ borderRadius: 2 }}
           data-testid="cal-rest-btn"
         >
-          დასვენება
+          {t('calendar.rest')}
         </Button>
-        <Tooltip title="დღეს">
+        <Tooltip title={t('calendar.today')}>
           <IconButton onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))} data-testid="cal-today">
             <TodayIcon />
           </IconButton>
@@ -409,11 +409,11 @@ export default function CalendarPage() {
         })}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
           <Box sx={{ width: 16, height: 12, borderRadius: '3px', borderLeft: `3px solid ${theme.palette.warning.main}`, bgcolor: 'grey.50' }} />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('dashboard.pending')} (დასადასტურებელი)</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('dashboard.pending')} ({t('calendar.toApprove')})</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
           <Box sx={{ width: 16, height: 12, borderRadius: '3px', borderLeft: '3px solid', borderLeftColor: 'grey.400', bgcolor: 'grey.100' }} />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>დასვენება</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.rest')}</Typography>
         </Box>
       </Stack>
 
@@ -439,7 +439,7 @@ export default function CalendarPage() {
             return (
               <Box key={i} sx={{ py: 1.5, textAlign: 'center', borderLeft: '1px solid', borderColor: 'divider' }}>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', textTransform: 'capitalize' }}>
-                  {format(day, 'EEE', { locale: ka })}
+                  {format(day, 'EEE', { locale: dateLocale() })}
                 </Typography>
                 <Box sx={{
                   width: 28, height: 28, borderRadius: '50%',
@@ -618,29 +618,29 @@ export default function CalendarPage() {
             </Typography>
             <Stack spacing={2}>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>სერვისი</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.service')}</Typography>
                 <Typography variant="body2">{selected.services?.name} — {selected.services?.price} ₾</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>დრო</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.time')}</Typography>
                 <Typography variant="body2">
-                  {format(new Date(selected.scheduled_at), 'dd MMM yyyy, HH:mm')}
-                  {' · '}{selected.duration_minutes} წთ
+                  {format(new Date(selected.scheduled_at), 'dd MMM yyyy, HH:mm', { locale: dateLocale() })}
+                  {' · '}{selected.duration_minutes} {t('common.minutesShort')}
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>ტელეფონი</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.phone')}</Typography>
                 <Typography variant="body2">{selected.customers?.phone_number}</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>გადახდა</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.payment')}</Typography>
                 <Typography variant="body2">
-                  {selected.payment_method === 'online' ? 'ონლაინ' : 'ადგილზე'} ·{' '}
-                  {selected.payment_status === 'paid' ? '✓ გადახდილია' : 'გადაუხდელი'}
+                  {selected.payment_method === 'online' ? t('settings.locationOnline') : t('settings.locationInPerson')} ·{' '}
+                  {selected.payment_status === 'paid' ? t('calendar.paid') : t('calendar.unpaid')}
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>სტატუსი</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.status')}</Typography>
                 <Box sx={{ mt: 0.5 }}>
                   <StatusChip status={selected.status} />
                 </Box>
@@ -666,7 +666,7 @@ export default function CalendarPage() {
               })()}
               {selected.notes && (
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>შენიშვნა</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.note')}</Typography>
                   <Typography variant="body2">{selected.notes}</Typography>
                 </Box>
               )}
@@ -692,15 +692,15 @@ export default function CalendarPage() {
 
       {/* Add Rest Period dialog */}
       <Dialog open={restDialog} onClose={() => setRestDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>დასვენების პერიოდი</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('calendar.restPeriod')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 0.5 }}>
             <FormControl fullWidth size="small">
-              <InputLabel>დღე</InputLabel>
-              <Select value={restDate} label="დღე" onChange={e => setRestDate(e.target.value)}>
+              <InputLabel>{t('calendar.day')}</InputLabel>
+              <Select value={restDate} label={t('calendar.day')} onChange={e => setRestDate(e.target.value)}>
                 {days.map(day => (
                   <MenuItem key={format(day, 'yyyy-MM-dd')} value={format(day, 'yyyy-MM-dd')}>
-                    {format(day, 'EEEE, d MMM', { locale: ka })}
+                    {format(day, 'EEEE, d MMM', { locale: dateLocale() })}
                   </MenuItem>
                 ))}
               </Select>
@@ -708,23 +708,23 @@ export default function CalendarPage() {
 
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
               <FormControl fullWidth size="small">
-                <InputLabel>დაწყება</InputLabel>
-                <Select value={restStart} label="დაწყება" onChange={e => setRestStart(e.target.value)}>
-                  {TIME_OPTIONS.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                <InputLabel>{t('calendar.start')}</InputLabel>
+                <Select value={restStart} label={t('calendar.start')} onChange={e => setRestStart(e.target.value)}>
+                  {TIME_OPTIONS.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
                 </Select>
               </FormControl>
               <FormControl fullWidth size="small">
-                <InputLabel>დასრულება</InputLabel>
-                <Select value={restEnd} label="დასრულება" onChange={e => setRestEnd(e.target.value)}>
-                  {TIME_OPTIONS.filter(t => t > restStart).map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                <InputLabel>{t('calendar.end')}</InputLabel>
+                <Select value={restEnd} label={t('calendar.end')} onChange={e => setRestEnd(e.target.value)}>
+                  {TIME_OPTIONS.filter(opt => opt > restStart).map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
                 </Select>
               </FormControl>
             </Box>
 
             <TextField
               fullWidth size="small"
-              label="სახელი (არასავალდებულო)"
-              placeholder="მაგ: სადილი, შესვენება"
+              label={t('calendar.nameOptional')}
+              placeholder={t('calendar.restPlaceholder')}
               value={restLabel}
               onChange={e => setRestLabel(e.target.value)}
             />
@@ -737,7 +737,7 @@ export default function CalendarPage() {
             onClick={addRestPeriod}
             disabled={savingRest || !restDate || restStart >= restEnd}
           >
-            {savingRest ? <CircularProgress size={18} color="inherit" /> : 'დამატება'}
+            {savingRest ? <CircularProgress size={18} color="inherit" /> : t('common.add')}
           </Button>
         </DialogActions>
       </Dialog>

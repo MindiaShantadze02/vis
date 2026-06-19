@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { CircularProgress, Box } from '@mui/material'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
+import { useSuperadmin } from '@/hooks/useSuperadmin'
 
 // Auth
 import LoginPage from '@/pages/auth/LoginPage'
@@ -34,6 +35,7 @@ import SuperAdminLayout from '@/pages/superadmin/SuperAdminLayout'
 import PlatformOverviewPage from '@/pages/superadmin/PlatformOverviewPage'
 import OrgsListPage from '@/pages/superadmin/OrgsListPage'
 import OrgDetailPage from '@/pages/superadmin/OrgDetailPage'
+import SuperadminsPage from '@/pages/superadmin/SuperadminsPage'
 
 function LoadingScreen() {
   return (
@@ -62,10 +64,9 @@ function OrgGuard({ children }: { children: React.ReactNode }) {
 }
 
 function SuperAdminGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
-  const superadminId = import.meta.env.VITE_SUPERADMIN_USER_ID as string | undefined
+  const { isSuperadmin, loading } = useSuperadmin()
   if (loading) return <LoadingScreen />
-  if (!user || user.id !== superadminId) return <Navigate to="/dashboard" replace />
+  if (!isSuperadmin) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -122,6 +123,7 @@ export default function App() {
         <Route index element={<PlatformOverviewPage />} />
         <Route path="orgs" element={<OrgsListPage />} />
         <Route path="orgs/:id" element={<OrgDetailPage />} />
+        <Route path="admins" element={<SuperadminsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

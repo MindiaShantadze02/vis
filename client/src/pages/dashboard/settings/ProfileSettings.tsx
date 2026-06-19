@@ -149,9 +149,9 @@ export default function ProfileSettings() {
               />
             </Box>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>ლოგო</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.logo')}</Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                PNG, JPG, GIF · მაქს. 2MB
+                {t('settings.logoHint')}
               </Typography>
             </Box>
           </Box>
@@ -160,7 +160,7 @@ export default function ProfileSettings() {
 
           <Stack spacing={2.5}>
             <TextField
-              label="ბიზნესის სახელი"
+              label={t('settings.businessName')}
               value={name}
               onChange={e => setName(e.target.value)}
               fullWidth
@@ -170,7 +170,7 @@ export default function ProfileSettings() {
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.orgName, 'data-testid': 'profile-name' } }}
             />
             <TextField
-              label="აღწერა"
+              label={t('settings.description')}
               value={description}
               onChange={e => setDescription(e.target.value)}
               fullWidth
@@ -179,7 +179,7 @@ export default function ProfileSettings() {
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.description, 'data-testid': 'profile-description' } }}
             />
             <TextField
-              label="საკონტაქტო ტელეფონი"
+              label={t('settings.contactPhone')}
               value={contactPhone}
               onChange={e => setContactPhone(e.target.value)}
               fullWidth
@@ -192,10 +192,10 @@ export default function ProfileSettings() {
             {/* Booking page colour theme — what customers see when booking. */}
             <Box>
               <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                ჯავშნის გვერდის ფერი
+                {t('settings.bookingPageColor')}
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                ფერი, რომელსაც კლიენტები ხედავენ ჯავშნისას
+                {t('settings.bookingPageColorHelp')}
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 1.5 }}>
                 {BOOKING_THEME_LIST.map(th => {
@@ -235,7 +235,7 @@ export default function ProfileSettings() {
 
             {org?.slug && (
               <CopyableText
-                label="თქვენი ბუქინგ ბმული"
+                label={t('settings.yourBookingLink')}
                 text={`grafiki.ge/book/${org.slug}`}
                 value={`https://grafiki.ge/book/${org.slug}`}
               />

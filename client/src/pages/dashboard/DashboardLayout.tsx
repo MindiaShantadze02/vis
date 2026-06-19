@@ -8,16 +8,19 @@ import {
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
+import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined'
 import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
 import { formatDistanceToNow } from 'date-fns'
-import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { useSuperadmin } from '@/hooks/useSuperadmin'
 import { useNotifications } from '@/hooks/useNotifications'
+import { LanguageSwitcher } from '@/components/ui'
+import { dateLocale } from '@/lib/dateLocale'
 import { anim } from '@/theme/animations'
 import { gradient, elevation, tint } from '@/theme/theme'
 
@@ -43,6 +46,7 @@ export default function DashboardLayout() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { org } = useOrg()
   const { user } = useAuth()
+  const { isSuperadmin } = useSuperadmin()
   const navigate = useNavigate()
   const { items: notifications, unreadCount, markAllRead } = useNotifications()
 
@@ -191,6 +195,26 @@ export default function DashboardLayout() {
           </ListItemButton>
         ))}
         </>)}
+
+        {/* Superadmin entry — only for platform admins */}
+        {isSuperadmin && (
+          <ListItemButton
+            onClick={() => { setMobileOpen(false); navigate('/superadmin') }}
+            sx={{
+              borderRadius: 2,
+              mt: 0.5,
+              pl: '13px',
+              borderLeft: '3px solid transparent',
+              '&:hover': { bgcolor: tint.hover, borderLeftColor: tint.hoverBorder },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}><AdminPanelSettingsOutlinedIcon /></ListItemIcon>
+            <ListItemText
+              primary={t('dashboard.superadmin')}
+              slotProps={{ primary: { variant: 'body2', sx: { fontWeight: 500 } } }}
+            />
+          </ListItemButton>
+        )}
       </List>
 
       <Divider />
@@ -212,7 +236,7 @@ export default function DashboardLayout() {
         >
           {user?.email ?? ''}
         </Typography>
-        <Tooltip title="გასვლა">
+        <Tooltip title={t('common.logout')}>
           <IconButton size="small" onClick={handleLogout} data-testid="logout-btn">
             <LogoutIcon fontSize="small" />
           </IconButton>
@@ -272,6 +296,9 @@ export default function DashboardLayout() {
             )}
             <Box sx={{ flex: 1 }} />
 
+            {/* Language selector */}
+            <LanguageSwitcher />
+
             {/* Notification bell */}
             <IconButton onClick={openNotifications} data-testid="notifications-btn">
               <Badge badgeContent={unreadCount} color="error" max={99}>
@@ -322,7 +349,7 @@ export default function DashboardLayout() {
                         </Typography>
                       )}
                       <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ka })}
+                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: dateLocale() })}
                       </Typography>
                     </Box>
                   </MenuItem>

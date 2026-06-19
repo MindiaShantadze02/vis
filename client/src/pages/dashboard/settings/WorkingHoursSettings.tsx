@@ -21,6 +21,7 @@ import {
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
+import { dateLocale } from '@/lib/dateLocale'
 
 type WeekTemplate = {
   monday: DaySchedule; tuesday: DaySchedule; wednesday: DaySchedule; thursday: DaySchedule;
@@ -38,10 +39,6 @@ interface Override {
 const DAY_KEYS: (keyof WeekTemplate)[] = [
   'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
 ]
-const DAY_LABELS: Record<keyof WeekTemplate, string> = {
-  monday: 'ორშაბათი', tuesday: 'სამშაბათი', wednesday: 'ოთხშაბათი',
-  thursday: 'ხუთშაბათი', friday: 'პარასკევი', saturday: 'შაბათი', sunday: 'კვირა',
-}
 
 const openDay = (): DaySchedule => ({ open: true, openTime: '09:00', closeTime: '18:00', breaks: [] })
 const closedDay = (): DaySchedule => ({ open: false, openTime: '09:00', closeTime: '18:00', breaks: [] })
@@ -245,7 +242,7 @@ export default function WorkingHoursSettings() {
       <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-            ყოველკვირეული გრაფიკი
+            {t('settings.weeklySchedule')}
           </Typography>
           <Stack spacing={2}>
             {DAY_KEYS.map((day, di) => {
@@ -256,7 +253,7 @@ export default function WorkingHoursSettings() {
                   {di > 0 && <Divider sx={{ mb: 2 }} />}
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 110 }}>
-                      {DAY_LABELS[day]}
+                      {t(`days.${day}`)}
                     </Typography>
                     <Switch
                       checked={cfg.open}
@@ -281,7 +278,7 @@ export default function WorkingHoursSettings() {
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 92, color: 'success.dark' }}>
                           <WorkOutlineOutlinedIcon sx={{ fontSize: 16 }} />
-                          <Typography variant="caption" sx={{ fontWeight: 600 }}>სამუშაო</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>{t('settings.working')}</Typography>
                         </Box>
                         <TextField
                           type="time" size="small" value={cfg.openTime}
@@ -318,7 +315,7 @@ export default function WorkingHoursSettings() {
                           >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 92, color: 'text.secondary' }}>
                               <CoffeeOutlinedIcon sx={{ fontSize: 16 }} />
-                              <Typography variant="caption" sx={{ fontWeight: 600 }}>შესვენება</Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 600 }}>{t('settings.break')}</Typography>
                             </Box>
                             <TextField
                               type="time" size="small" value={b.start}
@@ -349,7 +346,7 @@ export default function WorkingHoursSettings() {
                         onClick={() => addBreak(day)}
                         sx={{ color: 'text.secondary', fontSize: 12 }}
                       >
-                        შესვენების დამატება
+                        {t('settings.addBreak')}
                       </Button>
                     </Box>
                   )}
@@ -390,17 +387,17 @@ export default function WorkingHoursSettings() {
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
-              გამონაკლისები (არდადეგები / სპეც. დღეები)
+              {t('settings.overrides')}
             </Typography>
             <Button size="small" startIcon={<AddIcon />} onClick={() => setOverrideOpen(true)} data-testid="wh-override-add">
-              დამატება
+              {t('common.add')}
             </Button>
           </Box>
 
           {overrides.length === 0
             ? (
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                გამონაკლისები არ არის
+                {t('settings.noOverrides')}
               </Typography>
             )
             : overrides.map(ov => (
@@ -415,14 +412,14 @@ export default function WorkingHoursSettings() {
               >
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {format(parseISO(ov.date), 'dd MMM yyyy')}
+                    {format(parseISO(ov.date), 'dd MMM yyyy', { locale: dateLocale() })}
                   </Typography>
                   {ov.note && (
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>{ov.note}</Typography>
                   )}
                 </Box>
                 <Chip
-                  label={ov.is_closed ? 'დახურულია' : 'სპეც. საათები'}
+                  label={ov.is_closed ? t('settings.closedLabel') : t('settings.specialHours')}
                   size="small"
                   color={ov.is_closed ? 'error' : 'info'}
                   variant="outlined"
@@ -438,11 +435,11 @@ export default function WorkingHoursSettings() {
 
       {/* Add override dialog */}
       <Dialog open={overrideOpen} onClose={() => setOverrideOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>გამონაკლის დღის დამატება</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.addOverride')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>
             <TextField
-              label="თარიღი"
+              label={t('common.date')}
               type="date"
               value={ovDate}
               onChange={e => setOvDate(e.target.value)}
@@ -452,11 +449,11 @@ export default function WorkingHoursSettings() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Switch checked={ovClosed} onChange={e => setOvClosed(e.target.checked)} />
               <Typography variant="body2">
-                {ovClosed ? 'დახურულია (შვებულება / არდადეგი)' : 'გახსნილია განსხვავებული საათებით'}
+                {ovClosed ? t('settings.overrideClosed') : t('settings.overrideOpen')}
               </Typography>
             </Box>
             <TextField
-              label="შენიშვნა (არასავალდებულო)"
+              label={t('settings.noteOptional')}
               value={ovNote}
               onChange={e => setOvNote(e.target.value)}
               fullWidth
@@ -472,7 +469,7 @@ export default function WorkingHoursSettings() {
             disabled={ovSaving || !ovDate}
             data-testid="wh-ov-save"
           >
-            {ovSaving ? <CircularProgress size={20} color="inherit" /> : 'შენახვა'}
+            {ovSaving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
           </Button>
         </DialogActions>
       </Dialog>

@@ -39,7 +39,7 @@ interface Invitation {
 
 
 export default function TeamSettings() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { org, role } = useOrg()
   const { user } = useAuth()
   const toast = useToast()
@@ -111,7 +111,7 @@ export default function TeamSettings() {
 
     setInviteOpen(false)
     setInviteEmail('')
-    toast.success(`მოწვევა გაგზავნილია ${email}-ზე`)
+    toast.success(t('settings.inviteSent', { email }))
     load()
   }
 
@@ -187,10 +187,10 @@ export default function TeamSettings() {
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {m.display_name?.trim()
-                      || (m.user_id === user?.id ? 'თქვენ' : `მომხმარებელი ·${m.user_id.slice(-4)}`)}
+                      || (m.user_id === user?.id ? t('settings.you') : t('settings.userLabel', { id: m.user_id.slice(-4) }))}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    {[m.title?.trim(), m.joined_at ? `შეუერთდა: ${new Date(m.joined_at).toLocaleDateString('ka-GE')}` : null]
+                    {[m.title?.trim(), m.joined_at ? t('settings.joined', { date: new Date(m.joined_at).toLocaleDateString(i18n.language) }) : null]
                       .filter(Boolean).join(' · ')}
                   </Typography>
                 </Box>
@@ -198,7 +198,7 @@ export default function TeamSettings() {
                   <Chip label={t('settings.bookable')} size="small" color="success" variant="outlined" />
                 )}
                 <Chip
-                  label={m.role === 'owner' ? 'მფლობელი' : 'ადმინი'}
+                  label={m.role === 'owner' ? t('settings.owner') : t('settings.admin')}
                   size="small"
                   color={m.role === 'owner' ? 'primary' : 'default'}
                   variant={m.role === 'owner' ? 'filled' : 'outlined'}
@@ -221,7 +221,7 @@ export default function TeamSettings() {
       {invitations.length > 0 && (
         <>
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: 'text.secondary' }}>
-            მოლოდინში მყოფი მოწვევები
+            {t('settings.pendingInvites')}
           </Typography>
           <Card>
             {invitations.map((inv, i) => (
@@ -232,11 +232,11 @@ export default function TeamSettings() {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{inv.email ?? inv.phone_number}</Typography>
                     {inv.expires_at && (
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        ვადა: {new Date(inv.expires_at).toLocaleDateString('ka-GE')}
+                        {t('settings.expires', { date: new Date(inv.expires_at).toLocaleDateString(i18n.language) })}
                       </Typography>
                     )}
                   </Box>
-                  <Chip label="მოლოდინში" size="small" color="warning" variant="outlined" data-testid="invite-row" />
+                  <Chip label={t('dashboard.pending')} size="small" color="warning" variant="outlined" data-testid="invite-row" />
                   <ActionIconButton tone="danger" aria-label={t('common.cancel')} data-testid="invite-cancel" onClick={() => cancelInvite(inv.id)}>
                     <DeleteOutlinedIcon fontSize="small" />
                   </ActionIconButton>
@@ -249,14 +249,14 @@ export default function TeamSettings() {
 
       {/* Invite dialog */}
       <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>ადმინის მოწვევა</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.inviteAdmin')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              ადმინი მიიღებს ელ. ფოსტას რეგისტრაციის ბმულით.
+              {t('settings.inviteHelp')}
             </Typography>
             <TextField
-              label="ელ. ფოსტა"
+              label={t('common.email')}
               type="email"
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
@@ -277,7 +277,7 @@ export default function TeamSettings() {
             disabled={inviting || !isValidEmail(inviteEmail)}
             data-testid="invite-send"
           >
-            {inviting ? <CircularProgress size={20} color="inherit" /> : 'გაგზავნა'}
+            {inviting ? <CircularProgress size={20} color="inherit" /> : t('common.send')}
           </Button>
         </DialogActions>
       </Dialog>
