@@ -121,7 +121,11 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
 
       onDone(appointmentId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'დაჯავშნა ვერ მოხერხდა')
+      // The org may have hit its monthly tier limit since the page loaded —
+      // the DB trigger (enforce_appointment_limit) rejects with 'limit_reached'.
+      // Show the same friendly unavailable copy; a guest can't upgrade.
+      const msg = err instanceof Error ? err.message : ''
+      setError(msg.includes('limit_reached') ? t('booking.unavailable') : (msg || 'დაჯავშნა ვერ მოხერხდა'))
       setLoading(false)
     }
   }

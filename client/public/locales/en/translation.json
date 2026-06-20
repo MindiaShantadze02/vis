@@ -109,7 +109,9 @@
     "step3": "3. Details",
     "anyAvailable": "Any available",
     "selectStaff": "Specialist",
-    "slotTaken": "This time was just taken. Please pick another."
+    "slotTaken": "This time was just taken. Please pick another.",
+    "unavailable": "This business isn't accepting new bookings right now",
+    "unavailableCaption": "Please try again later"
   },
   "dashboard": {
     "overview": "Overview",

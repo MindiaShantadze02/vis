@@ -7,6 +7,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { format, isValid } from 'date-fns'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
 import { computeAvailableSlots, getDayKey } from '@/lib/slots'
@@ -48,6 +49,12 @@ interface Props {
 export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Props) {
   const { t } = useTranslation()
   const toast = useToast()
+  const navigate = useNavigate()
+
+  // Whether the org has hit its monthly tier limit. Manual entries count
+  // toward usage and are blocked by the same DB trigger as guest bookings, so
+  // we surface an upgrade prompt and disable Save rather than fail on insert.
+  const [atLimit, setAtLimit] = useState(false)
 
   const [services, setServices] = useState<ServiceOption[]>([])
   const [staff, setStaff] = useState<StaffOption[]>([])
@@ -86,6 +93,15 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       // (onboarding skipped). We fall back to free time entry in that case
       // rather than leaving the time field stuck disabled.
       .then(({ data }) => { setTemplate((data as WeekTemplate) ?? null); setTemplateLoaded(true) })
+
+    // Same derived usage the Subscription page reads. appt_limit null = unlimited.
+    supabase
+      .rpc('org_usage_info', { p_org_id: orgId })
+      .maybeSingle()
+      .then(({ data }) => {
+        const info = data as { used: number; appt_limit: number | null } | null
+        setAtLimit(!!info && info.appt_limit != null && info.used >= info.appt_limit)
+      })
   }, [orgId])
 
   // Load the people assignable to the chosen service. The prior staff choice is
@@ -243,7 +259,15 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       onCreated()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'დამატება ვერ მოხერხდა')
+      // The DB trigger rejects with 'limit_reached' if the org hit its quota
+      // between opening the dialog and saving — reflect the at-limit state.
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('limit_reached')) {
+        setAtLimit(true)
+        setError(null)
+      } else {
+        setError(msg || 'დამატება ვერ მოხერხდა')
+      }
     } finally {
       setSaving(false)
     }
@@ -253,6 +277,24 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
     <Dialog open onClose={saving ? undefined : onClose} maxWidth="sm" fullWidth data-testid="add-appt-dialog">
       <DialogTitle sx={{ fontWeight: 700 }}>ჯავშნის დამატება</DialogTitle>
       <DialogContent>
+        {atLimit && (
+          <Alert
+            severity="warning"
+            sx={{ mb: 2 }}
+            data-testid="add-appt-limit"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => { onClose(); navigate('/dashboard/settings/subscription') }}
+              >
+                {t('subscription.upgrade')}
+              </Button>
+            }
+          >
+            {t('subscription.limitReached')} — {t('subscription.bookingsBlocked')}
+          </Alert>
+        )}
         {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="add-appt-error">{error}</Alert>}
 
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -377,7 +419,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose} disabled={saving} data-testid="add-appt-cancel">{t('common.cancel')}</Button>
-        <Button variant="contained" onClick={handleSave} disabled={!canSave || saving} data-testid="add-appt-save">
+        <Button variant="contained" onClick={handleSave} disabled={!canSave || saving || atLimit} data-testid="add-appt-save">
           {saving ? <CircularProgress size={22} color="inherit" /> : 'დამატება'}
         </Button>
       </DialogActions>

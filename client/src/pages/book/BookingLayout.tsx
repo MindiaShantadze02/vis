@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Box, Typography, Avatar, Stepper,
   Step, StepLabel, useMediaQuery, useTheme, Divider,
 } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
 import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
+import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
@@ -62,11 +64,13 @@ const STEPS = ['სერვისი', 'თარიღი და დრო', '
 export default function BookingLayout() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 
   const [org, setOrg] = useState<BookingOrg | null>(null)
   const [notFound, setNotFound] = useState(false)
+  const [atCapacity, setAtCapacity] = useState(false)
   const [step, setStep] = useState(0)
   const [booking, setBooking] = useState<BookingState>({
     service: null, date: '', time: '',
@@ -83,6 +87,15 @@ export default function BookingLayout() {
         .eq('slug', slug)
         .single()
       if (error || !data) { console.error('org load error', error); setNotFound(true); return }
+
+      // Block the whole flow up front if the business is at its monthly tier
+      // limit — same derived usage the dashboard enforces against. A guest
+      // can't upgrade, so we just show a friendly unavailable state rather
+      // than letting them fill the form and fail on insert.
+      const { data: canAccept } = await supabase
+        .rpc('org_can_accept_appointment', { p_org_id: data.id })
+      if (canAccept === false) { setAtCapacity(true); return }
+
       setOrg(data as BookingOrg)
     }
     if (slug) loadOrg()
@@ -99,6 +112,18 @@ export default function BookingLayout() {
           icon={<SearchOffOutlinedIcon />}
           title="ბიზნესი ვერ მოიძებნა"
           caption="შეამოწმეთ ბმული და სცადეთ თავიდან"
+        />
+      </Box>
+    )
+  }
+
+  if (atCapacity) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <EmptyState
+          icon={<EventBusyOutlinedIcon />}
+          title={t('booking.unavailable')}
+          caption={t('booking.unavailableCaption')}
         />
       </Box>
     )
