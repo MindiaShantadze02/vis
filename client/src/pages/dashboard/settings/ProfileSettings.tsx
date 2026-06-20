@@ -2,8 +2,11 @@ import { useEffect, useState, useRef } from 'react'
 import {
   Box, Typography, Card, CardContent, TextField, Button,
   Avatar, CircularProgress, Alert, Stack, Divider,
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
+  Checkbox, FormControlLabel,
 } from '@mui/material'
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
@@ -18,6 +21,13 @@ export default function ProfileSettings() {
   const { t } = useTranslation()
   const { org, refresh } = useOrg()
   const toast = useToast()
+  const navigate = useNavigate()
+
+  // Account deletion (danger zone)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [soleMember, setSoleMember] = useState(false)
+  const [deleteOrgToo, setDeleteOrgToo] = useState(true)
+  const [deleting, setDeleting] = useState(false)
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -103,6 +113,37 @@ export default function ProfileSettings() {
     if (err) { setError(err.message); return }
     await refresh()
     toast.success(t('common.saved'))
+  }
+
+  // Open the delete dialog, first checking whether the user is the only member
+  // of the org (which surfaces the "delete the organisation too" choice).
+  async function openDeleteDialog() {
+    if (!org) return
+    const { count } = await supabase
+      .from('org_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', org.id)
+    const sole = (count ?? 0) <= 1
+    setSoleMember(sole)
+    setDeleteOrgToo(sole) // default to removing the org when no one else is left
+    setDeleteOpen(true)
+  }
+
+  async function handleDeleteAccount() {
+    if (!org) return
+    setDeleting(true)
+    const { error: err } = await supabase.functions.invoke('delete-account', {
+      body: { orgId: org.id, deleteOrg: soleMember && deleteOrgToo },
+    })
+    if (err) {
+      setDeleting(false)
+      setDeleteOpen(false)
+      toast.error(t('settings.deleteAccountFailed'))
+      return
+    }
+    await supabase.auth.signOut()
+    toast.success(t('settings.accountDeleted'))
+    navigate('/login')
   }
 
   return (
@@ -254,6 +295,67 @@ export default function ProfileSettings() {
           </Box>
         </CardContent>
       </Card>
+
+      {/* Danger zone */}
+      <Card sx={{ mt: 4, border: '1px solid', borderColor: 'error.main' }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'error.main', mb: 0.5 }}>
+            {t('settings.dangerZone')}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            {t('settings.deleteAccountMessage')}
+          </Typography>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={openDeleteDialog}
+            data-testid="delete-account-btn"
+          >
+            {t('settings.deleteAccount')}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Delete account confirmation */}
+      <Dialog open={deleteOpen} onClose={deleting ? undefined : () => setDeleteOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.deleteAccountTitle')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: 'text.secondary' }}>
+            {t('settings.deleteAccountMessage')}
+          </DialogContentText>
+          {soleMember ? (
+            <FormControlLabel
+              sx={{ mt: 2 }}
+              control={
+                <Checkbox
+                  checked={deleteOrgToo}
+                  onChange={e => setDeleteOrgToo(e.target.checked)}
+                  data-testid="delete-org-too"
+                />
+              }
+              label={t('settings.deleteOrgToo', { name: org?.name ?? '' })}
+            />
+          ) : (
+            <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+              {t('settings.deleteAccountKeepOrg')}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteOpen(false)} disabled={deleting} color="inherit">
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+            variant="contained"
+            color="error"
+            data-testid="delete-account-confirm"
+          >
+            {deleting ? <CircularProgress size={20} color="inherit" /> : t('settings.deleteAccount')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
