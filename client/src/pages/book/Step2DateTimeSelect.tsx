@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Box, Typography, Button, Chip, IconButton,
 } from '@mui/material'
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
+import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import {
-  format, addDays, startOfDay, isBefore, isAfter, isSameDay,
+  format, addDays, startOfDay, isBefore, isAfter, isSameDay, isSameMonth,
 } from 'date-fns'
-import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { dateLocale } from '@/lib/dateLocale'
 import { useTheme, alpha } from '@mui/material/styles'
 import { anim } from '@/theme/animations'
 import { LoadingState } from '@/components/ui'
@@ -30,12 +31,16 @@ interface Props {
 
 type ApptRow = SlotApptRow
 type OverrideRow = SlotOverride
+type WeekTemplate = Record<string, { open: boolean; ranges: { start: string; end: string }[] }>
 
-const DAY_SHORT = ['კვ', 'ორ', 'სა', 'ოთ', 'ხუ', 'პა', 'შა']
 const ANY = 'any'
+// How far ahead findNextAvailable scans per query, and the overall safety cap.
+const SCAN_WINDOW_DAYS = 60
+const SCAN_MAX_DAYS = 365
 
 export default function Step2DateTimeSelect({ orgId, service, initialDate, initialStaffId, onSelect, onBack }: Props) {
   const { t } = useTranslation()
+  const locale = dateLocale()
   const theme = useTheme()
   const glow = `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`
   const glowSoft = `0 4px 12px ${alpha(theme.palette.primary.main, 0.18)}`
@@ -49,7 +54,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   const [selectedDate, setSelectedDate] = useState<Date | null>(initialSelected)
   const [slots, setSlots] = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
-  const [template, setTemplate] = useState<Record<string, { open: boolean; ranges: { start: string; end: string }[] }> | null>(null)
+  const [template, setTemplate] = useState<WeekTemplate | null>(null)
   // How far ahead this org allows booking; null = no limit.
   const [maxAdvanceDays, setMaxAdvanceDays] = useState<number | null>(null)
 
@@ -57,6 +62,17 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   const [selectedStaffId, setSelectedStaffId] = useState<string>(initialStaffId ?? ANY)
   const [dayAppts, setDayAppts] = useState<ApptRow[]>([])
   const [override, setOverride] = useState<OverrideRow | null>(null)
+
+  // Appointments + overrides for the whole visible week, used to flag which days
+  // actually have free slots (an open-but-fully-booked day looks different from
+  // a day with availability, so users don't tap into dead ends).
+  const [weekAppts, setWeekAppts] = useState<ApptRow[]>([])
+  const [weekOverrides, setWeekOverrides] = useState<Record<string, OverrideRow>>({})
+  const [weekLoading, setWeekLoading] = useState(true)
+
+  // Forward search for the next day with availability when the visible week is empty.
+  const [nextAvailable, setNextAvailable] = useState<Date | null>(null)
+  const [searchingNext, setSearchingNext] = useState(false)
 
   // Load working hours template once
   useEffect(() => {
@@ -95,7 +111,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
       })
   }, [service.id])
 
-  // Fetch appointments + override when the date changes
+  // Fetch appointments + override when the selected date changes (drives the slot list)
   useEffect(() => {
     if (!selectedDate) return
     setLoadingSlots(true)
@@ -127,7 +143,37 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
     })
   }, [selectedDate, orgId])
 
-  // Recompute slots whenever the date, fetched data, or staff choice changes
+  // Fetch appointments + overrides for the visible week (drives the day indicators)
+  useEffect(() => {
+    setWeekLoading(true)
+    const startKey = format(weekStart, 'yyyy-MM-dd')
+    const endKey = format(addDays(weekStart, 6), 'yyyy-MM-dd')
+
+    Promise.all([
+      supabase
+        .from('appointments')
+        .select('scheduled_at, duration_minutes, service_id, staff_id')
+        .eq('org_id', orgId)
+        .gte('scheduled_at', startKey + 'T00:00:00.000Z')
+        .lte('scheduled_at', endKey + 'T23:59:59.999Z')
+        .not('status', 'in', '(rejected,cancelled)')
+        .then(({ data }) => (data ?? []) as ApptRow[]),
+
+      supabase
+        .from('working_hours_overrides')
+        .select('date, is_closed, ranges')
+        .eq('org_id', orgId)
+        .gte('date', startKey)
+        .lte('date', endKey)
+        .then(({ data }) => (data ?? []) as (OverrideRow & { date: string })[]),
+    ]).then(([appts, ovs]) => {
+      setWeekAppts(appts)
+      setWeekOverrides(Object.fromEntries(ovs.map(o => [o.date, o])))
+      setWeekLoading(false)
+    })
+  }, [weekStart, orgId])
+
+  // Recompute the selected day's slots whenever its data or the staff choice changes
   useEffect(() => {
     setSlots(selectedDate
       ? computeAvailableSlots({
@@ -145,18 +191,130 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, dayAppts, override, selectedStaffId, assignedStaff, template])
 
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
+  // Last bookable day (inclusive); null when the org sets no advance limit.
+  const maxDate = maxAdvanceDays != null ? addDays(today, maxAdvanceDays) : null
+
+  // Free-slot count per visible day, keyed by yyyy-MM-dd.
+  const weekAvailability = useMemo(() => {
+    const map: Record<string, number> = {}
+    if (!template) return map
+    for (const day of days) {
+      const key = format(day, 'yyyy-MM-dd')
+      const dayList = weekAppts.filter(a => a.scheduled_at.startsWith(key))
+      map[key] = computeAvailableSlots({
+        date: day,
+        template,
+        override: weekOverrides[key] ?? null,
+        existing: dayList,
+        serviceId: service.id,
+        durationMinutes: service.duration_minutes,
+        maxPerSlot: service.max_per_slot,
+        assignedStaff,
+        selectedStaffId: selectedStaffId === ANY ? null : selectedStaffId,
+      }).length
+    }
+    return map
+  }, [days, weekAppts, weekOverrides, template, assignedStaff, selectedStaffId, service])
+
+  const visibleHasAvailability = days.some(d => {
+    const key = format(d, 'yyyy-MM-dd')
+    const bookable = !isBefore(d, today) && (!maxDate || !isAfter(d, maxDate))
+    return bookable && (weekAvailability[key] ?? 0) > 0
+  })
+
+  // Scan forward for the first day with a free slot, in bounded windows so a
+  // long advance limit can't trigger an unbounded query.
+  async function findNextAvailable(from: Date): Promise<Date | null> {
+    if (!template) return null
+    const limit = maxDate ?? addDays(today, SCAN_MAX_DAYS)
+    let cursor = isBefore(from, today) ? today : from
+    while (!isAfter(cursor, limit)) {
+      let windowEnd = addDays(cursor, SCAN_WINDOW_DAYS - 1)
+      if (isAfter(windowEnd, limit)) windowEnd = limit
+      const startKey = format(cursor, 'yyyy-MM-dd')
+      const endKey = format(windowEnd, 'yyyy-MM-dd')
+
+      const [appts, ovs] = await Promise.all([
+        supabase
+          .from('appointments')
+          .select('scheduled_at, duration_minutes, service_id, staff_id')
+          .eq('org_id', orgId)
+          .gte('scheduled_at', startKey + 'T00:00:00.000Z')
+          .lte('scheduled_at', endKey + 'T23:59:59.999Z')
+          .not('status', 'in', '(rejected,cancelled)')
+          .then(({ data }) => (data ?? []) as ApptRow[]),
+        supabase
+          .from('working_hours_overrides')
+          .select('date, is_closed, ranges')
+          .eq('org_id', orgId)
+          .gte('date', startKey)
+          .lte('date', endKey)
+          .then(({ data }) => (data ?? []) as (OverrideRow & { date: string })[]),
+      ])
+      const ovMap = Object.fromEntries(ovs.map(o => [o.date, o]))
+
+      for (let d = cursor; !isAfter(d, windowEnd); d = addDays(d, 1)) {
+        const key = format(d, 'yyyy-MM-dd')
+        const count = computeAvailableSlots({
+          date: d,
+          template,
+          override: ovMap[key] ?? null,
+          existing: appts.filter(a => a.scheduled_at.startsWith(key)),
+          serviceId: service.id,
+          durationMinutes: service.duration_minutes,
+          maxPerSlot: service.max_per_slot,
+          assignedStaff,
+          selectedStaffId: selectedStaffId === ANY ? null : selectedStaffId,
+        }).length
+        if (count > 0) return d
+      }
+      cursor = addDays(windowEnd, 1)
+    }
+    return null
+  }
+
+  // When the visible week has nothing free, look ahead for the next open day.
+  useEffect(() => {
+    if (weekLoading || !template || visibleHasAvailability) {
+      setNextAvailable(null)
+      setSearchingNext(false)
+      return
+    }
+    let cancelled = false
+    setSearchingNext(true)
+    findNextAvailable(addDays(weekStart, 7)).then(found => {
+      if (!cancelled) {
+        setNextAvailable(found)
+        setSearchingNext(false)
+      }
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStart, weekLoading, visibleHasAvailability, template, selectedStaffId, assignedStaff])
+
   function isDayOpen(d: Date): boolean {
     if (!template) return false
+    const key = format(d, 'yyyy-MM-dd')
+    const ov = weekOverrides[key]
+    if (ov) return !ov.is_closed
     const cfg = template[getDayKey(d)]
     return cfg?.open ?? false
   }
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
-  // Last bookable day (inclusive); null when the org sets no advance limit.
-  const maxDate = maxAdvanceDays != null ? addDays(today, maxAdvanceDays) : null
+  function jumpTo(date: Date) {
+    setWeekStart(startOfDay(date))
+    setSelectedDate(startOfDay(date))
+  }
+
   const canGoPrev = !isBefore(addDays(weekStart, -1), today)
   // No point advancing once the visible week already reaches the limit.
   const canGoNext = !maxDate || isBefore(addDays(weekStart, 6), maxDate)
+
+  const weekEnd = addDays(weekStart, 6)
+  const weekLabel = isSameMonth(weekStart, weekEnd)
+    ? format(weekStart, 'LLLL yyyy', { locale })
+    : `${format(weekStart, 'LLL', { locale })} – ${format(weekEnd, 'LLL yyyy', { locale })}`
 
   const staffOptions = [
     { id: ANY, label: t('booking.anyAvailable') },
@@ -171,12 +329,12 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         size="small"
         sx={{ mb: 2, color: 'text.secondary' }}
       >
-        უკან
+        {t('common.back')}
       </Button>
 
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>თარიღის არჩევა</Typography>
+      <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>{t('booking.chooseDate')}</Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        {service.name} · {service.duration_minutes} წთ
+        {service.name} · {service.duration_minutes} {t('common.minutesShort')}
       </Typography>
 
       {/* Staff picker — only when the service has assigned people */}
@@ -207,33 +365,56 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
 
       {/* Week navigation */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <IconButton size="small" onClick={() => setWeekStart(w => addDays(w, -7))} disabled={!canGoPrev}>
+        <IconButton size="small" onClick={() => setWeekStart(w => addDays(w, -7))} disabled={!canGoPrev} aria-label={t('common.back')}>
           <ArrowBackIosNewIcon fontSize="small" />
         </IconButton>
-        <Typography variant="body2" sx={{ flex: 1, textAlign: 'center', fontWeight: 500 }}>
-          {format(weekStart, 'd MMM', { locale: ka })} – {format(addDays(weekStart, 6), 'd MMM yyyy', { locale: ka })}
+        <Typography variant="body2" sx={{ flex: 1, textAlign: 'center', fontWeight: 600, textTransform: 'capitalize' }}>
+          {weekLabel}
         </Typography>
-        <IconButton size="small" onClick={() => setWeekStart(w => addDays(w, 7))} disabled={!canGoNext}>
+        <IconButton size="small" onClick={() => setWeekStart(w => addDays(w, 7))} disabled={!canGoNext} aria-label={t('common.next')}>
           <ArrowForwardIosIcon fontSize="small" />
         </IconButton>
       </Box>
 
       {/* Day selector */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.75, mb: 4 }}>
+      <Box
+        role="group"
+        aria-label={t('booking.chooseDate')}
+        sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.75, mb: 3 }}
+      >
         {days.map((day, i) => {
+          const key = format(day, 'yyyy-MM-dd')
           const isOpen = isDayOpen(day)
           const isPast = isBefore(day, today)
           const beyondMax = maxDate ? isAfter(day, maxDate) : false
+          const bookable = isOpen && !isPast && !beyondMax
+          // Availability is only known once the week's data has loaded; until
+          // then, leave open days tappable rather than blocking interaction.
+          const known = !weekLoading
+          const hasSlots = bookable && known && (weekAvailability[key] ?? 0) > 0
+          const isFull = bookable && known && (weekAvailability[key] ?? 0) === 0
           const isSelected = selectedDate && isSameDay(day, selectedDate)
           const isToday = isSameDay(day, today)
-          const disabled = !isOpen || isPast || beyondMax
+          const disabled = !isOpen || isPast || beyondMax || isFull
+
+          const select = () => { if (!disabled) setSelectedDate(day) }
+          const ariaLabel = `${format(day, 'EEEE, d MMMM', { locale })}${
+            disabled ? ` — ${t(isFull ? 'booking.noSlots' : 'onboarding.closed')}` : ''}`
 
           return (
             <Box
               key={i}
-              data-testid={`book-day-${format(day, 'yyyy-MM-dd')}`}
+              role="button"
+              tabIndex={disabled ? -1 : 0}
+              aria-pressed={!!isSelected}
+              aria-disabled={disabled}
+              aria-label={ariaLabel}
+              data-testid={`book-day-${key}`}
               data-disabled={disabled ? 'true' : 'false'}
-              onClick={() => !disabled && setSelectedDate(day)}
+              onClick={select}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select() }
+              }}
               sx={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 py: 1.25, borderRadius: 2, cursor: disabled ? 'default' : 'pointer',
@@ -241,16 +422,18 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                 border: '1px solid',
                 borderColor: isSelected ? 'primary.main' : isToday ? 'primary.light' : 'divider',
                 boxShadow: isSelected ? glow : 'none',
-                opacity: disabled ? 0.35 : 1,
+                opacity: disabled ? 0.4 : 1,
+                outline: 'none',
+                '&:focus-visible': { boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.5)}` },
                 '&:hover': disabled ? {} : { borderColor: 'primary.main' },
                 transition: 'all 0.15s cubic-bezier(0.16,1,0.3,1)',
               }}
             >
               <Typography
                 variant="caption"
-                sx={{ color: isSelected ? 'white' : 'text.secondary', fontWeight: 500 }}
+                sx={{ color: isSelected ? 'white' : 'text.secondary', fontWeight: 500, textTransform: 'capitalize' }}
               >
-                {DAY_SHORT[day.getDay()]}
+                {format(day, 'EEEEEE', { locale })}
               </Typography>
               <Typography
                 variant="body2"
@@ -258,16 +441,55 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
               >
                 {format(day, 'd')}
               </Typography>
+              {/* Availability dot — present only on days that have free slots */}
+              <Box
+                sx={{
+                  width: 5, height: 5, borderRadius: '50%', mt: 0.5,
+                  bgcolor: hasSlots ? (isSelected ? 'white' : 'primary.main') : 'transparent',
+                  transition: 'background-color 0.15s',
+                }}
+              />
             </Box>
           )
         })}
       </Box>
 
+      {/* Next-available shortcut when the visible week is fully booked / closed */}
+      {!weekLoading && !visibleHasAvailability && (
+        <Box sx={{
+          mb: 4, p: 2, borderRadius: 2, textAlign: 'center',
+          border: '1px dashed', borderColor: 'divider',
+        }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: nextAvailable ? 1.5 : 0 }}>
+            {t('booking.noOpeningsThisWeek')}
+          </Typography>
+          {searchingNext
+            ? <LoadingState py={1} size={20} />
+            : nextAvailable
+            ? (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EventAvailableOutlinedIcon sx={{ fontSize: 16 }} />}
+                data-testid="book-next-available"
+                onClick={() => jumpTo(nextAvailable)}
+              >
+                {t('booking.nextAvailable', { date: format(nextAvailable, 'd MMM', { locale }) })}
+              </Button>
+            )
+            : (
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {t('booking.noUpcomingAvailability')}
+              </Typography>
+            )}
+        </Box>
+      )}
+
       {/* Time slots */}
       {selectedDate && (
         <>
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
-            {format(selectedDate, 'd MMMM', { locale: ka })} — თავისუფალი დრო
+            {format(selectedDate, 'd MMMM', { locale })} — {t('booking.availableTimes')}
           </Typography>
 
           {loadingSlots
@@ -279,7 +501,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                 border: '1px dashed', borderColor: 'divider',
               }}>
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  ამ დღეს თავისუფალი დრო არ არის
+                  {t('booking.noSlots')}
                 </Typography>
               </Box>
             )
