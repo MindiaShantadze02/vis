@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import {
   Box, Typography, Card, CardContent, TextField, Button,
-  Avatar, CircularProgress, Alert, Stack, Divider,
+  Avatar, CircularProgress, Alert, Stack, Divider, Link,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
   Checkbox, FormControlLabel,
 } from '@mui/material'
@@ -27,6 +27,7 @@ export default function ProfileSettings() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [soleMember, setSoleMember] = useState(false)
   const [deleteOrgToo, setDeleteOrgToo] = useState(true)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
 
   const [name, setName] = useState('')
@@ -126,6 +127,7 @@ export default function ProfileSettings() {
     const sole = (count ?? 0) <= 1
     setSoleMember(sole)
     setDeleteOrgToo(sole) // default to removing the org when no one else is left
+    setDeleteConfirmText('')
     setDeleteOpen(true)
   }
 
@@ -154,6 +156,18 @@ export default function ProfileSettings() {
 
       <Card>
         <CardContent sx={{ p: 3 }}>
+          {/* Public booking link — surfaced at the top as the most shareable item */}
+          {org?.slug && (
+            <>
+              <CopyableText
+                label={t('settings.yourBookingLink')}
+                text={`grafiki.ge/book/${org.slug}`}
+                value={`https://grafiki.ge/book/${org.slug}`}
+              />
+              <Divider sx={{ my: 3 }} />
+            </>
+          )}
+
           {/* Logo upload */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
             <Box sx={{ position: 'relative' }}>
@@ -274,13 +288,6 @@ export default function ProfileSettings() {
               </Box>
             </Box>
 
-            {org?.slug && (
-              <CopyableText
-                label={t('settings.yourBookingLink')}
-                text={`grafiki.ge/book/${org.slug}`}
-                value={`https://grafiki.ge/book/${org.slug}`}
-              />
-            )}
           </Stack>
 
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
@@ -293,26 +300,21 @@ export default function ProfileSettings() {
               {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
             </Button>
           </Box>
-        </CardContent>
-      </Card>
 
-      {/* Danger zone */}
-      <Card sx={{ mt: 4, border: '1px solid', borderColor: 'error.main' }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'error.main', mb: 0.5 }}>
-            {t('settings.dangerZone')}
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            {t('settings.deleteAccountMessage')}
-          </Typography>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={openDeleteDialog}
-            data-testid="delete-account-btn"
-          >
-            {t('settings.deleteAccount')}
-          </Button>
+          {/* Danger zone — kept deliberately quiet: a plain text link below a divider. */}
+          <Divider sx={{ mt: 4 }} />
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+            <Link
+              component="button"
+              type="button"
+              onClick={openDeleteDialog}
+              data-testid="delete-account-btn"
+              underline="hover"
+              sx={{ color: 'error.main', fontSize: 14, fontWeight: 500 }}
+            >
+              {t('settings.deleteAccount')}
+            </Link>
+          </Box>
         </CardContent>
       </Card>
 
@@ -340,6 +342,23 @@ export default function ProfileSettings() {
               {t('settings.deleteAccountKeepOrg')}
             </Typography>
           )}
+
+          {/* Require the user to type the confirmation word — a deliberate
+              friction step for an irreversible action. */}
+          <Typography variant="body2" sx={{ mt: 3, color: 'text.secondary' }}>
+            {t('settings.deleteConfirmPrompt', { word: t('settings.deleteConfirmWord') })}
+          </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            autoComplete="off"
+            sx={{ mt: 1 }}
+            value={deleteConfirmText}
+            onChange={e => setDeleteConfirmText(e.target.value)}
+            placeholder={t('settings.deleteConfirmWord')}
+            disabled={deleting}
+            slotProps={{ htmlInput: { 'data-testid': 'delete-confirm-input' } }}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDeleteOpen(false)} disabled={deleting} color="inherit">
@@ -347,7 +366,10 @@ export default function ProfileSettings() {
           </Button>
           <Button
             onClick={handleDeleteAccount}
-            disabled={deleting}
+            disabled={
+              deleting ||
+              deleteConfirmText.trim().toLowerCase() !== t('settings.deleteConfirmWord').toLowerCase()
+            }
             variant="contained"
             color="error"
             data-testid="delete-account-confirm"

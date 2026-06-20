@@ -147,6 +147,8 @@
     "deleteAccountMessage": "Ваш аккаунт будет удалён безвозвратно. Это действие нельзя отменить.",
     "deleteOrgToo": "Также удалить организацию «{{name}}» и все её данные (записи, услуги, расписание)",
     "deleteAccountKeepOrg": "Организация останется для других участников.",
+    "deleteConfirmWord": "удалить",
+    "deleteConfirmPrompt": "Введите «{{word}}» для подтверждения",
     "accountDeleted": "Аккаунт удалён",
     "deleteAccountFailed": "Не удалось удалить аккаунт",
     "profile": "Профиль",

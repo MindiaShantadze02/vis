@@ -147,6 +147,8 @@
     "deleteAccountMessage": "Your account will be permanently deleted. This action cannot be undone.",
     "deleteOrgToo": "Also delete the organization \"{{name}}\" and all its data (appointments, services, schedule)",
     "deleteAccountKeepOrg": "The organization will remain for the other members.",
+    "deleteConfirmWord": "delete",
+    "deleteConfirmPrompt": "Type \"{{word}}\" to confirm",
     "accountDeleted": "Account deleted",
     "deleteAccountFailed": "Failed to delete account",
     "profile": "Profile",
