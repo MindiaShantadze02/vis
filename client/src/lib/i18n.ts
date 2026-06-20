@@ -4,9 +4,9 @@ import HttpBackend from 'i18next-http-backend'
 import LanguageDetector from 'i18next-browser-languagedetector'
 
 export const SUPPORTED_LANGUAGES = [
-  { code: 'ka', label: 'ქართული' },
-  { code: 'ru', label: 'Русский' },
-  { code: 'en', label: 'English' },
+  { code: 'ka', label: 'ქართული', country: 'GE' },
+  { code: 'ru', label: 'Русский', country: 'RU' },
+  { code: 'en', label: 'English', country: 'GB' },
 ] as const
 
 export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]['code']
