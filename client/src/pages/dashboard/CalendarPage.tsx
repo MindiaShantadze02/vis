@@ -42,6 +42,103 @@ function pickOne<T>(rel: T | T[] | null | undefined): T | null {
   return rel ?? null
 }
 
+/** A bucket of appointments of the SAME service whose times overlap, collapsed
+ *  into one counted calendar pill so simultaneous bookings of one type don't
+ *  clutter the slot. `col`/`cols` place it in an overlap-packed column so pills
+ *  that don't actually overlap each get full width. */
+interface ApptGroup {
+  key: string
+  service_id: string
+  appts: Appointment[]
+  start: Date
+  endMs: number
+  durationMin: number
+  col: number
+  cols: number
+}
+
+/** Merge same-service appointments with overlapping time ranges into groups. */
+function mergeSameServiceOverlap(appts: Appointment[]): ApptGroup[] {
+  const byService = new Map<string, Appointment[]>()
+  for (const a of appts) {
+    const arr = byService.get(a.service_id)
+    if (arr) arr.push(a)
+    else byService.set(a.service_id, [a])
+  }
+
+  const groups: ApptGroup[] = []
+  for (const [service_id, list] of byService) {
+    const sorted = [...list].sort(
+      (x, y) => new Date(x.scheduled_at).getTime() - new Date(y.scheduled_at).getTime(),
+    )
+    let cur: { startMs: number; endMs: number; appts: Appointment[] } | null = null
+    const push = () => {
+      if (!cur) return
+      groups.push({
+        key: `${service_id}__${cur.startMs}`,
+        service_id,
+        appts: cur.appts,
+        start: new Date(cur.startMs),
+        endMs: cur.endMs,
+        durationMin: Math.round((cur.endMs - cur.startMs) / 60000),
+        col: 0,
+        cols: 1,
+      })
+    }
+    for (const a of sorted) {
+      const s = new Date(a.scheduled_at).getTime()
+      const e = s + a.duration_minutes * 60000
+      if (cur && s < cur.endMs) {
+        cur.appts.push(a)
+        cur.endMs = Math.max(cur.endMs, e)
+      } else {
+        push()
+        cur = { startMs: s, endMs: e, appts: [a] }
+      }
+    }
+    push()
+  }
+  return groups
+}
+
+/** Assign each group an overlap-packed column (col of cols). Groups that never
+ *  overlap reuse a lane, so a non-overlapping group spans the full width. */
+function assignColumns(groups: ApptGroup[]): void {
+  const sorted = [...groups].sort(
+    (a, b) => a.start.getTime() - b.start.getTime() || a.endMs - b.endMs,
+  )
+  let cluster: ApptGroup[] = []
+  let lanes: number[] = [] // lane index → last end (ms)
+  let clusterMaxEnd = -1
+
+  const flush = () => {
+    for (const g of cluster) g.cols = lanes.length || 1
+    cluster = []
+    lanes = []
+    clusterMaxEnd = -1
+  }
+
+  for (const g of sorted) {
+    if (clusterMaxEnd !== -1 && g.start.getTime() >= clusterMaxEnd) flush()
+    let placed = false
+    for (let i = 0; i < lanes.length; i++) {
+      if (lanes[i] <= g.start.getTime()) {
+        lanes[i] = g.endMs
+        g.col = i
+        placed = true
+        break
+      }
+    }
+    if (!placed) {
+      g.col = lanes.length
+      lanes.push(g.endMs)
+    }
+    clusterMaxEnd = Math.max(clusterMaxEnd, g.endMs)
+    cluster.push(g)
+  }
+  flush()
+}
+
 interface RestPeriod { start: string; end: string; label: string }
 
 interface DayOverride {
@@ -132,6 +229,9 @@ export default function CalendarPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Appointment | null>(null)
+  // When a multi-appointment pill is opened, the drawer first shows this list;
+  // picking one sets `selected` and the back arrow returns here.
+  const [group, setGroup] = useState<Appointment[] | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
   const [template, setTemplate] = useState<Template | null>(null)
@@ -279,6 +379,7 @@ export default function CalendarPage() {
       .eq('id', id)
     setActionLoading(false)
     setSelected(null)
+    setGroup(null)
     loadWeek()
   }
 
@@ -346,11 +447,30 @@ export default function CalendarPage() {
     loadWeek()
   }
 
-  function getApptForSlot(day: Date, hour: number): Appointment[] {
-    return appointments.filter(a => {
-      const d = new Date(a.scheduled_at)
-      return isSameDay(d, day) && d.getHours() === hour
-    })
+  // Overlap-merged, column-packed groups per day. Computed once per week load:
+  // same-service overlapping bookings collapse into one counted pill, and groups
+  // get overlap-aware columns so non-overlapping ones span the full slot width.
+  const groupsByDay = useMemo(() => {
+    const byDay = new Map<string, Appointment[]>()
+    for (const a of appointments) {
+      const k = format(new Date(a.scheduled_at), 'yyyy-MM-dd')
+      const arr = byDay.get(k)
+      if (arr) arr.push(a)
+      else byDay.set(k, [a])
+    }
+    const out = new Map<string, ApptGroup[]>()
+    for (const [k, list] of byDay) {
+      const groups = mergeSameServiceOverlap(list)
+      assignColumns(groups)
+      out.set(k, groups)
+    }
+    return out
+  }, [appointments])
+
+  // Groups whose pill renders in this hour cell (positioned at their start).
+  function getGroupsForSlot(day: Date, hour: number): ApptGroup[] {
+    const k = format(day, 'yyyy-MM-dd')
+    return (groupsByDay.get(k) ?? []).filter(g => g.start.getHours() === hour)
   }
 
   function getRestsForSlot(day: Date, hour: number): Array<{ rest: RestPeriod; idx: number }> {
@@ -479,7 +599,7 @@ export default function CalendarPage() {
               </Box>
 
               {days.map((day, di) => {
-                const slotAppts = getApptForSlot(day, hour)
+                const slotGroups = getGroupsForSlot(day, hour)
                 const slotRests = getRestsForSlot(day, hour)
 
                 return (
@@ -496,33 +616,38 @@ export default function CalendarPage() {
                     }}
                   >
                     {/* Appointment pills — absolutely positioned so their height
-                        reflects duration and they span across hour rows. Pills
-                        sharing a start hour are laid out side by side. */}
-                    {slotAppts.map((appt, idx) => {
+                        reflects duration and they span across hour rows. Same-
+                        service overlapping bookings collapse into one counted
+                        pill; overlap-packed columns keep distinct/parallel
+                        bookings side by side without cramping the rest. */}
+                    {slotGroups.map((g) => {
                       // Background reflects the appointment type (service); the
-                      // left bar turns orange for pending bookings so the ones
-                      // needing action still stand out against any type color.
-                      const c = serviceColors(appt.service_id)
-                      const isPending = appt.status === 'pending'
-                      const accent = isPending ? theme.palette.warning.main : c.main
-                      const start = new Date(appt.scheduled_at)
+                      // left bar turns orange when any booking in the group is
+                      // pending so the ones needing action still stand out.
+                      const first = g.appts[0]
+                      const count = g.appts.length
+                      const isGroup = count > 1
+                      const c = serviceColors(g.service_id)
+                      const hasPending = g.appts.some(a => a.status === 'pending')
+                      const accent = hasPending ? theme.palette.warning.main : c.main
+                      const start = g.start
                       const top = (start.getMinutes() / 60) * HOUR_HEIGHT
-                      const height = Math.max(16, (appt.duration_minutes / 60) * HOUR_HEIGHT - 2)
-                      const widthPct = 100 / slotAppts.length
+                      const height = Math.max(16, (g.durationMin / 60) * HOUR_HEIGHT - 2)
+                      const widthPct = 100 / g.cols
+                      const staffName = first.staff?.display_name
+                      const tooltip = isGroup
+                        ? `${first.services?.name} · ${t('calendar.apptsCount', { count })}`
+                        : `${first.customers?.first_name} ${first.customers?.last_name ?? ''} · ${first.services?.name}${staffName ? ` · ${staffName}` : ''}`
                       return (
-                        <Tooltip
-                          key={appt.id}
-                          title={`${appt.customers?.first_name} ${appt.customers?.last_name ?? ''} · ${appt.services?.name}${appt.staff?.display_name ? ` · ${appt.staff.display_name}` : ''}`}
-                          placement="top"
-                        >
+                        <Tooltip key={g.key} title={tooltip} placement="top">
                           <Box
-                            onClick={() => setSelected(appt)}
-                            data-testid="cal-appt"
+                            onClick={() => isGroup ? setGroup(g.appts) : setSelected(first)}
+                            data-testid={isGroup ? 'cal-appt-group' : 'cal-appt'}
                             sx={{
                               position: 'absolute',
                               top: `${top}px`,
                               height: `${height}px`,
-                              left: `calc(${idx * widthPct}% + 2px)`,
+                              left: `calc(${g.col * widthPct}% + 2px)`,
                               width: `calc(${widthPct}% - 4px)`,
                               zIndex: 2,
                               borderRadius: '5px',
@@ -539,12 +664,25 @@ export default function CalendarPage() {
                               },
                             }}
                           >
-                            <Typography sx={{ fontWeight: 700, color: c.main, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: PILL_FONT.primary, lineHeight: 1.4 }}>
-                              {format(new Date(appt.scheduled_at), 'HH:mm')} {appt.customers?.first_name}
-                            </Typography>
-                            <Typography sx={{ color: c.main, opacity: 0.75, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: PILL_FONT.secondary, lineHeight: 1.3 }}>
-                              {appt.services?.name}{appt.staff?.display_name ? ` · ${appt.staff.display_name}` : ''}
-                            </Typography>
+                            {isGroup ? (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Typography sx={{ flex: 1, fontWeight: 700, color: c.main, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: PILL_FONT.primary, lineHeight: 1.4 }}>
+                                  {format(start, 'HH:mm')} {first.services?.name}
+                                </Typography>
+                                <Box sx={{ flexShrink: 0, bgcolor: c.main, color: '#fff', borderRadius: '999px', px: 0.6, minWidth: 16, textAlign: 'center', fontSize: PILL_FONT.secondary, fontWeight: 700, lineHeight: 1.6 }}>
+                                  ×{count}
+                                </Box>
+                              </Box>
+                            ) : (
+                              <>
+                                <Typography sx={{ fontWeight: 700, color: c.main, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: PILL_FONT.primary, lineHeight: 1.4 }}>
+                                  {format(start, 'HH:mm')} {first.customers?.first_name}
+                                </Typography>
+                                <Typography sx={{ color: c.main, opacity: 0.75, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: PILL_FONT.secondary, lineHeight: 1.3 }}>
+                                  {first.services?.name}{staffName ? ` · ${staffName}` : ''}
+                                </Typography>
+                              </>
+                            )}
                           </Box>
                         </Tooltip>
                       )
@@ -607,12 +745,62 @@ export default function CalendarPage() {
       {/* Appointment detail drawer */}
       <Drawer
         anchor="right"
-        open={!!selected}
-        onClose={() => setSelected(null)}
+        open={!!selected || !!group}
+        onClose={() => { setSelected(null); setGroup(null) }}
         slotProps={{ paper: { sx: { width: 340, p: 3 } } }}
       >
+        {/* Group list — shown for a multi-appointment slot until one is picked. */}
+        {group && !selected && (
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.25 }}>
+              {group[0].services?.name}
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+              {format(new Date(group[0].scheduled_at), 'dd MMM yyyy, HH:mm', { locale: dateLocale() })}
+              {' · '}{t('calendar.apptsCount', { count: group.length })}
+            </Typography>
+            <Stack spacing={1}>
+              {group.map(a => (
+                <Box
+                  key={a.id}
+                  onClick={() => setSelected(a)}
+                  data-testid="cal-group-item"
+                  sx={{
+                    display: 'flex', alignItems: 'center', gap: 1, p: 1.5,
+                    borderRadius: 2, border: '1px solid', borderColor: 'divider',
+                    cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                >
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {a.customers?.first_name} {a.customers?.last_name ?? ''}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {format(new Date(a.scheduled_at), 'HH:mm')}{a.staff?.display_name ? ` · ${a.staff.display_name}` : ''}
+                    </Typography>
+                  </Box>
+                  <StatusChip status={a.status} />
+                </Box>
+              ))}
+            </Stack>
+            <Button fullWidth variant="text" sx={{ mt: 2 }} onClick={() => setGroup(null)}>
+              {t('common.cancel')}
+            </Button>
+          </Box>
+        )}
+
         {selected && (
           <Box>
+            {group && (
+              <Button
+                startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 14 }} />}
+                size="small"
+                onClick={() => setSelected(null)}
+                sx={{ mb: 1, ml: -1, color: 'text.secondary' }}
+              >
+                {t('common.back')}
+              </Button>
+            )}
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
               {selected.customers?.first_name} {selected.customers?.last_name}
             </Typography>
@@ -683,7 +871,7 @@ export default function CalendarPage() {
               </Stack>
             )}
 
-            <Button fullWidth variant="text" sx={{ mt: 2 }} onClick={() => setSelected(null)}>
+            <Button fullWidth variant="text" sx={{ mt: 2 }} onClick={() => { setSelected(null); setGroup(null) }}>
               {t('common.cancel')}
             </Button>
           </Box>

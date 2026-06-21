@@ -266,7 +266,9 @@
     "start": "Start",
     "end": "End",
     "nameOptional": "Name (optional)",
-    "restPlaceholder": "e.g. Lunch, break"
+    "restPlaceholder": "e.g. Lunch, break",
+    "apptsCount_one": "{{count}} appointment",
+    "apptsCount_other": "{{count}} appointments"
   },
   "tiers": {
     "free": {

@@ -269,7 +269,9 @@
     "start": "დაწყება",
     "end": "დასრულება",
     "nameOptional": "სახელი (არასავალდებულო)",
-    "restPlaceholder": "მაგ: სადილი, შესვენება"
+    "restPlaceholder": "მაგ: სადილი, შესვენება",
+    "apptsCount_one": "{{count}} ჯავშანი",
+    "apptsCount_other": "{{count}} ჯავშანი"
   },
   "tiers": {
     "free": {

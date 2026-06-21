@@ -266,7 +266,11 @@
     "start": "Начало",
     "end": "Конец",
     "nameOptional": "Название (необязательно)",
-    "restPlaceholder": "напр.: Обед, перерыв"
+    "restPlaceholder": "напр.: Обед, перерыв",
+    "apptsCount_one": "{{count}} запись",
+    "apptsCount_few": "{{count}} записи",
+    "apptsCount_many": "{{count}} записей",
+    "apptsCount_other": "{{count}} записи"
   },
   "tiers": {
     "free": {

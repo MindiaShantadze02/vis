@@ -33,6 +33,12 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
+    // TEMPORARY (testing): a master code that verifies any phone. Active only
+    // while the OTP_DEV_MASTER_CODE secret is set — unset it to fully disable.
+    // Remove this block (and the secret) before relying on real SMS delivery.
+    const masterCode = Deno.env.get('OTP_DEV_MASTER_CODE')
+    const isMaster = !!masterCode && String(code) === masterCode
+
     // Latest challenge for this phone that hasn't been used or expired.
     const { data: row } = await supabase
       .from('booking_verifications')
@@ -45,13 +51,24 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (!row) {
+      // With the master code, mint a pre-verified challenge so the booking gate
+      // passes even if no fresh code was requested.
+      if (isMaster) {
+        await supabase.from('booking_verifications').insert({
+          phone: local,
+          code_hash: 'dev-master',
+          expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          verified_at: new Date().toISOString(),
+        })
+        return Response.json({ verified: true }, { headers: corsHeaders })
+      }
       return Response.json({ verified: false, error: 'expired' }, { headers: corsHeaders })
     }
-    if (row.attempts >= MAX_ATTEMPTS) {
+    if (!isMaster && row.attempts >= MAX_ATTEMPTS) {
       return Response.json({ verified: false, error: 'too_many_attempts' }, { headers: corsHeaders })
     }
 
-    const matches = row.code_hash === (await hashCode(String(code), local, secret))
+    const matches = isMaster || row.code_hash === (await hashCode(String(code), local, secret))
 
     if (!matches) {
       const attempts = row.attempts + 1
