@@ -38,3 +38,8 @@ verify_jwt = false
 
 [functions.delete-account]
 verify_jwt = true
+
+[functions.send-sms]
+# Called by the send_appointment_sms DB trigger via pg_net, not by end users.
+# Authenticated with the x-sms-secret header (SMS_WEBHOOK_SECRET), not a JWT.
+verify_jwt = false

@@ -39,15 +39,17 @@ superadmin tooling, account deletion, auto-complete cron.
   new `supabase/functions/payment-*`.
 
 ### 3. Outbound notification delivery (SMS + email)
-- **Now:** `sms_log` table + message types + `platform_config.sms_provider` exist, but
-  **no provider is integrated** and nothing is sent. No email infra beyond Supabase Auth.
-  Customers (no login) currently receive nothing.
-- **Work:** Integrate one SMS provider (Georgian gateway / Twilio) behind the `sms_log`
-  contract, and one email provider (Resend/SendGrid). Wire at minimum: booking
-  confirmation to customer, approval/rejection to customer, new-booking alert to admin,
-  invitation delivery. Backbone for reminders (#5).
-- **Files:** new `supabase/functions/send-sms` / `send-email`, status-change triggers,
-  `sms_log`, `platform_config`.
+- **Now:** A pluggable SMS layer lives in `supabase/functions/_shared/sms/` behind the
+  `SmsProvider` interface. The **mock** provider is active (logs to function logs, records
+  every send in `sms_log`, delivers nothing). **booking_confirmation** is wired into
+  `book-appointment`. No real gateway yet; no email infra beyond Supabase Auth.
+- **Work:** Add a real provider — create `_shared/sms/<provider>.ts` implementing
+  `SmsProvider`, register it in `getSmsProvider`, and set `platform_config.sms_provider`
+  (or the `SMS_PROVIDER` secret). Then wire the remaining message types: approval/rejection
+  to customer, new-booking alert to admin, invitation delivery. Add an email provider
+  (Resend/SendGrid). Backbone for reminders (#5).
+- **Files:** `supabase/functions/_shared/sms/*`, `book-appointment`, status-change triggers,
+  `sms_log`, `platform_config`, new `send-email`.
 
 ### 4. Auth/account safety — password reset & email change
 - **Now:** Email/password login + account deletion exist. No **password reset** or

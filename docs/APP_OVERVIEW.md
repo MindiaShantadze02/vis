@@ -46,6 +46,6 @@ Platform overview, org list & detail, tier overrides, managing other superadmins
 ## What's NOT built yet (per `docs/ROADMAP.md`)
 - **Subscription billing** — upgrade UI exists but the button isn't wired to a real checkout
 - **Online booking payments** — BOG Pay / TBC Pay (Georgian gateways) credentials collected but "Coming Soon"; payment columns exist on appointments
-- **Outbound SMS/email delivery** — `sms_log` table + message types exist, but no provider integrated; customers currently receive nothing
+- **Outbound SMS/email delivery** — pluggable SMS layer exists (`supabase/functions/_shared/sms/`, `SmsProvider` interface); a **mock** provider is wired for booking confirmations (logs only, nothing delivered). No real gateway or email provider yet
 - **Password reset / email change**
 - Appointment reminders, customer self-service cancel/reschedule, customer email capture, CRM/customer directory, analytics, data export
