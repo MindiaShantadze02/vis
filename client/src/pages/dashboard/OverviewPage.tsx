@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import {
   Grid, Card, Typography, Box, Skeleton, Chip, Button,
   TextField, Select, MenuItem, FormControl, InputLabel, Stack,
@@ -24,6 +24,7 @@ import { PageHeader, StatCard, StatusChip, EmptyState, CopyableText, useToast } 
 import type { AppointmentStatus } from '@/components/ui'
 import AddAppointmentDialog from './AddAppointmentDialog'
 import PendingInvites from './PendingInvites'
+import type { DashboardOutletContext } from './DashboardLayout'
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export default function OverviewPage() {
   const theme = useTheme()
   const toast = useToast()
   const navigate = useNavigate()
+  const { refreshSignal } = useOutletContext<DashboardOutletContext>()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 
   const [stats, setStats] = useState<Stats | null>(null)
@@ -114,6 +116,15 @@ export default function OverviewPage() {
   useEffect(() => {
     if (org) loadAppointments()
   }, [org, statusFilter, debouncedSearch, dateFrom, dateTo, page, rowsPerPage])
+
+  // Refetch when the admin acts on a notification (signal bumped by the layout)
+  // so the list and stats reflect the newest appointment requests. Skip the
+  // initial value — the effects above already do the first load.
+  useEffect(() => {
+    if (!org || refreshSignal === 0) return
+    loadAppointments()
+    loadStats()
+  }, [refreshSignal])
 
   // Which members are assignable to the opened appointment's service.
   useEffect(() => {

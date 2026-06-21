@@ -1,5 +1,14 @@
 import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+
+/**
+ * Passed down to dashboard pages via the router Outlet. `refreshSignal` bumps
+ * each time the admin acts on a notification, letting pages (e.g. the overview)
+ * refetch so they reflect the newest appointment requests.
+ */
+export interface DashboardOutletContext {
+  refreshSignal: number
+}
 import {
   Box, Drawer, List, ListItemButton, ListItemIcon, ListItemText,
   AppBar, Toolbar, IconButton, Typography, Badge, Avatar,
@@ -53,6 +62,8 @@ export default function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
+  // Bumped on each notification click so the overview refetches its data.
+  const [refreshSignal, setRefreshSignal] = useState(0)
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -71,6 +82,9 @@ export default function DashboardLayout() {
     // The overview lists pending requests first; that's where an admin acts on
     // a booking. (We don't deep-link to a single appointment yet.)
     navigate('/dashboard')
+    // Force the overview to refetch even when we're already on it, so it
+    // reflects the request that triggered this notification.
+    setRefreshSignal(s => s + 1)
     void appointmentId
   }
 
@@ -361,7 +375,7 @@ export default function DashboardLayout() {
 
         {/* Page content */}
         <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 }, animation: anim.fadeInUp }}>
-          <Outlet />
+          <Outlet context={{ refreshSignal } satisfies DashboardOutletContext} />
         </Box>
       </Box>
     </Box>
