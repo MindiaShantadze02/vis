@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Box, Typography, Button, TextField, Stack,
   Alert, CircularProgress, ToggleButtonGroup, ToggleButton,
@@ -27,6 +27,11 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Phone-verification (OTP) gate between the form and the actual booking insert.
+  const [phase, setPhase] = useState<'form' | 'otp'>('form')
+  const [code, setCode] = useState('')
+  const [resendIn, setResendIn] = useState(0)
+
   const onlineEnabled = org.payment_config?.bog?.enabled || org.payment_config?.tbc?.enabled
   const inPersonEnabled = org.payment_config?.inPerson?.enabled !== false
 
@@ -34,7 +39,49 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     ? new Date(`${booking.date}T${booking.time}:00`)
     : null
 
-  async function handleBook() {
+  // Resend cooldown countdown.
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const id = setTimeout(() => setResendIn(s => s - 1), 1000)
+    return () => clearTimeout(id)
+  }, [resendIn])
+
+  // Step 1: text a verification code to the customer's phone, then switch to the
+  // code-entry view. The booking itself is only created after the code checks out.
+  async function sendCode() {
+    setLoading(true)
+    setError(null)
+    const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
+      body: { phone: booking.phone, org_id: org.id },
+    })
+    setLoading(false)
+    if (fnErr || !data?.ok) {
+      setError(data?.error === 'too_soon' ? t('booking.otpTooSoon') : t('booking.otpSendFailed'))
+      return
+    }
+    setPhase('otp')
+    setResendIn(60)
+  }
+
+  // Step 2: verify the entered code, then create the booking.
+  async function verifyAndBook() {
+    if (code.length !== 6) return
+    setLoading(true)
+    setError(null)
+    const { data, error: fnErr } = await supabase.functions.invoke('verify-booking-otp', {
+      body: { phone: booking.phone, code },
+    })
+    if (fnErr || !data?.verified) {
+      setLoading(false)
+      setError(data?.error === 'wrong_code'
+        ? t('booking.otpWrong', { remaining: data.remaining ?? 0 })
+        : t('booking.otpExpired'))
+      return
+    }
+    await confirmBooking()
+  }
+
+  async function confirmBooking() {
     if (!booking.service || !scheduledAt) return
     setLoading(true)
     setError(null)
@@ -121,11 +168,20 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
 
       onDone(appointmentId)
     } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
       // The org may have hit its monthly tier limit since the page loaded —
       // the DB trigger (enforce_appointment_limit) rejects with 'limit_reached'.
       // Show the same friendly unavailable copy; a guest can't upgrade.
-      const msg = err instanceof Error ? err.message : ''
-      setError(msg.includes('limit_reached') ? t('booking.unavailable') : (msg || 'დაჯავშნა ვერ მოხერხდა'))
+      if (msg.includes('limit_reached')) {
+        setError(t('booking.unavailable'))
+      } else if (msg.includes('verification_required')) {
+        // The verified code lapsed or was already used — send a fresh one.
+        setError(t('booking.otpExpired'))
+        setCode('')
+        setPhase('form')
+      } else {
+        setError(msg || t('booking.bookFailed'))
+      }
       setLoading(false)
     }
   }
@@ -144,7 +200,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     <Box>
       <Button
         startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 14 }} />}
-        onClick={onBack}
+        onClick={phase === 'otp' ? () => { setPhase('form'); setError(null) } : onBack}
         size="small"
         sx={{ mb: 2, color: 'text.secondary' }}
       >
@@ -160,6 +216,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
 
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="book-error">{error}</Alert>}
 
+      {phase === 'form' && (
       <Stack spacing={2}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
           <TextField
@@ -273,7 +330,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           fullWidth
           variant="contained"
           size="large"
-          onClick={handleBook}
+          onClick={sendCode}
           disabled={loading || !canBook}
           data-testid="book-submit"
         >
@@ -282,7 +339,44 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
             : booking.paymentMethod === 'online' ? 'გადახდაზე გადასვლა' : 'ჯავშნის გაკეთება'
           }
         </Button>
-      </Stack>
+        </Stack>
+      )}
+
+      {phase === 'otp' && (
+        <Stack spacing={2}>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            {t('booking.otpSent', { phone: booking.phone })}
+          </Typography>
+          <TextField
+            label={t('booking.otpLabel')}
+            value={code}
+            onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            fullWidth
+            autoFocus
+            placeholder="••••••"
+            slotProps={{ htmlInput: { inputMode: 'numeric' as const, maxLength: 6, 'data-testid': 'book-otp-code' } }}
+          />
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            onClick={verifyAndBook}
+            disabled={loading || code.length !== 6}
+            data-testid="book-otp-verify"
+          >
+            {loading ? <CircularProgress size={22} color="inherit" /> : t('booking.otpVerify')}
+          </Button>
+          <Button
+            fullWidth
+            size="small"
+            onClick={sendCode}
+            disabled={loading || resendIn > 0}
+            sx={{ color: 'text.secondary' }}
+          >
+            {resendIn > 0 ? t('booking.otpResendIn', { seconds: resendIn }) : t('booking.otpResend')}
+          </Button>
+        </Stack>
+      )}
     </Box>
   )
 }

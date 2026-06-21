@@ -3,13 +3,15 @@
 // without touching any caller — only a new file implementing this interface and
 // one line in the factory (./index.ts → getSmsProvider).
 
-// Mirrors sms_log.message_type CHECK constraint (migration 001_tables.sql).
+// Mirrors sms_log.message_type CHECK constraint (migrations 001_tables.sql,
+// 030_booking_otp.sql).
 export type SmsMessageType =
   | 'booking_confirmation'
   | 'approval_update'
   | 'admin_new_booking'
   | 'admin_reminder'
   | 'invitation'
+  | 'verification_code'
 
 export interface SmsMessage {
   // Bare recipient phone. Providers normalise to whatever format they require

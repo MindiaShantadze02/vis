@@ -70,9 +70,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'customer has no phone' }, { status: 422, headers: corsHeaders })
     }
 
-    // Only booking_confirmation is wired today. Other message types (approval_update,
-    // admin_*, invitation) can branch here as their flows are built.
-    if (message_type !== 'booking_confirmation') {
+    // booking_confirmation and approval_update both render the booking-details
+    // body; approval_update is sent once a guest booking reaches 'approved'
+    // (online at insert, in-person at admin approval). Other types (admin_*,
+    // invitation) can branch here as their flows are built.
+    if (message_type !== 'booking_confirmation' && message_type !== 'approval_update') {
       return Response.json({ error: `unsupported message_type: ${message_type}` }, { status: 400, headers: corsHeaders })
     }
 

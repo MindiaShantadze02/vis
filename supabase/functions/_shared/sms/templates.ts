@@ -40,8 +40,23 @@ export function bookingConfirmationBody(
   }
 }
 
+// One-time phone-verification code sent before a guest booking is created.
+export function verificationCodeBody(code: string, lang: SmsLang = 'ka'): string {
+  switch (lang) {
+    case 'en':
+      return `${code} is your Grafiki booking confirmation code. It expires in 10 minutes.`
+    case 'ru':
+      return `${code} — ваш код подтверждения брони Grafiki. Действует 10 минут.`
+    case 'ka':
+    default:
+      return `${code} — თქვენი ჯავშნის დადასტურების კოდი (Grafiki). მოქმედებს 10 წუთი.`
+  }
+}
+
 // Type-check helper so adding a SmsMessageType reminds you a template may be
-// needed. Not all types are wired yet (approval_update, admin_*, invitation).
+// needed. Not all types are wired yet (admin_*, invitation).
 export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
   'booking_confirmation',
+  'approval_update',
+  'verification_code',
 ]

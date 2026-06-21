@@ -43,3 +43,11 @@ verify_jwt = true
 # Called by the send_appointment_sms DB trigger via pg_net, not by end users.
 # Authenticated with the x-sms-secret header (SMS_WEBHOOK_SECRET), not a JWT.
 verify_jwt = false
+
+[functions.request-booking-otp]
+# Public guest-booking phone verification (step 1). Rate-limited per phone.
+verify_jwt = false
+
+[functions.verify-booking-otp]
+# Public guest-booking phone verification (step 2). Attempt-limited.
+verify_jwt = false

@@ -111,7 +111,17 @@
     "selectStaff": "Specialist",
     "slotTaken": "This time was just taken. Please pick another.",
     "unavailable": "This business isn't accepting new bookings right now",
-    "unavailableCaption": "Please try again later"
+    "unavailableCaption": "Please try again later",
+    "otpSent": "We sent a verification code to {{phone}}",
+    "otpLabel": "Verification code",
+    "otpVerify": "Verify",
+    "otpResend": "Resend code",
+    "otpResendIn": "Resend in {{seconds}}s",
+    "otpWrong": "Wrong code. {{remaining}} attempts left.",
+    "otpExpired": "The code expired. Please request a new one.",
+    "otpTooSoon": "Please wait a moment before requesting another code.",
+    "otpSendFailed": "Couldn't send the code. Please try again.",
+    "bookFailed": "Booking failed"
   },
   "dashboard": {
     "overview": "Overview",
