@@ -45,11 +45,9 @@
     "requiredWhenEnabled": "Required when this method is enabled"
   },
   "authErrors": {
-    "invalidCredentials": "Wrong email or password",
-    "emailTaken": "This email is already registered — try signing in",
-    "emailNotConfirmed": "Please confirm your email before signing in",
+    "invalidCredentials": "Incorrect phone number or password",
+    "phoneTaken": "This phone number is already registered — try signing in",
     "rateLimited": "Too many attempts. Please wait a moment and try again",
-    "checkInbox": "Account created — check your inbox to confirm your email",
     "generic": "Something went wrong. Please try again"
   },
   "auth": {

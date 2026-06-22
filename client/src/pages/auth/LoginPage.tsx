@@ -5,7 +5,7 @@ import {
 } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidEmail, FIELD_LIMITS } from '@/lib/validation'
+import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
 import { LAYOUT } from '@/theme/theme'
@@ -15,26 +15,23 @@ type Mode = 'signin' | 'signup'
 export default function LoginPage() {
   const { t } = useTranslation()
   const [mode, setMode] = useState<Mode>('signin')
-  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [info, setInfo] = useState<string | null>(null)
 
   function reset() {
-    setEmail('')
+    setPhone('')
     setPassword('')
     setConfirmPassword('')
     setError(null)
-    setInfo(null)
   }
 
   async function handleSignIn() {
     setError(null)
-    setInfo(null)
     setLoading(true)
-    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    const { error: err } = await supabase.auth.signInWithPassword({ phone: toE164Georgian(phone), password })
     setLoading(false)
     if (err) setError(t(mapAuthError(err)))
   }
@@ -43,28 +40,26 @@ export default function LoginPage() {
     if (password.length < 6) { setError(t('validation.passwordTooShort')); return }
     if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
     setError(null)
-    setInfo(null)
     setLoading(true)
-    const { data, error: err } = await supabase.auth.signUp({ email: email.trim(), password })
+    // Phone confirmation is disabled on the project (sms_autoconfirm), so a
+    // successful sign-up returns a live session and logs the user straight in —
+    // no SMS code step.
+    const { data, error: err } = await supabase.auth.signUp({ phone: toE164Georgian(phone), password })
     setLoading(false)
     if (err) { setError(t(mapAuthError(err))); return }
-    // Supabase returns a user with an empty `identities` array when the email is
-    // already registered (no error, to avoid leaking account existence). Surface
-    // a friendly hint instead of leaving the form looking inert.
+    // Supabase returns a user with an empty `identities` array when the phone is
+    // already registered (no error, to avoid leaking account existence).
     if (data.user && data.user.identities?.length === 0) {
-      setError(t('authErrors.emailTaken')); return
+      setError(t('authErrors.phoneTaken')); return
     }
-    // No session means email confirmation is required — tell the user to check
-    // their inbox rather than silently doing nothing.
-    if (!data.session) setInfo(t('authErrors.checkInbox'))
   }
 
-  const emailValid = isValidEmail(email)
-  const emailInvalid = email.trim().length > 0 && !emailValid
+  const phoneValid = isValidGeorgianPhone(phone)
+  const phoneInvalid = phone.trim().length > 0 && !phoneValid
   const passwordTooShort = password.length > 0 && password.length < 6
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
-  const canSignIn = emailValid && password.length >= 6
-  const canSignUp = emailValid && password.length >= 6 && confirmPassword.length >= 6 && !passwordMismatch
+  const canSignIn = phoneValid && password.length >= 6
+  const canSignUp = phoneValid && password.length >= 6 && confirmPassword.length >= 6 && !passwordMismatch
 
   return (
     <Box
@@ -116,19 +111,19 @@ export default function LoginPage() {
           </Tabs>
 
           {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="login-error">{error}</Alert>}
-          {info && <Alert severity="success" sx={{ mb: 2 }} data-testid="login-info">{info}</Alert>}
 
           <TextField
             fullWidth
-            label="ელ. ფოსტა"
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            error={emailInvalid}
-            helperText={emailInvalid ? t('validation.invalidEmail') : ' '}
+            label={t('auth.phoneNumber')}
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            error={phoneInvalid}
+            helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
+            placeholder="599 12 34 56"
             sx={{ mb: 1 }}
             autoFocus
-            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.email, 'data-testid': 'login-email' } }}
+            slotProps={{ htmlInput: { inputMode: 'tel' as const, maxLength: FIELD_LIMITS.phone, 'data-testid': 'login-phone' } }}
           />
 
           <TextField

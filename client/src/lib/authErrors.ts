@@ -21,10 +21,7 @@ export function mapAuthError(err: AuthError | null | undefined): string {
     return 'authErrors.invalidCredentials'
   }
   if (msg.includes('already registered') || msg.includes('already been registered') || msg.includes('user already')) {
-    return 'authErrors.emailTaken'
-  }
-  if (msg.includes('email not confirmed') || msg.includes('not confirmed')) {
-    return 'authErrors.emailNotConfirmed'
+    return 'authErrors.phoneTaken'
   }
   if (msg.includes('password') && (msg.includes('at least') || msg.includes('should be') || msg.includes('weak'))) {
     return 'validation.passwordTooShort'

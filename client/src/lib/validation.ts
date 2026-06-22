@@ -33,6 +33,27 @@ export function formatGeorgianPhone(raw: string): string {
 }
 
 /**
+ * Georgian phone input → E.164 (`+995XXXXXXXXX`), the format Supabase Auth
+ * requires for phone sign-in/up. Call only on values that pass
+ * isValidGeorgianPhone.
+ */
+export function toE164Georgian(raw: string): string {
+  return `+995${formatGeorgianPhone(raw)}`
+}
+
+/**
+ * A stored phone (bare 9-digit, "995…", or "+995…" — Supabase returns
+ * user.phone as "995XXXXXXXXX") → a readable "+995 5XX XX XX XX". Falls back to
+ * the raw value if it isn't a 9-digit national number.
+ */
+export function displayGeorgianPhone(raw: string | null | undefined): string {
+  if (!raw) return ''
+  const local = formatGeorgianPhone(raw)
+  if (local.length !== 9) return raw
+  return `+995 ${local.slice(0, 3)} ${local.slice(3, 5)} ${local.slice(5, 7)} ${local.slice(7, 9)}`
+}
+
+/**
  * Pragmatic email check — a non-empty local part, an "@", and a dotted
  * domain. Deliberately loose (full RFC 5322 is impractical and rejects valid
  * addresses); mirrors the invitations_email_format DB constraint.
@@ -86,6 +107,7 @@ export const FIELD_LIMITS = {
   note: 300,
   meetingLink: 500,
   email: 254,
+  phone: 20,
   password: 72,
   paymentField: 255,
 } as const

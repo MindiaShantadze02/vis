@@ -21,6 +21,7 @@ import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettin
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined'
 import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
+import PersonOutlineIcon from '@mui/icons-material/Person2Outlined'
 import { formatDistanceToNow } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
@@ -30,6 +31,7 @@ import { useSuperadmin } from '@/hooks/useSuperadmin'
 import { useNotifications } from '@/hooks/useNotifications'
 import { LanguageSwitcher } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
+import { displayGeorgianPhone } from '@/lib/validation'
 import { anim } from '@/theme/animations'
 import { gradient, elevation, tint } from '@/theme/theme'
 
@@ -235,8 +237,8 @@ export default function DashboardLayout() {
 
       {/* User row */}
       <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Avatar sx={{ width: 32, height: 32, fontSize: 13 }}>
-          {user?.email?.slice(0, 2).toUpperCase() ?? '?'}
+        <Avatar sx={{ width: 32, height: 32 }}>
+          <PersonOutlineIcon fontSize="small" />
         </Avatar>
         <Typography
           variant="caption"
@@ -248,7 +250,7 @@ export default function DashboardLayout() {
             whiteSpace: 'nowrap',
           }}
         >
-          {user?.email ?? ''}
+          {displayGeorgianPhone(user?.phone)}
         </Typography>
         <Tooltip title={t('common.logout')}>
           <IconButton size="small" onClick={handleLogout} data-testid="logout-btn">

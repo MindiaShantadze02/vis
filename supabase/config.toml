@@ -30,6 +30,13 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 
+[auth.sms]
+# Phone + password login. Confirmations off so sign-up returns a session with no
+# SMS code (mirrors the hosted project's sms_autoconfirm) — no SMS provider
+# required. The hosted project is configured the same way via the dashboard.
+enable_signup = true
+enable_confirmations = false
+
 [functions.get-available-slots]
 verify_jwt = false
 
