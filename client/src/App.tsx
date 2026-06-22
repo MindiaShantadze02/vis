@@ -27,6 +27,7 @@ import SubscriptionPage from '@/pages/dashboard/settings/SubscriptionPage'
 // Public booking
 import BookingLayout from '@/pages/book/BookingLayout'
 import BookingConfirmationPage from '@/pages/book/BookingConfirmationPage'
+import MockCheckoutPage from '@/pages/book/MockCheckoutPage'
 import PaymentReturnPage from '@/pages/book/PaymentReturnPage'
 import InvitationAcceptPage from '@/pages/book/InvitationAcceptPage'
 
@@ -116,6 +117,7 @@ export default function App() {
 
       <Route path="/book/:slug" element={<BookingLayout />} />
       <Route path="/booking-confirmation/:id" element={<BookingConfirmationPage />} />
+      <Route path="/pay/mock" element={<MockCheckoutPage />} />
       <Route path="/payment-return" element={<PaymentReturnPage />} />
       <Route path="/invite/:token" element={<InvitationAcceptPage />} />
 

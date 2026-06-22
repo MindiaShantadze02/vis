@@ -132,7 +132,36 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
         }
       }
 
-      // Generate IDs client-side to avoid needing SELECT after INSERT
+      // Online (pay now): create NOTHING yet. Hand the booking details to the
+      // payment flow — the appointment is created by payment-webhook only once
+      // the charge clears, so a failed or abandoned payment leaves nothing on
+      // the business's dashboard.
+      if (booking.paymentMethod === 'online') {
+        const { data: pay, error: payErr } = await supabase.functions.invoke('create-payment', {
+          body: {
+            purpose: 'appointment',
+            org_id: org.id,
+            service_id: booking.service.id,
+            scheduled_at: scheduledAt.toISOString(),
+            staff_id: staffId,
+            first_name: booking.firstName.trim(),
+            last_name: booking.lastName.trim() || null,
+            phone: booking.phone,
+            notes: booking.notes.trim() || null,
+            slug: org.slug,
+            returnBaseUrl: window.location.origin,
+          },
+        })
+        if (payErr || !pay?.checkoutUrl) {
+          setError(t('booking.paymentStartFailed'))
+          setLoading(false)
+          return
+        }
+        window.location.assign(pay.checkoutUrl)
+        return
+      }
+
+      // In-person: create the appointment now (it just needs admin approval).
       const customerId = crypto.randomUUID()
       const appointmentId = crypto.randomUUID()
 
@@ -147,7 +176,6 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
 
       if (custErr) throw new Error(custErr.message)
 
-      // Create appointment
       const { error: apptErr } = await supabase
         .from('appointments')
         .insert({
@@ -158,8 +186,8 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           scheduled_at: scheduledAt.toISOString(),
           duration_minutes: booking.service.duration_minutes,
           staff_id: staffId,
-          status: booking.paymentMethod === 'online' ? 'approved' : 'pending',
-          payment_method: booking.paymentMethod,
+          status: 'pending',
+          payment_method: 'in_person',
           payment_status: 'unpaid',
           notes: booking.notes.trim() || null,
         })

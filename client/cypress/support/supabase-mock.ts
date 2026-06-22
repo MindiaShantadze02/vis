@@ -38,6 +38,13 @@ export interface MockState {
   tables: Record<string, Responder<unknown[] | MockResponse>>
   /** RPC name → return value (data), or a function returning a MockResponse/data. */
   rpc: Record<string, Responder<unknown>>
+  /**
+   * Edge-function name (e.g. 'create-payment') → response. A plain object is
+   * returned as the 200 JSON body; a MockResponse ({statusCode,body}) lets a
+   * spec simulate a non-2xx error. Unstubbed functions reply 200 {} so an
+   * un-set call never escapes to the real backend.
+   */
+  functions: Record<string, Responder<unknown>>
 }
 
 // ── Module state ─────────────────────────────────────────────────────────────
@@ -48,6 +55,7 @@ const DEFAULT_STATE: MockState = {
   signUpError: null,
   tables: {},
   rpc: {},
+  functions: {},
 }
 
 let state: MockState = structuredClone(DEFAULT_STATE)
@@ -62,6 +70,7 @@ export function mergeSupabaseState(partial: Partial<MockState>) {
     ...partial,
     tables: { ...state.tables, ...(partial.tables ?? {}) },
     rpc: { ...state.rpc, ...(partial.rpc ?? {}) },
+    functions: { ...state.functions, ...(partial.functions ?? {}) },
   }
 }
 
@@ -240,6 +249,18 @@ export function installSupabaseIntercepts() {
   cy.intercept({ method: 'POST', url: /\/rest\/v1\// }, restHandler).as('restPost')
   cy.intercept({ method: 'PATCH', url: /\/rest\/v1\// }, restHandler).as('restPatch')
   cy.intercept({ method: 'DELETE', url: /\/rest\/v1\// }, restHandler).as('restDelete')
+
+  // --- Edge functions: /functions/v1/<name> (supabase.functions.invoke) ---
+  cy.intercept({ method: 'POST', url: /\/functions\/v1\// }, (req) => {
+    const m = new URL(req.url).pathname.match(/\/functions\/v1\/([^/?]+)/)
+    const fn = m ? m[1] : ''
+    const entry = state.functions[fn]
+    // Default: succeed with an empty body so an unstubbed call stays offline.
+    if (entry === undefined) { req.reply({ statusCode: 200, body: {} }); return }
+    const resolved = resolve(entry, req)
+    if (isMockResponse(resolved)) { req.reply(resolved); return }
+    req.reply({ statusCode: 200, body: resolved })
+  }).as('fnInvoke')
 
   // --- Storage (logo uploads/reads) — never hit the network ---
   cy.intercept({ url: /\/storage\/v1\// }, { statusCode: 200, body: {} })

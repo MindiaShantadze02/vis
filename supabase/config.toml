@@ -51,3 +51,13 @@ verify_jwt = false
 [functions.verify-booking-otp]
 # Public guest-booking phone verification (step 2). Attempt-limited.
 verify_jwt = false
+
+[functions.create-payment]
+# Starts a payment checkout. Public for the guest appointment flow; the
+# subscription flow re-checks the caller's JWT inside the function.
+verify_jwt = false
+
+[functions.payment-webhook]
+# Settles a payment. Called by the gateway callback (x-payment-secret) or, for
+# the mock provider, by the /pay/mock checkout screen.
+verify_jwt = false

@@ -20,6 +20,7 @@ export default function SubscriptionPage() {
   const [limit, setLimit] = useState<number | null>(null)
   const [periodEnd, setPeriodEnd] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [upgrading, setUpgrading] = useState<Tier | null>(null)
 
   const currentTier = (org as unknown as Record<string, string>)?.subscription_tier as Tier ?? 'free'
   const expires = (org as unknown as Record<string, string>)?.subscription_expires_at
@@ -41,6 +42,22 @@ export default function SubscriptionPage() {
     setLimit(data?.appt_limit ?? null)
     setPeriodEnd(data?.period_end ?? null)
     setLoading(false)
+  }
+
+  // Kick off a tier upgrade: create-payment recomputes the price server-side,
+  // records a pending subscription_payment, and returns the gateway checkout
+  // URL (mock for now). The org's tier flips once payment clears.
+  async function handleUpgrade(tier: Tier) {
+    if (!org) return
+    setUpgrading(tier)
+    const { data, error } = await supabase.functions.invoke('create-payment', {
+      body: { purpose: 'subscription', org_id: org.id, tier, returnBaseUrl: window.location.origin },
+    })
+    if (error || !data?.checkoutUrl) {
+      setUpgrading(null)
+      return
+    }
+    window.location.assign(data.checkoutUrl)
   }
 
   const pct = limit && used !== null ? Math.min((used / limit) * 100, 100) : 0
@@ -173,9 +190,13 @@ export default function SubscriptionPage() {
                     <Button
                       variant="outlined"
                       size="small"
+                      onClick={() => handleUpgrade(tier.key)}
+                      disabled={upgrading !== null}
                       sx={{ borderColor: color, color, whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
-                      {t('subscription.upgrade')}
+                      {upgrading === tier.key
+                        ? <CircularProgress size={16} sx={{ color }} />
+                        : t('subscription.upgrade')}
                     </Button>
                   )}
                 </Box>

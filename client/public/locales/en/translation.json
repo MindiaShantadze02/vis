@@ -121,7 +121,25 @@
     "otpExpired": "The code expired. Please request a new one.",
     "otpTooSoon": "Please wait a moment before requesting another code.",
     "otpSendFailed": "Couldn't send the code. Please try again.",
-    "bookFailed": "Booking failed"
+    "bookFailed": "Booking failed",
+    "paymentStartFailed": "Could not start payment. Please try again."
+  },
+  "payment": {
+    "sandbox": "Sandbox",
+    "mockTitle": "Mock payment",
+    "invalidSession": "Invalid payment session",
+    "simulateSuccess": "Simulate successful payment",
+    "simulateFail": "Simulate failed payment",
+    "sandboxNote": "This is a test checkout. No real payment is processed.",
+    "settleFailed": "Could not complete payment. Please try again.",
+    "successTitle": "Payment successful",
+    "failTitle": "Payment failed",
+    "successAppointment": "Your booking is confirmed.",
+    "successSubscription": "Your plan has been upgraded.",
+    "failMessage": "No charge was made. You can try again.",
+    "viewBooking": "View booking",
+    "backToBooking": "Back",
+    "backToSubscription": "Back to subscription"
   },
   "dashboard": {
     "overview": "Overview",
@@ -274,22 +292,39 @@
     "free": {
       "label": "Free",
       "price": "₾0 / mo",
-      "features": ["30 bookings/mo", "Online booking page", "SMS notifications"]
+      "features": [
+        "30 bookings/mo",
+        "Online booking page",
+        "SMS notifications"
+      ]
     },
     "starter": {
       "label": "Starter",
       "price": "₾15 / mo",
-      "features": ["200 bookings/mo", "All Free features", "Priority support"]
+      "features": [
+        "200 bookings/mo",
+        "All Free features",
+        "Priority support"
+      ]
     },
     "pro": {
       "label": "Pro",
       "price": "₾40 / mo",
-      "features": ["600 bookings/mo", "All Starter features", "BOG / TBC online payment", "Team management"]
+      "features": [
+        "600 bookings/mo",
+        "All Starter features",
+        "BOG / TBC online payment",
+        "Team management"
+      ]
     },
     "business": {
       "label": "Business",
       "price": "₾80 / mo",
-      "features": ["Unlimited bookings", "All Pro features", "VIP support"]
+      "features": [
+        "Unlimited bookings",
+        "All Pro features",
+        "VIP support"
+      ]
     }
   },
   "subscription": {

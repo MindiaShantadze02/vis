@@ -19,7 +19,10 @@ describe('Public booking', () => {
     const org = makeOrg({ payment_config: { inPerson: { enabled: true }, bog: { enabled: true } } })
     const service = makeService({ name: 'სტრიჟკა', duration_minutes: 60, price: 50, max_per_slot: 1 })
 
-    function setupBooking(over: Partial<Record<string, unknown>> = {}) {
+    function setupBooking(
+      over: Partial<Record<string, unknown>> = {},
+      funcs: Record<string, unknown> = {},
+    ) {
       cy.clock(NOW, ['Date'])
       cy.mockSupabase({
         tables: {
@@ -32,8 +35,21 @@ describe('Public booking', () => {
           customers: [],
           ...over,
         },
+        // The booking submit goes through phone verification (OTP) before the
+        // booking is created/paid; stub both steps to succeed.
+        functions: {
+          'request-booking-otp': { ok: true },
+          'verify-booking-otp': { verified: true },
+          ...funcs,
+        },
       })
       cy.visit(`/book/${org.slug}`)
+    }
+
+    // Enter any 6-digit code and confirm — the verify-booking-otp stub accepts it.
+    function passOtp() {
+      cy.getByTestId('book-otp-code').type('123456')
+      cy.getByTestId('book-otp-verify').click()
     }
 
     it('lists active services with duration and price', () => {
@@ -156,6 +172,7 @@ describe('Public booking', () => {
       cy.getByTestId('book-phone').type('599 12 34 56')
       cy.getByTestId('book-pay-in_person').click()
       cy.getByTestId('book-submit').click()
+      passOtp()
 
       cy.wait('@restPost') // customer insert
       cy.location('pathname').should('include', '/booking-confirmation/')
@@ -163,25 +180,22 @@ describe('Public booking', () => {
       cy.getByTestId('status-pending').should('be.visible')
     })
 
-    it('completes an online booking → approved confirmation', () => {
-      const confirmRow = {
-        id: 'apt-confirm', scheduled_at: '2026-06-17T09:00:00', duration_minutes: 60,
-        status: 'approved', payment_method: 'online',
-        organisations: { name: org.name, slug: org.slug, booking_theme: null },
-        services: { name: service.name, price: service.price },
-        customers: { first_name: 'გიორგი', last_name: null },
-      }
-      setupBooking({ appointments: (req) => (isSingle(req) ? [confirmRow] : []) })
+    // Online (pay-now) no longer creates an appointment client-side — it hands
+    // off to the payment gateway; the booking is created by the webhook on
+    // success. Full payment journey is covered in payments.cy.ts.
+    it('hands an online booking off to the payment checkout', () => {
+      setupBooking({}, {
+        'create-payment': { checkoutUrl: '/pay/mock?ref=mock_1&purpose=appointment&id=pb-1&amount=50&currency=GEL&label=სტრიჟკა&slug=test-biz' },
+      })
 
       goToDetails()
       cy.getByTestId('book-first-name').type('გიორგი')
       cy.getByTestId('book-phone').type('599 12 34 56')
       cy.getByTestId('book-pay-online').click()
       cy.getByTestId('book-submit').click()
+      passOtp()
 
-      cy.location('pathname').should('include', '/booking-confirmation/')
-      cy.contains('ჯავშანი დადასტურებულია!').should('be.visible')
-      cy.getByTestId('status-approved').should('be.visible')
+      cy.location('pathname').should('eq', '/pay/mock')
     })
 
     it('errors when the slot fills between selection and submit (race)', () => {
@@ -191,10 +205,12 @@ describe('Public booking', () => {
       cy.getByTestId('book-phone').type('599 12 34 56')
 
       // The chosen slot is now taken by another booking of the same service.
+      // The availability re-check runs in confirmBooking, after OTP passes.
       cy.intercept('GET', '**/rest/v1/appointments*', [{
         scheduled_at: '2026-06-17T09:00:00', duration_minutes: 60, service_id: service.id, staff_id: null,
       }]).as('recheck')
       cy.getByTestId('book-submit').click()
+      passOtp()
       cy.getByTestId('book-error').should('be.visible')
       cy.location('pathname').should('include', `/book/${org.slug}`)
     })
@@ -210,6 +226,7 @@ describe('Public booking', () => {
         body: { message: 'ლიმიტი ამოიწურა', code: 'P0001' },
       }).as('apptInsert')
       cy.getByTestId('book-submit').click()
+      passOtp()
       cy.getByTestId('book-error').should('be.visible').and('contain.text', 'ლიმიტი')
     })
   })
