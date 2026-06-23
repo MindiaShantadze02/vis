@@ -78,8 +78,13 @@ export default function ProfileSettings() {
       return
     }
 
+    // The storage path is stable (<org>/logo.<ext>), so getPublicUrl always
+    // returns the same URL. Without a version param, the browser and Supabase's
+    // CDN keep serving the previously cached image after a replace (and a
+    // negatively-cached miss can hide the logo for fresh/incognito visitors).
+    // Append a cache-busting version so every upload yields a unique URL.
     const { data } = supabase.storage.from('logos').getPublicUrl(path)
-    const url = data.publicUrl
+    const url = `${data.publicUrl}?v=${Date.now()}`
 
     await supabase.from('organisations').update({ logo_url: url }).eq('id', org.id)
     setLogoUrl(url)
