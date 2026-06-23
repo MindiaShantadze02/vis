@@ -1,6 +1,6 @@
 // Georgian → Latin transliteration for URL slugs.
 //
-// The booking slug becomes part of a shareable URL (grafiki.ge/book/<slug>).
+// The booking slug becomes part of a shareable URL (vis.ge/book/<slug>).
 // Keeping raw Georgian letters works technically but browsers percent-encode
 // them into unreadable URLs (e.g. %E1%83%91…), so we transliterate to Latin.
 // Mapping follows the Georgian National transliteration system (2002).

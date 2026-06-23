@@ -57,10 +57,10 @@ export default function SuperAdminLayout() {
               boxShadow: elevation.glowSoft, flexShrink: 0,
             }}
           >
-            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>G</Typography>
+            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>V</Typography>
           </Box>
           <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1.1 }}>Grafiki</Typography>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1.1 }}>Vis</Typography>
             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>სუპერ-ადმინი</Typography>
           </Box>
         </Box>
@@ -72,7 +72,7 @@ export default function SuperAdminLayout() {
               {({ isActive }) => (
                 <ListItemButton sx={navItemSx(isActive)}>
                   <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
+                  <ListItemText primary={item.label} slotProps={{ primary: { sx: { fontSize: 14, fontWeight: 600 } } }} />
                 </ListItemButton>
               )}
             </NavLink>
@@ -83,11 +83,11 @@ export default function SuperAdminLayout() {
 
         <ListItemButton sx={navItemSx(false)} onClick={() => navigate('/dashboard')}>
           <ListItemIcon><ArrowBackIosNewIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-          <ListItemText primary="დაშბორდზე დაბრუნება" primaryTypographyProps={{ fontSize: 13 }} />
+          <ListItemText primary="დაშბორდზე დაბრუნება" slotProps={{ primary: { sx: { fontSize: 13 } } }} />
         </ListItemButton>
         <ListItemButton sx={navItemSx(false)} onClick={handleLogout}>
           <ListItemIcon><LogoutIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-          <ListItemText primary="გასვლა" primaryTypographyProps={{ fontSize: 13 }} />
+          <ListItemText primary="გასვლა" slotProps={{ primary: { sx: { fontSize: 13 } } }} />
         </ListItemButton>
       </Box>
 

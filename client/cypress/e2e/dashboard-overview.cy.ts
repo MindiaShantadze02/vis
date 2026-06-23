@@ -44,7 +44,7 @@ describe('Dashboard — overview', () => {
   it('renders the booking link and four stat cards', () => {
     loadDashboard()
     cy.contains('თქვენი ბუქინგ ბმული').should('be.visible')
-    cy.contains(`grafiki.ge/book/${org.slug}`).should('be.visible')
+    cy.contains(`vis.ge/book/${org.slug}`).should('be.visible')
     cy.getByTestId('stat-card').should('have.length', 4)
   })
 

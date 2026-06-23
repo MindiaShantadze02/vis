@@ -6,7 +6,7 @@
 -- setup (platform_config.sms_provider / sms_config, sms_log audit table).
 -- Money moves in two flows:
 --   * appointment  — a customer pays the business for an online booking
---   * subscription — a business pays Grafiki to upgrade its tier
+--   * subscription — a business pays vis to upgrade its tier
 -- Both are driven by the create-payment / payment-webhook edge functions
 -- through a provider abstraction (mock for now; bog/tbc drop in later).
 --

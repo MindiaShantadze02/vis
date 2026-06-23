@@ -20,7 +20,7 @@ export interface CreateCheckoutParams {
   // subscription_payments id. Echoed back on the return/webhook so we know
   // what to mark paid.
   referenceId: string
-  // Absolute origin of the app the customer is on (e.g. https://app.grafiki.ge),
+  // Absolute origin of the app the customer is on (e.g. https://app.vis.ge),
   // used to build success/return URLs. Real providers redirect the browser to
   // their hosted page; the mock redirects to our own /pay/mock screen.
   returnBaseUrl: string

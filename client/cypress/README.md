@@ -1,6 +1,6 @@
 # Cypress E2E tests
 
-Functional end-to-end tests for the Grafiki client. The Supabase backend is
+Functional end-to-end tests for the vis client. The Supabase backend is
 **fully mocked** at the HTTP level (`cy.intercept`), so the suite is
 deterministic, offline, and creates no real data.
 

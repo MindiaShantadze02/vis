@@ -57,14 +57,14 @@ export default function InvitationAcceptPage() {
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', p: 2 }}>
       <Card sx={{ p: 4, maxWidth: 400, width: '100%', textAlign: 'center' }}>
         {state.kind === 'loading' && (
-          <Stack spacing={2} alignItems="center">
+          <Stack spacing={2} sx={{ alignItems: 'center' }}>
             <CircularProgress />
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>მოწვევის დამუშავება…</Typography>
           </Stack>
         )}
 
         {state.kind === 'needs_login' && (
-          <Stack spacing={2} alignItems="center">
+          <Stack spacing={2} sx={{ alignItems: 'center' }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>მოწვევის მისაღებად შედით სისტემაში</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               გთხოვთ შეხვიდეთ იმ ანგარიშით, რომელზეც მოწვევა გამოიგზავნა.
@@ -74,7 +74,7 @@ export default function InvitationAcceptPage() {
         )}
 
         {state.kind === 'ok' && (
-          <Stack spacing={2} alignItems="center">
+          <Stack spacing={2} sx={{ alignItems: 'center' }}>
             <CheckCircleOutlineIcon color="success" sx={{ fontSize: 48 }} />
             <Typography variant="h6" sx={{ fontWeight: 700 }}>მოწვევა მიღებულია</Typography>
             <Button variant="contained" onClick={() => navigate('/dashboard')}>დაშბორდზე გადასვლა</Button>
@@ -82,7 +82,7 @@ export default function InvitationAcceptPage() {
         )}
 
         {state.kind === 'error' && (
-          <Stack spacing={2} alignItems="center">
+          <Stack spacing={2} sx={{ alignItems: 'center' }}>
             <ErrorOutlineIcon color="error" sx={{ fontSize: 48 }} />
             <Typography variant="h6" sx={{ fontWeight: 700 }}>{state.message}</Typography>
             <Button variant="outlined" onClick={() => navigate('/dashboard')}>დაშბორდზე გადასვლა</Button>

@@ -1,4 +1,4 @@
-# Grafiki — MVP Gap Analysis & Feature Roadmap
+# vis — MVP Gap Analysis & Feature Roadmap
 
 > Reference doc for future work. The core of the app is built; this tracks what's left to
 > make it launchable, monetizable, and retention-driving. Priorities: **P0** = launch

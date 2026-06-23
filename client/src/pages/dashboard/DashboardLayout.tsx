@@ -104,10 +104,10 @@ export default function DashboardLayout() {
               flexShrink: 0,
             }}
           >
-            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>G</Typography>
+            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>V</Typography>
           </Box>
           <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.3px' }}>
-            Grafiki
+            Vis
           </Typography>
         </Box>
         {org && (

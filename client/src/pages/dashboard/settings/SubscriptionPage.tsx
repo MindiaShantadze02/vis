@@ -38,9 +38,10 @@ export default function SubscriptionPage() {
     const { data } = await supabase
       .rpc('org_usage_info', { p_org_id: org.id })
       .maybeSingle()
-    setUsed(data?.used ?? 0)
-    setLimit(data?.appt_limit ?? null)
-    setPeriodEnd(data?.period_end ?? null)
+    const usage = data as { used?: number; appt_limit?: number | null; period_end?: string | null } | null
+    setUsed(usage?.used ?? 0)
+    setLimit(usage?.appt_limit ?? null)
+    setPeriodEnd(usage?.period_end ?? null)
     setLoading(false)
   }
 

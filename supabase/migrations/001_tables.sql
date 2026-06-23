@@ -30,7 +30,7 @@ CREATE TABLE organisations (
   owner_id                    uuid REFERENCES auth.users(id) ON DELETE SET NULL
 );
 
-COMMENT ON TABLE organisations IS 'One row per registered business on Grafiki.';
+COMMENT ON TABLE organisations IS 'One row per registered business on vis.';
 COMMENT ON COLUMN organisations.payment_config IS
   '{"bog":{"merchantId":"","apiKey":"","enabled":false},"tbc":{"merchantId":"","apiKey":"","enabled":false},"inPerson":{"enabled":true}}';
 
@@ -219,7 +219,7 @@ CREATE TABLE subscription_payments (
   period_end       date
 );
 
-COMMENT ON TABLE subscription_payments IS 'Records of Grafiki subscription billing payments per org.';
+COMMENT ON TABLE subscription_payments IS 'Records of vis subscription billing payments per org.';
 
 -- --------------------------------------------------------
 

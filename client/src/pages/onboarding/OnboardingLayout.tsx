@@ -161,9 +161,9 @@ export default function OnboardingLayout() {
               flexShrink: 0,
             }}
           >
-            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 13, lineHeight: 1 }}>G</Typography>
+            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 13, lineHeight: 1 }}>V</Typography>
           </Box>
-          <Typography variant="h6" sx={{ color: 'white', fontWeight: 700 }}>Grafiki</Typography>
+          <Typography variant="h6" sx={{ color: 'white', fontWeight: 700 }}>Vis</Typography>
 
           <Box sx={{ flex: 1 }} />
 

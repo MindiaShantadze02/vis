@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
     }
 
     // -------------------------------------------------------------------
-    // Subscription: business upgrades its Grafiki tier (authenticated).
+    // Subscription: business upgrades its vis tier (authenticated).
     // -------------------------------------------------------------------
     if (purpose === 'subscription') {
       const orgId = body.org_id as string
@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
         subscriptionPaymentId: subPay.id,
         amount,
         currency: 'GEL',
-        description: `Grafiki ${tier}`,
+        description: `vis ${tier}`,
         referenceId: subPay.id,
         returnBaseUrl,
       })

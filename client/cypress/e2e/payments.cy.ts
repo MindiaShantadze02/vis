@@ -185,7 +185,7 @@ describe('Payments', () => {
   })
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Subscription upgrade (business pays Grafiki).
+  // Subscription upgrade (business pays vis).
   // ──────────────────────────────────────────────────────────────────────────
   describe('subscription upgrade', () => {
     const org = makeOrg({ subscription_tier: 'free' })
@@ -206,7 +206,7 @@ describe('Payments', () => {
     it('upgrade sends the subscription request and redirects to checkout', () => {
       cy.intercept('POST', '**/functions/v1/create-payment', {
         statusCode: 200,
-        body: { checkoutUrl: '/pay/mock?ref=mock_2&purpose=subscription&id=sp-1&amount=15&currency=GEL&label=Grafiki%20starter' },
+        body: { checkoutUrl: '/pay/mock?ref=mock_2&purpose=subscription&id=sp-1&amount=15&currency=GEL&label=vis%20starter' },
       }).as('createPayment')
       loadSubscription()
       // current tier is free → starter is the first upgradeable tier.

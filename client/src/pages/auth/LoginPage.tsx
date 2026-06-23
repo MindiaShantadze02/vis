@@ -99,7 +99,7 @@ export default function LoginPage() {
               textAlign: 'center',
             }}
           >
-            Grafiki
+            Vis
           </Typography>
 
           <Tabs

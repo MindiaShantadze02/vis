@@ -97,7 +97,7 @@ export default function SuperadminsPage() {
             </Button>
           </Stack>
           <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
-            მომხმარებელს უკვე უნდა ჰქონდეს Grafiki-ის ანგარიში ამ ელ. ფოსტით.
+            მომხმარებელს უკვე უნდა ჰქონდეს vis-ის ანგარიში ამ ელ. ფოსტით.
           </Typography>
         </Box>
       </Card>

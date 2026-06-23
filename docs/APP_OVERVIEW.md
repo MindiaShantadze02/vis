@@ -1,4 +1,4 @@
-# Grafiki — Appointment Management SaaS
+# vis — Appointment Management SaaS
 
 ## What it is
 A multi-tenant SaaS platform for the **Georgian market** that lets small businesses (salons, clinics, trainers, etc.) take online appointment bookings. Each business gets a **public booking page** (`/book/[slug]`) to share on social media. End customers book as **guests** (no account — just name + phone). Business owners manage everything through an admin dashboard with a weekly calendar.

@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     })
 
     const details = {
-      businessName: org?.name ?? 'Grafiki',
+      businessName: org?.name ?? 'vis',
       serviceName: service?.name ?? '',
       when,
       pending: appt.status === 'pending',

@@ -63,12 +63,12 @@ export function appointmentReminderBody(
 export function verificationCodeBody(code: string, lang: SmsLang = 'ka'): string {
   switch (lang) {
     case 'en':
-      return `${code} is your Grafiki booking confirmation code. It expires in 10 minutes.`
+      return `${code} is your vis booking confirmation code. It expires in 10 minutes.`
     case 'ru':
-      return `${code} — ваш код подтверждения брони Grafiki. Действует 10 минут.`
+      return `${code} — ваш код подтверждения брони vis. Действует 10 минут.`
     case 'ka':
     default:
-      return `${code} — თქვენი ჯავშნის დადასტურების კოდი (Grafiki). მოქმედებს 10 წუთი.`
+      return `${code} — თქვენი ჯავშნის დადასტურების კოდი (vis). მოქმედებს 10 წუთი.`
   }
 }
 
@@ -76,12 +76,12 @@ export function verificationCodeBody(code: string, lang: SmsLang = 'ka'): string
 export function passwordResetCodeBody(code: string, lang: SmsLang = 'ka'): string {
   switch (lang) {
     case 'en':
-      return `${code} is your Grafiki password reset code. It expires in 10 minutes.`
+      return `${code} is your vis password reset code. It expires in 10 minutes.`
     case 'ru':
-      return `${code} — ваш код для сброса пароля Grafiki. Действует 10 минут.`
+      return `${code} — ваш код для сброса пароля vis. Действует 10 минут.`
     case 'ka':
     default:
-      return `${code} — თქვენი პაროლის აღდგენის კოდი (Grafiki). მოქმედებს 10 წუთი.`
+      return `${code} — თქვენი პაროლის აღდგენის კოდი (vis). მოქმედებს 10 წუთი.`
   }
 }
 

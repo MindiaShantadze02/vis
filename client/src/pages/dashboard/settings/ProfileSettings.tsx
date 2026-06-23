@@ -166,8 +166,8 @@ export default function ProfileSettings() {
             <>
               <CopyableText
                 label={t('settings.yourBookingLink')}
-                text={`grafiki.ge/book/${org.slug}`}
-                value={`https://grafiki.ge/book/${org.slug}`}
+                text={`vis.ge/book/${org.slug}`}
+                value={`https://vis.ge/book/${org.slug}`}
               />
               <Divider sx={{ my: 3 }} />
             </>

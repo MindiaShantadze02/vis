@@ -7,7 +7,6 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
-import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
 import { LAYOUT } from '@/theme/theme'
 

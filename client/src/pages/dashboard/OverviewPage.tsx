@@ -268,8 +268,8 @@ export default function OverviewPage() {
         <Box sx={{ mb: 4, maxWidth: 480 }}>
           <CopyableText
             label="თქვენი ბუქინგ ბმული"
-            text={`grafiki.ge/book/${org.slug}`}
-            value={`https://grafiki.ge/book/${org.slug}`}
+            text={`vis.ge/book/${org.slug}`}
+            value={`https://vis.ge/book/${org.slug}`}
           />
         </Box>
       )}

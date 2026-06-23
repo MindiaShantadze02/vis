@@ -2,7 +2,7 @@
 /**
  * HTTP-level mock for the Supabase backend.
  *
- * The Grafiki client talks to Supabase entirely over HTTP — GoTrue auth at
+ * The vis client talks to Supabase entirely over HTTP — GoTrue auth at
  * `/auth/v1/*`, PostgREST tables at `/rest/v1/<table>`, RPCs at
  * `/rest/v1/rpc/<fn>`, and storage at `/storage/v1/*`. By intercepting those
  * endpoints we get a fully deterministic, offline backend driven by a plain
