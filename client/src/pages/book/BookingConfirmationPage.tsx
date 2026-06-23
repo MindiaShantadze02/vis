@@ -5,9 +5,11 @@ import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
+import { displayGeorgianPhone, toE164Georgian } from '@/lib/validation'
 import { LoadingState, EmptyState, StatusChip } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 import { ThemeProvider } from '@mui/material/styles'
@@ -20,7 +22,7 @@ interface AppointmentDetail {
   duration_minutes: number
   status: string
   payment_method: string
-  organisations: { name: string; slug: string; booking_theme: string | null } | null
+  organisations: { name: string; slug: string; booking_theme: string | null; contact_phone: string | null } | null
   services: { name: string; price: number } | null
   customers: { first_name: string; last_name: string | null } | null
 }
@@ -35,7 +37,7 @@ export default function BookingConfirmationPage() {
     if (!id) return
     supabase
       .from('appointments')
-      .select('id, scheduled_at, duration_minutes, status, payment_method, organisations(name, slug, booking_theme), services(name, price), customers(first_name, last_name)')
+      .select('id, scheduled_at, duration_minutes, status, payment_method, organisations(name, slug, booking_theme, contact_phone), services(name, price), customers(first_name, last_name)')
       .eq('id', id)
       .single()
       .then(({ data }) => {
@@ -138,6 +140,34 @@ export default function BookingConfirmationPage() {
               </Typography>
             </Box>
           </Stack>
+
+          {/* Cancellation is handled by the business directly — guests have no
+              self-service cancel, so point them to the org's phone number. */}
+          {appt.organisations?.contact_phone && (
+            <Box
+              sx={{
+                display: 'flex', alignItems: 'center', gap: 1.5,
+                p: 1.5, mb: 3, borderRadius: 2, textAlign: 'left',
+                bgcolor: 'primary.light', color: 'primary.contrastText',
+                opacity: 0.95,
+              }}
+            >
+              <PhoneOutlinedIcon fontSize="small" />
+              <Box>
+                <Typography variant="caption" sx={{ display: 'block', opacity: 0.9 }}>
+                  ჯავშნის გასაუქმებლად ან შესაცვლელად დაგვირეკეთ
+                </Typography>
+                <Typography
+                  variant="body2"
+                  component="a"
+                  href={`tel:${toE164Georgian(appt.organisations.contact_phone)}`}
+                  sx={{ fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
+                >
+                  {displayGeorgianPhone(appt.organisations.contact_phone)}
+                </Typography>
+              </Box>
+            </Box>
+          )}
 
           <Button
             fullWidth

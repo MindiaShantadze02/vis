@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   bookingConfirmationBody,
+  appointmentReminderBody,
   sendSms,
   type SmsMessageType,
 } from '../_shared/sms/index.ts'
@@ -70,11 +71,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'customer has no phone' }, { status: 422, headers: corsHeaders })
     }
 
-    // booking_confirmation and approval_update both render the booking-details
-    // body; approval_update is sent once a guest booking reaches 'approved'
-    // (online at insert, in-person at admin approval). Other types (admin_*,
-    // invitation) can branch here as their flows are built.
-    if (message_type !== 'booking_confirmation' && message_type !== 'approval_update') {
+    // Supported types render here. booking_confirmation/approval_update share
+    // the booking-details body (approval_update is sent once a guest booking
+    // reaches 'approved'); appointment_reminder is the ~24h-before nudge dispatched
+    // by the dispatch_appointment_reminders cron. Other types (admin_*, invitation)
+    // can branch here as their flows are built.
+    const SUPPORTED: SmsMessageType[] = ['booking_confirmation', 'approval_update', 'appointment_reminder']
+    if (!SUPPORTED.includes(message_type)) {
       return Response.json({ error: `unsupported message_type: ${message_type}` }, { status: 400, headers: corsHeaders })
     }
 
@@ -84,12 +87,15 @@ Deno.serve(async (req) => {
       timeStyle: 'short',
     })
 
-    const body = bookingConfirmationBody({
+    const details = {
       businessName: org?.name ?? 'Grafiki',
       serviceName: service?.name ?? '',
       when,
       pending: appt.status === 'pending',
-    })
+    }
+    const body = message_type === 'appointment_reminder'
+      ? appointmentReminderBody(details)
+      : bookingConfirmationBody(details)
 
     const result = await sendSms(supabase, {
       orgId: appt.org_id,

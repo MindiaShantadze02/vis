@@ -12,6 +12,7 @@ export type SmsMessageType =
   | 'admin_reminder'
   | 'invitation'
   | 'verification_code'
+  | 'appointment_reminder'
 
 export interface SmsMessage {
   // Bare recipient phone. Providers normalise to whatever format they require

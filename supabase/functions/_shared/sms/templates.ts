@@ -40,6 +40,25 @@ export function bookingConfirmationBody(
   }
 }
 
+// Reminder sent ~24h before an upcoming appointment (the no-show reducer).
+// Reuses the booking-details shape since it carries the same fields.
+export function appointmentReminderBody(
+  data: BookingConfirmationData,
+  lang: SmsLang = 'ka',
+): string {
+  const { businessName, serviceName, when } = data
+
+  switch (lang) {
+    case 'en':
+      return `${businessName}: reminder — your ${serviceName} appointment is on ${when}. See you!`
+    case 'ru':
+      return `${businessName}: напоминание — запись на ${serviceName}, ${when}. Ждём вас!`
+    case 'ka':
+    default:
+      return `${businessName}: შეგახსენებთ — ${serviceName}, ${when}. გელით!`
+  }
+}
+
 // One-time phone-verification code sent before a guest booking is created.
 export function verificationCodeBody(code: string, lang: SmsLang = 'ka'): string {
   switch (lang) {
@@ -72,4 +91,5 @@ export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
   'booking_confirmation',
   'approval_update',
   'verification_code',
+  'appointment_reminder',
 ]

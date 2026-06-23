@@ -39,6 +39,8 @@ import OrgsListPage from '@/pages/superadmin/OrgsListPage'
 import OrgDetailPage from '@/pages/superadmin/OrgDetailPage'
 import SuperadminsPage from '@/pages/superadmin/SuperadminsPage'
 
+import NotFoundPage from '@/pages/NotFoundPage'
+
 function LoadingScreen() {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -130,7 +132,7 @@ export default function App() {
         <Route path="admins" element={<SuperadminsPage />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }
