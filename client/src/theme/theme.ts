@@ -1,48 +1,43 @@
 import { createTheme } from '@mui/material/styles'
 
-const INDIGO = {
-  50:  '#EEF2FF',
-  100: '#E0E7FF',
-  200: '#C7D2FE',
-  300: '#A5B4FC',
-  400: '#818CF8',
-  500: '#6366F1',
-  600: '#4F46E5',
-  700: '#4338CA',
-  800: '#3730A3',
-  900: '#312E81',
+const BLUE = {
+  50:  '#E3F2FD',
+  100: '#BBDEFB',
+  200: '#90CAF9',
+  300: '#64B5F6',
+  400: '#42A5F5',
+  500: '#2196F3',
+  600: '#1E88E5',
+  700: '#1976D2',
+  800: '#1565C0',
+  900: '#0D47A1',
 }
 
-// "r,g,b" of the brand indigo (INDIGO[600]). Single source for the
-// translucent shadows/tints reused across the component overrides below,
-// so re-skinning the brand is a one-line change.
-const BRAND_RGB = '79,70,229'
-
 // ── Shared design tokens ──────────────────────────────────────
-// Single source of truth for the brand-tinted shadows and surfaces that
-// were previously re-typed inline across pages.
+// Single source of truth for the blue-tinted shadows and brand
+// surfaces that were previously re-typed inline across pages.
 
 export const elevation = {
   card:     '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
-  cardHover: `0 8px 24px rgba(${BRAND_RGB},0.10), 0 2px 8px rgba(0,0,0,0.04)`,
-  glow:     `0 4px 16px rgba(${BRAND_RGB},0.30)`,
-  glowSoft: `0 4px 12px rgba(${BRAND_RGB},0.18)`,
-  modal:    `0 24px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(${BRAND_RGB},0.06)`,
+  cardHover: '0 8px 24px rgba(25,118,210,0.10), 0 2px 8px rgba(0,0,0,0.04)',
+  glow:     '0 4px 16px rgba(25,118,210,0.30)',
+  glowSoft: '0 4px 12px rgba(25,118,210,0.18)',
+  modal:    '0 24px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(25,118,210,0.06)',
 }
 
 // Flat brand surfaces (gradients removed — kept as a named map so page
 // backgrounds stay consistent and in one place).
 export const gradient = {
-  brand:   INDIGO[600],
-  topbar:  INDIGO[600],
-  sidebar: INDIGO[800],
+  brand:   BLUE[700],
+  topbar:  BLUE[700],
+  sidebar: BLUE[800],
   panel:   '#FFFFFF',
 }
 
-// Subtle indigo tints for hover/selected surfaces (e.g. nav items).
+// Subtle grape tints for hover/selected surfaces (e.g. nav items).
 export const tint = {
-  hover:       `rgba(${BRAND_RGB},0.05)`,
-  hoverBorder: `rgba(${BRAND_RGB},0.20)`,
+  hover:       'rgba(25,118,210,0.05)',
+  hoverBorder: 'rgba(25,118,210,0.20)',
 }
 
 // ── Layout width tokens ───────────────────────────────────────
@@ -57,22 +52,22 @@ export const LAYOUT = {
 const theme = createTheme({
   palette: {
     primary: {
-      main:         INDIGO[600],
-      light:        INDIGO[400],
-      dark:         INDIGO[800],
+      main:         BLUE[700],
+      light:        BLUE[400],
+      dark:         BLUE[800],
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main:         INDIGO[50],
-      contrastText: INDIGO[800],
+      main:         '#E3F2FD',
+      contrastText: BLUE[800],
     },
     background: {
-      default: '#F5F5FF',
+      default: '#F4F8FD',
       paper:   '#FFFFFF',
     },
     // ── Status palette ──────────────────────────────────────────
     // Cool, harmonized status tones tuned to sit calmly beside the
-    // indigo brand. Drive appointment status presentation (see
+    // blue brand. Drive appointment status presentation (see
     // StatusChip): approved→success, pending→warning, rejected→error,
     // completed→info. `light` values are pale tints used as surfaces.
     success: {
@@ -94,9 +89,9 @@ const theme = createTheme({
       contrastText: '#FFFFFF',
     },
     info: {
-      main:         INDIGO[500], // completed — brand indigo
-      light:        '#E8E9FD',
-      dark:         INDIGO[700],
+      main:         '#4F7BD9', // completed — brand indigo-blue
+      light:        '#E2EAF9',
+      dark:         '#3A5FB0',
       contrastText: '#FFFFFF',
     },
     text: {
@@ -104,7 +99,7 @@ const theme = createTheme({
       secondary: '#5B6B7B',
       disabled:  '#A4B0BC',
     },
-    divider: `rgba(${BRAND_RGB},0.10)`,
+    divider: 'rgba(25,118,210,0.10)',
   },
 
   typography: {
@@ -134,25 +129,25 @@ const theme = createTheme({
           '&:active': { transform: 'scale(0.97)' },
         },
         contained: {
-          boxShadow: `0 1px 3px rgba(${BRAND_RGB},0.18)`,
+          boxShadow: '0 1px 3px rgba(25,118,210,0.18)',
           '&:hover': {
-            boxShadow: `0 4px 16px rgba(${BRAND_RGB},0.30)`,
+            boxShadow: '0 4px 16px rgba(25,118,210,0.30)',
             transform: 'translateY(-1px)',
           },
           '&:active': {
-            boxShadow: `0 1px 3px rgba(${BRAND_RGB},0.18)`,
+            boxShadow: '0 1px 3px rgba(25,118,210,0.18)',
             transform: 'scale(0.97) translateY(0)',
           },
         },
         outlined: {
-          borderColor: `rgba(${BRAND_RGB},0.35)`,
+          borderColor: 'rgba(25,118,210,0.35)',
           '&:hover': {
-            borderColor: INDIGO[600],
-            backgroundColor: `rgba(${BRAND_RGB},0.04)`,
+            borderColor: BLUE[600],
+            backgroundColor: 'rgba(25,118,210,0.04)',
           },
         },
         text: {
-          '&:hover': { backgroundColor: `rgba(${BRAND_RGB},0.06)` },
+          '&:hover': { backgroundColor: 'rgba(25,118,210,0.06)' },
         },
         sizeSmall: { padding: '6px 14px', fontSize: '0.8125rem' },
         sizeLarge: { padding: '14px 32px', fontSize: '1rem', borderRadius: 12 },
@@ -164,10 +159,10 @@ const theme = createTheme({
         root: {
           boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
           borderRadius: 16,
-          border: `1px solid rgba(${BRAND_RGB},0.06)`,
+          border: '1px solid rgba(25,118,210,0.06)',
           transition: 'box-shadow 0.2s ease, transform 0.2s ease',
           '&:hover': {
-            boxShadow: `0 8px 24px rgba(${BRAND_RGB},0.10), 0 2px 8px rgba(0,0,0,0.04)`,
+            boxShadow: '0 8px 24px rgba(25,118,210,0.10), 0 2px 8px rgba(0,0,0,0.04)',
             transform: 'translateY(-2px)',
           },
         },
@@ -182,18 +177,18 @@ const theme = createTheme({
             borderRadius: 10,
             transition: 'box-shadow 0.15s ease',
             '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: INDIGO[600],
+              borderColor: BLUE[600],
             },
             '&.Mui-focused': {
-              boxShadow: `0 0 0 3px rgba(${BRAND_RGB},0.12)`,
+              boxShadow: '0 0 0 3px rgba(25,118,210,0.12)',
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: INDIGO[600],
+              borderColor: BLUE[600],
               borderWidth: '1.5px',
             },
           },
           '& .MuiInputLabel-root.Mui-focused': {
-            color: INDIGO[600],
+            color: BLUE[600],
           },
         },
       },
@@ -210,11 +205,11 @@ const theme = createTheme({
         root: {
           height: 4,
           borderRadius: 2,
-          backgroundColor: `rgba(${BRAND_RGB},0.10)`,
+          backgroundColor: 'rgba(25,118,210,0.10)',
         },
         bar: {
           borderRadius: 2,
-          backgroundColor: INDIGO[600],
+          backgroundColor: BLUE[600],
           transition: 'transform 0.5s cubic-bezier(0.16,1,0.3,1)',
         },
       },
@@ -223,10 +218,10 @@ const theme = createTheme({
     MuiStepIcon: {
       styleOverrides: {
         root: {
-          color: `rgba(${BRAND_RGB},0.20)`,
+          color: 'rgba(25,118,210,0.20)',
           '&.Mui-active': {
-            color: INDIGO[600],
-            filter: `drop-shadow(0 2px 6px rgba(${BRAND_RGB},0.35))`,
+            color: BLUE[600],
+            filter: 'drop-shadow(0 2px 6px rgba(25,118,210,0.35))',
           },
           '&.Mui-completed': { color: '#0E9F6E' },
         },
@@ -235,14 +230,14 @@ const theme = createTheme({
 
     MuiStepConnector: {
       styleOverrides: {
-        line: { borderColor: `rgba(${BRAND_RGB},0.20)` },
+        line: { borderColor: 'rgba(25,118,210,0.20)' },
       },
     },
 
     MuiStepLabel: {
       styleOverrides: {
         label: {
-          '&.Mui-active':    { fontWeight: 600, color: INDIGO[600] },
+          '&.Mui-active':    { fontWeight: 600, color: BLUE[600] },
           '&.Mui-completed': { fontWeight: 500 },
         },
       },
@@ -256,11 +251,11 @@ const theme = createTheme({
           fontWeight: 500,
           transition: 'all 0.15s ease',
           '&.Mui-selected': {
-            backgroundColor: `rgba(${BRAND_RGB},0.10)`,
-            color: INDIGO[700],
-            borderColor: INDIGO[600],
+            backgroundColor: 'rgba(25,118,210,0.10)',
+            color: BLUE[700],
+            borderColor: BLUE[600],
             fontWeight: 600,
-            '&:hover': { backgroundColor: `rgba(${BRAND_RGB},0.15)` },
+            '&:hover': { backgroundColor: 'rgba(25,118,210,0.15)' },
           },
         },
       },
@@ -276,7 +271,7 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           borderRadius: 20,
-          boxShadow: `0 24px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(${BRAND_RGB},0.06)`,
+          boxShadow: '0 24px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(25,118,210,0.06)',
         },
       },
     },
@@ -294,7 +289,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 10,
-          backgroundColor: '#ECEAFB',
+          backgroundColor: '#E8F0FA',
           padding: '3px',
           minHeight: 40,
         },
@@ -328,9 +323,9 @@ const theme = createTheme({
       styleOverrides: {
         switchBase: {
           '&.Mui-checked': {
-            color: INDIGO[600],
+            color: BLUE[600],
             '& + .MuiSwitch-track': {
-              backgroundColor: INDIGO[600],
+              backgroundColor: BLUE[600],
               opacity: 0.5,
             },
           },
@@ -341,7 +336,7 @@ const theme = createTheme({
     MuiAvatar: {
       styleOverrides: {
         root: {
-          backgroundColor: INDIGO[600],
+          backgroundColor: BLUE[600],
           fontWeight: 700,
         },
       },
@@ -363,11 +358,11 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '12px !important',
-          border: `1px solid rgba(${BRAND_RGB},0.08)`,
+          border: '1px solid rgba(25,118,210,0.08)',
           boxShadow: 'none',
           '&:before': { display: 'none' },
           '&.Mui-expanded': {
-            boxShadow: `0 4px 16px rgba(${BRAND_RGB},0.08)`,
+            boxShadow: '0 4px 16px rgba(25,118,210,0.08)',
           },
         },
       },

@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#3730A3',
+        background: '#1565C0',
         p: 2,
       }}
     >
