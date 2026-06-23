@@ -35,6 +35,12 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
   const onlineEnabled = org.payment_config?.bog?.enabled || org.payment_config?.tbc?.enabled
   const inPersonEnabled = org.payment_config?.inPerson?.enabled !== false
 
+  const availableMethods: Array<'in_person' | 'online'> = []
+  if (inPersonEnabled) availableMethods.push('in_person')
+  if (onlineEnabled) availableMethods.push('online')
+  // Only worth asking the customer when there's an actual choice to make.
+  const multiplePaymentOptions = availableMethods.length > 1
+
   const scheduledAt = booking.date && booking.time
     ? new Date(`${booking.date}T${booking.time}:00`)
     : null
@@ -45,6 +51,19 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     const id = setTimeout(() => setResendIn(s => s - 1), 1000)
     return () => clearTimeout(id)
   }, [resendIn])
+
+  // With a single payment option there's nothing to pick, so we hide the
+  // selector — but the booking still has to carry the right method. The default
+  // is 'in_person', which would be wrong for an online-only business, so pin
+  // paymentMethod to the only available option here.
+  useEffect(() => {
+    const methods: Array<'in_person' | 'online'> = []
+    if (inPersonEnabled) methods.push('in_person')
+    if (onlineEnabled) methods.push('online')
+    if (methods.length > 0 && !methods.includes(booking.paymentMethod)) {
+      onChange({ paymentMethod: methods[0] })
+    }
+  }, [inPersonEnabled, onlineEnabled, booking.paymentMethod, onChange])
 
   // Step 1: text a verification code to the customer's phone, then switch to the
   // code-entry view. The booking itself is only created after the code checks out.
@@ -295,29 +314,29 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.notes, 'data-testid': 'book-notes' } }}
         />
 
-        {/* Payment method */}
-        {(onlineEnabled || inPersonEnabled) && (
+        {/* Payment method — only ask when more than one option exists. */}
+        {availableMethods.length > 0 && (
           <Box>
-            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>გადახდის მეთოდი</Typography>
-            <ToggleButtonGroup
-              value={booking.paymentMethod}
-              exclusive
-              onChange={(_, v) => v && onChange({ paymentMethod: v })}
-              fullWidth
-            >
-              {inPersonEnabled && (
-                <ToggleButton value="in_person" data-testid="book-pay-in_person">
-                  <StorefrontOutlinedIcon sx={{ mr: 1, fontSize: 18 }} />
-                  ადგილზე
-                </ToggleButton>
-              )}
-              {onlineEnabled && (
-                <ToggleButton value="online" data-testid="book-pay-online">
-                  <CreditCardOutlinedIcon sx={{ mr: 1, fontSize: 18 }} />
-                  ონლაინ
-                </ToggleButton>
-              )}
-            </ToggleButtonGroup>
+            {multiplePaymentOptions && (
+              <>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>გადახდის მეთოდი</Typography>
+                <ToggleButtonGroup
+                  value={booking.paymentMethod}
+                  exclusive
+                  onChange={(_, v) => v && onChange({ paymentMethod: v })}
+                  fullWidth
+                >
+                  <ToggleButton value="in_person" data-testid="book-pay-in_person">
+                    <StorefrontOutlinedIcon sx={{ mr: 1, fontSize: 18 }} />
+                    ადგილზე
+                  </ToggleButton>
+                  <ToggleButton value="online" data-testid="book-pay-online">
+                    <CreditCardOutlinedIcon sx={{ mr: 1, fontSize: 18 }} />
+                    ონლაინ
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </>
+            )}
             {booking.paymentMethod === 'in_person' && (
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.75 }}>
                 ჯავშანი დადასტურებას საჭიროებს · გადახდა ადგილზე
