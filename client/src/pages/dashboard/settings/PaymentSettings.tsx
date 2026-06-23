@@ -35,6 +35,11 @@ export default function PaymentSettings() {
   const [error, setError] = useState<string | null>(null)
   const [showBogKey, setShowBogKey] = useState(false)
   const [showTbcKey, setShowTbcKey] = useState(false)
+  // Accordions are controlled so we can auto-expand a provider when it's
+  // enabled — otherwise its required credential fields stay hidden behind a
+  // collapsed panel and the disabled Save button has no visible explanation.
+  const [bogExpanded, setBogExpanded] = useState(false)
+  const [tbcExpanded, setTbcExpanded] = useState(false)
 
   useEffect(() => {
     if (org) {
@@ -45,6 +50,8 @@ export default function PaymentSettings() {
           tbc: { merchantId: '', apiKey: '', enabled: false, ...(pc.tbc ?? {}) },
           inPerson: { enabled: true, ...(pc.inPerson ?? {}) },
         })
+        if (pc.bog?.enabled) setBogExpanded(true)
+        if (pc.tbc?.enabled) setTbcExpanded(true)
       }
     }
   }, [org])
@@ -54,6 +61,17 @@ export default function PaymentSettings() {
   }
   function setTbc(field: string, val: string | boolean) {
     setConfig(c => ({ ...c, tbc: { ...c.tbc, [field]: val } }))
+  }
+
+  // Enabling a provider reveals its credential fields; the user can still
+  // collapse the panel afterwards if they wish.
+  function toggleBogEnabled(enabled: boolean) {
+    setBog('enabled', enabled)
+    if (enabled) setBogExpanded(true)
+  }
+  function toggleTbcEnabled(enabled: boolean) {
+    setTbc('enabled', enabled)
+    if (enabled) setTbcExpanded(true)
   }
 
   // When a provider is enabled, its credentials are required.
@@ -116,7 +134,7 @@ export default function PaymentSettings() {
         </Card>
 
         {/* BOG Pay */}
-        <Accordion>
+        <Accordion expanded={bogExpanded} onChange={(_, exp) => setBogExpanded(exp)}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -124,7 +142,7 @@ export default function PaymentSettings() {
               </Typography>
               <Switch
                 checked={config.bog?.enabled ?? false}
-                onChange={e => setBog('enabled', e.target.checked)}
+                onChange={e => toggleBogEnabled(e.target.checked)}
                 onClick={e => e.stopPropagation()}
               />
             </Box>
@@ -171,7 +189,7 @@ export default function PaymentSettings() {
         </Accordion>
 
         {/* TBC Pay */}
-        <Accordion>
+        <Accordion expanded={tbcExpanded} onChange={(_, exp) => setTbcExpanded(exp)}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -179,7 +197,7 @@ export default function PaymentSettings() {
               </Typography>
               <Switch
                 checked={config.tbc?.enabled ?? false}
-                onChange={e => setTbc('enabled', e.target.checked)}
+                onChange={e => toggleTbcEnabled(e.target.checked)}
                 onClick={e => e.stopPropagation()}
               />
             </Box>
