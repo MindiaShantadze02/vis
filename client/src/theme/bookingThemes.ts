@@ -6,13 +6,13 @@ import baseTheme from './theme'
 // professional/business to fresh/sporty, plus a clean white — so owners get
 // personality without an overwhelming colour-picker.
 //
-// All themes are flat (no gradients). Four use a rich, confident solid colour
+// All themes are flat (no gradients). Most use a rich, confident solid colour
 // panel with light text; 'white' is a clean minimal light panel. Each pairs the
 // sidebar with a near-white page background and a refined accent colour applied
 // to buttons, inputs, the stepper, selected cards, etc. via a derived MUI theme
 // (see makeBookingTheme).
 
-export type BookingThemeKey = 'blue' | 'ocean' | 'sunset' | 'sporty' | 'white'
+export type BookingThemeKey = 'indigo' | 'blue' | 'ocean' | 'sunset' | 'sporty' | 'rose' | 'white'
 
 export interface BookingTheme {
   key: BookingThemeKey
@@ -30,10 +30,30 @@ export interface BookingTheme {
   primaryDark: string
   /** "r,g,b" of the accent — used for the translucent shadows/tints. */
   rgb: string
+  /**
+   * Optional colour shown in the settings picker dot. Defaults to `primary`.
+   * Override when the accent doesn't represent the theme's name — e.g. the
+   * 'white' theme's accent is near-black slate, so its dot shows white.
+   */
+  swatch?: string
 }
 
 export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
-  // Azure blue — the app default. Confident, trustworthy, professional.
+  // Indigo-violet — the app default. Light & airy: a soft lavender panel with
+  // dark text and a gentle indigo accent, so the customer-facing flow feels
+  // calm and welcoming while still echoing the admin brand.
+  indigo: {
+    key: 'indigo',
+    label: 'ინდიგო',
+    sidebar: '#EEF2FF',
+    sidebarText: 'dark',
+    pageBg: '#FAFAFF',
+    primary: '#6366F1',
+    primaryLight: '#C7D2FE',
+    primaryDark: '#4F46E5',
+    rgb: '99,102,241',
+  },
+  // Azure blue — classic, trustworthy, professional.
   blue: {
     key: 'blue',
     label: 'ლურჯი',
@@ -48,7 +68,7 @@ export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
   // Deep teal — calm, fresh and clean. Great for spas and clinics.
   ocean: {
     key: 'ocean',
-    label: 'ოკეანე',
+    label: 'ფირუზისფერი',
     sidebar: '#0E7490',
     sidebarText: 'light',
     pageBg: '#F1FAFC',
@@ -60,7 +80,7 @@ export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
   // Burnt amber — warm and inviting, with a premium feel.
   sunset: {
     key: 'sunset',
-    label: 'მზის ჩასვლა',
+    label: 'ნარინჯისფერი',
     sidebar: '#C2410C',
     sidebarText: 'light',
     pageBg: '#FFF7F2',
@@ -72,7 +92,7 @@ export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
   // Emerald green — fresh and energetic without being loud.
   sporty: {
     key: 'sporty',
-    label: 'სპორტული',
+    label: 'მწვანე',
     sidebar: '#047857',
     sidebarText: 'light',
     pageBg: '#F1FBF6',
@@ -81,11 +101,24 @@ export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
     primaryDark: '#065F46',
     rgb: '5,150,105',
   },
+  // Rose — warm and stylish, great for beauty and wellness. Light & airy: a
+  // soft blush panel with dark text and a gentle rose accent.
+  rose: {
+    key: 'rose',
+    label: 'ვარდისფერი',
+    sidebar: '#FFF1F5',
+    sidebarText: 'dark',
+    pageBg: '#FFFAFB',
+    primary: '#E5446A',
+    primaryLight: '#FBCFE0',
+    primaryDark: '#BE2C54',
+    rgb: '229,68,106',
+  },
   // Minimal — a clean light panel separated from the white content by a
   // hairline border, with a sleek near-black slate accent.
   white: {
     key: 'white',
-    label: 'მინიმალური',
+    label: 'თეთრი',
     sidebar: '#F8FAFC',
     sidebarText: 'dark',
     pageBg: '#FFFFFF',
@@ -93,12 +126,13 @@ export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
     primaryLight: '#94A3B8',
     primaryDark: '#0F172A',
     rgb: '30,41,59',
+    swatch: '#FFFFFF',
   },
 }
 
 export const BOOKING_THEME_LIST: BookingTheme[] = Object.values(BOOKING_THEMES)
 
-export const DEFAULT_BOOKING_THEME: BookingThemeKey = 'blue'
+export const DEFAULT_BOOKING_THEME: BookingThemeKey = 'indigo'
 
 /** Resolve a stored key (possibly null/unknown) to a theme, falling back to default. */
 export function getBookingTheme(key: string | null | undefined): BookingTheme {

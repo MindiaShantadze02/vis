@@ -279,7 +279,7 @@ export default function ProfileSettings() {
                       <Box
                         sx={{
                           width: 22, height: 22, borderRadius: '50%',
-                          background: th.primary,
+                          background: th.swatch ?? th.primary,
                           boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
                           flexShrink: 0,
                         }}

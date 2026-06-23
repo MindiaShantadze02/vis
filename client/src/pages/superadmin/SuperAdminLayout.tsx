@@ -42,7 +42,7 @@ export default function SuperAdminLayout() {
         component="aside"
         sx={{
           width: DRAWER_WIDTH, flexShrink: 0,
-          bgcolor: '#15182b', color: 'white',
+          bgcolor: '#1A1830', color: 'white',
           display: 'flex', flexDirection: 'column',
           px: 1.5, py: 2.5,
         }}
