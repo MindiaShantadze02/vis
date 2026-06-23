@@ -59,6 +59,16 @@ verify_jwt = false
 # Public guest-booking phone verification (step 2). Attempt-limited.
 verify_jwt = false
 
+[functions.request-password-reset]
+# Public password-recovery OTP (step 1). Neutral: only texts a code when the
+# phone has an account; always returns ok. Rate-limited per phone.
+verify_jwt = false
+
+[functions.reset-password]
+# Public password-recovery OTP (step 2). Verifies the code and sets the new
+# password via auth.admin. Attempt-limited.
+verify_jwt = false
+
 [functions.create-payment]
 # Starts a payment checkout. Public for the guest appointment flow; the
 # subscription flow re-checks the caller's JWT inside the function.

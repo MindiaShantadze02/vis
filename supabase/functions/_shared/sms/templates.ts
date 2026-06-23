@@ -53,6 +53,19 @@ export function verificationCodeBody(code: string, lang: SmsLang = 'ka'): string
   }
 }
 
+// One-time code sent when a user requests a password reset for their account.
+export function passwordResetCodeBody(code: string, lang: SmsLang = 'ka'): string {
+  switch (lang) {
+    case 'en':
+      return `${code} is your Grafiki password reset code. It expires in 10 minutes.`
+    case 'ru':
+      return `${code} — ваш код для сброса пароля Grafiki. Действует 10 минут.`
+    case 'ka':
+    default:
+      return `${code} — თქვენი პაროლის აღდგენის კოდი (Grafiki). მოქმედებს 10 წუთი.`
+  }
+}
+
 // Type-check helper so adding a SmsMessageType reminds you a template may be
 // needed. Not all types are wired yet (admin_*, invitation).
 export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [

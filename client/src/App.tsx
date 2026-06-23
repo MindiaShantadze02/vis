@@ -6,6 +6,7 @@ import { useSuperadmin } from '@/hooks/useSuperadmin'
 
 // Auth
 import LoginPage from '@/pages/auth/LoginPage'
+import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
 
 // Onboarding
 import OnboardingLayout from '@/pages/onboarding/OnboardingLayout'
@@ -92,6 +93,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/login" replace />} />
 
       <Route path="/login" element={<PublicOnlyGuard><LoginPage /></PublicOnlyGuard>} />
+      <Route path="/forgot-password" element={<PublicOnlyGuard><ForgotPasswordPage /></PublicOnlyGuard>} />
 
       <Route path="/onboarding" element={<AuthGuard><OnboardingLayout /></AuthGuard>}>
         <Route index element={<Navigate to="/onboarding/business" replace />} />

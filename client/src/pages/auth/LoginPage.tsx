@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import {
   Box, Card, CardContent, TextField, Button,
-  Typography, CircularProgress, Alert, Tabs, Tab,
+  Typography, CircularProgress, Alert, Tabs, Tab, Link as MuiLink,
 } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
@@ -14,6 +15,7 @@ type Mode = 'signin' | 'signup'
 
 export default function LoginPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>('signin')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
@@ -167,6 +169,21 @@ export default function LoginPage() {
               : mode === 'signin' ? 'შესვლა' : 'ანგარიშის შექმნა'
             }
           </Button>
+
+          {mode === 'signin' && (
+            <Box sx={{ mt: 2, textAlign: 'center' }}>
+              <MuiLink
+                component="button"
+                type="button"
+                underline="hover"
+                onClick={() => navigate('/forgot-password')}
+                sx={{ fontSize: '0.875rem', color: 'text.secondary' }}
+                data-testid="login-forgot-password"
+              >
+                პაროლი დაგავიწყდათ?
+              </MuiLink>
+            </Box>
+          )}
         </CardContent>
       </Card>
     </Box>
