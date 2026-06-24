@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { displayGeorgianPhone, toE164Georgian } from '@/lib/validation'
 import { LoadingState, EmptyState, StatusChip } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
-import { ThemeProvider } from '@mui/material/styles'
+import { ThemeProvider, alpha } from '@mui/material/styles'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import type { AppointmentStatus } from '@/components/ui'
 
@@ -148,20 +148,21 @@ export default function BookingConfirmationPage() {
               sx={{
                 display: 'flex', alignItems: 'center', gap: 1.5,
                 p: 1.5, mb: 3, borderRadius: 2, textAlign: 'left',
-                bgcolor: 'primary.light', color: 'primary.contrastText',
-                opacity: 0.95,
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.14),
+                border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.3)}`,
+                color: 'primary.dark',
               }}
             >
-              <PhoneOutlinedIcon fontSize="small" />
+              <PhoneOutlinedIcon fontSize="small" sx={{ color: 'primary.dark' }} />
               <Box>
-                <Typography variant="caption" sx={{ display: 'block', opacity: 0.9 }}>
+                <Typography variant="caption" sx={{ display: 'block', color: 'primary.dark', opacity: 0.9 }}>
                   ჯავშნის გასაუქმებლად ან შესაცვლელად დაგვირეკეთ
                 </Typography>
                 <Typography
                   variant="body2"
                   component="a"
                   href={`tel:${toE164Georgian(appt.organisations.contact_phone)}`}
-                  sx={{ fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
+                  sx={{ fontWeight: 700, color: 'primary.dark', textDecoration: 'none' }}
                 >
                   {displayGeorgianPhone(appt.organisations.contact_phone)}
                 </Typography>
