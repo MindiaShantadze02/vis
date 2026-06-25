@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
+import { motion } from 'framer-motion'
+import { staggerContainer, listItem } from '@/theme/motion'
 
 interface EmptyStateProps {
   /** Icon element (e.g. an outlined MUI icon). Rendered in a tinted circle. */
@@ -18,6 +20,10 @@ interface EmptyStateProps {
 export default function EmptyState({ icon, title, caption, action, py = 6 }: EmptyStateProps) {
   return (
     <Box
+      component={motion.div}
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
       sx={{
         display: 'flex',
         flexDirection: 'column',
@@ -31,6 +37,10 @@ export default function EmptyState({ icon, title, caption, action, py = 6 }: Emp
     >
       {icon && (
         <Box
+          component={motion.div}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.05 }}
           sx={{
             width: 56,
             height: 56,
@@ -47,15 +57,15 @@ export default function EmptyState({ icon, title, caption, action, py = 6 }: Emp
           {icon}
         </Box>
       )}
-      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+      <Typography component={motion.div} variants={listItem} variant="subtitle1" sx={{ fontWeight: 600 }}>
         {title}
       </Typography>
       {caption && (
-        <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 340 }}>
+        <Typography component={motion.div} variants={listItem} variant="body2" sx={{ color: 'text.secondary', maxWidth: 340 }}>
           {caption}
         </Typography>
       )}
-      {action && <Box sx={{ mt: 1.5 }}>{action}</Box>}
+      {action && <Box component={motion.div} variants={listItem} sx={{ mt: 1.5 }}>{action}</Box>}
     </Box>
   )
 }

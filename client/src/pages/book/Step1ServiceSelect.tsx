@@ -4,7 +4,8 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlined'
 import { supabase } from '@/lib/supabase'
 import { useTheme, alpha } from '@mui/material/styles'
-import { anim } from '@/theme/animations'
+import { motion } from 'framer-motion'
+import { staggerContainer, listItem, baseTransition } from '@/theme/motion'
 import { LoadingState, EmptyState } from '@/components/ui'
 import type { BookingService } from './BookingLayout'
 
@@ -51,21 +52,27 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
         აირჩიეთ სასურველი მომსახურება
       </Typography>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        {services.map((s, i) => (
+      <Box
+        component={motion.div}
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+        sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
+      >
+        {services.map((s) => (
           <Card
             key={s.id}
+            component={motion.div}
+            variants={listItem}
+            whileHover={{ y: -2, boxShadow: cardHover }}
+            whileTap={{ scale: 0.98 }}
+            transition={baseTransition}
             sx={{
               border: '1px solid',
               borderColor: 'divider',
-              transition: 'all 0.18s cubic-bezier(0.16,1,0.3,1)',
-              animation: anim.scaleIn,
-              animationDelay: `${i * 60}ms`,
-              '&:hover': {
-                borderColor: 'primary.main',
-                transform: 'translateY(-2px)',
-                boxShadow: cardHover,
-              },
+              // Hover lift/shadow are Framer-controlled (above); keep only the
+              // border accent as CSS so it doesn't fight the inline transform.
+              '&:hover': { borderColor: 'primary.main' },
             }}
           >
             <CardActionArea onClick={() => onSelect(s)} data-testid="book-service">

@@ -6,6 +6,7 @@ import {
   Step, StepLabel, useMediaQuery, useTheme, Divider,
 } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
+import { AnimatePresence, motion } from 'framer-motion'
 import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
@@ -13,6 +14,7 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import { supabase } from '@/lib/supabase'
 import { anim } from '@/theme/animations'
+import { stepVariants } from '@/theme/motion'
 import { LAYOUT } from '@/theme/theme'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { LoadingState, EmptyState } from '@/components/ui'
@@ -117,6 +119,12 @@ export default function BookingLayout() {
     // stale/partial entry would land them on an empty date or details step.
     return p && p.booking.service ? p.step : 0
   })
+  // +1 forward / -1 back, so the step slide animates in the travelled direction.
+  const [direction, setDirection] = useState(1)
+  const goToStep = (next: number) => {
+    setDirection(next >= step ? 1 : -1)
+    setStep(next)
+  }
 
   // Persist on every change so a refresh mid-flow loses nothing.
   useEffect(() => {
@@ -308,39 +316,52 @@ export default function BookingLayout() {
           </Stepper>
         </Box>
 
-        {/* Step content — key re-mounts on step change, re-firing animation */}
-        <Box key={step} sx={{ flex: 1, px: { xs: 2, md: 5 }, py: 4, maxWidth: LAYOUT.bookingStep, width: '100%', animation: anim.fadeInUp }}>
-          {step === 0 && (
-            <Step1ServiceSelect
-              orgId={org.id}
-              onSelect={service => { patch({ service }); setStep(1) }}
-            />
-          )}
-          {step === 1 && (
-            <Step2DateTimeSelect
-              orgId={org.id}
-              service={booking.service!}
-              initialDate={booking.date}
-              initialStaffId={booking.staffId}
-              onSelect={(date, time, staffId, assignedStaff) => {
-                patch({ date, time, staffId, assignedStaff }); setStep(2)
-              }}
-              onBack={() => setStep(0)}
-            />
-          )}
-          {step === 2 && (
-            <Step3CustomerForm
-              org={org}
-              booking={booking}
-              onChange={patch}
-              onBack={() => setStep(1)}
-              onDone={(appointmentId) => {
-                // Booking is done — drop the saved draft so a later visit starts fresh.
-                if (slug) { try { sessionStorage.removeItem(storageKey(slug)) } catch { /* ignore */ } }
-                navigate(`/booking-confirmation/${appointmentId}`)
-              }}
-            />
-          )}
+        {/* Step content — slides in the travelled direction on step change. */}
+        <Box sx={{ flex: 1, position: 'relative', overflowX: 'hidden' }}>
+          <AnimatePresence mode="wait" custom={direction} initial={false}>
+            <Box
+              component={motion.div}
+              key={step}
+              custom={direction}
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              sx={{ px: { xs: 2, md: 5 }, py: 4, maxWidth: LAYOUT.bookingStep, width: '100%' }}
+            >
+              {step === 0 && (
+                <Step1ServiceSelect
+                  orgId={org.id}
+                  onSelect={service => { patch({ service }); goToStep(1) }}
+                />
+              )}
+              {step === 1 && (
+                <Step2DateTimeSelect
+                  orgId={org.id}
+                  service={booking.service!}
+                  initialDate={booking.date}
+                  initialStaffId={booking.staffId}
+                  onSelect={(date, time, staffId, assignedStaff) => {
+                    patch({ date, time, staffId, assignedStaff }); goToStep(2)
+                  }}
+                  onBack={() => goToStep(0)}
+                />
+              )}
+              {step === 2 && (
+                <Step3CustomerForm
+                  org={org}
+                  booking={booking}
+                  onChange={patch}
+                  onBack={() => goToStep(1)}
+                  onDone={(appointmentId) => {
+                    // Booking is done — drop the saved draft so a later visit starts fresh.
+                    if (slug) { try { sessionStorage.removeItem(storageKey(slug)) } catch { /* ignore */ } }
+                    navigate(`/booking-confirmation/${appointmentId}`)
+                  }}
+                />
+              )}
+            </Box>
+          </AnimatePresence>
         </Box>
       </Box>
     </Box>

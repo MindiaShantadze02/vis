@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 
 /**
  * Passed down to dashboard pages via the router Outlet. `refreshSignal` bumps
@@ -23,13 +23,14 @@ import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
 import PersonOutlineIcon from '@mui/icons-material/Person2Outlined'
 import { formatDistanceToNow } from 'date-fns'
+import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSuperadmin } from '@/hooks/useSuperadmin'
 import { useNotifications } from '@/hooks/useNotifications'
-import { LanguageSwitcher } from '@/components/ui'
+import { LanguageSwitcher, AnimatedOutlet } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
 import { displayGeorgianPhone } from '@/lib/validation'
 import { anim } from '@/theme/animations'
@@ -318,7 +319,18 @@ export default function DashboardLayout() {
             {/* Notification bell */}
             <IconButton onClick={openNotifications} data-testid="notifications-btn">
               <Badge badgeContent={unreadCount} color="error" max={99}>
-                <NotificationsOutlinedIcon />
+                {/* Re-keying on the count re-fires the spring pop when a new
+                    notification arrives, drawing the eye to the badge. */}
+                <Box
+                  component={motion.span}
+                  key={unreadCount}
+                  initial={{ scale: 0.6 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                  sx={{ display: 'inline-flex' }}
+                >
+                  <NotificationsOutlinedIcon />
+                </Box>
               </Badge>
             </IconButton>
             <Menu
@@ -375,9 +387,9 @@ export default function DashboardLayout() {
           </Toolbar>
         </AppBar>
 
-        {/* Page content */}
-        <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 }, animation: anim.fadeInUp }}>
-          <Outlet context={{ refreshSignal } satisfies DashboardOutletContext} />
+        {/* Page content — AnimatedOutlet fades/slides between routes. */}
+        <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 } }}>
+          <AnimatedOutlet context={{ refreshSignal } satisfies DashboardOutletContext} />
         </Box>
       </Box>
     </Box>

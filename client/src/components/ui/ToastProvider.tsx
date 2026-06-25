@@ -1,7 +1,12 @@
 import { createContext, useCallback, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Snackbar, Alert } from '@mui/material'
-import type { AlertColor } from '@mui/material'
+import { Snackbar, Alert, Slide } from '@mui/material'
+import type { AlertColor, SlideProps } from '@mui/material'
+
+/** Slide the toast up from the bottom edge (and back down on dismiss). */
+function SlideUp(props: SlideProps) {
+  return <Slide {...props} direction="up" />
+}
 
 interface ToastState {
   open: boolean
@@ -50,6 +55,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         autoHideDuration={4000}
         onClose={handleClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        slots={{ transition: SlideUp }}
       >
         <Alert onClose={handleClose} severity={toast.severity} variant="filled" sx={{ width: '100%' }} data-testid="toast">
           {toast.message}

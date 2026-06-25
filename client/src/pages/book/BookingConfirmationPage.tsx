@@ -13,6 +13,8 @@ import { displayGeorgianPhone, toE164Georgian } from '@/lib/validation'
 import { LoadingState, EmptyState, StatusChip } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 import { ThemeProvider, alpha } from '@mui/material/styles'
+import { motion } from 'framer-motion'
+import { staggerContainer, listItem } from '@/theme/motion'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import type { AppointmentStatus } from '@/components/ui'
 
@@ -80,8 +82,12 @@ export default function BookingConfirmationPage() {
     >
       <Card sx={{ maxWidth: LAYOUT.narrowCard, width: '100%', borderRadius: 4 }}>
         <CardContent sx={{ p: 4, textAlign: 'center' }}>
-          {/* Icon */}
+          {/* Icon — springs in for a small moment of payoff. */}
           <Box
+            component={motion.div}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
             sx={{
               width: 72, height: 72, borderRadius: '50%',
               bgcolor: isPending ? 'warning.light' : 'success.light',
@@ -105,8 +111,15 @@ export default function BookingConfirmationPage() {
           </Typography>
 
           {/* Details */}
-          <Stack spacing={1.5} sx={{ textAlign: 'left', mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 2 }}>
+          <Stack
+            component={motion.div}
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            spacing={1.5}
+            sx={{ textAlign: 'left', mb: 3 }}
+          >
+            <Box component={motion.div} variants={listItem} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 2 }}>
               <CalendarMonthOutlinedIcon sx={{ color: 'primary.main' }} />
               <Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -117,7 +130,7 @@ export default function BookingConfirmationPage() {
                 </Typography>
               </Box>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 2 }}>
+            <Box component={motion.div} variants={listItem} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 2 }}>
               <AccessTimeOutlinedIcon sx={{ color: 'primary.main' }} />
               <Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -128,7 +141,7 @@ export default function BookingConfirmationPage() {
                 </Typography>
               </Box>
             </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 2 }}>
+            <Box component={motion.div} variants={listItem} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 2 }}>
               <Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>სტატუსი</Typography>
                 <Box sx={{ mt: 0.25 }}>

@@ -10,10 +10,12 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import TodayIcon from '@mui/icons-material/Today'
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
 import CloseIcon from '@mui/icons-material/Close'
-import { format, startOfWeek, addWeeks, addDays, isSameDay } from 'date-fns'
+import { format, startOfWeek, startOfDay, addDays, isSameDay } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
+import { useBreakpoints } from '@/hooks/useBreakpoints'
+import { anim } from '@/theme/animations'
 import { StatusChip, ConfirmDialog, LoadingState } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
 
@@ -223,6 +225,12 @@ export default function CalendarPage() {
   const { t } = useTranslation()
   const { org } = useOrg()
   const theme = useTheme()
+  const { isMobile } = useBreakpoints()
+
+  // Phones can't fit a 7-day grid without horizontal scrolling, so they show a
+  // narrower 3-day window. The data model stays the same — `weekStart` is just
+  // the first visible day and prev/next page by however many days are shown.
+  const dayCount = isMobile ? 3 : 7
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [restToRemove, setRestToRemove] = useState<{ dateKey: string; idx: number } | null>(null)
@@ -275,7 +283,7 @@ export default function CalendarPage() {
   const [restLabel, setRestLabel] = useState('')
   const [savingRest, setSavingRest] = useState(false)
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  const days = Array.from({ length: dayCount }, (_, i) => addDays(weekStart, i))
 
   useEffect(() => {
     if (org) loadTemplate()
@@ -283,7 +291,7 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (org) loadWeek()
-  }, [org, weekStart])
+  }, [org, weekStart, dayCount])
 
   async function loadTemplate() {
     if (!org) return
@@ -331,7 +339,7 @@ export default function CalendarPage() {
   async function loadWeek() {
     if (!org) return
     setLoading(true)
-    const weekEnd = addDays(weekStart, 7)
+    const weekEnd = addDays(weekStart, dayCount)
 
     const [apptRes, overrideRes] = await Promise.all([
       supabase
@@ -480,7 +488,7 @@ export default function CalendarPage() {
       .filter(({ rest }) => isHourRested(hour, rest))
   }
 
-  const weekLabel = `${format(weekStart, 'd MMM', { locale: dateLocale() })} – ${format(addDays(weekStart, 6), 'd MMM yyyy', { locale: dateLocale() })}`
+  const weekLabel = `${format(weekStart, 'd MMM', { locale: dateLocale() })} – ${format(addDays(weekStart, dayCount - 1), 'd MMM yyyy', { locale: dateLocale() })}`
 
   return (
     <Box>
@@ -500,17 +508,17 @@ export default function CalendarPage() {
           {t('calendar.rest')}
         </Button>
         <Tooltip title={t('calendar.today')}>
-          <IconButton onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))} data-testid="cal-today">
+          <IconButton onClick={() => setWeekStart(isMobile ? startOfDay(new Date()) : startOfWeek(new Date(), { weekStartsOn: 1 }))} data-testid="cal-today">
             <TodayIcon />
           </IconButton>
         </Tooltip>
-        <IconButton onClick={() => setWeekStart(w => addWeeks(w, -1))} data-testid="cal-prev">
+        <IconButton onClick={() => setWeekStart(w => addDays(w, -dayCount))} data-testid="cal-prev">
           <ArrowBackIosNewIcon fontSize="small" />
         </IconButton>
-        <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 160, textAlign: 'center' }} data-testid="cal-week-label">
+        <Typography variant="body2" sx={{ fontWeight: 500, minWidth: { xs: 110, sm: 160 }, textAlign: 'center', fontSize: { xs: '0.8rem', sm: '0.875rem' } }} data-testid="cal-week-label">
           {weekLabel}
         </Typography>
-        <IconButton onClick={() => setWeekStart(w => addWeeks(w, 1))} data-testid="cal-next">
+        <IconButton onClick={() => setWeekStart(w => addDays(w, dayCount))} data-testid="cal-next">
           <ArrowForwardIosIcon fontSize="small" />
         </IconButton>
       </Box>
@@ -543,8 +551,8 @@ export default function CalendarPage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: '56px repeat(7, 1fr)',
-            minWidth: 640,
+            gridTemplateColumns: `56px repeat(${dayCount}, 1fr)`,
+            minWidth: isMobile ? 'auto' : 640,
             borderBottom: '1px solid',
             borderColor: 'divider',
             position: 'sticky',
@@ -585,8 +593,8 @@ export default function CalendarPage() {
               key={hour}
               sx={{
                 display: 'grid',
-                gridTemplateColumns: '56px repeat(7, 1fr)',
-                minWidth: 640,
+                gridTemplateColumns: `56px repeat(${dayCount}, 1fr)`,
+                minWidth: isMobile ? 'auto' : 640,
                 minHeight: 60,
                 borderBottom: '1px solid',
                 borderColor: 'divider',
@@ -656,6 +664,7 @@ export default function CalendarPage() {
                               px: 0.75, py: 0.4,
                               cursor: 'pointer',
                               overflow: 'hidden',
+                              animation: anim.scaleIn,
                               transition: 'filter 0.15s, box-shadow 0.15s',
                               '&:hover': {
                                 filter: 'brightness(0.94)',
