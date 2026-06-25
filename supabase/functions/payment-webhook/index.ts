@@ -45,7 +45,14 @@ Deno.serve(async (req) => {
 
     // --- Authorization ------------------------------------------------------
     if (provider === 'mock') {
-      // Only honour the mock confirm path while mock is the active provider.
+      // The mock branch trusts an unauthenticated browser outcome, so it is
+      // double-gated: it requires an explicit ALLOW_MOCK_PAYMENTS opt-in AND that
+      // mock is still the active provider. Production deployments leave
+      // ALLOW_MOCK_PAYMENTS unset, which disables this path entirely. Remove this
+      // branch once a real gateway with signature verification is wired in.
+      if (Deno.env.get('ALLOW_MOCK_PAYMENTS') !== 'true') {
+        return Response.json({ error: 'mock_disabled' }, { status: 403, headers: corsHeaders })
+      }
       const active = await getPaymentProvider(admin)
       if (active.name !== 'mock') {
         return Response.json({ error: 'mock_disabled' }, { status: 403, headers: corsHeaders })

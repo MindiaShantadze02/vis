@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
   }
 
   async function submitReset() {
-    if (password.length < 6) { setError(t('validation.passwordTooShort')); return }
+    if (password.length < 10) { setError(t('validation.passwordTooShortReset')); return }
     if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
     setError(null)
     setLoading(true)
@@ -85,10 +85,10 @@ export default function ForgotPasswordPage() {
 
   const phoneValid = isValidGeorgianPhone(phone)
   const phoneInvalid = phone.trim().length > 0 && !phoneValid
-  const passwordTooShort = password.length > 0 && password.length < 6
+  const passwordTooShort = password.length > 0 && password.length < 10
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
   const codeValid = /^\d{6}$/.test(code)
-  const canReset = codeValid && password.length >= 6 && confirmPassword.length >= 6 && !passwordMismatch
+  const canReset = codeValid && password.length >= 10 && confirmPassword.length >= 10 && !passwordMismatch
 
   return (
     <Box
@@ -180,7 +180,7 @@ export default function ForgotPasswordPage() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 error={passwordTooShort}
-                helperText={passwordTooShort ? t('validation.passwordTooShort') : ' '}
+                helperText={passwordTooShort ? t('validation.passwordTooShortReset') : ' '}
                 sx={{ mb: 1 }}
                 slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'forgot-password' } }}
               />

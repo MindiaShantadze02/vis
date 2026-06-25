@@ -23,10 +23,9 @@ export class MockPaymentProvider implements PaymentProvider {
     url.searchParams.set('label', params.description)
     if (params.slug) url.searchParams.set('slug', params.slug)
 
-    console.log(
-      `[mock-payment] ${params.purpose} ${params.amount} ${params.currency} ` +
-      `ref=${providerReference} -> ${url.toString()}`,
-    )
+    // Log only the purpose + reference; the amount and the full checkout URL
+    // (which carries the reference and display info) are kept out of the logs.
+    console.log(`[mock-payment] ${params.purpose} ref=${providerReference}`)
 
     return { checkoutUrl: url.toString(), providerReference, status: 'pending' }
   }

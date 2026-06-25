@@ -12,7 +12,7 @@ const corsHeaders = {
 }
 
 const MAX_ATTEMPTS = 5
-const MIN_PASSWORD = 6
+const MIN_PASSWORD = 10
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -37,12 +37,6 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // TEMPORARY (testing): a master code that verifies any phone. Active only
-    // while the OTP_DEV_MASTER_CODE secret is set — unset it to fully disable.
-    // Remove this block (and the secret) before relying on real SMS delivery.
-    const masterCode = Deno.env.get('OTP_DEV_MASTER_CODE')
-    const isMaster = !!masterCode && String(code) === masterCode
-
     // Resolve the target user up front: even a valid code is useless without an
     // account to update. Neutral codes were never issued for unknown phones.
     const { data: userId } = await supabase.rpc('auth_user_id_by_phone', { p_local: local })
@@ -61,18 +55,18 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle()
 
-    if (!row && !isMaster) {
+    if (!row) {
       return Response.json({ ok: false, error: 'expired' }, { headers: corsHeaders })
     }
-    if (row && !isMaster && row.attempts >= MAX_ATTEMPTS) {
+    if (row.attempts >= MAX_ATTEMPTS) {
       return Response.json({ ok: false, error: 'too_many_attempts' }, { headers: corsHeaders })
     }
 
-    const matches = isMaster || (row && row.code_hash === (await hashCode(String(code), local, secret)))
+    const matches = row.code_hash === (await hashCode(String(code), local, secret))
 
     if (!matches) {
-      const attempts = (row?.attempts ?? 0) + 1
-      if (row) await supabase.from('password_reset_verifications').update({ attempts }).eq('id', row.id)
+      const attempts = row.attempts + 1
+      await supabase.from('password_reset_verifications').update({ attempts }).eq('id', row.id)
       return Response.json(
         { ok: false, error: 'wrong_code', remaining: Math.max(0, MAX_ATTEMPTS - attempts) },
         { headers: corsHeaders },
@@ -88,13 +82,11 @@ Deno.serve(async (req) => {
     }
 
     // Mark the challenge verified + consumed so it can't be reused.
-    if (row) {
-      const now = new Date().toISOString()
-      await supabase
-        .from('password_reset_verifications')
-        .update({ verified_at: now, consumed_at: now })
-        .eq('id', row.id)
-    }
+    const now = new Date().toISOString()
+    await supabase
+      .from('password_reset_verifications')
+      .update({ verified_at: now, consumed_at: now })
+      .eq('id', row.id)
 
     return Response.json({ ok: true }, { headers: corsHeaders })
   } catch (err) {

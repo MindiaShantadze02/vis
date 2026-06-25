@@ -14,8 +14,8 @@ import { dateLocale } from '@/lib/dateLocale'
 import { useTheme, alpha } from '@mui/material/styles'
 import { anim } from '@/theme/animations'
 import { LoadingState } from '@/components/ui'
-import { computeAvailableSlots, getDayKey } from '@/lib/slots'
-import type { SlotApptRow, SlotOverride } from '@/lib/slots'
+import { computeAvailableSlots, computeAvailableSlotsWithCapacity, getDayKey } from '@/lib/slots'
+import type { SlotApptRow, SlotOverride, SlotCapacity } from '@/lib/slots'
 import type { BookingService, BookingStaff } from './BookingLayout'
 
 interface Props {
@@ -37,6 +37,8 @@ const ANY = 'any'
 // How far ahead findNextAvailable scans per query, and the overall safety cap.
 const SCAN_WINDOW_DAYS = 60
 const SCAN_MAX_DAYS = 365
+// Show a "N left" scarcity cue once a multi-capacity slot drops to this few.
+const SCARCITY_THRESHOLD = 2
 
 export default function Step2DateTimeSelect({ orgId, service, initialDate, initialStaffId, onSelect, onBack }: Props) {
   const { t } = useTranslation()
@@ -52,7 +54,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
     initialSelected && isBefore(addDays(today, 6), initialSelected) ? initialSelected : today,
   )
   const [selectedDate, setSelectedDate] = useState<Date | null>(initialSelected)
-  const [slots, setSlots] = useState<string[]>([])
+  const [slots, setSlots] = useState<SlotCapacity[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [template, setTemplate] = useState<WeekTemplate | null>(null)
   // How far ahead this org allows booking; null = no limit.
@@ -176,7 +178,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   // Recompute the selected day's slots whenever its data or the staff choice changes
   useEffect(() => {
     setSlots(selectedDate
-      ? computeAvailableSlots({
+      ? computeAvailableSlotsWithCapacity({
         date: selectedDate,
         template,
         override,
@@ -507,33 +509,61 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
             )
             : (
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 1 }}>
-                {slots.map((time, index) => (
-                  <Chip
-                    key={time}
-                    label={time}
-                    data-testid="book-slot"
-                    onClick={() => onSelect(
-                      format(selectedDate, 'yyyy-MM-dd'),
-                      time,
-                      selectedStaffId === ANY ? null : selectedStaffId,
-                      assignedStaff,
-                    )}
-                    sx={{
-                      fontWeight: 600, fontSize: '0.875rem', height: 40,
-                      cursor: 'pointer',
-                      animation: anim.scaleIn,
-                      animationDelay: `${index * 30}ms`,
-                      transition: 'all 0.18s cubic-bezier(0.16,1,0.3,1)',
-                      '&:hover': {
-                        bgcolor: 'primary.main',
-                        color: 'white',
-                        boxShadow: glowSoft,
-                        borderColor: 'primary.main',
-                      },
-                    }}
-                    variant="outlined"
-                  />
-                ))}
+                {slots.map(({ time, remaining, total }, index) => {
+                  // Only flag scarcity on genuinely multi-capacity slots; for
+                  // single-seat services every slot would read "1 left" (noise).
+                  const scarce = total > 1 && remaining <= SCARCITY_THRESHOLD
+                  const select = () => onSelect(
+                    format(selectedDate, 'yyyy-MM-dd'),
+                    time,
+                    selectedStaffId === ANY ? null : selectedStaffId,
+                    assignedStaff,
+                  )
+                  return (
+                    <Box
+                      key={time}
+                      role="button"
+                      tabIndex={0}
+                      data-testid="book-slot"
+                      data-remaining={remaining}
+                      aria-label={scarce
+                        ? `${time} — ${t('booking.slotsLeft', { n: remaining })}`
+                        : time}
+                      onClick={select}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select() }
+                      }}
+                      sx={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        minHeight: 40, py: scarce ? 0.5 : 0, px: 1,
+                        borderRadius: 2, cursor: 'pointer', outline: 'none',
+                        border: '1px solid',
+                        borderColor: scarce ? alpha(theme.palette.warning.main, 0.5) : 'divider',
+                        bgcolor: scarce ? alpha(theme.palette.warning.main, 0.06) : 'background.paper',
+                        animation: anim.scaleIn,
+                        animationDelay: `${index * 30}ms`,
+                        transition: 'all 0.18s cubic-bezier(0.16,1,0.3,1)',
+                        '&:focus-visible': { boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.5)}` },
+                        '&:hover': {
+                          bgcolor: 'primary.main',
+                          boxShadow: glowSoft,
+                          borderColor: 'primary.main',
+                          '& .slot-time': { color: 'white' },
+                          '& .slot-left': { color: alpha('#FFFFFF', 0.85) },
+                        },
+                      }}
+                    >
+                      <Typography className="slot-time" variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                        {time}
+                      </Typography>
+                      {scarce && (
+                        <Typography className="slot-left" variant="caption" sx={{ color: 'warning.dark', fontWeight: 600, lineHeight: 1.1 }}>
+                          {t('booking.slotsLeft', { n: remaining })}
+                        </Typography>
+                      )}
+                    </Box>
+                  )
+                })}
               </Box>
             )
           }

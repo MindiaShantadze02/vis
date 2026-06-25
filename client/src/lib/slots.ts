@@ -48,12 +48,31 @@ export interface SlotParams {
   now?: Date
 }
 
+/** A free slot plus how much capacity is left in it (for scarcity cues). */
+export interface SlotCapacity {
+  /** Start time, "HH:mm". */
+  time: string
+  /** Bookings that can still be taken in this slot (>= 1 for returned slots). */
+  remaining: number
+  /** The slot's full capacity when empty — drives whether "N left" is shown. */
+  total: number
+}
+
 /**
  * Free start times ("HH:mm") for the given date/service, honouring the day's
  * working ranges (or a same-day override), per-service capacity, and per-person
  * availability. Slots in the past are dropped.
  */
 export function computeAvailableSlots(p: SlotParams): string[] {
+  return computeAvailableSlotsWithCapacity(p).map(s => s.time)
+}
+
+/**
+ * Like computeAvailableSlots, but also reports each slot's remaining and total
+ * capacity so the UI can surface scarcity ("2 left"). Only slots with
+ * remaining > 0 are returned, so `.map(s => s.time)` is exactly the available list.
+ */
+export function computeAvailableSlotsWithCapacity(p: SlotParams): SlotCapacity[] {
   const { date, template, override, durationMinutes } = p
   if (!template) return []
   if (override?.is_closed) return []
@@ -65,7 +84,7 @@ export function computeAvailableSlots(p: SlotParams): string[] {
   if (!cfg?.open) return []
 
   const now = p.now ?? new Date()
-  const generated: string[] = []
+  const generated: SlotCapacity[] = []
 
   for (const range of cfg.ranges) {
     const [sh, sm] = range.start.split(':').map(Number)
@@ -79,8 +98,9 @@ export function computeAvailableSlots(p: SlotParams): string[] {
       const slotEnd = new Date(cur.getTime() + durationMinutes * 60000)
       if (slotEnd > end) break
 
-      if (!isBefore(cur, now) && isSlotAvailable(cur, slotEnd, p)) {
-        generated.push(format(cur, 'HH:mm'))
+      if (!isBefore(cur, now)) {
+        const cap = slotCapacity(cur, slotEnd, p)
+        if (cap.remaining > 0) generated.push({ time: format(cur, 'HH:mm'), ...cap })
       }
 
       cur = new Date(cur.getTime() + durationMinutes * 60000)
@@ -90,8 +110,12 @@ export function computeAvailableSlots(p: SlotParams): string[] {
   return generated
 }
 
-/** Combines per-service capacity (max_per_slot) with per-person availability. */
-function isSlotAvailable(cur: Date, slotEnd: Date, p: SlotParams): boolean {
+/**
+ * Remaining + total capacity for a slot, combining per-service capacity
+ * (max_per_slot) with per-person availability. remaining === 0 means the slot
+ * is not bookable (the old isSlotAvailable === false case).
+ */
+function slotCapacity(cur: Date, slotEnd: Date, p: SlotParams): { remaining: number; total: number } {
   const { existing, serviceId, maxPerSlot, assignedStaff, selectedStaffId } = p
 
   const overlapping = existing.filter(a => {
@@ -102,15 +126,26 @@ function isSlotAvailable(cur: Date, slotEnd: Date, p: SlotParams): boolean {
 
   // Per-service concurrency cap.
   const serviceCount = overlapping.filter(a => a.service_id === serviceId).length
-  if (serviceCount >= maxPerSlot) return false
+  const capRemaining = maxPerSlot - serviceCount
 
   // No assigned staff → capacity is the only constraint.
-  if (assignedStaff.length === 0) return true
+  if (assignedStaff.length === 0) {
+    return { remaining: Math.max(0, capRemaining), total: maxPerSlot }
+  }
 
   // A member is busy if they have ANY overlapping appointment (across services).
   const busyIds = new Set(overlapping.map(a => a.staff_id).filter(Boolean))
   const freeMembers = assignedStaff.filter(m => !busyIds.has(m.id))
 
-  if (selectedStaffId === null) return freeMembers.length >= 1
-  return freeMembers.some(m => m.id === selectedStaffId)
+  // "Any available" — bounded by both the capacity cap and free-member count.
+  if (selectedStaffId === null) {
+    return {
+      remaining: Math.max(0, Math.min(capRemaining, freeMembers.length)),
+      total: Math.min(maxPerSlot, assignedStaff.length),
+    }
+  }
+
+  // A specific member — it's simply free or not (capacity permitting).
+  const memberFree = freeMembers.some(m => m.id === selectedStaffId)
+  return { remaining: capRemaining > 0 && memberFree ? 1 : 0, total: 1 }
 }

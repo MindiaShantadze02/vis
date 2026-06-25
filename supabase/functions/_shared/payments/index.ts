@@ -26,10 +26,11 @@ function buildProvider(name: string): PaymentProvider {
     // case 'tbc':
     //   return new TbcPaymentProvider(Deno.env.get('TBC_CLIENT_ID') ?? '', Deno.env.get('TBC_SECRET') ?? '')
     default:
-      // Unknown/unconfigured provider → fall back to mock rather than blocking
-      // checkout. Logged so misconfiguration is visible in function logs.
-      console.warn(`[payments] unknown provider "${name}", falling back to mock`)
-      return new MockPaymentProvider()
+      // Fail closed: an unknown provider name (e.g. a real gateway selected
+      // before its case is wired in, or a typo) must NOT silently degrade to the
+      // no-cost mock provider — that would accept fake payments. Surface the
+      // misconfiguration as a hard error instead.
+      throw new Error(`payments: unknown/unconfigured provider "${name}"`)
   }
 }
 

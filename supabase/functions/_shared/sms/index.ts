@@ -22,10 +22,10 @@ function buildProvider(name: string): SmsProvider {
     // case 'smsoffice':
     //   return new SmsOfficeProvider(/* creds from config */)
     default:
-      // Unknown provider name → fall back to mock rather than silently dropping
-      // messages. Logged so misconfiguration is visible in function logs.
-      console.warn(`[sms] unknown provider "${name}", falling back to mock`)
-      return new MockSmsProvider()
+      // Fail closed: an unknown provider name must not silently degrade to the
+      // mock provider. sendSms() catches this and logs the SMS as failed without
+      // breaking the surrounding flow (booking etc.).
+      throw new Error(`sms: unknown/unconfigured provider "${name}"`)
   }
 }
 

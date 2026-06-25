@@ -11,9 +11,9 @@ export class MockSmsProvider implements SmsProvider {
   // deno-lint-ignore require-await
   async send(message: SmsMessage): Promise<SmsSendResult> {
     const providerMessageId = `mock_${crypto.randomUUID()}`
-    console.log(
-      `[mock-sms] to=${message.to} id=${providerMessageId}\n${message.body}`,
-    )
+    // Don't log the recipient number or the body — the body can carry OTPs and
+    // the number is PII. The full audit row still lands in sms_log.
+    console.log(`[mock-sms] sent id=${providerMessageId}`)
     return { status: 'sent', providerMessageId }
   }
 }

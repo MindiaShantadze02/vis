@@ -201,7 +201,34 @@ export function installSupabaseIntercepts() {
     if (rpcMatch) {
       const fn = rpcMatch[1]
       const entry = state.rpc[fn]
-      if (entry === undefined) { req.reply({ statusCode: 200, body: null }); return }
+      if (entry === undefined) {
+        // get_public_org is the SECURITY DEFINER accessor the booking page uses
+        // instead of reading the organisations table directly. Derive it from the
+        // seeded organisations rows so specs don't have to stub it separately.
+        if (fn === 'get_public_org') {
+          const slug = (req.body as { p_slug?: string } | undefined)?.p_slug
+          const orgsEntry = state.tables['organisations']
+          const orgs = (orgsEntry !== undefined ? resolve(orgsEntry, req) : []) as Record<string, unknown>[]
+          const found = (Array.isArray(orgs) ? orgs : []).find((o) => o.slug === slug)
+          if (!found) {
+            req.reply({ statusCode: 406, body: { code: 'PGRST116', message: 'no rows' } })
+            return
+          }
+          const pc = (found.payment_config ?? {}) as Record<string, { enabled?: boolean }>
+          const payment_methods: Record<string, { enabled: boolean }> = {}
+          for (const k of Object.keys(pc)) payment_methods[k] = { enabled: !!pc[k]?.enabled }
+          req.reply({
+            statusCode: 200,
+            body: {
+              id: found.id, name: found.name, description: found.description ?? null,
+              contact_phone: found.contact_phone ?? null, logo_url: found.logo_url ?? null,
+              slug: found.slug, booking_theme: found.booking_theme ?? null, payment_methods,
+            },
+          })
+          return
+        }
+        req.reply({ statusCode: 200, body: null }); return
+      }
       const resolved = resolve(entry, req)
       if (isMockResponse(resolved)) { req.reply(resolved); return }
       req.reply({ statusCode: 200, body: resolved })

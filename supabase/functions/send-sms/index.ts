@@ -25,6 +25,12 @@ interface Payload {
   message_type?: SmsMessageType
 }
 
+// Per-recipient/type cooldown: even though this endpoint is secret-gated and
+// trigger-driven, a replayed or duplicated call would re-bill an SMS to the same
+// customer. Refuse if an identical message_type was already queued/sent to this
+// number within the window.
+const RESEND_COOLDOWN_SECONDS = 60
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -69,6 +75,19 @@ Deno.serve(async (req) => {
     const to = customer?.phone_number
     if (!to) {
       return Response.json({ error: 'customer has no phone' }, { status: 422, headers: corsHeaders })
+    }
+
+    // Drop duplicate/replayed sends of the same message to the same recipient.
+    const since = new Date(Date.now() - RESEND_COOLDOWN_SECONDS * 1000).toISOString()
+    const { count: recentCount } = await supabase
+      .from('sms_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('recipient_phone', to)
+      .eq('message_type', message_type)
+      .in('status', ['queued', 'sent'])
+      .gte('created_at', since)
+    if ((recentCount ?? 0) > 0) {
+      return Response.json({ status: 'skipped', reason: 'cooldown' }, { headers: corsHeaders })
     }
 
     // Supported types render here. booking_confirmation/approval_update share

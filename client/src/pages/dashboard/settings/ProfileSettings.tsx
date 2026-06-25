@@ -168,6 +168,7 @@ export default function ProfileSettings() {
                 label={t('settings.yourBookingLink')}
                 text={`vis.ge/book/${org.slug}`}
                 value={`https://vis.ge/book/${org.slug}`}
+                href={`https://vis.ge/book/${org.slug}`}
               />
               <Divider sx={{ my: 3 }} />
             </>

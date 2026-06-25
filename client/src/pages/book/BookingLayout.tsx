@@ -31,6 +31,18 @@ export interface BookingOrg {
   booking_theme: string | null
 }
 
+// Shape returned by the get_public_org RPC (secrets stripped server-side).
+interface PublicOrg {
+  id: string
+  name: string
+  description: string | null
+  contact_phone: string | null
+  logo_url: string | null
+  slug: string
+  booking_theme: string | null
+  payment_methods: Record<string, { enabled?: boolean }> | null
+}
+
 export interface BookingService {
   id: string
   name: string
@@ -61,6 +73,30 @@ export interface BookingState {
 
 const STEPS = ['სერვისი', 'თარიღი და დრო', 'დეტალები']
 
+const DEFAULT_BOOKING: BookingState = {
+  service: null, date: '', time: '',
+  staffId: null, assignedStaff: [],
+  firstName: '', lastName: '', phone: '', notes: '',
+  paymentMethod: 'in_person',
+}
+
+// In-progress booking is kept in sessionStorage (per tab, per business) so an
+// accidental refresh — or returning from the payment gateway redirect — restores
+// the customer's place instead of dumping them back at step 1.
+const storageKey = (slug: string) => `grafiki_booking_${slug}`
+
+interface PersistedBooking { booking: BookingState; step: number }
+
+function loadPersisted(slug: string | undefined): PersistedBooking | null {
+  if (!slug) return null
+  try {
+    const raw = sessionStorage.getItem(storageKey(slug))
+    return raw ? (JSON.parse(raw) as PersistedBooking) : null
+  } catch {
+    return null
+  }
+}
+
 export default function BookingLayout() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
@@ -71,32 +107,58 @@ export default function BookingLayout() {
   const [org, setOrg] = useState<BookingOrg | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [atCapacity, setAtCapacity] = useState(false)
-  const [step, setStep] = useState(0)
-  const [booking, setBooking] = useState<BookingState>({
-    service: null, date: '', time: '',
-    staffId: null, assignedStaff: [],
-    firstName: '', lastName: '', phone: '', notes: '',
-    paymentMethod: 'in_person',
+  const [booking, setBooking] = useState<BookingState>(() => {
+    const p = loadPersisted(slug)
+    return p ? { ...DEFAULT_BOOKING, ...p.booking } : DEFAULT_BOOKING
   })
+  const [step, setStep] = useState<number>(() => {
+    const p = loadPersisted(slug)
+    // Only resume past step 1 if a service was actually chosen — otherwise a
+    // stale/partial entry would land them on an empty date or details step.
+    return p && p.booking.service ? p.step : 0
+  })
+
+  // Persist on every change so a refresh mid-flow loses nothing.
+  useEffect(() => {
+    if (!slug) return
+    try {
+      sessionStorage.setItem(storageKey(slug), JSON.stringify({ booking, step }))
+    } catch {
+      /* ignore quota / serialization errors — persistence is best-effort */
+    }
+  }, [slug, booking, step])
 
   useEffect(() => {
     async function loadOrg() {
+      // Read via get_public_org (SECURITY DEFINER): returns only public booking
+      // fields plus a derived payment_methods map of {provider: {enabled}} — the
+      // organisations table no longer exposes payment_config/owner_id to anon.
       const { data, error } = await supabase
-        .from('organisations')
-        .select('id, name, description, contact_phone, logo_url, slug, payment_config, booking_theme')
-        .eq('slug', slug)
-        .single()
-      if (error || !data) { console.error('org load error', error); setNotFound(true); return }
+        .rpc('get_public_org', { p_slug: slug })
+        .maybeSingle()
+      const pub = data as PublicOrg | null
+      if (error || !pub) { console.error('org load error', error); setNotFound(true); return }
 
       // Block the whole flow up front if the business is at its monthly tier
       // limit — same derived usage the dashboard enforces against. A guest
       // can't upgrade, so we just show a friendly unavailable state rather
       // than letting them fill the form and fail on insert.
       const { data: canAccept } = await supabase
-        .rpc('org_can_accept_appointment', { p_org_id: data.id })
+        .rpc('org_can_accept_appointment', { p_org_id: pub.id })
       if (canAccept === false) { setAtCapacity(true); return }
 
-      setOrg(data as BookingOrg)
+      // The steps read org.payment_config[provider].enabled; the RPC delivers the
+      // same shape under payment_methods (secrets stripped), so map it across.
+      setOrg({
+        id: pub.id,
+        name: pub.name,
+        description: pub.description,
+        contact_phone: pub.contact_phone,
+        logo_url: pub.logo_url,
+        slug: pub.slug,
+        booking_theme: pub.booking_theme,
+        payment_config: pub.payment_methods,
+      })
     }
     if (slug) loadOrg()
   }, [slug])
@@ -272,7 +334,11 @@ export default function BookingLayout() {
               booking={booking}
               onChange={patch}
               onBack={() => setStep(1)}
-              onDone={(appointmentId) => navigate(`/booking-confirmation/${appointmentId}`)}
+              onDone={(appointmentId) => {
+                // Booking is done — drop the saved draft so a later visit starts fresh.
+                if (slug) { try { sessionStorage.removeItem(storageKey(slug)) } catch { /* ignore */ } }
+                navigate(`/booking-confirmation/${appointmentId}`)
+              }}
             />
           )}
         </Box>

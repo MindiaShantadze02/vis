@@ -270,6 +270,7 @@ export default function OverviewPage() {
             label="თქვენი ბუქინგ ბმული"
             text={`vis.ge/book/${org.slug}`}
             value={`https://vis.ge/book/${org.slug}`}
+            href={`https://vis.ge/book/${org.slug}`}
           />
         </Box>
       )}

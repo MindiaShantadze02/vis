@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Box, Typography, IconButton, Tooltip } from '@mui/material'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
+import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined'
 import CheckIcon from '@mui/icons-material/Check'
 import { useTranslation } from 'react-i18next'
 
@@ -10,13 +11,17 @@ interface CopyableTextProps {
   /** Value copied to clipboard; defaults to `text`. */
   value?: string
   label?: string
+  /** When set, also shows an "open in new tab" button pointing at this URL. */
+  href?: string
 }
 
 /**
  * Read-only text with a copy-to-clipboard button. Used for the booking
  * link in ProfileSettings, which was previously static and unselectable.
+ * Pass `href` to also surface an "open" button (e.g. so an admin can preview
+ * the public booking form their customers use).
  */
-export default function CopyableText({ text, value, label }: CopyableTextProps) {
+export default function CopyableText({ text, value, label, href }: CopyableTextProps) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
 
@@ -56,6 +61,20 @@ export default function CopyableText({ text, value, label }: CopyableTextProps) 
         >
           {text}
         </Typography>
+        {href && (
+          <Tooltip title={t('common.openLink')}>
+            <IconButton
+              size="small"
+              component="a"
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t('common.openLink')}
+            >
+              <OpenInNewOutlinedIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+        )}
         <Tooltip title={copied ? t('common.success') : t('common.copy')}>
           <IconButton size="small" onClick={handleCopy} aria-label={t('common.copy')}>
             {copied
