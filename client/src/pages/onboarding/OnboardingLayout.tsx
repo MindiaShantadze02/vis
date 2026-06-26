@@ -2,13 +2,11 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useOrg } from '@/contexts/OrgContext'
 import {
-  Box, Stepper, Step, StepLabel, Typography,
-  Container, LinearProgress, Button,
+  Box, Typography, Container, Button,
 } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { anim } from '@/theme/animations'
-import { gradient } from '@/theme/theme'
 import type { DaySchedule } from '@/lib/validation'
 import PendingInvites from '@/pages/dashboard/PendingInvites'
 
@@ -89,6 +87,7 @@ export default function OnboardingLayout() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const activeStep = useCurrentStep()
+  const stepIdx = Math.max(0, activeStep)
   const { org } = useOrg()
 
   // Once an org exists (either just created via onboarding or already present),
@@ -146,44 +145,37 @@ export default function OnboardingLayout() {
         {/* Top bar */}
         <Box
           sx={{
-            background: gradient.topbar,
-            py: 2, px: 3,
+            bgcolor: 'background.paper',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            py: 1.75, px: 3,
             display: 'flex',
             alignItems: 'center',
-            gap: 1.5,
+            gap: 1.25,
           }}
         >
           <Box
             sx={{
-              width: 28, height: 28, borderRadius: '8px',
-              bgcolor: 'rgba(255,255,255,0.18)',
+              width: 30, height: 30, borderRadius: '9px',
+              bgcolor: 'primary.dark',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
             }}
           >
-            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 13, lineHeight: 1 }}>V</Typography>
+            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 15, lineHeight: 1 }}>V</Typography>
           </Box>
-          <Typography variant="h6" sx={{ color: 'white', fontWeight: 700 }}>Vis</Typography>
+          <Typography variant="h6" sx={{ color: 'primary.dark', fontWeight: 800, letterSpacing: '-0.3px' }}>Vis</Typography>
 
           <Box sx={{ flex: 1 }} />
 
           <Button
             onClick={handleSkip}
             size="small"
-            sx={{
-              color: 'white',
-              fontWeight: 600,
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
-            }}
+            sx={{ color: 'text.secondary', fontWeight: 600 }}
           >
             {t('onboarding.skip')}
           </Button>
         </Box>
-
-        <LinearProgress
-          variant="determinate"
-          value={((activeStep + 1) / STEPS.length) * 100}
-        />
 
         {/* Intentionally narrower (sm ≈ 600) than settings pages — this is a focused stepper flow. */}
         <Container maxWidth="sm" sx={{ flex: 1, py: 5 }}>
@@ -191,13 +183,29 @@ export default function OnboardingLayout() {
               rather than letting them create a redundant one. */}
           <PendingInvites />
 
-          <Stepper activeStep={activeStep} sx={{ mb: 5 }}>
-            {STEPS.map((s, i) => (
-              <Step key={i}>
-                <StepLabel>{t(s.labelKey)}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
+          {/* Progress bar — 3 segments + step counter & title (replaces the Stepper). */}
+          <Box sx={{ mb: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
+              <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: '0.5px', color: 'text.secondary' }}>
+                {t('booking.stepCounter', { n: stepIdx + 1 })}
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                {t(STEPS[stepIdx].labelKey)}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 0.75 }}>
+              {STEPS.map((_, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    flex: 1, height: 5, borderRadius: 3,
+                    transition: 'background-color 0.3s',
+                    bgcolor: i <= stepIdx ? 'primary.main' : 'rgba(25,118,210,0.14)',
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
 
           {/* key re-mounts on step change, re-firing the entrance animation */}
           <Box key={activeStep} sx={{ animation: anim.fadeInUp }}>

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Box, Typography, Card, CardActionArea, CardContent, Chip } from '@mui/material'
+import { Box, Typography, Card, CardActionArea, CardContent } from '@mui/material'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlined'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useTheme, alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
+  const { t } = useTranslation()
   const [services, setServices] = useState<BookingService[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -40,16 +43,18 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
     return (
       <EmptyState
         icon={<DesignServicesOutlinedIcon />}
-        title="სერვისები ჯერ არ არის დამატებული"
+        title={t('booking.noServices')}
       />
     )
   }
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>სერვისის არჩევა</Typography>
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+        {t('booking.serviceHeading')}
+      </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        აირჩიეთ სასურველი მომსახურება
+        {t('booking.serviceSubtext')}
       </Typography>
 
       <Box
@@ -76,27 +81,20 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
             }}
           >
             <CardActionArea onClick={() => onSelect(s)} data-testid="book-service">
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2 }}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{s.name}</Typography>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2.25 }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{s.name}</Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                    <AccessTimeOutlinedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                    <AccessTimeOutlinedIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {s.duration_minutes} წუთი
+                      {s.duration_minutes} {t('common.minutesShort')}
                     </Typography>
                   </Box>
                 </Box>
-                <Chip
-                  label={`${s.price} ₾`}
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: '0.875rem',
-                    bgcolor: 'secondary.main',
-                    color: 'primary.dark',
-                    border: '1px solid',
-                    borderColor: 'primary.light',
-                  }}
-                />
+                <Typography sx={{ fontWeight: 700, color: 'text.primary', whiteSpace: 'nowrap' }}>
+                  {s.price} ₾
+                </Typography>
+                <ChevronRightIcon sx={{ color: 'text.disabled', flexShrink: 0 }} />
               </CardContent>
             </CardActionArea>
           </Card>

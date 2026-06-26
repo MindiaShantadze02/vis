@@ -12,7 +12,7 @@ export interface DashboardOutletContext {
 import {
   Box, Drawer, List, ListItemButton, ListItemIcon, ListItemText,
   AppBar, Toolbar, IconButton, Typography, Badge, Avatar,
-  Menu, MenuItem, Divider, useMediaQuery, useTheme, Tooltip,
+  Menu, MenuItem, Divider, useMediaQuery, useTheme,
 } from '@mui/material'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
@@ -232,11 +232,33 @@ export default function DashboardLayout() {
             />
           </ListItemButton>
         )}
+
+        {/* Logout — kept in the nav (below Settings) so it's reachable without
+            scrolling to the very bottom of a long, expanded settings list. */}
+        <ListItemButton
+          onClick={handleLogout}
+          data-testid="logout-btn"
+          sx={{
+            borderRadius: 2,
+            mt: 0.5,
+            pl: '13px',
+            borderLeft: '3px solid transparent',
+            color: 'error.main',
+            '& .MuiListItemIcon-root': { color: 'error.main' },
+            '&:hover': { bgcolor: 'rgba(224,82,75,0.08)', borderLeftColor: 'rgba(224,82,75,0.35)' },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 36 }}><LogoutIcon fontSize="small" /></ListItemIcon>
+          <ListItemText
+            primary={t('common.logout')}
+            slotProps={{ primary: { variant: 'body2', sx: { fontWeight: 500 } } }}
+          />
+        </ListItemButton>
       </List>
 
       <Divider />
 
-      {/* User row */}
+      {/* User identity row (logout now lives in the nav above). */}
       <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
         <Avatar sx={{ width: 32, height: 32 }}>
           <PersonOutlineIcon fontSize="small" />
@@ -253,11 +275,6 @@ export default function DashboardLayout() {
         >
           {displayGeorgianPhone(user?.phone)}
         </Typography>
-        <Tooltip title={t('common.logout')}>
-          <IconButton size="small" onClick={handleLogout} data-testid="logout-btn">
-            <LogoutIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
       </Box>
     </Box>
   )

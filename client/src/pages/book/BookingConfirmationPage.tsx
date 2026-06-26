@@ -148,7 +148,7 @@ export default function BookingConfirmationPage() {
                   <StatusChip status={appt.status as AppointmentStatus} />
                 </Box>
               </Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: bookingTheme.deep }}>
                 {appt.services?.price} ₾
               </Typography>
             </Box>

@@ -2,17 +2,18 @@ import { createTheme, type Theme } from '@mui/material/styles'
 import baseTheme from './theme'
 
 // Per-organisation colour themes for the public booking pages (the flow your
-// customers actually see). Deliberately a small, curated set — ranging from
-// professional/business to fresh/sporty, plus a clean white — so owners get
-// personality without an overwhelming colour-picker.
+// customers actually see). A curated set of five accent directions (see the
+// "Customer Form Themes" design): Royal Blue (default) · Emerald · Terracotta ·
+// Charcoal & Brass · Indigo.
 //
-// All themes are flat (no gradients). Most use a rich, confident solid colour
-// panel with light text; 'white' is a clean minimal light panel. Each pairs the
-// sidebar with a near-white page background and a refined accent colour applied
-// to buttons, inputs, the stepper, selected cards, etc. via a derived MUI theme
-// (see makeBookingTheme).
+// Each theme drives a single accent across the whole booking UI (buttons,
+// inputs, selected cards, progress, staff pills, etc.) via a derived MUI theme
+// (see makeBookingTheme). `deep` is a second, independent accent used only for
+// the price/total — for most themes it's just a darker shade of the accent, but
+// for "Charcoal & Brass" it's the brass gold that lifts the price off the
+// charcoal UI.
 
-export type BookingThemeKey = 'indigo' | 'blue' | 'ocean' | 'sunset' | 'sporty' | 'rose' | 'white'
+export type BookingThemeKey = 'blue' | 'emerald' | 'terracotta' | 'brass' | 'indigo'
 
 export interface BookingTheme {
   key: BookingThemeKey
@@ -28,113 +29,101 @@ export interface BookingTheme {
   primary: string
   primaryLight: string
   primaryDark: string
+  /**
+   * Second accent, used for the price/total. Usually equals `primaryDark`;
+   * for the charcoal "brass" theme it's the gold that highlights the price.
+   */
+  deep: string
+  /** Light tinted surface (chips, avatars, focus rings) — MUI `secondary.main`. */
+  tint: string
   /** "r,g,b" of the accent — used for the translucent shadows/tints. */
   rgb: string
   /**
    * Optional colour shown in the settings picker dot. Defaults to `primary`.
-   * Override when the accent doesn't represent the theme's name — e.g. the
-   * 'white' theme's accent is near-black slate, so its dot shows white.
    */
   swatch?: string
 }
 
 export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
-  // Indigo-violet — the app default. Light & airy: a soft lavender panel with
-  // dark text and a gentle indigo accent, so the customer-facing flow feels
-  // calm and welcoming while still echoing the admin brand.
-  indigo: {
-    key: 'indigo',
-    label: 'ინდიგო',
-    sidebar: '#EEF2FF',
-    sidebarText: 'dark',
-    pageBg: '#FAFAFF',
-    primary: '#6366F1',
-    primaryLight: '#C7D2FE',
-    primaryDark: '#4F46E5',
-    rgb: '99,102,241',
-  },
-  // Azure blue — classic, trustworthy, professional.
+  // Royal Blue — classic, trustworthy, professional. The current/default look.
   blue: {
     key: 'blue',
     label: 'ლურჯი',
-    sidebar: '#1D4ED8',
+    sidebar: '#1565C0',
     sidebarText: 'light',
-    pageBg: '#F5F8FE',
-    primary: '#2563EB',
-    primaryLight: '#93C5FD',
-    primaryDark: '#1E40AF',
-    rgb: '37,99,235',
+    pageBg: '#F5F8FD',
+    primary: '#1565C0',
+    primaryLight: '#90CAF9',
+    primaryDark: '#0D47A1',
+    deep: '#0D47A1',
+    tint: '#E3F2FD',
+    rgb: '21,101,192',
   },
-  // Deep teal — calm, fresh and clean. Great for spas and clinics.
-  ocean: {
-    key: 'ocean',
-    label: 'ფირუზისფერი',
-    sidebar: '#0E7490',
-    sidebarText: 'light',
-    pageBg: '#F1FAFC',
-    primary: '#0891B2',
-    primaryLight: '#67E8F9',
-    primaryDark: '#155E75',
-    rgb: '8,145,178',
-  },
-  // Burnt amber — warm and inviting, with a premium feel.
-  sunset: {
-    key: 'sunset',
-    label: 'ნარინჯისფერი',
-    sidebar: '#C2410C',
-    sidebarText: 'light',
-    pageBg: '#FFF7F2',
-    primary: '#EA580C',
-    primaryLight: '#FDBA74',
-    primaryDark: '#9A3412',
-    rgb: '234,88,12',
-  },
-  // Emerald green — fresh and energetic without being loud.
-  sporty: {
-    key: 'sporty',
-    label: 'მწვანე',
-    sidebar: '#047857',
+  // Emerald — clean and calming. Great for spas, clinics and wellness.
+  emerald: {
+    key: 'emerald',
+    label: 'ზურმუხტისფერი',
+    sidebar: '#0E9F6E',
     sidebarText: 'light',
     pageBg: '#F1FBF6',
-    primary: '#059669',
+    primary: '#0E9F6E',
     primaryLight: '#6EE7B7',
-    primaryDark: '#065F46',
-    rgb: '5,150,105',
+    primaryDark: '#047857',
+    deep: '#047857',
+    tint: '#E2F4EC',
+    rgb: '14,159,110',
   },
-  // Rose — warm and stylish, great for beauty and wellness. Light & airy: a
-  // soft blush panel with dark text and a gentle rose accent.
-  rose: {
-    key: 'rose',
-    label: 'ვარდისფერი',
-    sidebar: '#FFF1F5',
-    sidebarText: 'dark',
-    pageBg: '#FFFAFB',
-    primary: '#E5446A',
-    primaryLight: '#FBCFE0',
-    primaryDark: '#BE2C54',
-    rgb: '229,68,106',
+  // Terracotta — warm and earthy, with a grooming/barber feel.
+  terracotta: {
+    key: 'terracotta',
+    label: 'ტერაკოტა',
+    sidebar: '#C4572F',
+    sidebarText: 'light',
+    pageBg: '#FDF6F2',
+    primary: '#C4572F',
+    primaryLight: '#F0AE90',
+    primaryDark: '#9A3412',
+    deep: '#9A3412',
+    tint: '#F8EAE2',
+    rgb: '196,87,47',
   },
-  // Minimal — a clean light panel separated from the white content by a
-  // hairline border, with a sleek near-black slate accent.
-  white: {
-    key: 'white',
-    label: 'თეთრი',
-    sidebar: '#F8FAFC',
-    sidebarText: 'dark',
-    pageBg: '#FFFFFF',
-    primary: '#1E293B',
-    primaryLight: '#94A3B8',
-    primaryDark: '#0F172A',
-    rgb: '30,41,59',
-    swatch: '#FFFFFF',
+  // Charcoal & Brass — premium and classic: a charcoal UI with a brass-gold
+  // price. The only two-tone theme (accent ≠ deep).
+  brass: {
+    key: 'brass',
+    label: 'გრაფიტი',
+    sidebar: '#2C3138',
+    sidebarText: 'light',
+    pageBg: '#F7F8FA',
+    primary: '#2C3138',
+    primaryLight: '#9AA1A9',
+    primaryDark: '#1A1E23',
+    deep: '#A9803F',
+    tint: '#ECEEF1',
+    rgb: '44,49,56',
+    swatch: '#A9803F',
+  },
+  // Indigo — modern and confident.
+  indigo: {
+    key: 'indigo',
+    label: 'ინდიგო',
+    sidebar: '#5B4BE0',
+    sidebarText: 'light',
+    pageBg: '#FAFAFF',
+    primary: '#5B4BE0',
+    primaryLight: '#C7BFFA',
+    primaryDark: '#3F36B0',
+    deep: '#3F36B0',
+    tint: '#ECEAFB',
+    rgb: '91,75,224',
   },
 }
 
 export const BOOKING_THEME_LIST: BookingTheme[] = Object.values(BOOKING_THEMES)
 
-export const DEFAULT_BOOKING_THEME: BookingThemeKey = 'indigo'
+export const DEFAULT_BOOKING_THEME: BookingThemeKey = 'blue'
 
-/** Resolve a stored key (possibly null/unknown) to a theme, falling back to default. */
+/** Resolve a stored key (possibly null/retired/unknown) to a theme, falling back to default. */
 export function getBookingTheme(key: string | null | undefined): BookingTheme {
   return BOOKING_THEMES[(key as BookingThemeKey)] ?? BOOKING_THEMES[DEFAULT_BOOKING_THEME]
 }
@@ -143,19 +132,22 @@ export function getBookingTheme(key: string | null | undefined): BookingTheme {
 const muiThemeCache = new Map<BookingThemeKey, Theme>()
 
 /**
- * Build an MUI theme variant whose accent (primary) follows the booking theme.
- * Re-points every base component override (buttons, inputs, stepper, toggles,
- * progress) at the theme's colour so the entire booking page is themed, not
- * just the sidebar.
+ * Build an MUI theme variant whose accent (primary) and tint (secondary) follow
+ * the booking theme. Re-points every base component override (buttons, inputs,
+ * stepper, toggles, progress) at the theme's colour so the entire booking page
+ * is themed, not just the sidebar.
  */
 export function makeBookingTheme(bt: BookingTheme): Theme {
   const cached = muiThemeCache.get(bt.key)
   if (cached) return cached
 
-  const { primary, primaryLight, primaryDark, rgb, pageBg } = bt
+  const { primary, primaryLight, primaryDark, tint, rgb, pageBg } = bt
   const theme = createTheme(baseTheme, {
     palette: {
       primary: { main: primary, light: primaryLight, dark: primaryDark, contrastText: '#FFFFFF' },
+      // Light tinted surface (selected staff pill, OTP icon badge, empty-state
+      // circle…) must follow the theme, not stay blue.
+      secondary: { main: tint, contrastText: primaryDark },
       background: { default: pageBg, paper: '#FFFFFF' },
     },
     components: {
@@ -185,7 +177,7 @@ export function makeBookingTheme(bt: BookingTheme): Theme {
           root: {
             '& .MuiOutlinedInput-root': {
               '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: primary },
-              '&.Mui-focused': { boxShadow: `0 0 0 3px rgba(${rgb},0.10)` },
+              '&.Mui-focused': { boxShadow: `0 0 0 3px rgba(${rgb},0.12)` },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: primary },
             },
             '& .MuiInputLabel-root.Mui-focused': { color: primary },

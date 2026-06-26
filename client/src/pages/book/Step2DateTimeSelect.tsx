@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Box, Typography, Button, Chip, IconButton,
+  Box, Typography, Button, Avatar, IconButton,
 } from '@mui/material'
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
+import StarRoundedIcon from '@mui/icons-material/StarRounded'
 import {
   format, addDays, startOfDay, isBefore, isAfter, isSameDay, isSameMonth,
 } from 'date-fns'
@@ -319,9 +320,26 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
     : `${format(weekStart, 'LLL', { locale })} – ${format(weekEnd, 'LLL yyyy', { locale })}`
 
   const staffOptions = [
-    { id: ANY, label: t('booking.anyAvailable') },
-    ...assignedStaff.map(m => ({ id: m.id, label: m.display_name || '—' })),
+    { id: ANY, label: t('booking.anyAvailable'), any: true },
+    ...assignedStaff.map(m => ({ id: m.id, label: m.display_name || '—', any: false })),
   ]
+
+  // Group the available slots into Morning / Afternoon / Evening for a calmer,
+  // scannable layout. Purely presentational — `slots` is unchanged (it already
+  // contains only free times). Boundaries: <12:00 morning, <17:00 afternoon, else evening.
+  const slotGroups = useMemo(() => {
+    const buckets: { key: 'morning' | 'afternoon' | 'evening'; slots: SlotCapacity[] }[] = [
+      { key: 'morning', slots: [] },
+      { key: 'afternoon', slots: [] },
+      { key: 'evening', slots: [] },
+    ]
+    for (const s of slots) {
+      const hour = parseInt(s.time.slice(0, 2), 10)
+      const bucket = hour < 12 ? buckets[0] : hour < 17 ? buckets[1] : buckets[2]
+      bucket.slots.push(s)
+    }
+    return buckets.filter(b => b.slots.length > 0)
+  }, [slots])
 
   return (
     <Box>
@@ -339,26 +357,52 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         {service.name} · {service.duration_minutes} {t('common.minutesShort')}
       </Typography>
 
-      {/* Staff picker — only when the service has assigned people */}
+      {/* Staff picker — avatar chips; only when the service has assigned people */}
       {assignedStaff.length > 0 && (
         <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.25 }}>
             {t('booking.selectStaff')}
           </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
             {staffOptions.map(opt => {
               const selected = selectedStaffId === opt.id
               return (
-                <Chip
+                <Box
                   key={opt.id}
-                  label={opt.label}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selected}
                   data-testid="book-staff"
                   data-staff-id={opt.id}
                   onClick={() => setSelectedStaffId(opt.id)}
-                  color={selected ? 'primary' : 'default'}
-                  variant={selected ? 'filled' : 'outlined'}
-                  sx={{ fontWeight: 500 }}
-                />
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedStaffId(opt.id) }
+                  }}
+                  sx={{
+                    display: 'inline-flex', alignItems: 'center', gap: 1,
+                    pl: 0.75, pr: 1.75, py: 0.75, borderRadius: 999,
+                    cursor: 'pointer', outline: 'none', userSelect: 'none',
+                    bgcolor: selected ? 'secondary.main' : 'background.paper',
+                    border: '1.5px solid',
+                    borderColor: selected ? 'primary.main' : 'divider',
+                    transition: 'all 0.15s cubic-bezier(0.16,1,0.3,1)',
+                    '&:focus-visible': { boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.5)}` },
+                    '&:hover': selected ? {} : { borderColor: 'primary.main' },
+                  }}
+                >
+                  <Avatar
+                    sx={{
+                      width: 30, height: 30, fontSize: '0.8rem', fontWeight: 700,
+                      bgcolor: selected ? 'primary.main' : 'text.disabled',
+                      color: '#fff',
+                    }}
+                  >
+                    {opt.any ? <StarRoundedIcon sx={{ fontSize: 18 }} /> : opt.label.charAt(0)}
+                  </Avatar>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: selected ? 'primary.main' : 'text.primary' }}>
+                    {opt.label}
+                  </Typography>
+                </Box>
               )
             })}
           </Box>
@@ -446,8 +490,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
               {/* Availability dot — present only on days that have free slots */}
               <Box
                 sx={{
-                  width: 5, height: 5, borderRadius: '50%', mt: 0.5,
-                  bgcolor: hasSlots ? (isSelected ? 'white' : 'primary.main') : 'transparent',
+                  width: 6, height: 6, borderRadius: '50%', mt: 0.5,
+                  bgcolor: hasSlots ? (isSelected ? 'white' : 'success.main') : 'transparent',
                   transition: 'background-color 0.15s',
                 }}
               />
@@ -508,8 +552,14 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
               </Box>
             )
             : (
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 1 }}>
-                {slots.map(({ time, remaining, total }, index) => {
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                {slotGroups.map(group => (
+                  <Box key={group.key}>
+                    <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', fontWeight: 600, letterSpacing: 0.5, mb: 0.75 }}>
+                      {t(`booking.partOfDay.${group.key}`)}
+                    </Typography>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 1 }}>
+                      {group.slots.map(({ time, remaining, total }, index) => {
                   // Only flag scarcity on genuinely multi-capacity slots; for
                   // single-seat services every slot would read "1 left" (noise).
                   const scarce = total > 1 && remaining <= SCARCITY_THRESHOLD
@@ -563,7 +613,10 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                       )}
                     </Box>
                   )
-                })}
+                      })}
+                    </Box>
+                  </Box>
+                ))}
               </Box>
             )
           }

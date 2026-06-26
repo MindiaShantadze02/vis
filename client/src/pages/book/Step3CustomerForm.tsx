@@ -7,11 +7,13 @@ import {
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
 import CreditCardOutlinedIcon from '@mui/icons-material/CreditCardOutlined'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined'
 import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
+import { elevation } from '@/theme/theme'
 import type { BookingOrg, BookingState } from './BookingLayout'
 
 interface Props {
@@ -20,9 +22,23 @@ interface Props {
   onChange: (p: Partial<BookingState>) => void
   onBack: () => void
   onDone: (appointmentId: string) => void
+  /** Booking-theme "deep" accent for the price/total (e.g. brass on the charcoal theme). */
+  priceColor?: string
 }
 
-export default function Step3CustomerForm({ org, booking, onChange, onBack, onDone }: Props) {
+/** Above-the-input field label, matching the booking design (no floating MUI label). */
+function FieldLabel({ children, required }: { children: string; required?: boolean }) {
+  return (
+    <Typography
+      component="label"
+      sx={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'text.secondary', mb: 0.75 }}
+    >
+      {children}{required ? ' *' : ''}
+    </Typography>
+  )
+}
+
+export default function Step3CustomerForm({ org, booking, onChange, onBack, onDone, priceColor }: Props) {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -243,6 +259,14 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     !lastNameInvalid &&
     isValidGeorgianPhone(booking.phone)
 
+  // Staff line for the summary card. Null when the service has no assignable
+  // people (we then omit the row rather than show an empty value).
+  const staffLabel = booking.assignedStaff.length === 0
+    ? null
+    : booking.staffId
+      ? (booking.assignedStaff.find(m => m.id === booking.staffId)?.display_name || '—')
+      : t('booking.anyAvailable')
+
   return (
     <Box>
       <Button
@@ -251,10 +275,12 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
         size="small"
         sx={{ mb: 2, color: 'text.secondary' }}
       >
-        უკან
+        {t('common.back')}
       </Button>
 
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>თქვენი მონაცემები</Typography>
+      {phase === 'form' && (
+      <>
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{t('booking.detailsHeading')}</Typography>
       {scheduledAt && (
         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
           {booking.service?.name} · {format(scheduledAt, 'd MMMM, HH:mm', { locale: ka })}
@@ -263,63 +289,70 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
 
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="book-error">{error}</Alert>}
 
-      {phase === 'form' && (
-      <Stack spacing={2}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+      <Stack spacing={2.25}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5 }}>
+          <Box>
+            <FieldLabel required>{t('booking.firstName')}</FieldLabel>
+            <TextField
+              value={booking.firstName}
+              onChange={e => onChange({ firstName: e.target.value })}
+              fullWidth
+              required
+              autoFocus
+              error={firstNameTooShort || firstNameInvalid}
+              helperText={
+                firstNameTooShort ? t('validation.minLength', { min: 2 })
+                : firstNameInvalid ? t('validation.lettersOnly')
+                : undefined
+              }
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'book-first-name' } }}
+            />
+          </Box>
+          <Box>
+            <FieldLabel>{t('booking.lastName')}</FieldLabel>
+            <TextField
+              value={booking.lastName}
+              onChange={e => onChange({ lastName: e.target.value })}
+              fullWidth
+              error={lastNameInvalid}
+              helperText={lastNameInvalid ? t('validation.lettersOnly') : undefined}
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'book-last-name' } }}
+            />
+          </Box>
+        </Box>
+
+        <Box>
+          <FieldLabel required>{t('booking.phone')}</FieldLabel>
           <TextField
-            label="სახელი"
-            value={booking.firstName}
-            onChange={e => onChange({ firstName: e.target.value })}
+            value={booking.phone}
+            onChange={e => onChange({ phone: e.target.value })}
             fullWidth
             required
-            autoFocus
-            error={firstNameTooShort || firstNameInvalid}
-            helperText={
-              firstNameTooShort ? t('validation.minLength', { min: 2 })
-              : firstNameInvalid ? t('validation.lettersOnly')
-              : ' '
-            }
-            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'book-first-name' } }}
+            placeholder="599 123 456"
+            error={phoneInvalid}
+            helperText={phoneInvalid ? t('validation.invalidPhone') : t('booking.smsHelper')}
+            slotProps={{ htmlInput: { inputMode: 'tel' as const, 'data-testid': 'book-phone' } }}
           />
+        </Box>
+
+        <Box>
+          <FieldLabel>{t('booking.notes')}</FieldLabel>
           <TextField
-            label="გვარი"
-            value={booking.lastName}
-            onChange={e => onChange({ lastName: e.target.value })}
+            value={booking.notes}
+            onChange={e => onChange({ notes: e.target.value })}
             fullWidth
-            error={lastNameInvalid}
-            helperText={lastNameInvalid ? t('validation.lettersOnly') : ' '}
-            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'book-last-name' } }}
+            multiline
+            rows={2}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.notes, 'data-testid': 'book-notes' } }}
           />
-        </Stack>
-
-        <TextField
-          label="ტელეფონი"
-          value={booking.phone}
-          onChange={e => onChange({ phone: e.target.value })}
-          fullWidth
-          required
-          placeholder="599 123 456"
-          error={phoneInvalid}
-          helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
-          slotProps={{ htmlInput: { inputMode: 'tel' as const, 'data-testid': 'book-phone' } }}
-        />
-
-        <TextField
-          label="შენიშვნა (არასავალდებულო)"
-          value={booking.notes}
-          onChange={e => onChange({ notes: e.target.value })}
-          fullWidth
-          multiline
-          rows={2}
-          slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.notes, 'data-testid': 'book-notes' } }}
-        />
+        </Box>
 
         {/* Payment method — only ask when more than one option exists. */}
         {availableMethods.length > 0 && (
           <Box>
             {multiplePaymentOptions && (
               <>
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>გადახდის მეთოდი</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>{t('booking.paymentMethod')}</Typography>
                 <ToggleButtonGroup
                   value={booking.paymentMethod}
                   exclusive
@@ -328,46 +361,48 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
                 >
                   <ToggleButton value="in_person" data-testid="book-pay-in_person">
                     <StorefrontOutlinedIcon sx={{ mr: 1, fontSize: 18 }} />
-                    ადგილზე
+                    {t('settings.locationInPerson')}
                   </ToggleButton>
                   <ToggleButton value="online" data-testid="book-pay-online">
                     <CreditCardOutlinedIcon sx={{ mr: 1, fontSize: 18 }} />
-                    ონლაინ
+                    {t('settings.locationOnline')}
                   </ToggleButton>
                 </ToggleButtonGroup>
               </>
             )}
-            {booking.paymentMethod === 'in_person' && (
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.75 }}>
-                ჯავშანი დადასტურებას საჭიროებს · გადახდა ადგილზე
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: multiplePaymentOptions ? 1.25 : 0 }}>
+              {booking.paymentMethod === 'in_person'
+                ? <StorefrontOutlinedIcon sx={{ fontSize: 16, color: 'success.main' }} />
+                : <CreditCardOutlinedIcon sx={{ fontSize: 16, color: 'primary.main' }} />}
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {booking.paymentMethod === 'in_person' ? t('booking.payInPersonHint') : t('booking.payOnlineHint')}
               </Typography>
-            )}
-            {booking.paymentMethod === 'online' && (
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.75 }}>
-                ჯავშანი დაუყოვნებლივ დადასტურდება · გადახდა ახლა
-              </Typography>
-            )}
+            </Box>
           </Box>
         )}
 
-        <Divider />
-
-        {/* Summary */}
-        <Box sx={{ bgcolor: 'grey.50', borderRadius: 2, p: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>სერვისი</Typography>
+        {/* Summary card */}
+        <Box sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 4, p: 2.5, boxShadow: elevation.card }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('booking.summaryService')}</Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>{booking.service?.name}</Typography>
           </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>თარიღი</Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: staffLabel ? 1 : 0 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('booking.summaryDate')}</Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {scheduledAt ? format(scheduledAt, 'd MMM, HH:mm', { locale: ka }) : '—'}
             </Typography>
           </Box>
-          <Divider sx={{ my: 1 }} />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="body2" sx={{ fontWeight: 700 }}>სულ</Typography>
-            <Typography variant="body1" sx={{ fontWeight: 700, color: 'primary.main' }}>
+          {staffLabel && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('booking.selectStaff')}</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{staffLabel}</Typography>
+            </Box>
+          )}
+          <Divider sx={{ my: 1.5 }} />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>{t('booking.total')}</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: priceColor ?? 'primary.dark' }}>
               {booking.service?.price} ₾
             </Typography>
           </Box>
@@ -383,46 +418,61 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
         >
           {loading
             ? <CircularProgress size={22} color="inherit" />
-            : booking.paymentMethod === 'online' ? 'გადახდაზე გადასვლა' : 'ჯავშნის გაკეთება'
+            : booking.paymentMethod === 'online' ? t('booking.proceedToPayment') : t('booking.book')
           }
         </Button>
-        </Stack>
+      </Stack>
+      </>
       )}
 
       {phase === 'otp' && (
-        <Stack spacing={2}>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+        <Box sx={{ maxWidth: 400 }}>
+          {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="book-error">{error}</Alert>}
+          <Box
+            sx={{
+              width: 56, height: 56, borderRadius: 3, mb: 2,
+              bgcolor: 'secondary.main', color: 'primary.main',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <SmsOutlinedIcon />
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.75 }}>{t('booking.verifyNumber')}</Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
             {t('booking.otpSent', { phone: booking.phone })}
           </Typography>
-          <TextField
-            label={t('booking.otpLabel')}
-            value={code}
-            onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            fullWidth
-            autoFocus
-            placeholder="••••••"
-            slotProps={{ htmlInput: { inputMode: 'numeric' as const, maxLength: 6, 'data-testid': 'book-otp-code' } }}
-          />
-          <Button
-            fullWidth
-            variant="contained"
-            size="large"
-            onClick={verifyAndBook}
-            disabled={loading || code.length !== 6}
-            data-testid="book-otp-verify"
-          >
-            {loading ? <CircularProgress size={22} color="inherit" /> : t('booking.otpVerify')}
-          </Button>
-          <Button
-            fullWidth
-            size="small"
-            onClick={sendCode}
-            disabled={loading || resendIn > 0}
-            sx={{ color: 'text.secondary' }}
-          >
-            {resendIn > 0 ? t('booking.otpResendIn', { seconds: resendIn }) : t('booking.otpResend')}
-          </Button>
-        </Stack>
+          <Stack spacing={2}>
+            <TextField
+              label={t('booking.otpLabel')}
+              value={code}
+              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              fullWidth
+              autoFocus
+              placeholder="••••••"
+              sx={{ '& input': { textAlign: 'center', fontSize: '1.6rem', letterSpacing: '0.5em', fontWeight: 700 } }}
+              slotProps={{ htmlInput: { inputMode: 'numeric' as const, maxLength: 6, 'data-testid': 'book-otp-code' } }}
+            />
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              onClick={verifyAndBook}
+              disabled={loading || code.length !== 6}
+              data-testid="book-otp-verify"
+            >
+              {loading ? <CircularProgress size={22} color="inherit" /> : t('booking.otpVerify')}
+            </Button>
+            <Button
+              fullWidth
+              size="small"
+              onClick={sendCode}
+              disabled={loading || resendIn > 0}
+              sx={{ color: 'text.secondary' }}
+            >
+              {resendIn > 0 ? t('booking.otpResendIn', { seconds: resendIn }) : t('booking.otpResend')}
+            </Button>
+          </Stack>
+        </Box>
       )}
     </Box>
   )
