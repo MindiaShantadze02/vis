@@ -38,10 +38,6 @@ export interface BookingTheme {
   tint: string
   /** "r,g,b" of the accent — used for the translucent shadows/tints. */
   rgb: string
-  /**
-   * Optional colour shown in the settings picker dot. Defaults to `primary`.
-   */
-  swatch?: string
 }
 
 export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
@@ -101,7 +97,6 @@ export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
     deep: '#A9803F',
     tint: '#ECEEF1',
     rgb: '44,49,56',
-    swatch: '#A9803F',
   },
   // Indigo — modern and confident.
   indigo: {

@@ -280,7 +280,13 @@ export default function ProfileSettings() {
                       <Box
                         sx={{
                           width: 22, height: 22, borderRadius: '50%',
-                          background: th.swatch ?? th.primary,
+                          // Match what customers actually see: the theme's primary
+                          // accent. Two-tone themes (deep ≠ primary, e.g. brass)
+                          // show the primary dominant with the deep accent as a
+                          // wedge, mirroring the charcoal UI + brass price.
+                          background: th.deep !== th.primary
+                            ? `linear-gradient(135deg, ${th.primary} 0 58%, ${th.deep} 58% 100%)`
+                            : th.primary,
                           boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
                           flexShrink: 0,
                         }}
