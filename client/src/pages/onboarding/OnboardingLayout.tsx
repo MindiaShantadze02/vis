@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { anim } from '@/theme/animations'
 import type { DaySchedule } from '@/lib/validation'
+import type { Vertical } from '@/lib/verticals'
 import PendingInvites from '@/pages/dashboard/PendingInvites'
 
 // ── Shared state across onboarding steps ──────────────────────
@@ -25,6 +26,7 @@ export interface OnboardingService {
 
 export interface OnboardingData {
   // Step 1
+  vertical: Vertical
   name: string
   description: string
   slug: string
@@ -58,6 +60,7 @@ interface OnboardingContextValue {
 
 const OnboardingContext = createContext<OnboardingContextValue>({
   data: {
+    vertical: 'appointments',
     name: '', description: '', slug: '', contact_phone: '',
     services: [], workingHours: defaultWorkingHours,
   },
@@ -70,15 +73,19 @@ export function useOnboarding() {
 
 // ── Step definitions ──────────────────────────────────────────
 
-const STEPS = [
-  { path: '/onboarding/business',  labelKey: 'onboarding.step1' },
-  { path: '/onboarding/services',  labelKey: 'onboarding.step2' },
-  { path: '/onboarding/hours',     labelKey: 'onboarding.step3' },
-]
+type Step = { path: string; labelKey: string }
 
-function useCurrentStep() {
-  const { pathname } = useLocation()
-  return STEPS.findIndex(s => pathname.startsWith(s.path))
+const BUSINESS_STEP: Step = { path: '/onboarding/business', labelKey: 'onboarding.step1' }
+const SERVICES_STEP: Step = { path: '/onboarding/services', labelKey: 'onboarding.step2' }
+const HOURS_STEP:    Step = { path: '/onboarding/hours',    labelKey: 'onboarding.step3' }
+
+// The "services" step only applies to the appointments vertical. Restaurants
+// and hotels manage their inventory (tables / rooms) from settings after
+// onboarding, so their flow is just profile → hours.
+function stepsFor(vertical: Vertical): Step[] {
+  return vertical === 'appointments'
+    ? [BUSINESS_STEP, SERVICES_STEP, HOURS_STEP]
+    : [BUSINESS_STEP, HOURS_STEP]
 }
 
 // ── Layout ────────────────────────────────────────────────────
@@ -86,8 +93,7 @@ function useCurrentStep() {
 export default function OnboardingLayout() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const activeStep = useCurrentStep()
-  const stepIdx = Math.max(0, activeStep)
+  const { pathname } = useLocation()
   const { org } = useOrg()
 
   // Once an org exists (either just created via onboarding or already present),
@@ -98,10 +104,17 @@ export default function OnboardingLayout() {
   }, [org])
 
   const [data, setData] = useState<OnboardingData>({
+    vertical: 'appointments',
     name: '', description: '', slug: '', contact_phone: '',
     services: [],
     workingHours: defaultWorkingHours,
   })
+
+  // Steps depend on the chosen vertical (set on step 1). Appointments default
+  // keeps the original 3-step flow; restaurants/hotels drop the services step.
+  const steps = stepsFor(data.vertical)
+  const activeStep = steps.findIndex(s => pathname.startsWith(s.path))
+  const stepIdx = Math.max(0, activeStep)
 
   // If someone lands on step 2 or 3 directly (e.g. browser back/forward or bookmark)
   // without filling step 1, send them back to the beginning.
@@ -116,12 +129,12 @@ export default function OnboardingLayout() {
   }
 
   function goNext() {
-    const next = STEPS[activeStep + 1]
+    const next = steps[activeStep + 1]
     if (next) navigate(next.path)
   }
 
   function goBack() {
-    const prev = STEPS[activeStep - 1]
+    const prev = steps[activeStep - 1]
     if (prev) navigate(prev.path)
   }
 
@@ -190,11 +203,11 @@ export default function OnboardingLayout() {
                 {t('booking.stepCounter', { n: stepIdx + 1 })}
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                {t(STEPS[stepIdx].labelKey)}
+                {t(steps[stepIdx].labelKey)}
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 0.75 }}>
-              {STEPS.map((_, i) => (
+              {steps.map((_, i) => (
                 <Box
                   key={i}
                   sx={{

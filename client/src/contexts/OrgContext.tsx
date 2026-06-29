@@ -12,6 +12,9 @@ export interface Organisation {
   logo_url: string | null
   subscription_tier: 'free' | 'starter' | 'pro' | 'business'
   booking_theme: string | null
+  // Booking vertical this org operates in. Older orgs / a DB without the
+  // column (migration 044) resolve to 'appointments' via getVerticalConfig().
+  vertical: 'appointments' | 'restaurant' | 'hotel' | null
 }
 
 interface OrgContextValue {

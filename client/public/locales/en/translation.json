@@ -1,4 +1,24 @@
 {
+  "restaurant": {
+    "choose": "What kind of business is this?",
+    "appointments": "Appointments",
+    "appointmentsDesc": "Salons, clinics, trainers — book a service at a time",
+    "restaurant": "Restaurant",
+    "restaurantDesc": "Reserve a table for a party",
+    "hotel": "Hotel",
+    "hotelDesc": "Book a room for a range of nights",
+    "comingSoon": "Coming soon",
+    "tables": "Tables",
+    "newTable": "New table",
+    "editTable": "Edit table",
+    "deleteTable": "Delete table",
+    "deleteTableConfirm": "Delete \"{{name}}\"? This cannot be undone.",
+    "noTables": "No tables yet",
+    "noTablesCaption": "Add your first table so guests can reserve it",
+    "tableName": "Table name",
+    "seats": "Seats",
+    "tableActive": "Bookable"
+  },
   "common": {
     "back": "Back",
     "next": "Next",

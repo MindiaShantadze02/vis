@@ -43,20 +43,34 @@ const NAV_ITEMS = [
   { labelKey: 'dashboard.calendar',     path: '/dashboard/calendar',     icon: <CalendarMonthOutlinedIcon /> },
 ]
 
-const SETTINGS_ITEMS = [
-  { labelKey: 'settings.profile',      path: '/dashboard/settings/profile' },
-  { labelKey: 'settings.services',     path: '/dashboard/settings/services' },
-  { labelKey: 'settings.workingHours', path: '/dashboard/settings/hours' },
-  { labelKey: 'settings.team',         path: '/dashboard/settings/team' },
-  { labelKey: 'settings.payment',      path: '/dashboard/settings/payment' },
-  { labelKey: 'settings.subscription', path: '/dashboard/settings/subscription' },
-]
+import type { SettingsNavId } from '@/lib/verticals'
+import { useVertical } from '@/lib/verticals'
+
+// Settings sections keyed by stable id. Which ones (and their order) appear is
+// decided per vertical via VerticalConfig.settingsNav — so a restaurant sees
+// "Tables" instead of "Services"/"Team", while appointments are unchanged.
+const SETTINGS_ITEMS: Record<SettingsNavId, { labelKey: string; path: string }> = {
+  profile:      { labelKey: 'settings.profile',      path: '/dashboard/settings/profile' },
+  services:     { labelKey: 'settings.services',     path: '/dashboard/settings/services' },
+  tables:       { labelKey: 'restaurant.tables',     path: '/dashboard/settings/tables' },
+  rooms:        { labelKey: 'settings.rooms',        path: '/dashboard/settings/rooms' },
+  hours:        { labelKey: 'settings.workingHours', path: '/dashboard/settings/hours' },
+  team:         { labelKey: 'settings.team',         path: '/dashboard/settings/team' },
+  payment:      { labelKey: 'settings.payment',      path: '/dashboard/settings/payment' },
+  subscription: { labelKey: 'settings.subscription', path: '/dashboard/settings/subscription' },
+}
 
 export default function DashboardLayout() {
   const { t } = useTranslation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { org } = useOrg()
+  const vertical = useVertical()
+  // The settings sections (and their order) shown for this org's vertical.
+  // filter(Boolean) tolerates ids without a built section yet (e.g. hotel 'rooms').
+  const settingsItems = vertical.settingsNav
+    .map(id => SETTINGS_ITEMS[id])
+    .filter(Boolean)
   const { user } = useAuth()
   const { isSuperadmin } = useSuperadmin()
   const navigate = useNavigate()
@@ -183,7 +197,7 @@ export default function DashboardLayout() {
           />
         </ListItemButton>
 
-        {settingsOpen && SETTINGS_ITEMS.map((item, i) => (
+        {settingsOpen && settingsItems.map((item, i) => (
           <ListItemButton
             key={item.path}
             component={NavLink}

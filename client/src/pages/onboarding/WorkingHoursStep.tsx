@@ -160,6 +160,7 @@ export default function WorkingHoursStep() {
           contact_phone: data.contact_phone.trim() ? formatGeorgianPhone(data.contact_phone) : null,
           owner_id: user.id,
           subscription_tier: 'free',
+          vertical: data.vertical,
         })
         .select('id')
         .single()
@@ -174,6 +175,7 @@ export default function WorkingHoursStep() {
             contact_phone: data.contact_phone.trim() ? formatGeorgianPhone(data.contact_phone) : null,
             owner_id: user.id,
             subscription_tier: 'free',
+            vertical: data.vertical,
           })
           .select('id')
           .single()

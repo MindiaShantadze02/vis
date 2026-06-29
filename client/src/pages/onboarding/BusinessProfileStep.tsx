@@ -1,10 +1,19 @@
 import { useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Box, TextField, Button, Typography } from '@mui/material'
+import { Box, TextField, Button, Typography, Stack, Chip } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { slugify } from '@/lib/slug'
 import { isValidGeorgianPhone, FIELD_LIMITS } from '@/lib/validation'
+import type { Vertical } from '@/lib/verticals'
 import type { OnboardingData } from './OnboardingLayout'
+
+// Vertical chooser. Hotel is scaffolded but not yet shippable, so it's shown
+// as "coming soon" and not selectable.
+const VERTICAL_OPTIONS: { key: Vertical; disabled?: boolean }[] = [
+  { key: 'appointments' },
+  { key: 'restaurant' },
+  { key: 'hotel', disabled: true },
+]
 
 interface OutletCtx {
   goNext: () => void
@@ -36,6 +45,42 @@ export default function BusinessProfileStep() {
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
         {t('onboarding.step1Subtitle')}
       </Typography>
+
+      {/* Vertical chooser — set once here, then locked for the org. */}
+      <Typography variant="body2" sx={{ fontWeight: 600, mb: 1.25 }}>
+        {t('restaurant.choose')}
+      </Typography>
+      <Stack spacing={1.25} sx={{ mb: 3 }}>
+        {VERTICAL_OPTIONS.map(opt => {
+          const selected = data.vertical === opt.key
+          return (
+            <Box
+              key={opt.key}
+              data-testid={`vertical-${opt.key}`}
+              onClick={() => { if (!opt.disabled) update({ vertical: opt.key }) }}
+              sx={{
+                p: 1.75, borderRadius: 2,
+                cursor: opt.disabled ? 'default' : 'pointer',
+                border: '2px solid',
+                borderColor: selected ? 'primary.main' : 'divider',
+                bgcolor: selected ? 'secondary.main' : 'background.paper',
+                opacity: opt.disabled ? 0.55 : 1,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                  {t(`restaurant.${opt.key}`)}
+                </Typography>
+                {opt.disabled && <Chip size="small" label={t('restaurant.comingSoon')} />}
+              </Box>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {t(`restaurant.${opt.key}Desc`)}
+              </Typography>
+            </Box>
+          )
+        })}
+      </Stack>
 
       <TextField
         fullWidth

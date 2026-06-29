@@ -20,6 +20,7 @@ import OverviewPage from '@/pages/dashboard/OverviewPage'
 import CalendarPage from '@/pages/dashboard/CalendarPage'
 import ProfileSettings from '@/pages/dashboard/settings/ProfileSettings'
 import ServicesSettings from '@/pages/dashboard/settings/ServicesSettings'
+import TablesSettings from '@/pages/dashboard/settings/TablesSettings'
 import WorkingHoursSettings from '@/pages/dashboard/settings/WorkingHoursSettings'
 import TeamSettings from '@/pages/dashboard/settings/TeamSettings'
 import PaymentSettings from '@/pages/dashboard/settings/PaymentSettings'
@@ -112,6 +113,7 @@ export default function App() {
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="settings/profile" element={<ProfileSettings />} />
           <Route path="settings/services" element={<ServicesSettings />} />
+          <Route path="settings/tables" element={<TablesSettings />} />
           <Route path="settings/hours" element={<WorkingHoursSettings />} />
           <Route path="settings/team" element={<TeamSettings />} />
           <Route path="settings/payment" element={<PaymentSettings />} />
