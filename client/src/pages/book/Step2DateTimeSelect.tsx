@@ -40,6 +40,13 @@ const SCAN_WINDOW_DAYS = 60
 const SCAN_MAX_DAYS = 365
 // Show a "N left" scarcity cue once a multi-capacity slot drops to this few.
 const SCARCITY_THRESHOLD = 2
+// Emoji per part-of-day, prepended to the slot-group headers (matches the
+// booking redesign — sunrise / midday sun / moon for morning/afternoon/evening).
+const PART_OF_DAY_EMOJI: Record<'morning' | 'afternoon' | 'evening', string> = {
+  morning: '🌅',
+  afternoon: '☀️',
+  evening: '🌙',
+}
 
 export default function Step2DateTimeSelect({ orgId, service, initialDate, initialStaffId, onSelect, onBack }: Props) {
   const { t } = useTranslation()
@@ -588,7 +595,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                 {slotGroups.map(group => (
                   <Box key={group.key}>
-                    <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', fontWeight: 600, letterSpacing: 0.5, mb: 0.75 }}>
+                    <Typography variant="overline" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary', fontWeight: 600, letterSpacing: 0.5, mb: 0.75 }}>
+                      <Box component="span" aria-hidden sx={{ fontSize: 14, lineHeight: 1 }}>{PART_OF_DAY_EMOJI[group.key]}</Box>
                       {t(`booking.partOfDay.${group.key}`)}
                     </Typography>
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 1 }}>
