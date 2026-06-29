@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box, Typography, Button, Avatar, IconButton,
 } from '@mui/material'
@@ -48,6 +48,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   const glow = `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`
   const glowSoft = `0 4px 12px ${alpha(theme.palette.primary.main, 0.18)}`
   const today = startOfDay(new Date())
+  // Mobile day strip scrolls horizontally; keep the active day in view.
+  const dayStripRef = useRef<HTMLDivElement>(null)
   // Restore a previously chosen date (yyyy-MM-dd) so it stays selected when
   // returning from the details step.
   const initialSelected = initialDate ? startOfDay(new Date(`${initialDate}T00:00:00`)) : null
@@ -195,6 +197,16 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   }, [selectedDate, dayAppts, override, selectedStaffId, assignedStaff, template])
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
+
+  // Keep the selected day (or today) centred in the mobile scroll strip when the
+  // week changes or we return from a later step. No-op on desktop's static grid.
+  const todayKey = format(today, 'yyyy-MM-dd')
+  useEffect(() => {
+    const strip = dayStripRef.current
+    if (!strip) return
+    const active = strip.querySelector<HTMLElement>(`[data-selected="true"], [data-testid="book-day-${todayKey}"]`)
+    active?.scrollIntoView({ inline: 'center', block: 'nearest' })
+  }, [weekStart, selectedDate, todayKey])
   // Last bookable day (inclusive); null when the org sets no advance limit.
   const maxDate = maxAdvanceDays != null ? addDays(today, maxAdvanceDays) : null
 
@@ -422,11 +434,27 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         </IconButton>
       </Box>
 
-      {/* Day selector */}
+      {/* Day selector — scrollable swipe strip on mobile, 7-col grid on desktop */}
       <Box
+        ref={dayStripRef}
         role="group"
         aria-label={t('booking.chooseDate')}
-        sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.75, mb: 3 }}
+        sx={{
+          display: { xs: 'flex', sm: 'grid' },
+          gridTemplateColumns: { sm: 'repeat(7, 1fr)' },
+          gap: 0.75,
+          mb: 3,
+          // mobile horizontal scroll + snap
+          overflowX: { xs: 'auto', sm: 'visible' },
+          scrollSnapType: { xs: 'x mandatory', sm: 'none' },
+          WebkitOverflowScrolling: 'touch',
+          // small bleed so the scroll edges sit flush with the card padding
+          mx: { xs: -0.5, sm: 0 },
+          px: { xs: 0.5, sm: 0 },
+          // hide scrollbar (visual cue is the peeking next-day cell)
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+        }}
       >
         {days.map((day, i) => {
           const key = format(day, 'yyyy-MM-dd')
@@ -457,12 +485,17 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
               aria-label={ariaLabel}
               data-testid={`book-day-${key}`}
               data-disabled={disabled ? 'true' : 'false'}
+              data-selected={isSelected ? 'true' : 'false'}
               onClick={select}
               onKeyDown={e => {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select() }
               }}
               sx={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
+                // mobile: fixed-width pills that scroll; desktop: flex into the grid
+                flex: { xs: '0 0 56px', sm: '1 1 auto' },
+                minWidth: { xs: 56, sm: 'auto' },
+                scrollSnapAlign: { xs: 'start', sm: 'none' },
                 py: 1.25, borderRadius: 2, cursor: disabled ? 'default' : 'pointer',
                 bgcolor: isSelected ? 'primary.main' : 'background.paper',
                 border: '1px solid',
