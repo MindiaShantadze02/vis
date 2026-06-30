@@ -19,6 +19,9 @@ import { LoadingState, EmptyState } from '@/components/ui'
 import Step1ServiceSelect from './Step1ServiceSelect'
 import Step2DateTimeSelect from './Step2DateTimeSelect'
 import Step3CustomerForm from './Step3CustomerForm'
+import RestaurantBooking from './RestaurantBooking'
+import HotelBooking from './HotelBooking'
+import type { Vertical } from '@/lib/verticals'
 
 export interface BookingOrg {
   id: string
@@ -29,6 +32,7 @@ export interface BookingOrg {
   slug: string
   payment_config: Record<string, { enabled?: boolean }> | null
   booking_theme: string | null
+  vertical: Vertical
 }
 
 // Shape returned by the get_public_org RPC (secrets stripped server-side).
@@ -40,6 +44,7 @@ interface PublicOrg {
   logo_url: string | null
   slug: string
   booking_theme: string | null
+  vertical: Vertical | null
   payment_methods: Record<string, { enabled?: boolean }> | null
 }
 
@@ -162,6 +167,7 @@ export default function BookingLayout() {
         slug: pub.slug,
         booking_theme: pub.booking_theme,
         payment_config: pub.payment_methods,
+        vertical: pub.vertical ?? 'appointments',
       })
     }
     if (slug) loadOrg()
@@ -204,6 +210,30 @@ export default function BookingLayout() {
   }
 
   const bookingTheme = getBookingTheme(org.booking_theme)
+
+  // Restaurants use a different booking model (party size + table availability),
+  // so they get their own self-contained flow. The appointment flow below is
+  // untouched and still serves every appointments-vertical org.
+  if (org.vertical === 'restaurant') {
+    return (
+      <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
+        <Box sx={{ minHeight: '100vh', bgcolor: bookingTheme.pageBg }}>
+          <RestaurantBooking org={org} accent={bookingTheme.deep} />
+        </Box>
+      </ThemeProvider>
+    )
+  }
+
+  if (org.vertical === 'hotel') {
+    return (
+      <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
+        <Box sx={{ minHeight: '100vh', bgcolor: bookingTheme.pageBg }}>
+          <HotelBooking org={org} accent={bookingTheme.deep} />
+        </Box>
+      </ThemeProvider>
+    )
+  }
+
   // Light vs. dark sidebar content (the white theme uses a light panel, so its
   // text/overlays must flip to dark to stay legible).
   const darkSidebar = bookingTheme.sidebarText === 'dark'

@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   bookingConfirmationBody,
   appointmentReminderBody,
@@ -6,14 +7,13 @@ import {
   type SmsMessageType,
 } from '../_shared/sms/index.ts'
 
-// Event-driven SMS sender. Invoked by the `send_appointment_sms` DB trigger
-// (via pg_net) on appointment insert — NOT by end users. It loads everything
-// the message needs from the appointment, builds the body, and delegates to
-// sendSms (which picks the provider and writes the sms_log audit row).
+// Event-driven SMS sender. Invoked by the send_*_sms DB triggers (via pg_net)
+// on appointment / reservation / stay insert — NOT by end users. It loads
+// everything the message needs from the booking, builds the body, and delegates
+// to sendSms (which picks the provider and writes the sms_log audit row).
 //
-// Auth: this function has verify_jwt = false so the trigger can reach it without
-// a user JWT. Instead it checks a shared secret header against SMS_WEBHOOK_SECRET,
-// so a real provider can't be driven (and billed) by anonymous callers.
+// Auth: verify_jwt = false so the trigger can reach it without a user JWT;
+// instead it checks a shared secret header against SMS_WEBHOOK_SECRET.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,14 +22,96 @@ const corsHeaders = {
 
 interface Payload {
   appointment_id?: string
+  reservation_id?: string
+  stay_id?: string
   message_type?: SmsMessageType
 }
 
-// Per-recipient/type cooldown: even though this endpoint is secret-gated and
-// trigger-driven, a replayed or duplicated call would re-bill an SMS to the same
-// customer. Refuse if an identical message_type was already queued/sent to this
-// number within the window.
+// Resolved booking details, normalised across the three verticals so the rest
+// of the handler (cooldown, body, send) is shared.
+interface Resolved {
+  orgId: string
+  appointmentId: string | null
+  to: string | null
+  businessName: string
+  label: string
+  when: string
+  pending: boolean
+}
+
 const RESEND_COOLDOWN_SECONDS = 60
+
+const fmtDateTime = (iso: string) =>
+  new Date(iso).toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'medium', timeStyle: 'short' })
+const fmtDate = (d: string) =>
+  new Date(`${d}T00:00:00`).toLocaleDateString('ka-GE', { dateStyle: 'medium' })
+
+// Supabase types embedded relations as arrays; normalise to a single row.
+function one<T>(v: T | T[] | null): T | null {
+  return Array.isArray(v) ? (v[0] ?? null) : v
+}
+
+async function resolveAppointment(supabase: SupabaseClient, id: string): Promise<Resolved | null> {
+  const { data, error } = await supabase
+    .from('appointments')
+    .select('id, org_id, status, scheduled_at, service:services ( name ), customer:customers ( first_name, phone_number ), org:organisations ( name )')
+    .eq('id', id)
+    .single()
+  if (error || !data) return null
+  const service = one(data.service as { name: string } | { name: string }[] | null)
+  const customer = one(data.customer as { phone_number: string } | { phone_number: string }[] | null)
+  const org = one(data.org as { name: string } | { name: string }[] | null)
+  return {
+    orgId: data.org_id,
+    appointmentId: data.id,
+    to: customer?.phone_number ?? null,
+    businessName: org?.name ?? 'vis',
+    label: service?.name ?? '',
+    when: fmtDateTime(data.scheduled_at),
+    pending: data.status === 'pending',
+  }
+}
+
+async function resolveReservation(supabase: SupabaseClient, id: string): Promise<Resolved | null> {
+  const { data, error } = await supabase
+    .from('restaurant_reservations')
+    .select('id, org_id, status, reserved_at, party_size, customer:customers ( phone_number ), org:organisations ( name )')
+    .eq('id', id)
+    .single()
+  if (error || !data) return null
+  const customer = one(data.customer as { phone_number: string } | { phone_number: string }[] | null)
+  const org = one(data.org as { name: string } | { name: string }[] | null)
+  return {
+    orgId: data.org_id,
+    appointmentId: null,
+    to: customer?.phone_number ?? null,
+    businessName: org?.name ?? 'vis',
+    label: `${data.party_size} სტუმარი`,
+    when: fmtDateTime(data.reserved_at),
+    pending: data.status === 'pending',
+  }
+}
+
+async function resolveStay(supabase: SupabaseClient, id: string): Promise<Resolved | null> {
+  const { data, error } = await supabase
+    .from('hotel_stays')
+    .select('id, org_id, status, check_in, check_out, room:resources ( name ), customer:customers ( phone_number ), org:organisations ( name )')
+    .eq('id', id)
+    .single()
+  if (error || !data) return null
+  const room = one(data.room as { name: string } | { name: string }[] | null)
+  const customer = one(data.customer as { phone_number: string } | { phone_number: string }[] | null)
+  const org = one(data.org as { name: string } | { name: string }[] | null)
+  return {
+    orgId: data.org_id,
+    appointmentId: null,
+    to: customer?.phone_number ?? null,
+    businessName: org?.name ?? 'vis',
+    label: room?.name ?? '',
+    when: `${fmtDate(data.check_in)} – ${fmtDate(data.check_out)}`,
+    pending: data.status === 'pending',
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -40,41 +122,37 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'unauthorized' }, { status: 401, headers: corsHeaders })
     }
 
-    const { appointment_id, message_type = 'booking_confirmation' } =
+    const { appointment_id, reservation_id, stay_id, message_type = 'booking_confirmation' } =
       (await req.json().catch(() => ({}))) as Payload
-    if (!appointment_id) {
-      return Response.json({ error: 'missing appointment_id' }, { status: 400, headers: corsHeaders })
-    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // Pull the appointment plus the related rows needed to compose the message.
-    const { data: appt, error } = await supabase
-      .from('appointments')
-      .select(`
-        id, org_id, status, scheduled_at,
-        service:services ( name ),
-        customer:customers ( first_name, phone_number ),
-        org:organisations ( name )
-      `)
-      .eq('id', appointment_id)
-      .single()
-
-    if (error || !appt) {
-      return Response.json({ error: 'appointment not found' }, { status: 404, headers: corsHeaders })
+    // Resolve whichever booking kind was referenced.
+    let resolved: Resolved | null = null
+    if (appointment_id) resolved = await resolveAppointment(supabase, appointment_id)
+    else if (reservation_id) resolved = await resolveReservation(supabase, reservation_id)
+    else if (stay_id) resolved = await resolveStay(supabase, stay_id)
+    else {
+      return Response.json({ error: 'missing booking id' }, { status: 400, headers: corsHeaders })
     }
 
-    // Supabase types embedded relations as arrays; normalise to single rows.
-    const service = Array.isArray(appt.service) ? appt.service[0] : appt.service
-    const customer = Array.isArray(appt.customer) ? appt.customer[0] : appt.customer
-    const org = Array.isArray(appt.org) ? appt.org[0] : appt.org
+    if (!resolved) {
+      return Response.json({ error: 'booking not found' }, { status: 404, headers: corsHeaders })
+    }
 
-    const to = customer?.phone_number
+    const to = resolved.to
     if (!to) {
       return Response.json({ error: 'customer has no phone' }, { status: 422, headers: corsHeaders })
+    }
+
+    // appointment_reminder only applies to appointments; everything else uses
+    // the shared booking-confirmation body (approval_update reuses it too).
+    const SUPPORTED: SmsMessageType[] = ['booking_confirmation', 'approval_update', 'appointment_reminder']
+    if (!SUPPORTED.includes(message_type)) {
+      return Response.json({ error: `unsupported message_type: ${message_type}` }, { status: 400, headers: corsHeaders })
     }
 
     // Drop duplicate/replayed sends of the same message to the same recipient.
@@ -90,35 +168,19 @@ Deno.serve(async (req) => {
       return Response.json({ status: 'skipped', reason: 'cooldown' }, { headers: corsHeaders })
     }
 
-    // Supported types render here. booking_confirmation/approval_update share
-    // the booking-details body (approval_update is sent once a guest booking
-    // reaches 'approved'); appointment_reminder is the ~24h-before nudge dispatched
-    // by the dispatch_appointment_reminders cron. Other types (admin_*, invitation)
-    // can branch here as their flows are built.
-    const SUPPORTED: SmsMessageType[] = ['booking_confirmation', 'approval_update', 'appointment_reminder']
-    if (!SUPPORTED.includes(message_type)) {
-      return Response.json({ error: `unsupported message_type: ${message_type}` }, { status: 400, headers: corsHeaders })
-    }
-
-    const when = new Date(appt.scheduled_at).toLocaleString('ka-GE', {
-      timeZone: 'Asia/Tbilisi',
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    })
-
     const details = {
-      businessName: org?.name ?? 'vis',
-      serviceName: service?.name ?? '',
-      when,
-      pending: appt.status === 'pending',
+      businessName: resolved.businessName,
+      serviceName: resolved.label,
+      when: resolved.when,
+      pending: resolved.pending,
     }
     const body = message_type === 'appointment_reminder'
       ? appointmentReminderBody(details)
       : bookingConfirmationBody(details)
 
     const result = await sendSms(supabase, {
-      orgId: appt.org_id,
-      appointmentId: appt.id,
+      orgId: resolved.orgId,
+      appointmentId: resolved.appointmentId,
       messageType: message_type,
       to,
       body,

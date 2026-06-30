@@ -51,4 +51,6 @@ export interface VerticalConfig {
   features: VerticalFeatures
   /** Dashboard settings sections shown for this vertical, in display order. */
   settingsNav: SettingsNavId[]
+  /** Whether the (appointment) week-calendar nav item is shown. */
+  showCalendar: boolean
 }

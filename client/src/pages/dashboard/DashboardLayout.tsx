@@ -53,7 +53,7 @@ const SETTINGS_ITEMS: Record<SettingsNavId, { labelKey: string; path: string }> 
   profile:      { labelKey: 'settings.profile',      path: '/dashboard/settings/profile' },
   services:     { labelKey: 'settings.services',     path: '/dashboard/settings/services' },
   tables:       { labelKey: 'restaurant.tables',     path: '/dashboard/settings/tables' },
-  rooms:        { labelKey: 'settings.rooms',        path: '/dashboard/settings/rooms' },
+  rooms:        { labelKey: 'hotel.rooms',           path: '/dashboard/settings/rooms' },
   hours:        { labelKey: 'settings.workingHours', path: '/dashboard/settings/hours' },
   team:         { labelKey: 'settings.team',         path: '/dashboard/settings/team' },
   payment:      { labelKey: 'settings.payment',      path: '/dashboard/settings/payment' },
@@ -71,6 +71,10 @@ export default function DashboardLayout() {
   const settingsItems = vertical.settingsNav
     .map(id => SETTINGS_ITEMS[id])
     .filter(Boolean)
+  // The week-calendar is appointment-specific; hide it for verticals that don't use it.
+  const mainNav = NAV_ITEMS.filter(item =>
+    item.path === '/dashboard/calendar' ? vertical.showCalendar : true,
+  )
   const { user } = useAuth()
   const { isSuperadmin } = useSuperadmin()
   const navigate = useNavigate()
@@ -137,7 +141,7 @@ export default function DashboardLayout() {
       {/* Main nav. Without an org only the overview (empty state) is reachable;
           Calendar and Settings need an organisation. */}
       <List sx={{ px: 1, pt: 1, flex: 1 }}>
-        {(org ? NAV_ITEMS : NAV_ITEMS.filter(item => item.path === '/dashboard')).map((item, i) => (
+        {(org ? mainNav : mainNav.filter(item => item.path === '/dashboard')).map((item, i) => (
           <ListItemButton
             key={item.path}
             component={NavLink}

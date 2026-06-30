@@ -7,12 +7,11 @@ import { isValidGeorgianPhone, FIELD_LIMITS } from '@/lib/validation'
 import type { Vertical } from '@/lib/verticals'
 import type { OnboardingData } from './OnboardingLayout'
 
-// Vertical chooser. Hotel is scaffolded but not yet shippable, so it's shown
-// as "coming soon" and not selectable.
+// Vertical chooser — all three are now shippable.
 const VERTICAL_OPTIONS: { key: Vertical; disabled?: boolean }[] = [
   { key: 'appointments' },
   { key: 'restaurant' },
-  { key: 'hotel', disabled: true },
+  { key: 'hotel' },
 ]
 
 interface OutletCtx {

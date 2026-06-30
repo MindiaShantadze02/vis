@@ -23,6 +23,7 @@ export const VERTICAL_CONFIGS: Record<Vertical, VerticalConfig> = {
       hasDeposits: false,
     },
     settingsNav: ['profile', 'services', 'hours', 'team', 'payment', 'subscription'],
+    showCalendar: true,
   },
   restaurant: {
     key: 'restaurant',
@@ -35,6 +36,7 @@ export const VERTICAL_CONFIGS: Record<Vertical, VerticalConfig> = {
       hasDeposits: true,
     },
     settingsNav: ['profile', 'tables', 'hours', 'payment', 'subscription'],
+    showCalendar: false,
   },
   hotel: {
     key: 'hotel',
@@ -47,6 +49,7 @@ export const VERTICAL_CONFIGS: Record<Vertical, VerticalConfig> = {
       hasDeposits: true,
     },
     settingsNav: ['profile', 'rooms', 'hours', 'payment', 'subscription'],
+    showCalendar: false,
   },
 }
 

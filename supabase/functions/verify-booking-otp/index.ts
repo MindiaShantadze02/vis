@@ -13,6 +13,25 @@ const corsHeaders = {
 
 const MAX_ATTEMPTS = 5
 
+// Local-dev-only test code that bypasses the hash check so booking OTP can be
+// exercised without a real SMS provider (the mock provider only logs the code).
+// It is gated on BOTH an explicit opt-in flag AND a local Supabase URL, so it
+// can never be active in production — prod's SUPABASE_URL is the hosted
+// *.supabase.co domain. See the 2026-06-24 security review: the previous
+// prod-secret master-code backdoor was removed and must not be reintroduced.
+const TEST_OTP_CODE = '000000'
+const LOCAL_HOSTS = ['localhost', '127.0.0.1', 'kong', 'host.docker.internal']
+
+function testOtpBypassAllowed(): boolean {
+  if (Deno.env.get('ALLOW_TEST_OTP') !== 'true') return false
+  try {
+    const host = new URL(Deno.env.get('SUPABASE_URL') ?? '').hostname
+    return LOCAL_HOSTS.includes(host)
+  } catch {
+    return false
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -62,7 +81,8 @@ Deno.serve(async (req) => {
       return Response.json({ verified: false, error: 'expired' }, { headers: corsHeaders })
     }
 
-    const matches = row.code_hash === (await hashCode(String(code), local, secret))
+    const matches = (testOtpBypassAllowed() && String(code) === TEST_OTP_CODE) ||
+      row.code_hash === (await hashCode(String(code), local, secret))
 
     if (!matches) {
       const attempts = row.attempts + 1
