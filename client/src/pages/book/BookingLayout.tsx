@@ -33,6 +33,7 @@ export interface BookingOrg {
   payment_config: Record<string, { enabled?: boolean }> | null
   booking_theme: string | null
   vertical: Vertical
+  reservation_turn_minutes: number
 }
 
 // Shape returned by the get_public_org RPC (secrets stripped server-side).
@@ -45,6 +46,7 @@ interface PublicOrg {
   slug: string
   booking_theme: string | null
   vertical: Vertical | null
+  reservation_turn_minutes: number | null
   payment_methods: Record<string, { enabled?: boolean }> | null
 }
 
@@ -168,6 +170,7 @@ export default function BookingLayout() {
         booking_theme: pub.booking_theme,
         payment_config: pub.payment_methods,
         vertical: pub.vertical ?? 'appointments',
+        reservation_turn_minutes: pub.reservation_turn_minutes ?? 120,
       })
     }
     if (slug) loadOrg()

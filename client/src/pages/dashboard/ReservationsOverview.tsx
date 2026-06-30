@@ -8,12 +8,14 @@ import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined'
 import EventSeatOutlinedIcon from '@mui/icons-material/EventSeatOutlined'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
+import AddIcon from '@mui/icons-material/Add'
 import { format, startOfDay, endOfDay } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, StatCard, EmptyState, CopyableText, useToast } from '@/components/ui'
+import AddReservationDialog from './AddReservationDialog'
 import type { DashboardOutletContext } from './DashboardLayout'
 
 type ReservationStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed' | 'no_show'
@@ -50,6 +52,7 @@ export default function ReservationsOverview() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Reservation | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!org) return
@@ -96,7 +99,18 @@ export default function ReservationsOverview() {
 
   return (
     <Box>
-      <PageHeader title={t('restaurant.reservations')} />
+      <PageHeader
+        title={t('restaurant.reservations')}
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddOpen(true)} data-testid="resv-add-btn">
+            {t('restaurant.addReservation')}
+          </Button>
+        }
+      />
+
+      {addOpen && org && (
+        <AddReservationDialog orgId={org.id} onClose={() => setAddOpen(false)} onCreated={load} />
+      )}
 
       {org.slug && (
         <Box sx={{ mb: 4, maxWidth: 480 }}>

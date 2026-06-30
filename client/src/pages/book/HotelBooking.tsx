@@ -30,6 +30,10 @@ const dateKey = (d: Date) => format(d, 'yyyy-MM-dd')
 
 export default function HotelBooking({ org, accent }: Props) {
   const { t } = useTranslation()
+  // When the hotel has online payment enabled, the full stay is prepaid; the
+  // stay row is created by payment-webhook after the charge clears. Otherwise
+  // it's pay-at-desk: insert a pending stay directly.
+  const onlineEnabled = !!(org.payment_config?.bog?.enabled || org.payment_config?.tbc?.enabled)
 
   const [step, setStep] = useState(0)
   const [checkIn, setCheckIn] = useState<Date | null>(null)
@@ -148,6 +152,33 @@ export default function HotelBooking({ org, accent }: Props) {
     if (!room || !checkIn || !checkOut) return
     setLoading(true); setError(null)
     try {
+      // Online: hand off to the payment flow. The server recomputes the amount,
+      // re-checks availability, parks the intent and (via the webhook) creates the
+      // stay only once paid — so nothing is inserted here.
+      if (onlineEnabled) {
+        const { data: pay, error: payErr } = await supabase.functions.invoke('create-payment', {
+          body: {
+            purpose: 'stay',
+            org_id: org.id,
+            room_type_id: room.id,
+            check_in: dateKey(checkIn),
+            check_out: dateKey(checkOut),
+            guests,
+            first_name: firstName.trim(),
+            last_name: lastName.trim() || null,
+            phone,
+            notes: notes.trim() || null,
+            slug: org.slug,
+            returnBaseUrl: window.location.origin,
+          },
+        })
+        if (payErr || !pay?.checkoutUrl) {
+          setError(t('booking.paymentStartFailed')); setLoading(false); return
+        }
+        window.location.assign(pay.checkoutUrl)
+        return
+      }
+
       // Re-check the room type still has a free room across the range.
       const { data: fresh } = await supabase
         .from('hotel_stays')
@@ -355,7 +386,7 @@ export default function HotelBooking({ org, accent }: Props) {
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.notes } }}
             />
             <Button fullWidth variant="contained" size="large" onClick={sendCode} disabled={loading || !canBook} data-testid="stay-submit">
-              {loading ? <CircularProgress size={22} color="inherit" /> : t('hotel.book')}
+              {loading ? <CircularProgress size={22} color="inherit" /> : t(onlineEnabled ? 'booking.proceedToPayment' : 'hotel.book')}
             </Button>
           </Stack>
         </Box>

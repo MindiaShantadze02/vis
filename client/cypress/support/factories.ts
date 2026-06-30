@@ -19,6 +19,7 @@ export function makeOrg(overrides: Record<string, unknown> = {}) {
     subscription_tier: 'pro',
     booking_theme: null,
     vertical: 'appointments',
+    reservation_turn_minutes: 120,
     payment_config: { inPerson: { enabled: true } },
     ...overrides,
   }

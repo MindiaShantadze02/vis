@@ -19,9 +19,7 @@ import type { WeekTemplate, SlotOverride } from '@/lib/slots'
 import type { ReservationRow, RestaurantTable } from '@/lib/restaurantSlots'
 import type { BookingOrg } from './BookingLayout'
 
-// Booking-wide defaults. Turn time / granularity are fixed for the MVP; per-org
-// configuration (and party-size-dependent turns) is a later refinement.
-const TURN_MINUTES = 120
+// Slot granularity is fixed; turn time is per-org (org.reservation_turn_minutes).
 const SLOT_MINUTES = 30
 const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 7, 8]
 const ADVANCE_DAYS = 14
@@ -36,6 +34,7 @@ const localDateKey = (d: Date) => format(d, 'yyyy-MM-dd')
 
 export default function RestaurantBooking({ org, accent }: Props) {
   const { t } = useTranslation()
+  const turnMinutes = org.reservation_turn_minutes ?? 120
 
   const [step, setStep] = useState(0)
   const [partySize, setPartySize] = useState<number | null>(null)
@@ -106,9 +105,9 @@ export default function RestaurantBooking({ org, accent }: Props) {
       date: new Date(`${date}T00:00:00`),
       template, override, tables,
       existing: reservations,
-      partySize, turnMinutes: TURN_MINUTES, slotMinutes: SLOT_MINUTES,
+      partySize, turnMinutes, slotMinutes: SLOT_MINUTES,
     })
-  }, [date, partySize, template, override, tables, reservations])
+  }, [date, partySize, template, override, tables, reservations, turnMinutes])
 
   // Resend cooldown.
   useEffect(() => {
@@ -161,7 +160,7 @@ export default function RestaurantBooking({ org, accent }: Props) {
     setLoading(true); setError(null)
     try {
       const reservedAt = new Date(`${date}T${time}:00`)
-      const slotEnd = new Date(reservedAt.getTime() + TURN_MINUTES * 60000)
+      const slotEnd = new Date(reservedAt.getTime() + turnMinutes * 60000)
 
       // Re-check the chosen table is still free (another guest may have taken it).
       const dayStart = `${date}T00:00:00.000Z`
@@ -197,7 +196,7 @@ export default function RestaurantBooking({ org, accent }: Props) {
         table_id: tableId,
         party_size: partySize,
         reserved_at: reservedAt.toISOString(),
-        turn_minutes: TURN_MINUTES,
+        turn_minutes: turnMinutes,
         status: 'pending',
         notes: notes.trim() || null,
       })

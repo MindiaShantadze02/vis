@@ -15,6 +15,9 @@ export interface Organisation {
   // Booking vertical this org operates in. Older orgs / a DB without the
   // column (migration 044) resolve to 'appointments' via getVerticalConfig().
   vertical: 'appointments' | 'restaurant' | 'hotel' | null
+  // Restaurant table turn time, minutes (migration 052). Null-safe: callers
+  // fall back to 120.
+  reservation_turn_minutes: number | null
 }
 
 interface OrgContextValue {

@@ -38,12 +38,28 @@ const onlyInt = (v: string) => v.replace(/[^0-9]/g, '')
 
 export default function TablesSettings() {
   const { t } = useTranslation()
-  const { org } = useOrg()
+  const { org, refresh } = useOrg()
   const toast = useToast()
 
   const [tables, setTables] = useState<RestaurantTable[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Per-org table turn time (migration 052).
+  const [turn, setTurn] = useState('120')
+  const [savingTurn, setSavingTurn] = useState(false)
+  useEffect(() => {
+    if (org) setTurn(String(org.reservation_turn_minutes ?? 120))
+  }, [org])
+
+  async function saveTurn() {
+    if (!org || !(Number(turn) > 0)) return
+    setSavingTurn(true)
+    await supabase.from('organisations').update({ reservation_turn_minutes: Number(turn) }).eq('id', org.id)
+    setSavingTurn(false)
+    await refresh()
+    toast.success(t('common.saved'))
+  }
 
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<RestaurantTable | null>(null)
@@ -147,6 +163,29 @@ export default function TablesSettings() {
       />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      <Card sx={{ mb: 2, p: 2 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>{t('restaurant.turnTime')}</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <TextField
+            value={turn}
+            onChange={e => setTurn(e.target.value.replace(/[^0-9]/g, ''))}
+            size="small"
+            error={!(Number(turn) > 0)}
+            helperText={t('restaurant.turnTimeHelp')}
+            slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'turn-minutes' } }}
+            sx={{ width: 160 }}
+          />
+          <Button
+            variant="outlined"
+            onClick={saveTurn}
+            disabled={savingTurn || !(Number(turn) > 0) || String(org?.reservation_turn_minutes ?? 120) === turn}
+            data-testid="turn-save"
+          >
+            {savingTurn ? <CircularProgress size={18} color="inherit" /> : t('common.save')}
+          </Button>
+        </Box>
+      </Card>
 
       <Card>
         {loading

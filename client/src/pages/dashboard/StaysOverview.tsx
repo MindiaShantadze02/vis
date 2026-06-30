@@ -7,12 +7,14 @@ import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined'
 import HotelOutlinedIcon from '@mui/icons-material/HotelOutlined'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
+import AddIcon from '@mui/icons-material/Add'
 import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, StatCard, EmptyState, CopyableText, useToast } from '@/components/ui'
+import AddStayDialog from './AddStayDialog'
 import type { DashboardOutletContext } from './DashboardLayout'
 import { useOutletContext } from 'react-router-dom'
 
@@ -60,6 +62,7 @@ export default function StaysOverview() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Stay | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!org) return
@@ -101,7 +104,18 @@ export default function StaysOverview() {
 
   return (
     <Box>
-      <PageHeader title={t('hotel.stays')} />
+      <PageHeader
+        title={t('hotel.stays')}
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddOpen(true)} data-testid="stay-add-btn">
+            {t('hotel.addStay')}
+          </Button>
+        }
+      />
+
+      {addOpen && org && (
+        <AddStayDialog orgId={org.id} onClose={() => setAddOpen(false)} onCreated={load} />
+      )}
 
       {org.slug && (
         <Box sx={{ mb: 4, maxWidth: 480 }}>

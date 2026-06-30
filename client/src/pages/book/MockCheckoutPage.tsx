@@ -27,7 +27,7 @@ export default function MockCheckoutPage() {
   const label = params.get('label') ?? ''
   const slug = params.get('slug') ?? ''
 
-  const valid = ref && (purpose === 'appointment' || purpose === 'subscription') && id
+  const valid = ref && (purpose === 'appointment' || purpose === 'subscription' || purpose === 'stay') && id
 
   async function settle(outcome: 'paid' | 'failed') {
     setLoading(true)

@@ -35,7 +35,13 @@
     "statusLabel": "Status",
     "markNoShow": "No-show",
     "markCompleted": "Completed",
-    "statusNoShow": "No-show"
+    "statusNoShow": "No-show",
+    "addReservation": "Add reservation",
+    "newReservation": "New reservation",
+    "time": "Time",
+    "selectTable": "Table (optional)",
+    "turnTime": "Table turn time",
+    "turnTimeHelp": "Minutes a reservation holds a table"
   },
   "hotel": {
     "rooms": "Rooms",
@@ -74,7 +80,9 @@
     "statusCheckedIn": "Checked in",
     "statusCheckedOut": "Checked out",
     "checkInAction": "Check in",
-    "checkOutAction": "Check out"
+    "checkOutAction": "Check out",
+    "addStay": "Add stay",
+    "newStay": "New stay"
   },
   "common": {
     "back": "Back",
@@ -235,6 +243,7 @@
     "successTitle": "Payment successful",
     "failTitle": "Payment failed",
     "successAppointment": "Your booking is confirmed.",
+    "successStay": "Your stay is booked and paid.",
     "successSubscription": "Your plan has been upgraded.",
     "failMessage": "No charge was made. You can try again.",
     "viewBooking": "View booking",

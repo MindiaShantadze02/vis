@@ -35,7 +35,13 @@
     "statusLabel": "Статус",
     "markNoShow": "Не пришёл",
     "markCompleted": "Завершено",
-    "statusNoShow": "Не пришёл"
+    "statusNoShow": "Не пришёл",
+    "addReservation": "Добавить бронь",
+    "newReservation": "Новая бронь",
+    "time": "Время",
+    "selectTable": "Столик (необязательно)",
+    "turnTime": "Время оборота столика",
+    "turnTimeHelp": "Сколько минут бронь удерживает столик"
   },
   "hotel": {
     "rooms": "Номера",
@@ -74,7 +80,9 @@
     "statusCheckedIn": "Заселён",
     "statusCheckedOut": "Выехал",
     "checkInAction": "Заселить",
-    "checkOutAction": "Выселить"
+    "checkOutAction": "Выселить",
+    "addStay": "Добавить бронь",
+    "newStay": "Новая бронь"
   },
   "common": {
     "back": "Назад",
@@ -235,6 +243,7 @@
     "successTitle": "Оплата прошла успешно",
     "failTitle": "Оплата не удалась",
     "successAppointment": "Ваша запись подтверждена.",
+    "successStay": "Ваше бронирование оплачено и подтверждено.",
     "successSubscription": "Ваш тариф обновлён.",
     "failMessage": "Средства не списаны. Можно попробовать снова.",
     "viewBooking": "Посмотреть запись",

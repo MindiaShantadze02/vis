@@ -22,6 +22,7 @@ export default function PaymentReturnPage() {
   const slug = params.get('slug') ?? ''
   const paid = outcome === 'paid'
   const isSubscription = purpose === 'subscription'
+  const isStay = purpose === 'stay'
 
   // A successful subscription payment changed the org's tier — refresh context
   // so the dashboard reflects it immediately.
@@ -32,14 +33,16 @@ export default function PaymentReturnPage() {
 
   const title = paid ? t('payment.successTitle') : t('payment.failTitle')
   const message = paid
-    ? (isSubscription ? t('payment.successSubscription') : t('payment.successAppointment'))
+    ? (isSubscription ? t('payment.successSubscription')
+       : isStay ? t('payment.successStay')
+       : t('payment.successAppointment'))
     : t('payment.failMessage')
 
   function onPrimary() {
     if (isSubscription) {
       navigate('/dashboard/settings/subscription', { replace: true })
-    } else if (paid && id) {
-      // Successful booking — show its confirmation.
+    } else if (paid && id && !isStay) {
+      // Successful appointment — show its confirmation page (stays don't have one).
       navigate(`/booking-confirmation/${id}`, { replace: true })
     } else if (slug) {
       // Failed/abandoned online payment created no booking — back to booking.
@@ -73,7 +76,7 @@ export default function PaymentReturnPage() {
             <Button fullWidth variant="contained" onClick={onPrimary} data-testid="payment-return-primary">
               {isSubscription
                 ? t('payment.backToSubscription')
-                : paid ? t('payment.viewBooking') : t('payment.backToBooking')}
+                : paid && !isStay ? t('payment.viewBooking') : t('payment.backToBooking')}
             </Button>
           </Stack>
         </CardContent>

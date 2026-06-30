@@ -35,7 +35,13 @@
     "statusLabel": "სტატუსი",
     "markNoShow": "არ მოვიდა",
     "markCompleted": "დასრულდა",
-    "statusNoShow": "არ მოვიდა"
+    "statusNoShow": "არ მოვიდა",
+    "addReservation": "ჯავშნის დამატება",
+    "newReservation": "ახალი ჯავშანი",
+    "time": "დრო",
+    "selectTable": "მაგიდა (არასავალდებულო)",
+    "turnTime": "მაგიდის დაკავების დრო",
+    "turnTimeHelp": "რამდენ წუთს იკავებს ჯავშანი მაგიდას"
   },
   "hotel": {
     "rooms": "ოთახები",
@@ -74,7 +80,9 @@
     "statusCheckedIn": "შემოსული",
     "statusCheckedOut": "გასული",
     "checkInAction": "ჩექ-ინი",
-    "checkOutAction": "ჩექ-აუტი"
+    "checkOutAction": "ჩექ-აუტი",
+    "addStay": "ჯავშნის დამატება",
+    "newStay": "ახალი ჯავშანი"
   },
   "common": {
     "back": "უკან",
@@ -238,6 +246,7 @@
     "successTitle": "გადახდა წარმატებულია",
     "failTitle": "გადახდა ვერ შესრულდა",
     "successAppointment": "თქვენი ჯავშანი დადასტურდა.",
+    "successStay": "თქვენი ჯავშანი დაჯავშნილია და გადახდილია.",
     "successSubscription": "თქვენი გეგმა განახლდა.",
     "failMessage": "თანხა არ ჩამოჭრილა. შეგიძლიათ თავიდან სცადოთ.",
     "viewBooking": "ჯავშნის ნახვა",
