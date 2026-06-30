@@ -142,6 +142,137 @@ Deno.serve(async (req) => {
     }
 
     // -------------------------------------------------------------------
+    // Stay: guest pays the FULL hotel stay up front. Parked in pending_stays;
+    // the hotel_stays row is created by payment-webhook once the charge clears
+    // (mirrors the appointment flow). Amount + availability are server-side.
+    // -------------------------------------------------------------------
+    if (purpose === 'stay') {
+      const { org_id, room_type_id, check_in, check_out, guests, first_name, last_name, notes, slug } = body
+      const phone = body.phone
+      if (!org_id || !room_type_id || !check_in || !check_out || !guests || !first_name || !phone) {
+        return Response.json({ error: 'missing_fields' }, { status: 400, headers: corsHeaders })
+      }
+
+      const phoneDigits = String(phone).replace(/\D/g, '')
+      const phoneLocal = phoneDigits.startsWith('995') ? phoneDigits.slice(3) : phoneDigits
+      if (!/^[345]\d{8}$/.test(phoneLocal)) {
+        return Response.json({ error: 'invalid_phone' }, { status: 400, headers: corsHeaders })
+      }
+
+      const ci = new Date(`${check_in}T00:00:00Z`)
+      const co = new Date(`${check_out}T00:00:00Z`)
+      const nights = Math.round((co.getTime() - ci.getTime()) / 86_400_000)
+      if (!(nights > 0)) {
+        return Response.json({ error: 'invalid_dates' }, { status: 400, headers: corsHeaders })
+      }
+
+      const { data: canAccept } = await admin.rpc('org_can_accept_appointment', { p_org_id: org_id })
+      if (canAccept === null) return Response.json({ error: 'org_not_found' }, { status: 404, headers: corsHeaders })
+      if (canAccept === false) return Response.json({ error: 'limit_reached' }, { status: 422, headers: corsHeaders })
+
+      // Room type: server-side price, capacity and inventory (never trust client).
+      const { data: room } = await admin
+        .from('resources')
+        .select('name, capacity, attrs')
+        .eq('id', room_type_id)
+        .eq('org_id', org_id)
+        .eq('kind', 'room_type')
+        .eq('is_active', true)
+        .maybeSingle()
+      if (!room) return Response.json({ error: 'room_not_found' }, { status: 404, headers: corsHeaders })
+      const attrs = (room.attrs ?? {}) as { nightly_price?: number; total_rooms?: number }
+      const nightlyRate = Number(attrs.nightly_price ?? 0)
+      const totalRooms = Number(attrs.total_rooms ?? 0)
+      const amount = nights * nightlyRate
+      if (!(amount > 0)) return Response.json({ error: 'invalid_amount' }, { status: 422, headers: corsHeaders })
+      if (Number(guests) > Number(room.capacity)) {
+        return Response.json({ error: 'too_many_guests' }, { status: 422, headers: corsHeaders })
+      }
+
+      // Strict availability re-check: no overbooking on ANY night of the range.
+      // Count both confirmed stays and other parked (pending) intents so two
+      // simultaneous checkouts can't oversell the last room.
+      const { data: stays } = await admin
+        .from('hotel_stays')
+        .select('check_in, check_out')
+        .eq('org_id', org_id).eq('room_type_id', room_type_id)
+        .lt('check_in', check_out).gt('check_out', check_in)
+        .not('status', 'in', '(rejected,cancelled,no_show)')
+      const { data: parked } = await admin
+        .from('pending_stays')
+        .select('check_in, check_out')
+        .eq('org_id', org_id).eq('room_type_id', room_type_id)
+        .eq('status', 'pending')
+        .lt('check_in', check_out).gt('check_out', check_in)
+      const occupants = [...(stays ?? []), ...(parked ?? [])]
+      for (let i = 0; i < nights; i++) {
+        const night = ci.getTime() + i * 86_400_000
+        let occ = 0
+        for (const s of occupants) {
+          const sIn = new Date(`${s.check_in}T00:00:00Z`).getTime()
+          const sOut = new Date(`${s.check_out}T00:00:00Z`).getTime()
+          if (sIn <= night && night < sOut) occ++
+        }
+        if (occ >= totalRooms) {
+          return Response.json({ error: 'no_availability' }, { status: 422, headers: corsHeaders })
+        }
+      }
+
+      // Require a verified, unconsumed, unexpired OTP for this phone.
+      const { data: otp } = await admin
+        .from('booking_verifications')
+        .select('id')
+        .eq('phone', phoneLocal)
+        .not('verified_at', 'is', null)
+        .is('consumed_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (!otp) return Response.json({ error: 'verification_required' }, { status: 422, headers: corsHeaders })
+
+      const { data: intent, error: intentErr } = await admin
+        .from('pending_stays')
+        .insert({
+          org_id,
+          room_type_id,
+          check_in,
+          check_out,
+          guests: Number(guests),
+          nightly_rate: nightlyRate,
+          first_name: String(first_name).trim(),
+          last_name: last_name ? String(last_name).trim() : null,
+          phone: phoneLocal,
+          notes: notes ? String(notes).trim() : null,
+          amount,
+          currency: 'GEL',
+        })
+        .select('id')
+        .single()
+      if (intentErr || !intent) {
+        return Response.json({ error: intentErr?.message ?? 'insert_failed' }, { status: 500, headers: corsHeaders })
+      }
+
+      const checkout = await startCheckout(admin, {
+        orgId: org_id,
+        purpose: 'stay',
+        amount,
+        currency: 'GEL',
+        description: room.name ?? 'Stay',
+        referenceId: intent.id,
+        returnBaseUrl,
+        slug,
+      })
+
+      await admin
+        .from('pending_stays')
+        .update({ payment_provider: checkout.provider, payment_reference: checkout.providerReference })
+        .eq('id', intent.id)
+
+      return Response.json({ checkoutUrl: checkout.checkoutUrl }, { headers: corsHeaders })
+    }
+
+    // -------------------------------------------------------------------
     // Subscription: business upgrades its vis tier (authenticated).
     // -------------------------------------------------------------------
     if (purpose === 'subscription') {

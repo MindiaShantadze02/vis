@@ -144,6 +144,79 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, outcome: 'paid', appointment_id: apptId }, { headers: corsHeaders })
     }
 
+    if (purpose === 'stay') {
+      // Parked in pending_stays; the hotel_stays row only exists after a
+      // successful charge. Mirrors the appointment branch above.
+      const { data: ps } = await admin
+        .from('pending_stays')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle()
+      if (!ps || ps.payment_reference !== ref) {
+        return Response.json({ error: 'not_found' }, { status: 404, headers: corsHeaders })
+      }
+      if (ps.status !== 'pending') {
+        return Response.json(
+          { ok: true, outcome: ps.status === 'consumed' ? 'paid' : 'failed' },
+          { headers: corsHeaders },
+        )
+      }
+
+      if (outcome !== 'paid') {
+        await admin.from('pending_stays').update({ status: 'failed' }).eq('id', id)
+        await finalizePaymentLog(admin, ref, 'failed')
+        return Response.json({ ok: true, outcome: 'failed' }, { headers: corsHeaders })
+      }
+
+      // Paid → create the customer + stay. The hotel_stays insert consumes the
+      // verified OTP (trg_enforce_stay_verification) and fires the approval SMS
+      // + admin bell notification.
+      const { data: customer, error: custErr } = await admin
+        .from('customers')
+        .insert({ first_name: ps.first_name, last_name: ps.last_name, phone_number: ps.phone })
+        .select('id')
+        .single()
+
+      let stayId: string | null = null
+      let fulfilErr = custErr?.message ?? null
+      if (customer) {
+        const { data: stay, error: stayErr } = await admin
+          .from('hotel_stays')
+          .insert({
+            org_id: ps.org_id,
+            customer_id: customer.id,
+            room_type_id: ps.room_type_id,
+            check_in: ps.check_in,
+            check_out: ps.check_out,
+            guests: ps.guests,
+            nightly_rate: ps.nightly_rate,
+            total_amount: ps.amount,
+            status: 'approved',
+            payment_method: 'online',
+            payment_status: 'paid',
+            payment_provider: ps.payment_provider,
+            payment_reference: ps.payment_reference,
+            notes: ps.notes,
+          })
+          .select('id')
+          .single()
+        stayId = stay?.id ?? null
+        fulfilErr = stayErr?.message ?? fulfilErr
+      }
+
+      if (!stayId) {
+        // Charge cleared but the stay couldn't be created (e.g. sold out or the
+        // limit hit during checkout). Flag for follow-up/refund.
+        await admin.from('pending_stays').update({ status: 'failed' }).eq('id', id)
+        await finalizePaymentLog(admin, ref, 'failed', fulfilErr ?? undefined)
+        return Response.json({ error: 'fulfilment_failed', detail: fulfilErr }, { status: 409, headers: corsHeaders })
+      }
+
+      await admin.from('pending_stays').update({ status: 'consumed' }).eq('id', id)
+      await finalizePaymentLog(admin, ref, 'paid')
+      return Response.json({ ok: true, outcome: 'paid', stay_id: stayId }, { headers: corsHeaders })
+    }
+
     if (purpose === 'subscription') {
       const { data: sub } = await admin
         .from('subscription_payments')

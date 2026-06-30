@@ -24,6 +24,15 @@ const LOCAL_HOSTS = ['localhost', '127.0.0.1', 'kong', 'host.docker.internal']
 
 function testOtpBypassAllowed(): boolean {
   if (Deno.env.get('ALLOW_TEST_OTP') !== 'true') return false
+  // ⚠️ TEMPORARY TESTING OVERRIDE — REMOVE WHEN A REAL SMS PROVIDER IS ADDED.
+  // The owner runs a single hosted Supabase project (no separate staging) with
+  // no real user data and no SMS provider yet, so the mock provider only logs
+  // codes. When ALLOW_TEST_OTP_HOSTED=true we allow the '000000' bypass on the
+  // hosted project too. This deliberately re-opens the hosted bypass the
+  // 2026-06-24 security review closed — unset the ALLOW_TEST_OTP_HOSTED /
+  // ALLOW_TEST_OTP secrets and delete this branch once SMS is live.
+  // Tracked in docs/MULTI_VERTICAL_TODO.md.
+  if (Deno.env.get('ALLOW_TEST_OTP_HOSTED') === 'true') return true
   try {
     const host = new URL(Deno.env.get('SUPABASE_URL') ?? '').hostname
     return LOCAL_HOSTS.includes(host)
