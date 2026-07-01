@@ -6,12 +6,15 @@ import { useSuperadmin } from '@/hooks/useSuperadmin'
 
 // Auth
 import LoginPage from '@/pages/auth/LoginPage'
+import RegisterPage from '@/pages/auth/RegisterPage'
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
 
 // Onboarding
 import OnboardingLayout from '@/pages/onboarding/OnboardingLayout'
 import BusinessProfileStep from '@/pages/onboarding/BusinessProfileStep'
 import ServicesStep from '@/pages/onboarding/ServicesStep'
+import RoomsStep from '@/pages/onboarding/RoomsStep'
+import TablesStep from '@/pages/onboarding/TablesStep'
 import WorkingHoursStep from '@/pages/onboarding/WorkingHoursStep'
 
 // Dashboard
@@ -97,12 +100,18 @@ export default function App() {
       <Route path="/" element={<Navigate to="/login" replace />} />
 
       <Route path="/login" element={<PublicOnlyGuard><LoginPage /></PublicOnlyGuard>} />
+      {/* Vertical-specific registration — ads point at /register/:vertical. Bare
+          /register shows a picker. */}
+      <Route path="/register" element={<PublicOnlyGuard><RegisterPage /></PublicOnlyGuard>} />
+      <Route path="/register/:vertical" element={<PublicOnlyGuard><RegisterPage /></PublicOnlyGuard>} />
       <Route path="/forgot-password" element={<PublicOnlyGuard><ForgotPasswordPage /></PublicOnlyGuard>} />
 
       <Route path="/onboarding" element={<AuthGuard><OnboardingLayout /></AuthGuard>}>
         <Route index element={<Navigate to="/onboarding/business" replace />} />
         <Route path="business" element={<BusinessProfileStep />} />
         <Route path="services" element={<ServicesStep />} />
+        <Route path="tables" element={<TablesStep />} />
+        <Route path="rooms" element={<RoomsStep />} />
         <Route path="hours" element={<WorkingHoursStep />} />
       </Route>
 

@@ -41,7 +41,8 @@
     "time": "Time",
     "selectTable": "Table (optional)",
     "turnTime": "Table turn time",
-    "turnTimeHelp": "Minutes a reservation holds a table"
+    "turnTimeHelp": "Minutes a reservation holds a table",
+    "businessType": "Business type"
   },
   "hotel": {
     "rooms": "Rooms",
@@ -145,7 +146,11 @@
     "otpSent": "Code sent",
     "verify": "Verify",
     "login": "Sign in",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "registerTitleFor": "Register — {{business}}",
+    "registerSubtitle": "Choose your business type to get started",
+    "haveAccount": "Already have an account? Sign in",
+    "noAccount": "No account? Register"
   },
   "onboarding": {
     "step1": "Business info",

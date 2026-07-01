@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
 import { ActionIconButton } from '@/components/ui'
 import { slugify } from '@/lib/slug'
+import { surface } from '@/theme/theme'
 import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -199,6 +200,38 @@ export default function WorkingHoursStep() {
         if (svcErr) throw new Error(svcErr.message)
       }
 
+      // Vertical-specific inventory captured in the catalog step. Rooms/tables
+      // are `resources` rows (kinds room_type / table); nightly_price &
+      // total_rooms live in attrs (matches Rooms/TablesSettings).
+      if (data.rooms.length > 0) {
+        const { error: roomErr } = await supabase
+          .from('resources')
+          .insert(data.rooms.map((r, i) => ({
+            org_id: orgId, kind: 'room_type', name: r.name, capacity: r.capacity,
+            attrs: { nightly_price: r.nightly_price, total_rooms: r.total_rooms },
+            is_active: r.is_active, sort_order: i,
+          })))
+        if (roomErr) throw new Error(roomErr.message)
+      }
+
+      if (data.tables.length > 0) {
+        const { error: tblErr } = await supabase
+          .from('resources')
+          .insert(data.tables.map((tb, i) => ({
+            org_id: orgId, kind: 'table', name: tb.name, capacity: tb.capacity,
+            is_active: tb.is_active, sort_order: i,
+          })))
+        if (tblErr) throw new Error(tblErr.message)
+      }
+
+      if (data.vertical === 'restaurant') {
+        const { error: turnErr } = await supabase
+          .from('organisations')
+          .update({ reservation_turn_minutes: data.turnMinutes })
+          .eq('id', orgId)
+        if (turnErr) throw new Error(turnErr.message)
+      }
+
       const templateRow: Record<string, unknown> = { org_id: orgId }
       for (const day of DAYS) {
         const s = hours[day]
@@ -242,7 +275,9 @@ export default function WorkingHoursStep() {
                 borderRadius: 2,
                 border: '1px solid',
                 borderColor: cfg.open ? 'primary.main' : 'divider',
-                bgcolor: cfg.open ? 'secondary.main' : 'transparent',
+                // A calm warm-neutral fill for open days — the citrus accent
+                // stays on the border/toggle rather than flooding the row.
+                bgcolor: cfg.open ? surface.subtle : 'transparent',
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

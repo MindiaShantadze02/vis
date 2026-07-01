@@ -1,18 +1,10 @@
 import { useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Box, TextField, Button, Typography, Stack, Chip } from '@mui/material'
+import { Box, TextField, Button, Typography, Chip } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { slugify } from '@/lib/slug'
 import { isValidGeorgianPhone, FIELD_LIMITS } from '@/lib/validation'
-import type { Vertical } from '@/lib/verticals'
 import type { OnboardingData } from './OnboardingLayout'
-
-// Vertical chooser — all three are now shippable.
-const VERTICAL_OPTIONS: { key: Vertical; disabled?: boolean }[] = [
-  { key: 'appointments' },
-  { key: 'restaurant' },
-  { key: 'hotel' },
-]
 
 interface OutletCtx {
   goNext: () => void
@@ -45,41 +37,21 @@ export default function BusinessProfileStep() {
         {t('onboarding.step1Subtitle')}
       </Typography>
 
-      {/* Vertical chooser — set once here, then locked for the org. */}
-      <Typography variant="body2" sx={{ fontWeight: 600, mb: 1.25 }}>
-        {t('restaurant.choose')}
-      </Typography>
-      <Stack spacing={1.25} sx={{ mb: 3 }}>
-        {VERTICAL_OPTIONS.map(opt => {
-          const selected = data.vertical === opt.key
-          return (
-            <Box
-              key={opt.key}
-              data-testid={`vertical-${opt.key}`}
-              onClick={() => { if (!opt.disabled) update({ vertical: opt.key }) }}
-              sx={{
-                p: 1.75, borderRadius: 2,
-                cursor: opt.disabled ? 'default' : 'pointer',
-                border: '2px solid',
-                borderColor: selected ? 'primary.main' : 'divider',
-                bgcolor: selected ? 'secondary.main' : 'background.paper',
-                opacity: opt.disabled ? 0.55 : 1,
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                  {t(`restaurant.${opt.key}`)}
-                </Typography>
-                {opt.disabled && <Chip size="small" label={t('restaurant.comingSoon')} />}
-              </Box>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {t(`restaurant.${opt.key}Desc`)}
-              </Typography>
-            </Box>
-          )
-        })}
-      </Stack>
+      {/* Business type is fixed by the registration link the user arrived through
+          (stored in auth metadata), so it's shown read-only rather than chosen. */}
+      <Box
+        data-testid={`vertical-${data.vertical}`}
+        sx={{
+          display: 'flex', alignItems: 'center', gap: 1.25, mb: 3,
+          p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Chip size="small" color="primary" variant="outlined" label={t('restaurant.businessType')} />
+        <Typography variant="body1" sx={{ fontWeight: 700 }}>
+          {t(`restaurant.${data.vertical}`)}
+        </Typography>
+      </Box>
 
       <TextField
         fullWidth

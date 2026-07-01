@@ -31,7 +31,6 @@ describe('Authentication', () => {
   describe('sign in', () => {
     beforeEach(() => {
       cy.visit('/login')
-      cy.getByTestId('login-tab-signin').click()
     })
 
     it('signs in and lands an org member on the dashboard', () => {
@@ -104,10 +103,10 @@ describe('Authentication', () => {
     })
   })
 
+  // Registration is now vertical-specific: each ad links to /register/:vertical.
   describe('sign up', () => {
     beforeEach(() => {
-      cy.visit('/login')
-      cy.getByTestId('login-tab-signup').click()
+      cy.visit('/register/appointments')
     })
 
     it('keeps submit disabled while the passwords do not match', () => {
@@ -141,15 +140,16 @@ describe('Authentication', () => {
     })
   })
 
-  describe('tab switching', () => {
-    it('clears entered fields when switching between sign in and sign up', () => {
+  describe('navigation between login and register', () => {
+    it('links from /login to the registration picker', () => {
       cy.visit('/login')
-      cy.getByTestId('login-phone').type(PHONE)
-      cy.getByTestId('login-password').type('secret123')
-      cy.getByTestId('login-tab-signup').click()
-      cy.getByTestId('login-phone').should('have.value', '')
-      cy.getByTestId('login-password').should('have.value', '')
-      // The confirm-password field only exists in sign-up mode.
+      // No confirm-password field on the sign-in-only login page.
+      cy.getByTestId('login-confirm-password').should('not.exist')
+      cy.getByTestId('login-to-register').click()
+      cy.location('pathname').should('eq', '/register')
+      // The picker deep-links to each vertical's signup.
+      cy.getByTestId('register-pick-hotel').click()
+      cy.location('pathname').should('eq', '/register/hotel')
       cy.getByTestId('login-confirm-password').should('exist')
     })
   })
