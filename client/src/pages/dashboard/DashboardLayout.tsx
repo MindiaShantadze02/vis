@@ -11,7 +11,7 @@ export interface DashboardOutletContext {
 }
 import {
   Box, Drawer, List, ListItemButton, ListItemIcon, ListItemText,
-  AppBar, Toolbar, IconButton, Typography, Badge, Avatar,
+  AppBar, Toolbar, IconButton, Typography, Badge,
   Menu, MenuItem, Divider, useMediaQuery, useTheme,
 } from '@mui/material'
 import { DashboardOutlined as DashboardOutlinedIcon } from '@/components/icons'
@@ -21,18 +21,15 @@ import { AdminPanelSettingsOutlined as AdminPanelSettingsOutlinedIcon } from '@/
 import { NotificationsOutlined as NotificationsOutlinedIcon } from '@/components/icons'
 import { Menu as MenuIcon } from '@/components/icons'
 import { Logout as LogoutIcon } from '@/components/icons'
-import { Person2Outlined as PersonOutlineIcon } from '@/components/icons'
 import { formatDistanceToNow } from 'date-fns'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { useAuth } from '@/contexts/AuthContext'
 import { useSuperadmin } from '@/hooks/useSuperadmin'
 import { useNotifications } from '@/hooks/useNotifications'
 import { LanguageSwitcher, AnimatedOutlet } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
-import { displayGeorgianPhone } from '@/lib/validation'
 import { anim } from '@/theme/animations'
 import { gradient, elevation, tint } from '@/theme/theme'
 
@@ -75,7 +72,6 @@ export default function DashboardLayout() {
   const mainNav = NAV_ITEMS.filter(item =>
     item.path === '/dashboard/calendar' ? vertical.showCalendar : true,
   )
-  const { user } = useAuth()
   const { isSuperadmin } = useSuperadmin()
   const navigate = useNavigate()
   const { items: notifications, unreadCount, markAllRead } = useNotifications()
@@ -273,27 +269,6 @@ export default function DashboardLayout() {
           />
         </ListItemButton>
       </List>
-
-      <Divider />
-
-      {/* User identity row (logout now lives in the nav above). */}
-      <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Avatar sx={{ width: 32, height: 32 }}>
-          <PersonOutlineIcon fontSize="small" />
-        </Avatar>
-        <Typography
-          variant="caption"
-          sx={{
-            flex: 1,
-            color: 'text.secondary',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {displayGeorgianPhone(user?.phone)}
-        </Typography>
-      </Box>
     </Box>
   )
 
