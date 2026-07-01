@@ -79,7 +79,7 @@ export default function SuperadminsPage() {
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>ახალი სუპერ-ადმინი</Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <TextField
-              fullWidth size="small" type="email"
+              fullWidth required size="small" type="email"
               label="ელ. ფოსტა"
               placeholder="user@example.com"
               value={email}

@@ -133,6 +133,7 @@ export default function ForgotPasswordPage() {
             <>
               <TextField
                 fullWidth
+                required
                 label={t('auth.phoneNumber')}
                 type="tel"
                 value={phone}
@@ -164,6 +165,7 @@ export default function ForgotPasswordPage() {
 
               <TextField
                 fullWidth
+                required
                 label="კოდი"
                 value={code}
                 onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
@@ -175,6 +177,7 @@ export default function ForgotPasswordPage() {
 
               <TextField
                 fullWidth
+                required
                 label="ახალი პაროლი"
                 type="password"
                 value={password}
@@ -187,6 +190,7 @@ export default function ForgotPasswordPage() {
 
               <TextField
                 fullWidth
+                required
                 label="პაროლის დადასტურება"
                 type="password"
                 value={confirmPassword}

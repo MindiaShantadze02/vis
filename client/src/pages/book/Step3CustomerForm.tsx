@@ -456,6 +456,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           </Typography>
           <Stack spacing={2}>
             <TextField
+              required
               label={t('booking.otpLabel')}
               value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}

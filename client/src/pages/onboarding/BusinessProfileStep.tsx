@@ -83,6 +83,7 @@ export default function BusinessProfileStep() {
 
       <TextField
         fullWidth
+        required
         label={t('onboarding.businessName')}
         value={data.name}
         onChange={e => update({ name: e.target.value })}

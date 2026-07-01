@@ -331,6 +331,7 @@ export default function ServicesSettings() {
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.serviceName, 'data-testid': 'service-name' } }}
             />
             <TextField
+              required
               label={t('onboarding.duration')}
               value={form.duration_minutes}
               onChange={e => setForm(f => ({ ...f, duration_minutes: onlyInt(e.target.value) }))}
@@ -349,6 +350,7 @@ export default function ServicesSettings() {
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-price' } }}
             />
             <TextField
+              required
               label={t('settings.maxPerSlot')}
               value={form.max_per_slot}
               onChange={e => setForm(f => ({ ...f, max_per_slot: onlyInt(e.target.value) }))}

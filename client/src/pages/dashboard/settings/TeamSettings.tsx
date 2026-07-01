@@ -256,6 +256,7 @@ export default function TeamSettings() {
               {t('settings.inviteHelp')}
             </Typography>
             <TextField
+              required
               label={t('common.email')}
               type="email"
               value={inviteEmail}

@@ -250,6 +250,7 @@ export default function TablesSettings() {
               slotProps={{ htmlInput: { maxLength: 60, 'data-testid': 'table-name' } }}
             />
             <TextField
+              required
               label={t('restaurant.seats')}
               value={form.capacity}
               onChange={e => setForm(f => ({ ...f, capacity: onlyInt(e.target.value) }))}

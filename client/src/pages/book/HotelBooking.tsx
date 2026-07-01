@@ -275,7 +275,7 @@ export default function HotelBooking({ org, accent }: Props) {
               minDate={new Date()}
               format="dd MMM yyyy"
               onChange={v => { setCheckIn(v); if (checkOut && v && checkOut <= v) setCheckOut(null) }}
-              slotProps={{ textField: { fullWidth: true } }}
+              slotProps={{ textField: { fullWidth: true, required: true } }}
             />
             <DatePicker
               label={t('hotel.checkOut')}
@@ -283,7 +283,7 @@ export default function HotelBooking({ org, accent }: Props) {
               minDate={checkIn ?? new Date()}
               format="dd MMM yyyy"
               onChange={v => setCheckOut(v)}
-              slotProps={{ textField: { fullWidth: true } }}
+              slotProps={{ textField: { fullWidth: true, required: true } }}
             />
             <Box>
               <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>{t('hotel.guests')}</Typography>
@@ -403,6 +403,7 @@ export default function HotelBooking({ org, accent }: Props) {
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>{t('booking.otpSent', { phone })}</Typography>
           <Stack spacing={2}>
             <TextField
+              required
               label={t('booking.otpLabel')} value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               fullWidth autoFocus placeholder="••••••"

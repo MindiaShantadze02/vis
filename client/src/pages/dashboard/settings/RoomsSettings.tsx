@@ -208,6 +208,7 @@ export default function RoomsSettings() {
               slotProps={{ htmlInput: { maxLength: 60, 'data-testid': 'room-name' } }}
             />
             <TextField
+              required
               label={t('hotel.maxGuests')}
               value={form.capacity}
               onChange={e => setForm(f => ({ ...f, capacity: onlyInt(e.target.value) }))}
@@ -223,6 +224,7 @@ export default function RoomsSettings() {
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'room-price' } }}
             />
             <TextField
+              required
               label={t('hotel.totalRooms')}
               value={form.totalRooms}
               onChange={e => setForm(f => ({ ...f, totalRooms: onlyInt(e.target.value) }))}

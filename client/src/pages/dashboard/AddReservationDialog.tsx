@@ -113,14 +113,14 @@ export default function AddReservationDialog({ orgId, onClose, onCreated }: Prop
           <TextField label={t('booking.phone')} value={phone} onChange={e => setPhone(e.target.value)} required placeholder="599 123 456"
             slotProps={{ htmlInput: { inputMode: 'tel', 'data-testid': 'add-resv-phone' } }} />
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-            <TextField label={t('restaurant.partySize')} value={partySize} onChange={e => setPartySize(onlyInt(e.target.value))}
+            <TextField required label={t('restaurant.partySize')} value={partySize} onChange={e => setPartySize(onlyInt(e.target.value))}
               slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'add-resv-party' } }} />
-            <TextField select label={t('restaurant.time')} value={time} onChange={e => setTime(e.target.value)}>
+            <TextField required select label={t('restaurant.time')} value={time} onChange={e => setTime(e.target.value)}>
               {TIMES.map(tm => <MenuItem key={tm} value={tm}>{tm}</MenuItem>)}
             </TextField>
           </Box>
           <DatePicker label={t('booking.summaryDate')} value={date} minDate={new Date()} format="dd MMM yyyy"
-            onChange={v => setDate(v)} slotProps={{ textField: { fullWidth: true } }} />
+            onChange={v => setDate(v)} slotProps={{ textField: { fullWidth: true, required: true } }} />
           {tables.length > 0 && (
             <TextField select label={t('restaurant.selectTable')} value={tableId} onChange={e => setTableId(e.target.value)}>
               <MenuItem value=""><em>—</em></MenuItem>

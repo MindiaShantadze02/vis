@@ -116,6 +116,7 @@ export default function LoginPage() {
 
           <TextField
             fullWidth
+            required
             label={t('auth.phoneNumber')}
             type="tel"
             value={phone}
@@ -130,6 +131,7 @@ export default function LoginPage() {
 
           <TextField
             fullWidth
+            required
             label="პაროლი"
             type="password"
             value={password}
@@ -144,6 +146,7 @@ export default function LoginPage() {
           {mode === 'signup' && (
             <TextField
               fullWidth
+              required
               label="პაროლის დადასტურება"
               type="password"
               value={confirmPassword}

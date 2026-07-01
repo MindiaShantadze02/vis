@@ -176,6 +176,7 @@ export default function ServicesStep() {
           </Typography>
           <TextField
             fullWidth
+            required
             size="small"
             label={t('onboarding.serviceName')}
             value={draft.name}
@@ -188,6 +189,7 @@ export default function ServicesStep() {
           <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
             <TextField
               fullWidth
+              required
               size="small"
               label={t('onboarding.duration')}
               value={draft.duration_minutes}

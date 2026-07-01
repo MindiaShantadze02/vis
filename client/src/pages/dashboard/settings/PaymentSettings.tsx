@@ -153,6 +153,7 @@ export default function PaymentSettings() {
                 {t('settings.bogComingSoon')}
               </Alert>
               <TextField
+                required
                 label={t('settings.merchantId')}
                 value={config.bog?.merchantId ?? ''}
                 onChange={e => setBog('merchantId', e.target.value)}
@@ -163,6 +164,7 @@ export default function PaymentSettings() {
                 slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.paymentField } }}
               />
               <TextField
+                required
                 label={t('settings.apiKey')}
                 type={showBogKey ? 'text' : 'password'}
                 value={config.bog?.apiKey ?? ''}
@@ -208,6 +210,7 @@ export default function PaymentSettings() {
                 {t('settings.tbcComingSoon')}
               </Alert>
               <TextField
+                required
                 label={t('settings.clientId')}
                 value={config.tbc?.merchantId ?? ''}
                 onChange={e => setTbc('merchantId', e.target.value)}
@@ -218,6 +221,7 @@ export default function PaymentSettings() {
                 slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.paymentField } }}
               />
               <TextField
+                required
                 label={t('settings.clientKey')}
                 type={showTbcKey ? 'text' : 'password'}
                 value={config.tbc?.apiKey ?? ''}

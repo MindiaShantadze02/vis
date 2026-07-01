@@ -406,6 +406,7 @@ export default function RestaurantBooking({ org, accent }: Props) {
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>{t('booking.otpSent', { phone })}</Typography>
           <Stack spacing={2}>
             <TextField
+              required
               label={t('booking.otpLabel')}
               value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}

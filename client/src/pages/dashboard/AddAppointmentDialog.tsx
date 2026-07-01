@@ -299,7 +299,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
         {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="add-appt-error">{error}</Alert>}
 
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <FormControl fullWidth size="small">
+          <FormControl fullWidth required size="small">
             <InputLabel>სერვისი</InputLabel>
             <Select
               value={serviceId}
@@ -376,7 +376,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               disablePast
               slotProps={{ textField: { size: 'small', fullWidth: true, required: true } }}
             />
-            <FormControl fullWidth size="small" disabled={!serviceId || !date || timeLoading} error={noSlots}>
+            <FormControl fullWidth required size="small" disabled={!serviceId || !date || timeLoading} error={noSlots}>
               <InputLabel>დრო</InputLabel>
               <Select
                 value={slots.includes(timeStr) ? timeStr : ''}
