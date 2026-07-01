@@ -23,6 +23,7 @@ import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
 import BookingShell from './BookingShell'
 import BookingSummaryCard from './BookingSummaryCard'
+import BookingContactNote from './BookingContactNote'
 
 const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6]
 
@@ -256,9 +257,7 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
               { icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />, label: t('hotel.checkOut'), value: checkOut ? format(checkOut, 'd MMM yyyy', { locale: ka }) : '' },
             ]}
           />
-          {org.contact_phone && (
-            <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'text.secondary' }}>{org.contact_phone}</Typography>
-          )}
+          <BookingContactNote phone={org.contact_phone} />
         </Box>
       </Box>
     )

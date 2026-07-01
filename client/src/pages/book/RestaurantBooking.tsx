@@ -24,6 +24,7 @@ import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
 import BookingShell from './BookingShell'
 import BookingSummaryCard from './BookingSummaryCard'
+import BookingContactNote from './BookingContactNote'
 
 // Slot granularity is fixed; turn time is per-org (org.reservation_turn_minutes).
 const SLOT_MINUTES = 30
@@ -242,11 +243,7 @@ export default function RestaurantBooking({ org, bookingTheme }: Props) {
               { icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />, label: t('booking.summaryDate'), value: format(new Date(`${date}T${time}:00`), 'd MMM, HH:mm', { locale: ka }) },
             ]}
           />
-          {org.contact_phone && (
-            <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'text.secondary' }}>
-              {org.contact_phone}
-            </Typography>
-          )}
+          <BookingContactNote phone={org.contact_phone} />
         </Box>
       </Box>
     )
