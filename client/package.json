@@ -15,6 +15,7 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@fontsource/google-sans": "^5.2.1",
     "@fontsource/noto-sans-georgian": "^5.2.8",
     "@fontsource/noto-serif-georgian": "^5.2.9",
     "@mui/icons-material": "^9.1.1",

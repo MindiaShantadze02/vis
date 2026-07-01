@@ -126,7 +126,7 @@ const theme = createTheme({
     // negative tracking so the two families share a rhythm, while body copy
     // stays open and editorial. That shared rhythm is what makes a serif +
     // neutral-sans pairing read as "chosen" rather than mismatched.
-    fontFamily: '"Noto Sans Georgian", "Noto Sans", "Roboto", sans-serif',
+    fontFamily: '"Google Sans", "Noto Sans Georgian", "Noto Sans", "Roboto", sans-serif',
     // Headings carry the personality — warm editorial serif. Applied through
     // h5 because pages use h4/h5 for titles (h1–h3 are unused).
     h1: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.25px' },
