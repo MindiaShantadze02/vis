@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box, Typography, Button, Avatar, IconButton,
 } from '@mui/material'
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
-import StarRoundedIcon from '@mui/icons-material/StarRounded'
+import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
+import { ArrowForwardIos as ArrowForwardIosIcon } from '@/components/icons'
+import { EventAvailableOutlined as EventAvailableOutlinedIcon } from '@/components/icons'
+import { StarRounded as StarRoundedIcon } from '@/components/icons'
 import {
   format, addDays, startOfDay, isBefore, isAfter, isSameDay, isSameMonth,
 } from 'date-fns'

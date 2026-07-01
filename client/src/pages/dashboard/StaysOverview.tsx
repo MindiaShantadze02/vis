@@ -3,11 +3,11 @@ import {
   Grid, Card, Typography, Box, Chip, Stack, Skeleton, useTheme,
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
 } from '@mui/material'
-import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined'
-import HotelOutlinedIcon from '@mui/icons-material/HotelOutlined'
-import AccessTimeIcon from '@mui/icons-material/AccessTime'
-import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
-import AddIcon from '@mui/icons-material/Add'
+import { LoginOutlined as LoginOutlinedIcon } from '@/components/icons'
+import { HotelOutlined as HotelOutlinedIcon } from '@/components/icons'
+import { AccessTime as AccessTimeIcon } from '@/components/icons'
+import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
+import { Add as AddIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'

@@ -1,20 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Box, Typography, Card, CardContent, Button, Stack } from '@mui/material'
-import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
-import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
-import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
-import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
-import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
+import { Box, Typography, Card, CardContent, Button } from '@mui/material'
+import { CheckCircleOutlined as CheckCircleOutlinedIcon } from '@/components/icons'
+import { AccessTimeOutlined as AccessTimeOutlinedIcon } from '@/components/icons'
+import { CalendarMonthOutlined as CalendarMonthOutlinedIcon } from '@/components/icons'
+import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
+import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
 import { displayGeorgianPhone, toE164Georgian } from '@/lib/validation'
-import { LoadingState, EmptyState, StatusChip } from '@/components/ui'
+import { LoadingState, EmptyState, StatusChip, BookingTicket } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 import { ThemeProvider, alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
-import { staggerContainer, listItem } from '@/theme/motion'
+import { listItem } from '@/theme/motion'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import type { AppointmentStatus } from '@/components/ui'
 
@@ -26,7 +26,6 @@ interface AppointmentDetail {
   payment_method: string
   organisations: { name: string; slug: string; booking_theme: string | null; contact_phone: string | null } | null
   services: { name: string; price: number } | null
-  customers: { first_name: string; last_name: string | null } | null
 }
 
 export default function BookingConfirmationPage() {
@@ -39,7 +38,11 @@ export default function BookingConfirmationPage() {
     if (!id) return
     supabase
       .from('appointments')
-      .select('id, scheduled_at, duration_minutes, status, payment_method, organisations(name, slug, booking_theme, contact_phone), services(name, price), customers(first_name, last_name)')
+      // NB: no `customers(...)` embed — anon (the guest viewing their own
+      // confirmation) has no SELECT on the customers table (see RLS
+      // customers_select) nor the customer_id column (040 hardening), so
+      // embedding it 401s the whole query. The page never renders it anyway.
+      .select('id, scheduled_at, duration_minutes, status, payment_method, organisations(name, slug, booking_theme, contact_phone), services(name, price)')
       .eq('id', id)
       .single()
       .then(({ data }) => {
@@ -110,49 +113,34 @@ export default function BookingConfirmationPage() {
             }
           </Typography>
 
-          {/* Details */}
-          <Stack
+          {/* Details — rendered as a tear-off ticket stub (the signature). */}
+          <Box
             component={motion.div}
-            variants={staggerContainer}
+            variants={listItem}
             initial="hidden"
             animate="visible"
-            spacing={1.5}
-            sx={{ textAlign: 'left', mb: 3 }}
+            sx={{ mb: 3 }}
           >
-            <Box component={motion.div} variants={listItem} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 2 }}>
-              <CalendarMonthOutlinedIcon sx={{ color: 'primary.main' }} />
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {appt.organisations?.name}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {appt.services?.name}
-                </Typography>
-              </Box>
-            </Box>
-            <Box component={motion.div} variants={listItem} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 2 }}>
-              <AccessTimeOutlinedIcon sx={{ color: 'primary.main' }} />
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {format(scheduledAt, 'EEEE', { locale: ka })}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {format(scheduledAt, 'd MMMM yyyy, HH:mm', { locale: ka })}
-                </Typography>
-              </Box>
-            </Box>
-            <Box component={motion.div} variants={listItem} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 2 }}>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>სტატუსი</Typography>
-                <Box sx={{ mt: 0.25 }}>
-                  <StatusChip status={appt.status as AppointmentStatus} />
-                </Box>
-              </Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: bookingTheme.deep }}>
-                {appt.services?.price} ₾
-              </Typography>
-            </Box>
-          </Stack>
+            <BookingTicket
+              notchColor={bookingTheme.pageBg}
+              priceColor={bookingTheme.deep}
+              statusLabel="სტატუსი"
+              status={<StatusChip status={appt.status as AppointmentStatus} />}
+              price={`${appt.services?.price} ₾`}
+              rows={[
+                {
+                  icon: <CalendarMonthOutlinedIcon />,
+                  label: appt.organisations?.name ?? '',
+                  value: appt.services?.name ?? '',
+                },
+                {
+                  icon: <AccessTimeOutlinedIcon />,
+                  label: format(scheduledAt, 'EEEE', { locale: ka }),
+                  value: format(scheduledAt, 'd MMMM yyyy, HH:mm', { locale: ka }),
+                },
+              ]}
+            />
+          </Box>
 
           {/* Cancellation is handled by the business directly — guests have no
               self-service cancel, so point them to the org's phone number. */}

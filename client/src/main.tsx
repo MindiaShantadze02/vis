@@ -5,8 +5,11 @@ import '@fontsource/noto-sans-georgian/400.css'
 import '@fontsource/noto-sans-georgian/500.css'
 import '@fontsource/noto-sans-georgian/600.css'
 import '@fontsource/noto-sans-georgian/700.css'
+import '@fontsource/noto-serif-georgian/700.css'
+import '@fontsource/noto-serif-georgian/800.css'
 import { ThemeProvider, CssBaseline, GlobalStyles } from '@mui/material'
 import { MotionConfig } from 'framer-motion'
+import { IconContext } from '@phosphor-icons/react'
 import { LocalizationProvider } from '@mui/x-date-pickers'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 import { ka } from 'date-fns/locale'
@@ -39,6 +42,12 @@ createRoot(document.getElementById('root')!).render(
         />
         {/* `reducedMotion="user"` makes every Framer animation collapse to its
             final state when the user requests reduced motion. */}
+        {/* Global icon defaults. NB: this value REPLACES Phosphor's context
+            defaults, so we must re-state size/color/mirrored — otherwise icons
+            lose their `size: '1em'` and render unconstrained. Only `weight` is
+            our change (duotone echoes the ink+citrus brand); switch it here to
+            restyle every icon at once. */}
+        <IconContext.Provider value={{ color: 'currentColor', size: '1em', mirrored: false, weight: 'duotone' }}>
         <MotionConfig reducedMotion="user">
         <ToastProvider>
           <LocalizationProvider
@@ -60,6 +69,7 @@ createRoot(document.getElementById('root')!).render(
           </LocalizationProvider>
         </ToastProvider>
         </MotionConfig>
+        </IconContext.Provider>
       </ThemeProvider>
     </I18nextProvider>
   </StrictMode>,

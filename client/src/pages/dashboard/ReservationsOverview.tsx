@@ -4,11 +4,11 @@ import {
   Grid, Card, Typography, Box, Chip, Stack, Skeleton,
   Dialog, DialogTitle, DialogContent, DialogActions, Button, useTheme,
 } from '@mui/material'
-import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined'
-import EventSeatOutlinedIcon from '@mui/icons-material/EventSeatOutlined'
-import AccessTimeIcon from '@mui/icons-material/AccessTime'
-import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
-import AddIcon from '@mui/icons-material/Add'
+import { GroupOutlined as GroupOutlinedIcon } from '@/components/icons'
+import { EventSeatOutlined as EventSeatOutlinedIcon } from '@/components/icons'
+import { AccessTime as AccessTimeIcon } from '@/components/icons'
+import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
+import { Add as AddIcon } from '@/components/icons'
 import { format, startOfDay, endOfDay } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'

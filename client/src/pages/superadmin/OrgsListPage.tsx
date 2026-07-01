@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import {
   Box, Card, Typography, TextField, Chip, Skeleton, useTheme, useMediaQuery,
 } from '@mui/material'
-import SearchIcon from '@mui/icons-material/Search'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import { Search as SearchIcon } from '@/components/icons'
+import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, EmptyState } from '@/components/ui'

@@ -5,10 +5,10 @@ import {
   Card, CardContent, Stack, Divider,
   Chip, ToggleButtonGroup, ToggleButton,
 } from '@mui/material'
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlined'
-import AddIcon from '@mui/icons-material/Add'
+import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
+import { EditOutlined as EditOutlinedIcon } from '@/components/icons'
+import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/components/icons'
+import { Add as AddIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { ActionIconButton, EmptyState } from '@/components/ui'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'

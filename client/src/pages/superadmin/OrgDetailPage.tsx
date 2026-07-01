@@ -4,7 +4,7 @@ import {
   Box, Card, CardContent, Typography, Button, Chip, Divider, Stack,
   Select, MenuItem, FormControl, InputLabel, useTheme,
 } from '@mui/material'
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
+import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, LoadingState, ConfirmDialog, EmptyState, useToast } from '@/components/ui'

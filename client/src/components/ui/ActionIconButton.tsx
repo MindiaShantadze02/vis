@@ -30,9 +30,9 @@ const ActionIconButton = forwardRef<HTMLButtonElement, ActionIconButtonProps>(
           height: side,
           borderRadius: compact ? '8px' : '10px',
           color: danger ? 'error.main' : 'text.secondary',
-          bgcolor: danger ? 'rgba(220,38,38,0.06)' : 'rgba(25,118,210,0.06)',
+          bgcolor: danger ? 'rgba(220,38,38,0.06)' : 'rgba(255,107,53,0.07)',
           border: '1px solid',
-          borderColor: danger ? 'rgba(220,38,38,0.18)' : 'rgba(25,118,210,0.14)',
+          borderColor: danger ? 'rgba(220,38,38,0.18)' : 'rgba(255,107,53,0.18)',
           transition: 'all 0.15s ease',
           '&:hover': {
             color: '#fff',
@@ -40,7 +40,7 @@ const ActionIconButton = forwardRef<HTMLButtonElement, ActionIconButtonProps>(
             borderColor: danger ? 'error.main' : 'primary.main',
             boxShadow: danger
               ? '0 4px 12px rgba(220,38,38,0.25)'
-              : '0 4px 12px rgba(25,118,210,0.22)',
+              : '0 4px 12px rgba(255,107,53,0.28)',
           },
           '&:active': { transform: 'scale(0.94)' },
           ...sx,

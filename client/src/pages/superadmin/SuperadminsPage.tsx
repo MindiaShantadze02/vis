@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import {
   Box, Card, Typography, TextField, Button, Chip, Stack, CircularProgress,
 } from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import { Add as AddIcon } from '@/components/icons'
+import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'

@@ -5,9 +5,9 @@ import {
   Divider, Accordion, AccordionSummary, AccordionDetails,
   InputAdornment, IconButton,
 } from '@mui/material'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
-import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
+import { ExpandMore as ExpandMoreIcon } from '@/components/icons'
+import { VisibilityOutlined as VisibilityOutlinedIcon } from '@/components/icons'
+import { VisibilityOffOutlined as VisibilityOffOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'

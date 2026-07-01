@@ -6,11 +6,11 @@ import {
 } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
 import { AnimatePresence, motion } from 'framer-motion'
-import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
-import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
-import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
-import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
-import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
+import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
+import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
+import { CalendarMonthOutlined as CalendarMonthOutlinedIcon } from '@/components/icons'
+import { AccessTimeOutlined as AccessTimeOutlinedIcon } from '@/components/icons'
+import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { anim } from '@/theme/animations'
 import { stepVariants } from '@/theme/motion'
@@ -310,38 +310,62 @@ export default function BookingLayout() {
         </>
       )}
 
-      {/* Selected booking summary */}
+      {/* Selected booking summary — a white ticket "being filled in", echoing
+          the tear-off stub on the confirmation page so the motif runs through
+          the whole flow. */}
       {booking.service && (
-        <Box sx={{ animation: anim.fadeInUp, position: 'relative' }}>
-          <Divider sx={{ borderColor: sideOverlay(0.15), mb: 2 }} />
+        <Box sx={{ animation: anim.fadeInUp, position: 'relative', mt: 1 }}>
           <Typography
             variant="caption"
-            sx={{ display: 'block', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', opacity: 0.6, mb: 1.5 }}
+            sx={{ display: 'block', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.55, mb: 1.25 }}
           >
             {t('booking.yourBooking')}
           </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-              <CalendarMonthOutlinedIcon sx={{ fontSize: 16, opacity: 0.8, mt: 0.25 }} />
-              <Typography variant="body2" sx={{ fontWeight: 600, opacity: 0.95 }}>{booking.service.name}</Typography>
+          <Box
+            sx={{
+              bgcolor: '#FFFFFF',
+              color: 'text.primary',
+              borderRadius: 2.5,
+              p: 2,
+              boxShadow: '0 10px 28px rgba(0,0,0,0.22)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: booking.date && booking.time ? 1.25 : 0 }}>
+              <CalendarMonthOutlinedIcon sx={{ fontSize: 18, color: 'primary.main', mt: 0.25, flexShrink: 0 }} />
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{booking.service.name}</Typography>
             </Box>
             {booking.date && booking.time && (
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                <AccessTimeOutlinedIcon sx={{ fontSize: 16, opacity: 0.8, mt: 0.25 }} />
+                <AccessTimeOutlinedIcon sx={{ fontSize: 18, color: 'primary.main', mt: 0.25, flexShrink: 0 }} />
                 <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600, opacity: 0.95 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {booking.date} · {booking.time}
                   </Typography>
                   {sideStaffLabel && (
-                    <Typography variant="caption" sx={{ opacity: 0.72 }}>{sideStaffLabel}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{sideStaffLabel}</Typography>
                   )}
                 </Box>
               </Box>
             )}
-            <Divider sx={{ borderColor: sideOverlay(0.15), my: 0.5 }} />
+            {/* Perforation — notches punched in the sidebar colour. */}
+            <Box
+              aria-hidden
+              sx={{
+                position: 'relative',
+                borderTop: '1.5px dashed rgba(30,36,51,0.18)',
+                mx: -2,
+                my: 1.75,
+                '&::before, &::after': {
+                  content: '""', position: 'absolute', top: '-7px',
+                  width: 14, height: 14, borderRadius: '50%', bgcolor: bookingTheme.sidebar,
+                },
+                '&::before': { left: -7 },
+                '&::after': { right: -7 },
+              }}
+            />
             <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>{t('booking.total')}</Typography>
-              <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.5px' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{t('booking.total')}</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: bookingTheme.deep }}>
                 {booking.service.price} ₾
               </Typography>
             </Box>
@@ -392,7 +416,7 @@ export default function BookingLayout() {
                   sx={{
                     flex: 1, height: 5, borderRadius: 3,
                     transition: 'background-color 0.3s',
-                    bgcolor: i <= step ? 'primary.main' : 'rgba(25,118,210,0.14)',
+                    bgcolor: i <= step ? 'primary.main' : 'rgba(30,36,51,0.12)',
                   }}
                 />
               ))}

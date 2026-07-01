@@ -2,8 +2,8 @@ import { useState } from 'react'
 import {
   Button, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip,
 } from '@mui/material'
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
-import CheckIcon from '@mui/icons-material/Check'
+import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@/components/icons'
+import { Check as CheckIcon } from '@/components/icons'
 import { GE, RU, GB } from 'country-flag-icons/react/3x2'
 import { useTranslation } from 'react-i18next'
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n'

@@ -13,7 +13,7 @@ import baseTheme from './theme'
 // for "Charcoal & Brass" it's the brass gold that lifts the price off the
 // charcoal UI.
 
-export type BookingThemeKey = 'blue' | 'emerald' | 'terracotta' | 'brass' | 'indigo'
+export type BookingThemeKey = 'citrus' | 'emerald' | 'terracotta' | 'brass' | 'indigo'
 
 export interface BookingTheme {
   key: BookingThemeKey
@@ -41,19 +41,20 @@ export interface BookingTheme {
 }
 
 export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
-  // Royal Blue — classic, trustworthy, professional. The current/default look.
-  blue: {
-    key: 'blue',
-    label: 'ლურჯი',
-    sidebar: '#1565C0',
+  // Ink & Citrus — the Grafiki signature: a confident ink sidebar with a warm
+  // citrus accent and a honey-gold price. Welcoming and energetic. The default.
+  citrus: {
+    key: 'citrus',
+    label: 'ციტრუსი',
+    sidebar: '#1E2433',
     sidebarText: 'light',
-    pageBg: '#F5F8FD',
-    primary: '#1565C0',
-    primaryLight: '#90CAF9',
-    primaryDark: '#0D47A1',
-    deep: '#0D47A1',
-    tint: '#E3F2FD',
-    rgb: '21,101,192',
+    pageBg: '#FBF8F4',
+    primary: '#FF6B35',
+    primaryLight: '#FF8B5E',
+    primaryDark: '#E55320',
+    deep: '#F6B042', // honey — lifts the price off the page
+    tint: '#FFE9DD',
+    rgb: '255,107,53',
   },
   // Emerald — clean and calming. Great for spas, clinics and wellness.
   emerald: {
@@ -116,7 +117,7 @@ export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
 
 export const BOOKING_THEME_LIST: BookingTheme[] = Object.values(BOOKING_THEMES)
 
-export const DEFAULT_BOOKING_THEME: BookingThemeKey = 'blue'
+export const DEFAULT_BOOKING_THEME: BookingThemeKey = 'citrus'
 
 /** Resolve a stored key (possibly null/retired/unknown) to a theme, falling back to default. */
 export function getBookingTheme(key: string | null | undefined): BookingTheme {

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Box, Typography, IconButton, Tooltip } from '@mui/material'
-import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
-import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined'
-import CheckIcon from '@mui/icons-material/Check'
+import { ContentCopyOutlined as ContentCopyOutlinedIcon } from '@/components/icons'
+import { OpenInNewOutlined as OpenInNewOutlinedIcon } from '@/components/icons'
+import { Check as CheckIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 
 interface CopyableTextProps {

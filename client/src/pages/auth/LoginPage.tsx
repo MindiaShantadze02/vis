@@ -70,7 +70,7 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#1565C0',
+        background: '#1E2433',
         p: 2,
       }}
     >

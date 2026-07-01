@@ -4,10 +4,10 @@ import {
   Switch, FormControlLabel, Divider, Alert,
   CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
-import HotelOutlinedIcon from '@mui/icons-material/HotelOutlined'
+import { Add as AddIcon } from '@/components/icons'
+import { EditOutlined as EditOutlinedIcon } from '@/components/icons'
+import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
+import { HotelOutlined as HotelOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'

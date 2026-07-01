@@ -2,12 +2,11 @@ import { useEffect, useState } from 'react'
 import {
   Box, Typography, Button, TextField, Stack,
   Alert, CircularProgress, ToggleButtonGroup, ToggleButton,
-  Divider,
 } from '@mui/material'
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
-import CreditCardOutlinedIcon from '@mui/icons-material/CreditCardOutlined'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
-import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined'
+import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
+import { CreditCardOutlined as CreditCardOutlinedIcon } from '@/components/icons'
+import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
+import { SmsOutlined as SmsOutlinedIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
@@ -381,8 +380,8 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           </Box>
         )}
 
-        {/* Summary card */}
-        <Box sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 4, p: 2.5, boxShadow: elevation.card }}>
+        {/* Summary card — styled as the booking ticket (perforated total). */}
+        <Box sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 4, p: 2.5, boxShadow: elevation.card, overflow: 'hidden' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('booking.summaryService')}</Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>{booking.service?.name}</Typography>
@@ -399,7 +398,21 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
               <Typography variant="body2" sx={{ fontWeight: 600 }}>{staffLabel}</Typography>
             </Box>
           )}
-          <Divider sx={{ my: 1.5 }} />
+          <Box
+            aria-hidden
+            sx={{
+              position: 'relative',
+              borderTop: '1.5px dashed rgba(30,36,51,0.18)',
+              mx: -2.5,
+              my: 1.75,
+              '&::before, &::after': {
+                content: '""', position: 'absolute', top: '-7px',
+                width: 14, height: 14, borderRadius: '50%', bgcolor: 'background.default',
+              },
+              '&::before': { left: -7 },
+              '&::after': { right: -7 },
+            }}
+          />
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>{t('booking.total')}</Typography>
             <Typography variant="h6" sx={{ fontWeight: 800, color: priceColor ?? 'primary.dark' }}>

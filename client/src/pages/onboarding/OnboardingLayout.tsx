@@ -213,7 +213,7 @@ export default function OnboardingLayout() {
                   sx={{
                     flex: 1, height: 5, borderRadius: 3,
                     transition: 'background-color 0.3s',
-                    bgcolor: i <= stepIdx ? 'primary.main' : 'rgba(25,118,210,0.14)',
+                    bgcolor: i <= stepIdx ? 'primary.main' : 'rgba(30,36,51,0.12)',
                   }}
                 />
               ))}

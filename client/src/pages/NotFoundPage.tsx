@@ -1,6 +1,6 @@
 import { Box, Button, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
-import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
+import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
 import { EmptyState } from '@/components/ui'
 
 // Catch-all 404. Replaces the old silent redirect to '/' so a mistyped or dead

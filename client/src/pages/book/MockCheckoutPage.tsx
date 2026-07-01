@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   Box, Card, CardContent, Typography, Button, Stack, Chip, CircularProgress, Alert,
 } from '@mui/material'
-import CreditCardOutlinedIcon from '@mui/icons-material/CreditCardOutlined'
+import { CreditCardOutlined as CreditCardOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { LAYOUT } from '@/theme/theme'

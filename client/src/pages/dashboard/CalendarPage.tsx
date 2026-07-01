@@ -5,11 +5,11 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Select, MenuItem, FormControl, InputLabel, TextField,
 } from '@mui/material'
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
-import TodayIcon from '@mui/icons-material/Today'
-import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
-import CloseIcon from '@mui/icons-material/Close'
+import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
+import { ArrowForwardIos as ArrowForwardIosIcon } from '@/components/icons'
+import { Today as TodayIcon } from '@/components/icons'
+import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
+import { Close as CloseIcon } from '@/components/icons'
 import { format, startOfWeek, startOfDay, addDays, isSameDay } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'

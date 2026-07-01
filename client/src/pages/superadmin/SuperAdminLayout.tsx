@@ -4,12 +4,12 @@ import {
   Box, List, ListItemButton, ListItemIcon, ListItemText,
   Typography, Divider, Drawer, AppBar, Toolbar, IconButton,
 } from '@mui/material'
-import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
-import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
-import LogoutIcon from '@mui/icons-material/Logout'
-import MenuIcon from '@mui/icons-material/Menu'
+import { InsightsOutlined as InsightsOutlinedIcon } from '@/components/icons'
+import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
+import { AdminPanelSettingsOutlined as AdminPanelSettingsOutlinedIcon } from '@/components/icons'
+import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
+import { Logout as LogoutIcon } from '@/components/icons'
+import { Menu as MenuIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { useBreakpoints } from '@/hooks/useBreakpoints'
 import { AnimatedOutlet } from '@/components/ui'

@@ -5,9 +5,9 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Switch, FormControlLabel,
 } from '@mui/material'
-import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import { PersonAddOutlined as PersonAddOutlinedIcon } from '@/components/icons'
+import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
+import { EditOutlined as EditOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidEmail, FIELD_LIMITS } from '@/lib/validation'

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Box, Typography, Card, CardActionArea, CardContent } from '@mui/material'
-import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlined'
+import { AccessTimeOutlined as AccessTimeOutlinedIcon } from '@/components/icons'
+import { ChevronRight as ChevronRightIcon } from '@/components/icons'
+import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useTheme, alpha } from '@mui/material/styles'
@@ -73,25 +73,39 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
             whileTap={{ scale: 0.98 }}
             transition={baseTransition}
             sx={{
+              position: 'relative',
+              overflow: 'hidden',
               border: '1px solid',
               borderColor: 'divider',
-              // Hover lift/shadow are Framer-controlled (above); keep only the
-              // border accent as CSS so it doesn't fight the inline transform.
+              // A citrus rail down the left edge — the ticket-stub edge, carried
+              // onto the service cards so they read as branded, not generic rows.
+              '&::before': {
+                content: '""', position: 'absolute', left: 0, top: 0, bottom: 0,
+                width: 4, bgcolor: 'primary.main',
+                transition: 'width 0.18s ease',
+              },
               '&:hover': { borderColor: 'primary.main' },
+              '&:hover::before': { width: 6 },
             }}
           >
             <CardActionArea onClick={() => onSelect(s)} data-testid="book-service">
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2.25 }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2.25, pl: 2.75 }}>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{s.name}</Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                    <AccessTimeOutlinedIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{s.name}</Typography>
+                  <Box
+                    sx={{
+                      display: 'inline-flex', alignItems: 'center', gap: 0.5, mt: 0.75,
+                      px: 1, py: 0.25, borderRadius: 1.5,
+                      bgcolor: 'secondary.main', color: 'secondary.contrastText',
+                    }}
+                  >
+                    <AccessTimeOutlinedIcon sx={{ fontSize: 14 }} />
+                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
                       {s.duration_minutes} {t('common.minutesShort')}
                     </Typography>
                   </Box>
                 </Box>
-                <Typography sx={{ fontWeight: 700, color: 'text.primary', whiteSpace: 'nowrap' }}>
+                <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: 'text.primary', whiteSpace: 'nowrap' }}>
                   {s.price} ₾
                 </Typography>
                 <ChevronRightIcon sx={{ color: 'text.disabled', flexShrink: 0 }} />

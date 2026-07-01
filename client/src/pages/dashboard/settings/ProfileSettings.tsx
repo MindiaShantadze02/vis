@@ -5,7 +5,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
   Checkbox, FormControlLabel,
 } from '@mui/material'
-import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined'
+import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'

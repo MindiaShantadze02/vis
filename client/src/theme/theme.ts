@@ -1,44 +1,61 @@
 import { createTheme } from '@mui/material/styles'
 
-const BLUE = {
-  50:  '#E3F2FD',
-  100: '#BBDEFB',
-  200: '#90CAF9',
-  300: '#64B5F6',
-  400: '#42A5F5',
-  500: '#2196F3',
-  600: '#1E88E5',
-  700: '#1976D2',
-  800: '#1565C0',
-  900: '#0D47A1',
+// ── Brand palette: "Warm Ink & Citrus" ───────────────────────
+// Grafiki (გრაფიკი = "schedule") should feel like being warmly welcomed
+// and confidently looked-after — not like a framework default. Confident
+// near-ink charcoal-navy carries the brand; a citrus accent brings the
+// energy; honey lifts prices and celebratory moments.
+
+const INK = {
+  900: '#161B26',
+  800: '#181D29',
+  700: '#1E2433', // brand ink — text, sidebar, headings
+  600: '#2A3242',
+  500: '#3A4253',
 }
+
+const CITRUS = {
+  light: '#FF8B5E',
+  main:  '#FF6B35', // signature accent — CTAs, selected states
+  dark:  '#E55320',
+  deep:  '#C2441A',
+}
+
+export const HONEY = '#F6B042' // second accent — price/total, celebratory sparkle
+
+// rgb tuples for translucent shadows/tints
+const CITRUS_RGB = '255,107,53'
+const INK_RGB = '30,36,51'
 
 // ── Shared design tokens ──────────────────────────────────────
-// Single source of truth for the blue-tinted shadows and brand
-// surfaces that were previously re-typed inline across pages.
+// Single source of truth for the tinted shadows and brand surfaces
+// that were previously re-typed inline across pages.
 
 export const elevation = {
-  card:     '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
-  cardHover: '0 8px 24px rgba(25,118,210,0.10), 0 2px 8px rgba(0,0,0,0.04)',
-  glow:     '0 4px 16px rgba(25,118,210,0.30)',
-  glowSoft: '0 4px 12px rgba(25,118,210,0.18)',
-  modal:    '0 24px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(25,118,210,0.06)',
+  card:      '0 1px 3px rgba(30,36,51,0.06), 0 1px 2px rgba(30,36,51,0.04)',
+  cardHover: `0 8px 24px rgba(${CITRUS_RGB},0.12), 0 2px 8px rgba(30,36,51,0.05)`,
+  glow:      `0 4px 16px rgba(${CITRUS_RGB},0.32)`,
+  glowSoft:  `0 4px 12px rgba(${CITRUS_RGB},0.18)`,
+  modal:     '0 24px 48px rgba(22,27,38,0.16), 0 0 0 1px rgba(30,36,51,0.06)',
 }
 
-// Flat brand surfaces (gradients removed — kept as a named map so page
-// backgrounds stay consistent and in one place).
+// Flat brand surfaces (kept as a named map so page chrome stays consistent
+// and lives in one place). Ink chrome lets the citrus accent stay the star.
 export const gradient = {
-  brand:   BLUE[700],
-  topbar:  BLUE[700],
-  sidebar: BLUE[800],
+  brand:   INK[700],
+  topbar:  INK[700],
+  sidebar: INK[800],
   panel:   '#FFFFFF',
 }
 
-// Subtle grape tints for hover/selected surfaces (e.g. nav items).
+// Subtle citrus tints for hover/selected surfaces (e.g. nav items).
 export const tint = {
-  hover:       'rgba(25,118,210,0.05)',
-  hoverBorder: 'rgba(25,118,210,0.20)',
+  hover:       `rgba(${CITRUS_RGB},0.06)`,
+  hoverBorder: `rgba(${CITRUS_RGB},0.22)`,
 }
+
+// Warm display stack for headings (Georgian-capable serif → personality).
+export const displayFont = '"Noto Serif Georgian", "Noto Serif", Georgia, serif'
 
 // ── Layout width tokens ───────────────────────────────────────
 // Named max-widths so page containers stay consistent within each
@@ -52,68 +69,80 @@ export const LAYOUT = {
 const theme = createTheme({
   palette: {
     primary: {
-      main:         BLUE[700],
-      light:        BLUE[400],
-      dark:         BLUE[800],
+      main:         CITRUS.main,
+      light:        CITRUS.light,
+      dark:         CITRUS.dark,
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main:         '#E3F2FD',
-      contrastText: BLUE[800],
+      main:         '#FFE9DD', // pale citrus tint — chip/avatar/empty-state surfaces
+      contrastText: CITRUS.deep,
     },
     background: {
-      default: '#F4F8FD',
+      default: '#FBF8F4', // warm chalk
       paper:   '#FFFFFF',
     },
     // ── Status palette ──────────────────────────────────────────
-    // Cool, harmonized status tones tuned to sit calmly beside the
-    // blue brand. Drive appointment status presentation (see
-    // StatusChip): approved→success, pending→warning, rejected→error,
-    // completed→info. `light` values are pale tints used as surfaces.
+    // Tuned to sit warmly beside the citrus accent. Drive appointment
+    // status presentation (see StatusChip): approved→success,
+    // pending→warning, rejected→error, completed→info. `light` values
+    // are pale tints used as surfaces.
     success: {
-      main:         '#0E9F6E', // approved — teal-green
+      main:         '#0E9F6E', // approved — pine green
       light:        '#D6F3E7',
       dark:         '#0A7D55',
       contrastText: '#FFFFFF',
     },
     warning: {
-      main:         '#B7791F', // pending — muted amber
-      light:        '#FBF1DD',
-      dark:         '#8C5A12',
+      main:         '#C8801F', // pending — warm amber
+      light:        '#FBEFD8',
+      dark:         '#9A5C0F',
       contrastText: '#FFFFFF',
     },
     error: {
-      main:         '#E0524B', // rejected — soft coral-red
-      light:        '#FBE2E0',
-      dark:         '#BE3B34',
+      main:         '#DC3C45', // rejected — crimson (distinct from citrus orange)
+      light:        '#FBE0E1',
+      dark:         '#B82A33',
       contrastText: '#FFFFFF',
     },
     info: {
-      main:         '#4F7BD9', // completed — brand indigo-blue
-      light:        '#E2EAF9',
-      dark:         '#3A5FB0',
+      main:         '#5B7A99', // completed — calm slate-blue (reads "done/archived")
+      light:        '#E5ECF2',
+      dark:         '#415D75',
       contrastText: '#FFFFFF',
     },
     text: {
-      primary:   '#0D2137',
-      secondary: '#5B6B7B',
-      disabled:  '#A4B0BC',
+      primary:   INK[700],
+      secondary: '#5A6273', // slate
+      disabled:  '#9AA1AE',
     },
-    divider: 'rgba(25,118,210,0.10)',
+    divider: `rgba(${INK_RGB},0.10)`,
   },
 
   typography: {
+    // Body / UI face: Noto Sans Georgian (the only Georgian-capable Google
+    // font besides the serif). It's paired with the serif display deliberately,
+    // not left to chance: the larger sans roles below borrow the serif's tight,
+    // negative tracking so the two families share a rhythm, while body copy
+    // stays open and editorial. That shared rhythm is what makes a serif +
+    // neutral-sans pairing read as "chosen" rather than mismatched.
     fontFamily: '"Noto Sans Georgian", "Noto Sans", "Roboto", sans-serif',
-    h1: { fontWeight: 700, letterSpacing: '-0.5px' },
-    h2: { fontWeight: 700, letterSpacing: '-0.5px' },
-    h3: { fontWeight: 600, letterSpacing: '-0.3px' },
-    h4: { fontWeight: 600, letterSpacing: '-0.3px' },
-    h5: { fontWeight: 600, letterSpacing: '-0.2px' },
-    h6: { fontWeight: 600 },
-    body1: { lineHeight: 1.6 },
-    body2: { lineHeight: 1.5 },
-    caption: { lineHeight: 1.4 },
-    button: { textTransform: 'none', fontWeight: 600 },
+    // Headings carry the personality — warm editorial serif. Applied through
+    // h5 because pages use h4/h5 for titles (h1–h3 are unused).
+    h1: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.25px' },
+    h2: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.25px' },
+    h3: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.15px' },
+    h4: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.15px' },
+    h5: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.1px' },
+    // Sans subheads bridge the bold serif and the regular body: a semibold step
+    // with a hair of negative tracking that echoes the serif above it.
+    h6:        { fontWeight: 600, letterSpacing: '-0.15px' },
+    subtitle1: { fontWeight: 600, letterSpacing: '-0.15px', lineHeight: 1.4 },
+    subtitle2: { fontWeight: 600, letterSpacing: '-0.1px' },
+    body1:   { lineHeight: 1.65, letterSpacing: '-0.05px' },
+    body2:   { lineHeight: 1.55, letterSpacing: '-0.05px' },
+    caption: { lineHeight: 1.45, letterSpacing: '0.1px' },
+    button:  { textTransform: 'none', fontWeight: 600, letterSpacing: '-0.1px' },
   },
 
   shape: { borderRadius: 12 },
@@ -129,25 +158,25 @@ const theme = createTheme({
           '&:active': { transform: 'scale(0.97)' },
         },
         contained: {
-          boxShadow: '0 1px 3px rgba(25,118,210,0.18)',
+          boxShadow: `0 1px 3px rgba(${CITRUS_RGB},0.20)`,
           '&:hover': {
-            boxShadow: '0 4px 16px rgba(25,118,210,0.30)',
+            boxShadow: `0 4px 16px rgba(${CITRUS_RGB},0.32)`,
             transform: 'translateY(-1px)',
           },
           '&:active': {
-            boxShadow: '0 1px 3px rgba(25,118,210,0.18)',
+            boxShadow: `0 1px 3px rgba(${CITRUS_RGB},0.20)`,
             transform: 'scale(0.97) translateY(0)',
           },
         },
         outlined: {
-          borderColor: 'rgba(25,118,210,0.35)',
+          borderColor: `rgba(${CITRUS_RGB},0.40)`,
           '&:hover': {
-            borderColor: BLUE[600],
-            backgroundColor: 'rgba(25,118,210,0.04)',
+            borderColor: CITRUS.dark,
+            backgroundColor: `rgba(${CITRUS_RGB},0.05)`,
           },
         },
         text: {
-          '&:hover': { backgroundColor: 'rgba(25,118,210,0.06)' },
+          '&:hover': { backgroundColor: `rgba(${CITRUS_RGB},0.07)` },
         },
         sizeSmall: { padding: '6px 14px', fontSize: '0.8125rem' },
         sizeLarge: { padding: '14px 32px', fontSize: '1rem', borderRadius: 12 },
@@ -157,12 +186,12 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+          boxShadow: '0 1px 3px rgba(30,36,51,0.06), 0 1px 2px rgba(30,36,51,0.04)',
           borderRadius: 16,
-          border: '1px solid rgba(25,118,210,0.06)',
+          border: `1px solid rgba(${INK_RGB},0.07)`,
           transition: 'box-shadow 0.2s ease, transform 0.2s ease',
           '&:hover': {
-            boxShadow: '0 8px 24px rgba(25,118,210,0.10), 0 2px 8px rgba(0,0,0,0.04)',
+            boxShadow: `0 8px 24px rgba(${CITRUS_RGB},0.12), 0 2px 8px rgba(30,36,51,0.05)`,
             transform: 'translateY(-2px)',
           },
         },
@@ -177,18 +206,18 @@ const theme = createTheme({
             borderRadius: 10,
             transition: 'box-shadow 0.15s ease',
             '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: BLUE[600],
+              borderColor: CITRUS.dark,
             },
             '&.Mui-focused': {
-              boxShadow: '0 0 0 3px rgba(25,118,210,0.12)',
+              boxShadow: `0 0 0 3px rgba(${CITRUS_RGB},0.14)`,
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: BLUE[600],
+              borderColor: CITRUS.dark,
               borderWidth: '1.5px',
             },
           },
           '& .MuiInputLabel-root.Mui-focused': {
-            color: BLUE[600],
+            color: CITRUS.dark,
           },
         },
       },
@@ -205,11 +234,11 @@ const theme = createTheme({
         root: {
           height: 4,
           borderRadius: 2,
-          backgroundColor: 'rgba(25,118,210,0.10)',
+          backgroundColor: `rgba(${CITRUS_RGB},0.12)`,
         },
         bar: {
           borderRadius: 2,
-          backgroundColor: BLUE[600],
+          backgroundColor: CITRUS.main,
           transition: 'transform 0.5s cubic-bezier(0.16,1,0.3,1)',
         },
       },
@@ -218,10 +247,10 @@ const theme = createTheme({
     MuiStepIcon: {
       styleOverrides: {
         root: {
-          color: 'rgba(25,118,210,0.20)',
+          color: `rgba(${INK_RGB},0.18)`,
           '&.Mui-active': {
-            color: BLUE[600],
-            filter: 'drop-shadow(0 2px 6px rgba(25,118,210,0.35))',
+            color: CITRUS.main,
+            filter: `drop-shadow(0 2px 6px rgba(${CITRUS_RGB},0.35))`,
           },
           '&.Mui-completed': { color: '#0E9F6E' },
         },
@@ -230,14 +259,14 @@ const theme = createTheme({
 
     MuiStepConnector: {
       styleOverrides: {
-        line: { borderColor: 'rgba(25,118,210,0.20)' },
+        line: { borderColor: `rgba(${INK_RGB},0.15)` },
       },
     },
 
     MuiStepLabel: {
       styleOverrides: {
         label: {
-          '&.Mui-active':    { fontWeight: 600, color: BLUE[600] },
+          '&.Mui-active':    { fontWeight: 600, color: CITRUS.dark },
           '&.Mui-completed': { fontWeight: 500 },
         },
       },
@@ -251,11 +280,11 @@ const theme = createTheme({
           fontWeight: 500,
           transition: 'all 0.15s ease',
           '&.Mui-selected': {
-            backgroundColor: 'rgba(25,118,210,0.10)',
-            color: BLUE[700],
-            borderColor: BLUE[600],
+            backgroundColor: `rgba(${CITRUS_RGB},0.10)`,
+            color: CITRUS.deep,
+            borderColor: CITRUS.main,
             fontWeight: 600,
-            '&:hover': { backgroundColor: 'rgba(25,118,210,0.15)' },
+            '&:hover': { backgroundColor: `rgba(${CITRUS_RGB},0.16)` },
           },
         },
       },
@@ -271,7 +300,7 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           borderRadius: 20,
-          boxShadow: '0 24px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(25,118,210,0.06)',
+          boxShadow: '0 24px 48px rgba(22,27,38,0.16), 0 0 0 1px rgba(30,36,51,0.06)',
         },
       },
     },
@@ -289,7 +318,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 10,
-          backgroundColor: '#E8F0FA',
+          backgroundColor: '#F0EBE3',
           padding: '3px',
           minHeight: 40,
         },
@@ -312,9 +341,9 @@ const theme = createTheme({
           padding: '6px 16px',
           borderRadius: 8,
           zIndex: 1,
-          color: '#5B6B7B',
+          color: '#5A6273',
           transition: 'color 0.15s ease',
-          '&.Mui-selected': { color: '#0D2137', fontWeight: 600 },
+          '&.Mui-selected': { color: INK[700], fontWeight: 600 },
         },
       },
     },
@@ -323,9 +352,9 @@ const theme = createTheme({
       styleOverrides: {
         switchBase: {
           '&.Mui-checked': {
-            color: BLUE[600],
+            color: CITRUS.main,
             '& + .MuiSwitch-track': {
-              backgroundColor: BLUE[600],
+              backgroundColor: CITRUS.main,
               opacity: 0.5,
             },
           },
@@ -336,7 +365,7 @@ const theme = createTheme({
     MuiAvatar: {
       styleOverrides: {
         root: {
-          backgroundColor: BLUE[600],
+          backgroundColor: INK[700],
           fontWeight: 700,
         },
       },
@@ -358,11 +387,11 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '12px !important',
-          border: '1px solid rgba(25,118,210,0.08)',
+          border: `1px solid rgba(${INK_RGB},0.08)`,
           boxShadow: 'none',
           '&:before': { display: 'none' },
           '&.Mui-expanded': {
-            boxShadow: '0 4px 16px rgba(25,118,210,0.08)',
+            boxShadow: `0 4px 16px rgba(${CITRUS_RGB},0.10)`,
           },
         },
       },

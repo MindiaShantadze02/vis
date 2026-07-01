@@ -3,7 +3,7 @@ import {
   Box, Typography, Card, CardContent, Button, LinearProgress,
   Stack, Chip, Divider, CircularProgress, useTheme,
 } from '@mui/material'
-import CheckIcon from '@mui/icons-material/Check'
+import { Check as CheckIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'

@@ -5,11 +5,11 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Chip,
 } from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
-import CloseIcon from '@mui/icons-material/Close'
-import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
-import CoffeeOutlinedIcon from '@mui/icons-material/CoffeeOutlined'
+import { Add as AddIcon } from '@/components/icons'
+import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
+import { Close as CloseIcon } from '@/components/icons'
+import { WorkOutlineOutlined as WorkOutlineOutlinedIcon } from '@/components/icons'
+import { CoffeeOutlined as CoffeeOutlinedIcon } from '@/components/icons'
 import { format, parseISO } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'

@@ -3,10 +3,10 @@ import {
   Box, Typography, Button, TextField, Stack, Alert,
   CircularProgress, Avatar,
 } from '@mui/material'
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
-import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined'
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined'
-import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
+import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
+import { SmsOutlined as SmsOutlinedIcon } from '@/components/icons'
+import { CheckCircleOutlined as CheckCircleOutlineIcon } from '@/components/icons'
+import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
 import { format, addDays } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'

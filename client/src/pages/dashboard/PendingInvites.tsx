@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Box, Typography, Button, Stack, CircularProgress } from '@mui/material'
-import MailOutlineIcon from '@mui/icons-material/MailOutlined'
+import { MailOutlined as MailOutlineIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
