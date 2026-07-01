@@ -348,16 +348,53 @@ const theme = createTheme({
       },
     },
 
+    // Clean rounded "pill" toggle — the thumb sits inside a full-radius track
+    // (no overflowing Material shadow), so it reads as flat and modern like the
+    // rest of the chrome. Off = ink tint, on = citrus.
     MuiSwitch: {
       styleOverrides: {
+        root: {
+          width: 42,
+          height: 24,
+          padding: 0,
+        },
         switchBase: {
+          padding: 0,
+          margin: 3,
+          transitionDuration: '250ms',
+          color: '#FFFFFF',
           '&.Mui-checked': {
-            color: CITRUS.main,
+            transform: 'translateX(18px)',
+            color: '#FFFFFF',
             '& + .MuiSwitch-track': {
               backgroundColor: CITRUS.main,
-              opacity: 0.5,
+              opacity: 1,
+              border: 0,
             },
           },
+          '&.Mui-disabled + .MuiSwitch-track': { opacity: 0.4 },
+        },
+        thumb: {
+          boxSizing: 'border-box',
+          width: 18,
+          height: 18,
+          boxShadow: '0 1px 2px rgba(30,36,51,0.25)',
+        },
+        track: {
+          borderRadius: 12,
+          backgroundColor: `rgba(${INK_RGB},0.22)`,
+          opacity: 1,
+          transition: 'background-color 250ms',
+        },
+      },
+    },
+
+    // The compact pill has no outer padding, so add a small gap to its label
+    // when used in a FormControlLabel (scoped to switches; checkboxes keep theirs).
+    MuiFormControlLabel: {
+      styleOverrides: {
+        root: {
+          '& .MuiSwitch-root': { marginRight: 6 },
         },
       },
     },
