@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  Grid, Card, Typography, Box, Chip, Stack, Skeleton, useTheme,
+  Typography, Box, Chip, Stack, Skeleton, useTheme,
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
 } from '@mui/material'
 import { LoginOutlined as LoginOutlinedIcon } from '@/components/icons'
@@ -13,10 +13,11 @@ import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, StatCard, EmptyState, CopyableText, useToast } from '@/components/ui'
+import { PageHeader, StatStrip, EmptyState, CopyableText, useToast } from '@/components/ui'
 import AddStayDialog from './AddStayDialog'
 import type { DashboardOutletContext } from './DashboardLayout'
 import { useOutletContext } from 'react-router-dom'
+import { surface } from '@/theme/theme'
 
 type StayStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'checked_in' | 'checked_out' | 'no_show'
 
@@ -128,21 +129,18 @@ export default function StaysOverview() {
         </Box>
       )}
 
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <StatCard label={t('hotel.arrivalsToday')} value={arrivalsToday} icon={<LoginOutlinedIcon />} color={theme.palette.primary.main} loading={loading} />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <StatCard label={t('hotel.inHouse')} value={inHouse} icon={<HotelOutlinedIcon />} color={theme.palette.success.main} loading={loading} />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <StatCard label={t('dashboard.pending')} value={pendingCount} icon={<AccessTimeIcon />} color={theme.palette.warning.main} loading={loading} />
-        </Grid>
-      </Grid>
+      <StatStrip
+        loading={loading}
+        items={[
+          { label: t('hotel.arrivalsToday'), value: arrivalsToday, icon: <LoginOutlinedIcon />, color: theme.palette.primary.main },
+          { label: t('hotel.inHouse'), value: inHouse, icon: <HotelOutlinedIcon />, color: theme.palette.success.main },
+          { label: t('dashboard.pending'), value: pendingCount, icon: <AccessTimeIcon />, color: theme.palette.warning.main },
+        ]}
+      />
 
       <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>{t('hotel.stays')}</Typography>
 
-      <Card>
+      <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
         {loading
           ? Array.from({ length: 4 }).map((_, i) => (
             <Box key={i} sx={{ px: 2, py: 1.75, borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -161,7 +159,7 @@ export default function StaysOverview() {
                 borderBottom: i < stays.length - 1 ? '1px solid' : 'none',
                 borderColor: 'divider', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 1.5,
-                '&:hover': { bgcolor: 'action.hover' },
+                '&:hover': { bgcolor: surface.hover },
               }}
             >
               <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -177,7 +175,7 @@ export default function StaysOverview() {
             </Box>
           ))
         }
-      </Card>
+      </Box>
 
       <Dialog open={!!selected} onClose={() => setSelected(null)} maxWidth="xs" fullWidth>
         {selected && (

@@ -3,6 +3,7 @@ import { Card, CardContent, Box, Typography, Skeleton } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { motion, animate, useMotionValue, useTransform } from 'framer-motion'
 import { EASE, fadeInUp } from '@/theme/motion'
+import { elevation } from '@/theme/theme'
 
 interface StatCardProps {
   label: string
@@ -74,6 +75,74 @@ export default function StatCard({ label, value, icon, color, loading }: StatCar
           }
         </Box>
       </CardContent>
+    </Card>
+  )
+}
+
+export interface StatItem {
+  label: string
+  value: string | number
+  icon: ReactNode
+  /** Resolved colour string (e.g. theme.palette.primary.main). */
+  color: string
+}
+
+/**
+ * A single panel of metrics split by hairline dividers — a "stat strip". Reads
+ * as one cohesive band instead of a row of individually-boxed cards (the KPI
+ * cliché). Segments sit side by side on desktop and stack on mobile.
+ */
+export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boolean }) {
+  return (
+    <Card
+      component={motion.div}
+      variants={fadeInUp}
+      initial="hidden"
+      animate="visible"
+      sx={{
+        mb: 4,
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        // Full-width band — suppress the global card hover-lift.
+        '&:hover': { transform: 'none', boxShadow: elevation.card },
+      }}
+    >
+      {items.map((it, i) => (
+        <Box
+          key={i}
+          sx={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.75,
+            p: 2.5,
+            borderColor: 'divider',
+            borderStyle: 'solid',
+            borderWidth: 0,
+            ...(i < items.length - 1 && {
+              borderRightWidth: { xs: 0, sm: '1px' },
+              borderBottomWidth: { xs: '1px', sm: 0 },
+            }),
+          }}
+        >
+          <Box
+            sx={{
+              width: 44, height: 44, borderRadius: 2, flexShrink: 0,
+              bgcolor: alpha(it.color, 0.12), color: it.color,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            {it.icon}
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>{it.label}</Typography>
+            {loading
+              ? <Skeleton width={64} height={32} />
+              : <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.25 }}><AnimatedValue value={it.value} /></Typography>
+            }
+          </Box>
+        </Box>
+      ))}
     </Card>
   )
 }

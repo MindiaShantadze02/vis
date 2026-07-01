@@ -54,6 +54,15 @@ export const tint = {
   hoverBorder: `rgba(${CITRUS_RGB},0.22)`,
 }
 
+// Warm neutral surfaces — replace MUI's cool `grey.50`/`action.hover` (which
+// clash with the warm chalk background) for table headers, summary panels and
+// row hovers across the dashboard.
+export const surface = {
+  header: '#F4EEE6', // warm chalk — table/section headers
+  subtle: '#F8F4EE', // slightly lighter — inset summary panels
+  hover:  `rgba(${CITRUS_RGB},0.05)`, // citrus-tinted row hover
+}
+
 // Warm display stack for headings (Georgian-capable serif → personality).
 export const displayFont = '"Noto Serif Georgian", "Noto Serif", Georgia, serif'
 

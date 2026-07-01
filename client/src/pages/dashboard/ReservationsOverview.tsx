@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
-  Grid, Card, Typography, Box, Chip, Stack, Skeleton,
+  Typography, Box, Chip, Stack, Skeleton,
   Dialog, DialogTitle, DialogContent, DialogActions, Button, useTheme,
 } from '@mui/material'
 import { GroupOutlined as GroupOutlinedIcon } from '@/components/icons'
@@ -14,9 +14,10 @@ import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, StatCard, EmptyState, CopyableText, useToast } from '@/components/ui'
+import { PageHeader, StatStrip, EmptyState, CopyableText, useToast } from '@/components/ui'
 import AddReservationDialog from './AddReservationDialog'
 import type { DashboardOutletContext } from './DashboardLayout'
+import { surface } from '@/theme/theme'
 
 type ReservationStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed' | 'no_show'
 
@@ -123,21 +124,18 @@ export default function ReservationsOverview() {
         </Box>
       )}
 
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <StatCard label={t('restaurant.todayReservations')} value={todays.length} icon={<EventSeatOutlinedIcon />} color={theme.palette.primary.main} loading={loading} />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <StatCard label={t('restaurant.covers')} value={coversToday} icon={<GroupOutlinedIcon />} color={theme.palette.success.main} loading={loading} />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <StatCard label={t('dashboard.pending')} value={pendingCount} icon={<AccessTimeIcon />} color={theme.palette.warning.main} loading={loading} />
-        </Grid>
-      </Grid>
+      <StatStrip
+        loading={loading}
+        items={[
+          { label: t('restaurant.todayReservations'), value: todays.length, icon: <EventSeatOutlinedIcon />, color: theme.palette.primary.main },
+          { label: t('restaurant.covers'), value: coversToday, icon: <GroupOutlinedIcon />, color: theme.palette.success.main },
+          { label: t('dashboard.pending'), value: pendingCount, icon: <AccessTimeIcon />, color: theme.palette.warning.main },
+        ]}
+      />
 
       <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>{t('restaurant.reservations')}</Typography>
 
-      <Card>
+      <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
         {loading
           ? Array.from({ length: 4 }).map((_, i) => (
             <Box key={i} sx={{ px: 2, py: 1.75, borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -157,7 +155,7 @@ export default function ReservationsOverview() {
                 borderColor: 'divider',
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 1.5,
-                '&:hover': { bgcolor: 'action.hover' },
+                '&:hover': { bgcolor: surface.hover },
               }}
             >
               <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -174,7 +172,7 @@ export default function ReservationsOverview() {
             </Box>
           ))
         }
-      </Card>
+      </Box>
 
       {/* Detail / actions dialog */}
       <Dialog open={!!selected} onClose={() => setSelected(null)} maxWidth="xs" fullWidth>

@@ -13,6 +13,7 @@ import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIM
 import { computeAvailableSlots, getDayKey } from '@/lib/slots'
 import type { SlotApptRow, SlotOverride, WeekTemplate } from '@/lib/slots'
 import { useToast } from '@/components/ui'
+import { surface } from '@/theme/theme'
 
 interface ServiceOption {
   id: string
@@ -406,7 +407,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
           />
 
           {selectedService && (
-            <Box sx={{ bgcolor: 'grey.50', borderRadius: 2, p: 1.5 }}>
+            <Box sx={{ bgcolor: surface.subtle, borderRadius: 2, p: 1.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>ფასი</Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>

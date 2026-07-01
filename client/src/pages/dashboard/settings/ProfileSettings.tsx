@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
 import { PageHeader, CopyableText, useToast } from '@/components/ui'
-import { LAYOUT } from '@/theme/theme'
+import { LAYOUT, surface } from '@/theme/theme'
 import {
   BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, getBookingTheme, type BookingThemeKey,
 } from '@/theme/bookingThemes'
@@ -193,7 +193,7 @@ export default function ProfileSettings() {
                   borderColor: 'divider',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer',
-                  '&:hover': { bgcolor: 'action.hover' },
+                  '&:hover': { bgcolor: surface.hover },
                 }}
               >
                 {uploading
@@ -272,7 +272,7 @@ export default function ProfileSettings() {
                         px: 1.5, py: 1, borderRadius: 2, cursor: 'pointer',
                         border: '2px solid',
                         borderColor: selected ? 'primary.main' : 'divider',
-                        bgcolor: selected ? 'action.hover' : 'transparent',
+                        bgcolor: selected ? surface.hover : 'transparent',
                         transition: 'border-color 0.15s ease, background-color 0.15s ease',
                         '&:hover': { borderColor: selected ? 'primary.main' : 'text.disabled' },
                       }}

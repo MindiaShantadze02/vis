@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import {
-  Grid, Card, Typography, Box, Skeleton, Chip, Button,
+  Typography, Box, Skeleton, Button,
   TextField, Select, MenuItem, FormControl, InputLabel, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TablePagination,
   useMediaQuery, useTheme,
@@ -14,14 +14,16 @@ import { AccessTime as AccessTimeIcon } from '@/components/icons'
 import { Search as SearchIcon } from '@/components/icons'
 import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
 import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
+import { CreditCardOutlined as CreditCardOutlinedIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
-import { PageHeader, StatCard, StatusChip, EmptyState, CopyableText, useToast } from '@/components/ui'
+import { PageHeader, StatStrip, StatusChip, EmptyState, CopyableText, useToast } from '@/components/ui'
 import type { AppointmentStatus } from '@/components/ui'
+import { surface } from '@/theme/theme'
 import AddAppointmentDialog from './AddAppointmentDialog'
 import PendingInvites from './PendingInvites'
 import ReservationsOverview from './ReservationsOverview'
@@ -286,45 +288,16 @@ export default function OverviewPage() {
         </Box>
       )}
 
-      {/* Stat cards */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard
-            label={t('dashboard.revenueThisWeek')}
-            value={`${stats?.revenueThisWeek ?? 0} ₾`}
-            icon={<TrendingUpIcon />}
-            color={theme.palette.primary.main}
-            loading={statsLoading}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard
-            label={t('dashboard.revenueThisMonth')}
-            value={`${stats?.revenueThisMonth ?? 0} ₾`}
-            icon={<TrendingUpIcon />}
-            color={theme.palette.success.main}
-            loading={statsLoading}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard
-            label={t('dashboard.todayAppointments')}
-            value={stats?.appointmentsToday ?? 0}
-            icon={<CalendarTodayIcon />}
-            color={theme.palette.primary.main}
-            loading={statsLoading}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard
-            label={t('dashboard.pendingApprovals')}
-            value={stats?.pendingCount ?? 0}
-            icon={<AccessTimeIcon />}
-            color={theme.palette.warning.main}
-            loading={statsLoading}
-          />
-        </Grid>
-      </Grid>
+      {/* Stat strip */}
+      <StatStrip
+        loading={statsLoading}
+        items={[
+          { label: t('dashboard.revenueThisWeek'), value: `${stats?.revenueThisWeek ?? 0} ₾`, icon: <TrendingUpIcon />, color: theme.palette.primary.main },
+          { label: t('dashboard.revenueThisMonth'), value: `${stats?.revenueThisMonth ?? 0} ₾`, icon: <TrendingUpIcon />, color: theme.palette.success.main },
+          { label: t('dashboard.todayAppointments'), value: stats?.appointmentsToday ?? 0, icon: <CalendarTodayIcon />, color: theme.palette.primary.main },
+          { label: t('dashboard.pendingApprovals'), value: stats?.pendingCount ?? 0, icon: <AccessTimeIcon />, color: theme.palette.warning.main },
+        ]}
+      />
 
       {/* Appointments list */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
@@ -388,7 +361,7 @@ export default function OverviewPage() {
         </Stack>
       </Box>
 
-      <Card>
+      <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
         {/* Desktop header row */}
         {!isMobile && (
           <Box
@@ -396,7 +369,7 @@ export default function OverviewPage() {
               display: 'grid',
               gridTemplateColumns: GRID_COLS,
               px: 2, py: 1.5,
-              bgcolor: 'grey.50',
+              bgcolor: surface.header,
               borderBottom: '1px solid',
               borderColor: 'divider',
             }}
@@ -422,11 +395,11 @@ export default function OverviewPage() {
               'data-testid': 'appt-row',
               onClick: () => { setSelected(appt); setAdminNote(appt.admin_notes ?? ''); setConfirmingCancel(false) },
               sx: {
-                px: 2, py: 1.5,
+                px: 2, py: 2,
                 borderBottom: i < appointments.length - 1 ? '1px solid' : 'none',
                 borderColor: 'divider',
                 cursor: 'pointer',
-                '&:hover': { bgcolor: 'action.hover' },
+                '&:hover': { bgcolor: surface.hover },
               },
             }
 
@@ -480,12 +453,14 @@ export default function OverviewPage() {
                     </Typography>
                   )}
                 </Box>
-                <Chip
-                  label={appt.payment_method === 'online' ? 'ონლაინ' : 'ადგილზე'}
-                  size="small"
-                  variant="outlined"
-                  sx={{ justifySelf: 'start' }}
-                />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', minWidth: 0 }}>
+                  {appt.payment_method === 'online'
+                    ? <CreditCardOutlinedIcon sx={{ fontSize: 16 }} />
+                    : <StorefrontOutlinedIcon sx={{ fontSize: 16 }} />}
+                  <Typography variant="caption" noWrap>
+                    {appt.payment_method === 'online' ? 'ონლაინ' : 'ადგილზე'}
+                  </Typography>
+                </Box>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   {appt.services?.price} ₾
                 </Typography>
@@ -517,7 +492,7 @@ export default function OverviewPage() {
             }}
           />
         )}
-      </Card>
+      </Box>
 
       {/* Detail dialog */}
       <Dialog open={!!selected} onClose={() => { setSelected(null); setConfirmingCancel(false) }} maxWidth="sm" fullWidth>

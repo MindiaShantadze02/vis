@@ -361,7 +361,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   }, [slots])
 
   return (
-    <Box>
+    <Box sx={{ maxWidth: 640, mx: 'auto' }}>
       <Button
         startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 14 }} />}
         onClick={onBack}
@@ -504,14 +504,14 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                 minWidth: { xs: 56, sm: 'auto' },
                 scrollSnapAlign: { xs: 'start', sm: 'none' },
                 py: 1.25, borderRadius: 2, cursor: disabled ? 'default' : 'pointer',
-                bgcolor: isSelected ? 'primary.main' : 'background.paper',
-                border: '1px solid',
-                borderColor: isSelected ? 'primary.main' : isToday ? 'primary.light' : 'divider',
+                // Ghost by default (no border box); selected = filled accent pill,
+                // today = accent-coloured number + dot (below). Themed via primary.
+                bgcolor: isSelected ? 'primary.main' : 'transparent',
                 boxShadow: isSelected ? glow : 'none',
                 opacity: disabled ? 0.4 : 1,
                 outline: 'none',
                 '&:focus-visible': { boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.5)}` },
-                '&:hover': disabled ? {} : { borderColor: 'primary.main' },
+                '&:hover': disabled || isSelected ? {} : { bgcolor: 'secondary.main' },
                 transition: 'all 0.15s cubic-bezier(0.16,1,0.3,1)',
               }}
             >
@@ -629,8 +629,10 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                         minHeight: 40, py: scarce ? 0.5 : 0, px: 1,
                         borderRadius: 2, cursor: 'pointer', outline: 'none',
                         border: '1px solid',
-                        borderColor: scarce ? alpha(theme.palette.warning.main, 0.5) : 'divider',
-                        bgcolor: scarce ? alpha(theme.palette.warning.main, 0.06) : 'background.paper',
+                        // Soft themed tint by default (no hard border box); border
+                        // only appears for the scarcity cue and on hover/focus.
+                        borderColor: scarce ? alpha(theme.palette.warning.main, 0.5) : 'transparent',
+                        bgcolor: scarce ? alpha(theme.palette.warning.main, 0.06) : 'secondary.main',
                         animation: anim.scaleIn,
                         animationDelay: `${index * 30}ms`,
                         transition: 'all 0.18s cubic-bezier(0.16,1,0.3,1)',
