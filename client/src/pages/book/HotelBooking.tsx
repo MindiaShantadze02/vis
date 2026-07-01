@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Box, Typography, Button, TextField, Stack, Alert,
-  CircularProgress, Avatar, Card,
+  CircularProgress, Card,
 } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { SmsOutlined as SmsOutlinedIcon } from '@/components/icons'
 import { CheckCircleOutlined as CheckCircleOutlineIcon } from '@/components/icons'
-import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
+import { HotelOutlined as HotelOutlinedIcon } from '@/components/icons'
+import { CalendarMonthOutlined as CalendarMonthOutlinedIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
@@ -16,26 +17,34 @@ import {
   isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS,
 } from '@/lib/validation'
 import { computeRoomAvailability, nightsBetween } from '@/lib/hotelInventory'
+import { BookingTicket } from '@/components/ui'
 import type { HotelRoomType, StayRow, RoomOption } from '@/lib/hotelInventory'
+import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
+import BookingShell from './BookingShell'
+import BookingSummaryCard from './BookingSummaryCard'
 
 const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6]
 
 interface Props {
   org: BookingOrg
-  accent?: string
+  /** The resolved booking theme (drives the shared shell + accents). */
+  bookingTheme: BookingTheme
 }
 
 const dateKey = (d: Date) => format(d, 'yyyy-MM-dd')
 
-export default function HotelBooking({ org, accent }: Props) {
+export default function HotelBooking({ org, bookingTheme }: Props) {
   const { t } = useTranslation()
+  const accent = bookingTheme.deep
   // When the hotel has online payment enabled, the full stay is prepaid; the
   // stay row is created by payment-webhook after the charge clears. Otherwise
   // it's pay-at-desk: insert a pending stay directly.
   const onlineEnabled = !!(org.payment_config?.bog?.enabled || org.payment_config?.tbc?.enabled)
 
   const [step, setStep] = useState(0)
+  const [direction, setDirection] = useState(1)
+  const goToStep = (n: number) => { setDirection(n >= step ? 1 : -1); setStep(n) }
   const [checkIn, setCheckIn] = useState<Date | null>(null)
   const [checkOut, setCheckOut] = useState<Date | null>(null)
   const [guests, setGuests] = useState(2)
@@ -228,40 +237,68 @@ export default function HotelBooking({ org, accent }: Props) {
     }
   }
 
+  // ── Done view — the shared tear-off ticket (matches appointments). ──
   if (done) {
     return (
-      <Box sx={{ maxWidth: 460, mx: 'auto', textAlign: 'center', py: 6 }}>
-        <CheckCircleOutlineIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>{t('hotel.stayDone')}</Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>{t('hotel.stayDoneCaption')}</Typography>
-        <Box sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 3, p: 2.5, textAlign: 'left' }}>
-          <Row label={t('hotel.room')} value={room?.name ?? ''} />
-          <Row label={t('hotel.checkIn')} value={checkIn ? format(checkIn, 'd MMM yyyy', { locale: ka }) : ''} />
-          <Row label={t('hotel.checkOut')} value={checkOut ? format(checkOut, 'd MMM yyyy', { locale: ka }) : ''} />
-          <Row label={t('hotel.total')} value={`${room?.total ?? 0} ₾`} />
+      <Box sx={{ minHeight: '100vh', bgcolor: bookingTheme.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+        <Box sx={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
+          <CheckCircleOutlineIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>{t('hotel.stayDone')}</Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>{t('hotel.stayDoneCaption')}</Typography>
+          <BookingTicket
+            notchColor={bookingTheme.pageBg}
+            priceColor={accent}
+            priceLabel={t('hotel.total')}
+            price={`${room?.total ?? 0} ₾`}
+            rows={[
+              { icon: <HotelOutlinedIcon sx={{ fontSize: 18 }} />, label: t('hotel.room'), value: room?.name ?? '' },
+              { icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />, label: t('hotel.checkIn'), value: checkIn ? format(checkIn, 'd MMM yyyy', { locale: ka }) : '' },
+              { icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />, label: t('hotel.checkOut'), value: checkOut ? format(checkOut, 'd MMM yyyy', { locale: ka }) : '' },
+            ]}
+          />
+          {org.contact_phone && (
+            <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'text.secondary' }}>{org.contact_phone}</Typography>
+          )}
         </Box>
-        {org.contact_phone && (
-          <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'text.secondary' }}>{org.contact_phone}</Typography>
-        )}
       </Box>
     )
   }
 
-  return (
-    <Box sx={{ maxWidth: 560, mx: 'auto', px: { xs: 2, md: 3 }, py: { xs: 3, md: 5 } }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-        <Avatar src={org.logo_url ?? undefined} sx={{ width: 48, height: 48, fontWeight: 700 }}>{org.name.charAt(0)}</Avatar>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>{org.name}</Typography>
-          {org.contact_phone && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <PhoneOutlinedIcon sx={{ fontSize: 13, opacity: 0.7 }} />
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{org.contact_phone}</Typography>
-            </Box>
-          )}
-        </Box>
-      </Box>
+  const stepTitles = [t('hotel.selectDates'), t('hotel.chooseRoom'), t('hotel.detailsHeading')]
 
+  const summary = datesValid ? (
+    <BookingSummaryCard
+      label={t('booking.yourBooking')}
+      labelColor={bookingTheme.sidebarText === 'dark' ? '#1F2937' : '#FFFFFF'}
+      notchColor={bookingTheme.sidebar}
+      priceColor={accent}
+      totalLabel={t('hotel.total')}
+      total={room ? `${room.total} ₾` : undefined}
+      rows={[
+        ...(room ? [{ icon: <HotelOutlinedIcon sx={{ fontSize: 18 }} />, primary: room.name }] : []),
+        {
+          icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />,
+          primary: `${checkIn && format(checkIn, 'd MMM', { locale: ka })} – ${checkOut && format(checkOut, 'd MMM', { locale: ka })}`,
+          secondary: `${nights} ${t('hotel.nights')}`,
+        },
+      ]}
+    />
+  ) : undefined
+
+  const mobileAside = room
+    ? <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{room.total} ₾</Typography>
+    : undefined
+
+  return (
+    <BookingShell
+      org={org}
+      bookingTheme={bookingTheme}
+      step={step}
+      direction={direction}
+      stepTitles={stepTitles}
+      summary={summary}
+      mobileAside={mobileAside}
+    >
       {error && step < 2 && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {/* Step 0 — dates + guests */}
@@ -309,7 +346,7 @@ export default function HotelBooking({ org, accent }: Props) {
             <Button
               fullWidth variant="contained" size="large"
               disabled={!datesValid}
-              onClick={() => setStep(1)}
+              onClick={() => goToStep(1)}
               data-testid="stay-dates-next"
             >
               {t('common.next')}
@@ -321,7 +358,7 @@ export default function HotelBooking({ org, accent }: Props) {
       {/* Step 1 — room type */}
       {step === 1 && (
         <Box>
-          <BackButton onClick={() => setStep(0)} label={t('common.back')} />
+          <BackButton onClick={() => goToStep(0)} label={t('common.back')} />
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: accent }}>{t('hotel.chooseRoom')}</Typography>
           {rooms.length === 0 ? (
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('hotel.noRoomsAvailable')}</Typography>
@@ -331,7 +368,7 @@ export default function HotelBooking({ org, accent }: Props) {
                 <Card
                   key={r.id}
                   data-testid="stay-room"
-                  onClick={() => { setRoom(r); setStep(2) }}
+                  onClick={() => { setRoom(r); goToStep(2) }}
                   sx={{ p: 2, cursor: 'pointer', border: '1px solid', borderColor: 'divider', '&:hover': { borderColor: 'primary.main' } }}
                 >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -356,7 +393,7 @@ export default function HotelBooking({ org, accent }: Props) {
       {/* Step 2 — details + OTP */}
       {step === 2 && phase === 'form' && (
         <Box>
-          <BackButton onClick={() => setStep(1)} label={t('common.back')} />
+          <BackButton onClick={() => goToStep(1)} label={t('common.back')} />
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5, color: accent }}>{t('hotel.detailsHeading')}</Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
             {room?.name} · {checkIn && format(checkIn, 'd MMM', { locale: ka })} – {checkOut && format(checkOut, 'd MMM', { locale: ka })} · {room?.total} ₾
@@ -419,7 +456,7 @@ export default function HotelBooking({ org, accent }: Props) {
           </Stack>
         </Box>
       )}
-    </Box>
+    </BookingShell>
   )
 }
 
@@ -428,14 +465,5 @@ function BackButton({ onClick, label }: { onClick: () => void; label: string }) 
     <Button startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 14 }} />} onClick={onClick} size="small" sx={{ mb: 2, color: 'text.secondary' }}>
       {label}
     </Button>
-  )
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>{label}</Typography>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>{value}</Typography>
-    </Box>
   )
 }

@@ -1,21 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  Box, Typography, Avatar, useMediaQuery, useTheme, Divider,
-} from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
-import { AnimatePresence, motion } from 'framer-motion'
 import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
 import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
 import { CalendarMonthOutlined as CalendarMonthOutlinedIcon } from '@/components/icons'
 import { AccessTimeOutlined as AccessTimeOutlinedIcon } from '@/components/icons'
-import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
-import { anim } from '@/theme/animations'
-import { stepVariants } from '@/theme/motion'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { LoadingState, EmptyState } from '@/components/ui'
+import BookingShell from './BookingShell'
+import BookingSummaryCard from './BookingSummaryCard'
 import Step1ServiceSelect from './Step1ServiceSelect'
 import Step2DateTimeSelect from './Step2DateTimeSelect'
 import Step3CustomerForm from './Step3CustomerForm'
@@ -106,8 +102,6 @@ export default function BookingLayout() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 
   const [org, setOrg] = useState<BookingOrg | null>(null)
   const [notFound, setNotFound] = useState(false)
@@ -214,15 +208,13 @@ export default function BookingLayout() {
 
   const bookingTheme = getBookingTheme(org.booking_theme)
 
-  // Restaurants use a different booking model (party size + table availability),
-  // so they get their own self-contained flow. The appointment flow below is
-  // untouched and still serves every appointments-vertical org.
+  // Restaurants and hotels use different booking models (party size + tables /
+  // date-range + rooms), but render inside the SAME BookingShell so all three
+  // verticals look identical apart from their domain-specific steps.
   if (org.vertical === 'restaurant') {
     return (
       <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
-        <Box sx={{ minHeight: '100vh', bgcolor: bookingTheme.pageBg }}>
-          <RestaurantBooking org={org} accent={bookingTheme.deep} />
-        </Box>
+        <RestaurantBooking org={org} bookingTheme={bookingTheme} />
       </ThemeProvider>
     )
   }
@@ -230,22 +222,10 @@ export default function BookingLayout() {
   if (org.vertical === 'hotel') {
     return (
       <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
-        <Box sx={{ minHeight: '100vh', bgcolor: bookingTheme.pageBg }}>
-          <HotelBooking org={org} accent={bookingTheme.deep} />
-        </Box>
+        <HotelBooking org={org} bookingTheme={bookingTheme} />
       </ThemeProvider>
     )
   }
-
-  // Light vs. dark sidebar content (the white theme uses a light panel, so its
-  // text/overlays must flip to dark to stay legible).
-  const darkSidebar = bookingTheme.sidebarText === 'dark'
-  const sideFg = darkSidebar ? '#1F2937' : '#FFFFFF'
-  const sideOverlay = (a: number) => `rgba(${darkSidebar ? '0,0,0' : '255,255,255'},${a})`
-  // Flat panels, no gradients/blobs. The light "minimal" theme needs a hairline
-  // border to separate its near-white sidebar from the white content; the rich
-  // colour panels separate by colour alone.
-  const flatSidebar = darkSidebar
 
   const stepTitles = [t('booking.progressService'), t('booking.progressTime'), t('booking.progressDetails')]
   // Resolved staff line for the summary, once a slot is chosen.
@@ -255,225 +235,79 @@ export default function BookingLayout() {
         : t('booking.anyAvailable'))
     : null
 
-  const sidebar = (
-    <Box
-      sx={{
-        width: { xs: '100%', md: 300 },
-        background: bookingTheme.sidebar,
-        color: sideFg,
-        p: 4,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        flexShrink: 0,
-        position: 'relative',
-        overflow: 'hidden',
-        // Hairline separation only for the light "minimal" panel; colour panels
-        // separate from the white content on their own.
-        ...(flatSidebar && {
-          borderRight: { md: '1px solid #E5E7EB' },
-          borderBottom: { xs: '1px solid #E5E7EB', md: 'none' },
-        }),
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
-        <Avatar
-          src={org.logo_url ?? undefined}
-          sx={{
-            width: 56, height: 56,
-            background: sideOverlay(darkSidebar ? 0.06 : 0.15),
-            color: sideFg,
-            fontSize: 22, fontWeight: 700,
-            border: flatSidebar ? '1px solid #E5E7EB' : `2px solid ${sideOverlay(0.30)}`,
-            boxShadow: flatSidebar ? '0 1px 3px rgba(0,0,0,0.06)' : '0 4px 16px rgba(0,0,0,0.20)',
-          }}
-        >
-          {org.name.charAt(0)}
-        </Avatar>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: sideFg }}>{org.name}</Typography>
-          {org.contact_phone && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
-              <PhoneOutlinedIcon sx={{ fontSize: 14, opacity: 0.8 }} />
-              <Typography variant="caption" sx={{ opacity: 0.8 }}>{org.contact_phone}</Typography>
-            </Box>
-          )}
-        </Box>
-      </Box>
+  // Live "your booking" summary — a white ticket filled in as the customer
+  // progresses, echoing the confirmation-page stub.
+  const sideFg = bookingTheme.sidebarText === 'dark' ? '#1F2937' : '#FFFFFF'
+  const summary = booking.service ? (
+    <BookingSummaryCard
+      label={t('booking.yourBooking')}
+      labelColor={sideFg}
+      notchColor={bookingTheme.sidebar}
+      priceColor={bookingTheme.deep}
+      totalLabel={t('booking.total')}
+      total={`${booking.service.price} ₾`}
+      rows={[
+        {
+          icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />,
+          primary: booking.service.name,
+        },
+        ...(booking.date && booking.time ? [{
+          icon: <AccessTimeOutlinedIcon sx={{ fontSize: 18 }} />,
+          primary: `${booking.date} · ${booking.time}`,
+          secondary: sideStaffLabel ?? undefined,
+        }] : []),
+      ]}
+    />
+  ) : undefined
 
-      {org.description && (
-        <>
-          <Divider sx={{ borderColor: sideOverlay(0.15) }} />
-          <Typography variant="body2" sx={{ opacity: 0.85, lineHeight: 1.65, position: 'relative' }}>
-            {org.description}
-          </Typography>
-        </>
-      )}
-
-      {/* Selected booking summary — a white ticket "being filled in", echoing
-          the tear-off stub on the confirmation page so the motif runs through
-          the whole flow. */}
-      {booking.service && (
-        <Box sx={{ animation: anim.fadeInUp, position: 'relative', mt: 1 }}>
-          <Typography
-            variant="caption"
-            sx={{ display: 'block', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.55, mb: 1.25 }}
-          >
-            {t('booking.yourBooking')}
-          </Typography>
-          <Box
-            sx={{
-              bgcolor: '#FFFFFF',
-              color: 'text.primary',
-              borderRadius: 2.5,
-              p: 2,
-              boxShadow: '0 10px 28px rgba(0,0,0,0.22)',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: booking.date && booking.time ? 1.25 : 0 }}>
-              <CalendarMonthOutlinedIcon sx={{ fontSize: 18, color: 'primary.main', mt: 0.25, flexShrink: 0 }} />
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{booking.service.name}</Typography>
-            </Box>
-            {booking.date && booking.time && (
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                <AccessTimeOutlinedIcon sx={{ fontSize: 18, color: 'primary.main', mt: 0.25, flexShrink: 0 }} />
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {booking.date} · {booking.time}
-                  </Typography>
-                  {sideStaffLabel && (
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{sideStaffLabel}</Typography>
-                  )}
-                </Box>
-              </Box>
-            )}
-            {/* Perforation — notches punched in the sidebar colour. */}
-            <Box
-              aria-hidden
-              sx={{
-                position: 'relative',
-                borderTop: '1.5px dashed rgba(30,36,51,0.18)',
-                mx: -2,
-                my: 1.75,
-                '&::before, &::after': {
-                  content: '""', position: 'absolute', top: '-7px',
-                  width: 14, height: 14, borderRadius: '50%', bgcolor: bookingTheme.sidebar,
-                },
-                '&::before': { left: -7 },
-                '&::after': { right: -7 },
-              }}
-            />
-            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{t('booking.total')}</Typography>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: bookingTheme.deep }}>
-                {booking.service.price} ₾
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-      )}
-    </Box>
-  )
+  const mobileAside = booking.service
+    ? <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{booking.service.price} ₾</Typography>
+    : undefined
 
   return (
     <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
-    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: '100vh' }}>
-      {!isMobile && sidebar}
-
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: bookingTheme.pageBg, minWidth: 0 }}>
-        {/* Compact mobile header — replaces the full sidebar below md. Shows the
-            business and the running total; the detailed summary stays desktop-only. */}
-        {isMobile && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, background: bookingTheme.sidebar, color: sideFg }}>
-            <Avatar
-              src={org.logo_url ?? undefined}
-              sx={{ width: 38, height: 38, background: sideOverlay(darkSidebar ? 0.06 : 0.16), color: sideFg, fontSize: 16, fontWeight: 700 }}
-            >
-              {org.name.charAt(0)}
-            </Avatar>
-            <Typography variant="subtitle2" noWrap sx={{ flex: 1, fontWeight: 700 }}>{org.name}</Typography>
-            {booking.service && (
-              <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{booking.service.price} ₾</Typography>
-            )}
-          </Box>
+      <BookingShell
+        org={org}
+        bookingTheme={bookingTheme}
+        step={step}
+        direction={direction}
+        stepTitles={stepTitles}
+        summary={summary}
+        mobileAside={mobileAside}
+      >
+        {step === 0 && (
+          <Step1ServiceSelect
+            orgId={org.id}
+            onSelect={service => { patch({ service }); goToStep(1) }}
+          />
         )}
-
-        {/* Progress bar — replaces the MUI Stepper. */}
-        <Box sx={{ bgcolor: 'background.paper', px: { xs: 2, md: 5 }, py: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Box sx={{ width: { xs: '100%', md: '85%' }, mx: 'auto' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: '0.5px', color: 'text.secondary' }}>
-                {t('booking.stepCounter', { n: step + 1 })}
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                {stepTitles[step]}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 0.75 }}>
-              {[0, 1, 2].map(i => (
-                <Box
-                  key={i}
-                  sx={{
-                    flex: 1, height: 5, borderRadius: 3,
-                    transition: 'background-color 0.3s',
-                    bgcolor: i <= step ? 'primary.main' : 'rgba(30,36,51,0.12)',
-                  }}
-                />
-              ))}
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Step content — slides in the travelled direction on step change. */}
-        <Box sx={{ flex: 1, position: 'relative', overflowX: 'hidden' }}>
-          <AnimatePresence mode="wait" custom={direction} initial={false}>
-            <Box
-              component={motion.div}
-              key={step}
-              custom={direction}
-              variants={stepVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              sx={{ px: { xs: 2, md: 5 }, py: 4, width: { xs: '100%', md: '85%' }, mx: 'auto' }}
-            >
-              {step === 0 && (
-                <Step1ServiceSelect
-                  orgId={org.id}
-                  onSelect={service => { patch({ service }); goToStep(1) }}
-                />
-              )}
-              {step === 1 && (
-                <Step2DateTimeSelect
-                  orgId={org.id}
-                  service={booking.service!}
-                  initialDate={booking.date}
-                  initialStaffId={booking.staffId}
-                  onSelect={(date, time, staffId, assignedStaff) => {
-                    patch({ date, time, staffId, assignedStaff }); goToStep(2)
-                  }}
-                  onBack={() => goToStep(0)}
-                />
-              )}
-              {step === 2 && (
-                <Step3CustomerForm
-                  org={org}
-                  booking={booking}
-                  priceColor={bookingTheme.deep}
-                  onChange={patch}
-                  onBack={() => goToStep(1)}
-                  onDone={(appointmentId) => {
-                    // Booking is done — drop the saved draft so a later visit starts fresh.
-                    if (slug) { try { sessionStorage.removeItem(storageKey(slug)) } catch { /* ignore */ } }
-                    navigate(`/booking-confirmation/${appointmentId}`)
-                  }}
-                />
-              )}
-            </Box>
-          </AnimatePresence>
-        </Box>
-      </Box>
-    </Box>
+        {step === 1 && (
+          <Step2DateTimeSelect
+            orgId={org.id}
+            service={booking.service!}
+            initialDate={booking.date}
+            initialStaffId={booking.staffId}
+            onSelect={(date, time, staffId, assignedStaff) => {
+              patch({ date, time, staffId, assignedStaff }); goToStep(2)
+            }}
+            onBack={() => goToStep(0)}
+          />
+        )}
+        {step === 2 && (
+          <Step3CustomerForm
+            org={org}
+            booking={booking}
+            priceColor={bookingTheme.deep}
+            onChange={patch}
+            onBack={() => goToStep(1)}
+            onDone={(appointmentId) => {
+              // Booking is done — drop the saved draft so a later visit starts fresh.
+              if (slug) { try { sessionStorage.removeItem(storageKey(slug)) } catch { /* ignore */ } }
+              navigate(`/booking-confirmation/${appointmentId}`)
+            }}
+          />
+        )}
+      </BookingShell>
     </ThemeProvider>
   )
 }

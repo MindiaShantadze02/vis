@@ -151,7 +151,6 @@ export default function WorkingHoursStep() {
       // name as a fallback (both now transliterate Georgian → Latin).
       const slug = data.slug || slugify(data.name) || `org-${suffix}`
 
-      let orgId: string
       let attempt = await supabase
         .from('organisations')
         .insert({
@@ -183,7 +182,7 @@ export default function WorkingHoursStep() {
       }
 
       if (attempt.error) throw new Error(attempt.error.message)
-      orgId = attempt.data!.id
+      const orgId = attempt.data!.id
 
       const { error: memberErr } = await supabase
         .from('org_members')
@@ -274,9 +273,10 @@ export default function WorkingHoursStep() {
                 p: 1.5,
                 borderRadius: 2,
                 border: '1px solid',
-                borderColor: cfg.open ? 'primary.main' : 'divider',
-                // A calm warm-neutral fill for open days — the citrus accent
-                // stays on the border/toggle rather than flooding the row.
+                // Calm, neutral rows (matches the dashboard Working Hours settings):
+                // no citrus border/fill flooding every open day — the accent lives
+                // only on the toggle and the green working-window rail.
+                borderColor: 'divider',
                 bgcolor: cfg.open ? surface.subtle : 'transparent',
               }}
             >

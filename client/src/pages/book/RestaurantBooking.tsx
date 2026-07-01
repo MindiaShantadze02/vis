@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Box, Typography, Button, TextField, Stack, Alert,
-  CircularProgress, Avatar,
+  CircularProgress,
 } from '@mui/material'
+import { useTheme, alpha } from '@mui/material/styles'
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { SmsOutlined as SmsOutlinedIcon } from '@/components/icons'
 import { CheckCircleOutlined as CheckCircleOutlineIcon } from '@/components/icons'
-import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
+import { GroupOutlined as GroupOutlinedIcon } from '@/components/icons'
+import { CalendarMonthOutlined as CalendarMonthOutlinedIcon } from '@/components/icons'
 import { format, addDays } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
@@ -15,9 +17,13 @@ import {
   isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS,
 } from '@/lib/validation'
 import { computeReservationSlots } from '@/lib/restaurantSlots'
+import { BookingTicket } from '@/components/ui'
 import type { WeekTemplate, SlotOverride } from '@/lib/slots'
 import type { ReservationRow, RestaurantTable } from '@/lib/restaurantSlots'
+import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
+import BookingShell from './BookingShell'
+import BookingSummaryCard from './BookingSummaryCard'
 
 // Slot granularity is fixed; turn time is per-org (org.reservation_turn_minutes).
 const SLOT_MINUTES = 30
@@ -26,17 +32,22 @@ const ADVANCE_DAYS = 14
 
 interface Props {
   org: BookingOrg
-  /** Accent colour from the resolved booking theme (for headings/price). */
-  accent?: string
+  /** The resolved booking theme (drives the shared shell + accents). */
+  bookingTheme: BookingTheme
 }
 
 const localDateKey = (d: Date) => format(d, 'yyyy-MM-dd')
 
-export default function RestaurantBooking({ org, accent }: Props) {
+export default function RestaurantBooking({ org, bookingTheme }: Props) {
   const { t } = useTranslation()
+  const theme = useTheme()
+  const glow = `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`
+  const accent = bookingTheme.deep
   const turnMinutes = org.reservation_turn_minutes ?? 120
 
   const [step, setStep] = useState(0)
+  const [direction, setDirection] = useState(1)
+  const goToStep = (n: number) => { setDirection(n >= step ? 1 : -1); setStep(n) }
   const [partySize, setPartySize] = useState<number | null>(null)
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
@@ -214,49 +225,59 @@ export default function RestaurantBooking({ org, accent }: Props) {
     }
   }
 
-  // ── Done view ───────────────────────────────────────────────
+  // ── Done view — the shared tear-off ticket (matches appointments). ──
   if (done) {
     return (
-      <Box sx={{ maxWidth: 460, mx: 'auto', textAlign: 'center', py: 6 }}>
-        <CheckCircleOutlineIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>{t('restaurant.reservationDone')}</Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-          {t('restaurant.reservationDoneCaption')}
-        </Typography>
-        <Box sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 3, p: 2.5, textAlign: 'left' }}>
-          <Row label={t('restaurant.partySize')} value={`${partySize}`} />
-          <Row label={t('booking.summaryDate')} value={format(new Date(`${date}T${time}:00`), 'd MMM, HH:mm', { locale: ka })} />
-        </Box>
-        {org.contact_phone && (
-          <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'text.secondary' }}>
-            {org.contact_phone}
+      <Box sx={{ minHeight: '100vh', bgcolor: bookingTheme.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+        <Box sx={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
+          <CheckCircleOutlineIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>{t('restaurant.reservationDone')}</Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+            {t('restaurant.reservationDoneCaption')}
           </Typography>
-        )}
+          <BookingTicket
+            notchColor={bookingTheme.pageBg}
+            rows={[
+              { icon: <GroupOutlinedIcon sx={{ fontSize: 18 }} />, label: t('restaurant.partySize'), value: `${partySize}` },
+              { icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />, label: t('booking.summaryDate'), value: format(new Date(`${date}T${time}:00`), 'd MMM, HH:mm', { locale: ka }) },
+            ]}
+          />
+          {org.contact_phone && (
+            <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'text.secondary' }}>
+              {org.contact_phone}
+            </Typography>
+          )}
+        </Box>
       </Box>
     )
   }
 
-  const header = (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-      <Avatar src={org.logo_url ?? undefined} sx={{ width: 48, height: 48, fontWeight: 700 }}>
-        {org.name.charAt(0)}
-      </Avatar>
-      <Box>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>{org.name}</Typography>
-        {org.contact_phone && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <PhoneOutlinedIcon sx={{ fontSize: 13, opacity: 0.7 }} />
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>{org.contact_phone}</Typography>
-          </Box>
-        )}
-      </Box>
-    </Box>
-  )
+  const stepTitles = [t('restaurant.partySize'), t('restaurant.chooseDate'), t('restaurant.detailsHeading')]
+
+  const summary = partySize != null ? (
+    <BookingSummaryCard
+      label={t('booking.yourBooking')}
+      labelColor={bookingTheme.sidebarText === 'dark' ? '#1F2937' : '#FFFFFF'}
+      notchColor={bookingTheme.sidebar}
+      rows={[
+        { icon: <GroupOutlinedIcon sx={{ fontSize: 18 }} />, primary: `${partySize} ${t('restaurant.guests')}` },
+        ...(date && time ? [{
+          icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />,
+          primary: format(new Date(`${date}T${time}:00`), 'd MMM, HH:mm', { locale: ka }),
+        }] : []),
+      ]}
+    />
+  ) : undefined
 
   return (
-    <Box sx={{ maxWidth: 560, mx: 'auto', px: { xs: 2, md: 3 }, py: { xs: 3, md: 5 } }}>
-      {header}
-
+    <BookingShell
+      org={org}
+      bookingTheme={bookingTheme}
+      step={step}
+      direction={direction}
+      stepTitles={stepTitles}
+      summary={summary}
+    >
       {error && step < 2 && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {/* Step 0 — party size */}
@@ -268,7 +289,7 @@ export default function RestaurantBooking({ org, accent }: Props) {
               <Button
                 key={n}
                 variant={partySize === n ? 'contained' : 'outlined'}
-                onClick={() => { setPartySize(n); setStep(1) }}
+                onClick={() => { setPartySize(n); goToStep(1) }}
                 data-testid={`resv-party-${n}`}
                 sx={{ minWidth: 60, height: 60, fontSize: 18, fontWeight: 700 }}
               >
@@ -282,7 +303,7 @@ export default function RestaurantBooking({ org, accent }: Props) {
       {/* Step 1 — date + time */}
       {step === 1 && (
         <Box>
-          <BackButton onClick={() => setStep(0)} label={t('common.back')} />
+          <BackButton onClick={() => goToStep(0)} label={t('common.back')} />
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: accent }}>{t('restaurant.chooseDate')}</Typography>
           <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 1, mb: 3 }}>
             {days.map(d => {
@@ -295,14 +316,16 @@ export default function RestaurantBooking({ org, accent }: Props) {
                   onClick={() => { setDate(key); setTime('') }}
                   sx={{
                     minWidth: 60, py: 1, borderRadius: 2, textAlign: 'center', cursor: 'pointer',
-                    border: '2px solid', borderColor: selected ? 'primary.main' : 'divider',
-                    bgcolor: selected ? 'secondary.main' : 'background.paper',
+                    bgcolor: selected ? 'primary.main' : 'transparent',
+                    boxShadow: selected ? glow : 'none',
+                    transition: 'all 0.15s cubic-bezier(0.16,1,0.3,1)',
+                    '&:hover': selected ? {} : { bgcolor: 'secondary.main' },
                   }}
                 >
-                  <Typography variant="caption" sx={{ display: 'block', textTransform: 'uppercase' }}>
+                  <Typography variant="caption" sx={{ display: 'block', textTransform: 'uppercase', color: selected ? 'rgba(255,255,255,0.85)' : 'text.secondary' }}>
                     {format(d, 'EEE', { locale: ka })}
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 700 }}>{format(d, 'd')}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 700, color: selected ? 'white' : 'text.primary' }}>{format(d, 'd')}</Typography>
                 </Box>
               )
             })}
@@ -320,7 +343,7 @@ export default function RestaurantBooking({ org, accent }: Props) {
                       key={s.time}
                       variant={time === s.time ? 'contained' : 'outlined'}
                       data-testid="resv-slot"
-                      onClick={() => { setTime(s.time); setTableId(s.tableId); setStep(2) }}
+                      onClick={() => { setTime(s.time); setTableId(s.tableId); goToStep(2) }}
                     >
                       {s.time}
                     </Button>
@@ -335,7 +358,7 @@ export default function RestaurantBooking({ org, accent }: Props) {
       {/* Step 2 — details + OTP */}
       {step === 2 && phase === 'form' && (
         <Box>
-          <BackButton onClick={() => setStep(1)} label={t('common.back')} />
+          <BackButton onClick={() => goToStep(1)} label={t('common.back')} />
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5, color: accent }}>{t('restaurant.detailsHeading')}</Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
             {format(new Date(`${date}T${time}:00`), 'd MMMM, HH:mm', { locale: ka })} · {partySize} {t('restaurant.guests')}
@@ -423,7 +446,7 @@ export default function RestaurantBooking({ org, accent }: Props) {
           </Stack>
         </Box>
       )}
-    </Box>
+    </BookingShell>
   )
 }
 
@@ -432,14 +455,5 @@ function BackButton({ onClick, label }: { onClick: () => void; label: string }) 
     <Button startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 14 }} />} onClick={onClick} size="small" sx={{ mb: 2, color: 'text.secondary' }}>
       {label}
     </Button>
-  )
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>{label}</Typography>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>{value}</Typography>
-    </Box>
   )
 }
