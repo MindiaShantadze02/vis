@@ -447,20 +447,12 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         role="group"
         aria-label={t('booking.chooseDate')}
         sx={{
-          display: { xs: 'flex', sm: 'grid' },
-          gridTemplateColumns: { sm: 'repeat(7, 1fr)' },
-          gap: 0.75,
+          // 7-day week always fits as a single grid row, so no horizontal
+          // scroll/clipping on mobile — just tighter cells and gaps.
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          gap: { xs: 0.5, sm: 0.75 },
           mb: 3,
-          // mobile horizontal scroll + snap
-          overflowX: { xs: 'auto', sm: 'visible' },
-          scrollSnapType: { xs: 'x mandatory', sm: 'none' },
-          WebkitOverflowScrolling: 'touch',
-          // small bleed so the scroll edges sit flush with the card padding
-          mx: { xs: -0.5, sm: 0 },
-          px: { xs: 0.5, sm: 0 },
-          // hide scrollbar (visual cue is the peeking next-day cell)
-          scrollbarWidth: 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
         }}
       >
         {days.map((day, i) => {
@@ -499,19 +491,18 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
               }}
               sx={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
-                // mobile: fixed-width pills that scroll; desktop: flex into the grid
-                flex: { xs: '0 0 56px', sm: '1 1 auto' },
-                minWidth: { xs: 56, sm: 'auto' },
-                scrollSnapAlign: { xs: 'start', sm: 'none' },
-                py: 1.25, borderRadius: 2, cursor: disabled ? 'default' : 'pointer',
-                // Ghost by default (no border box); selected = filled accent pill,
+                minWidth: 0,
+                px: 0.25, py: 1.25, borderRadius: 2, cursor: disabled ? 'default' : 'pointer',
+                // Bordered cell by default; selected = filled accent pill,
                 // today = accent-coloured number + dot (below). Themed via primary.
-                bgcolor: isSelected ? 'primary.main' : 'transparent',
+                border: '1.5px solid',
+                borderColor: isSelected ? 'primary.main' : 'divider',
+                bgcolor: isSelected ? 'primary.main' : 'background.paper',
                 boxShadow: isSelected ? glow : 'none',
                 opacity: disabled ? 0.4 : 1,
                 outline: 'none',
                 '&:focus-visible': { boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.5)}` },
-                '&:hover': disabled || isSelected ? {} : { bgcolor: 'secondary.main' },
+                '&:hover': disabled || isSelected ? {} : { bgcolor: 'secondary.main', borderColor: 'primary.main' },
                 transition: 'all 0.15s cubic-bezier(0.16,1,0.3,1)',
               }}
             >
