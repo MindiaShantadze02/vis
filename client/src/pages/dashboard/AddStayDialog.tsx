@@ -3,7 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
   Stack, MenuItem, CircularProgress, Box, Typography,
 } from '@mui/material'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import { AppDatePicker } from '@/components/AppDatePicker'
 import { format, addDays } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
@@ -120,10 +120,10 @@ export default function AddStayDialog({ orgId, onClose, onCreated }: Props) {
               : rooms.map(r => <MenuItem key={r.id} value={r.id}>{r.name} — {r.nightlyPrice} ₾</MenuItem>)}
           </TextField>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-            <DatePicker label={t('hotel.checkIn')} value={checkIn} minDate={new Date()} format="dd MMM"
+            <AppDatePicker label={t('hotel.checkIn')} value={checkIn} minDate={new Date()} format="dd MMM"
               onChange={v => { setCheckIn(v); if (checkOut && v && checkOut <= v) setCheckOut(addDays(v, 1)) }}
               slotProps={{ textField: { fullWidth: true, required: true } }} />
-            <DatePicker label={t('hotel.checkOut')} value={checkOut} minDate={checkIn ? addDays(checkIn, 1) : new Date()} format="dd MMM"
+            <AppDatePicker label={t('hotel.checkOut')} value={checkOut} minDate={checkIn ? addDays(checkIn, 1) : new Date()} format="dd MMM"
               onChange={v => setCheckOut(v)} slotProps={{ textField: { fullWidth: true, required: true } }} />
           </Box>
           <TextField required label={t('hotel.guests')} value={guests} onChange={e => setGuests(onlyInt(e.target.value))}

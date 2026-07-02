@@ -4,7 +4,7 @@ import {
   TextField, Stack, FormControl, InputLabel, Select, MenuItem,
   FormHelperText, Alert, CircularProgress, Box, Typography,
 } from '@mui/material'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import { AppDatePicker } from '@/components/AppDatePicker'
 import { format, isValid } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -368,7 +368,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
           />
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <DatePicker
+            <AppDatePicker
               label="თარიღი"
               value={date}
               onChange={v => { setDate(v); setTimeStr('') }}

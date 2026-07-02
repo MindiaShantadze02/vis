@@ -6,7 +6,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, TablePagination,
   useMediaQuery, useTheme,
 } from '@mui/material'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import { AppDatePicker } from '@/components/AppDatePicker'
 import { Add as AddIcon } from '@/components/icons'
 import { TrendingUp as TrendingUpIcon } from '@/components/icons'
 import { CalendarToday as CalendarTodayIcon } from '@/components/icons'
@@ -337,7 +337,7 @@ export default function OverviewPage() {
               ))}
             </Select>
           </FormControl>
-          <DatePicker
+          <AppDatePicker
             label={t('dashboard.dateFrom')}
             value={dateFrom}
             onChange={v => { setDateFrom(v); setPage(0) }}
@@ -347,7 +347,7 @@ export default function OverviewPage() {
               field: { clearable: true, onClear: () => { setDateFrom(null); setPage(0) } },
             }}
           />
-          <DatePicker
+          <AppDatePicker
             label={t('dashboard.dateTo')}
             value={dateTo}
             minDate={dateFrom ?? undefined}
