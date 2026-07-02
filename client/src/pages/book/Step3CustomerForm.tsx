@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import {
   Box, Typography, Button, TextField, Stack,
   Alert, CircularProgress, ToggleButtonGroup, ToggleButton,
+  Checkbox, FormControlLabel, Link as MuiLink,
 } from '@mui/material'
+import { Trans } from 'react-i18next'
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { CreditCardOutlined as CreditCardOutlinedIcon } from '@/components/icons'
 import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
@@ -12,6 +14,7 @@ import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
+import { CONSENT_VERSION } from '@/pages/legal/legalContent'
 import { elevation } from '@/theme/theme'
 import type { BookingOrg, BookingState } from './BookingLayout'
 
@@ -41,6 +44,10 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Consent to Privacy Policy + Terms — required before a booking can proceed
+  // (Law on Personal Data Protection, Art. 12 / 32(9)).
+  const [consent, setConsent] = useState(false)
 
   // Phone-verification (OTP) gate between the form and the actual booking insert.
   const [phase, setPhase] = useState<'form' | 'otp'>('form')
@@ -182,6 +189,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
             last_name: booking.lastName.trim() || null,
             phone: booking.phone,
             notes: booking.notes.trim() || null,
+            consent_version: CONSENT_VERSION,
             slug: org.slug,
             returnBaseUrl: window.location.origin,
           },
@@ -206,6 +214,8 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           first_name: booking.firstName.trim(),
           last_name: booking.lastName.trim() || null,
           phone_number: formatGeorgianPhone(booking.phone),
+          consent_accepted_at: new Date().toISOString(),
+          consent_version: CONSENT_VERSION,
         })
 
       if (custErr) throw new Error(custErr.message)
@@ -256,7 +266,8 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     booking.firstName.trim().length >= 2 &&
     isValidPersonName(booking.firstName) &&
     !lastNameInvalid &&
-    isValidGeorgianPhone(booking.phone)
+    isValidGeorgianPhone(booking.phone) &&
+    consent
 
   // Staff line for the summary card. Null when the service has no assignable
   // people (we then omit the row rather than show an empty value).
@@ -342,6 +353,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
             fullWidth
             multiline
             rows={2}
+            helperText={t('booking.notesSensitiveWarning')}
             slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.notes, 'data-testid': 'book-notes' } }}
           />
         </Box>
@@ -420,6 +432,30 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
             </Typography>
           </Box>
         </Box>
+
+        <FormControlLabel
+          sx={{ alignItems: 'flex-start', mr: 0 }}
+          control={
+            <Checkbox
+              checked={consent}
+              onChange={e => setConsent(e.target.checked)}
+              size="small"
+              sx={{ pt: 0.25 }}
+              data-testid="book-consent"
+            />
+          }
+          label={
+            <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
+              <Trans
+                i18nKey="common.consent"
+                components={{
+                  priv: <MuiLink href="/privacy" target="_blank" rel="noopener" underline="hover" />,
+                  terms: <MuiLink href="/terms" target="_blank" rel="noopener" underline="hover" />,
+                }}
+              />
+            </Typography>
+          }
+        />
 
         <Button
           fullWidth

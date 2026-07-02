@@ -47,6 +47,9 @@ Deno.serve(async (req) => {
     if (purpose === 'appointment') {
       const { org_id, service_id, scheduled_at, staff_id, first_name, last_name, notes, slug } = body
       const phone = body.phone
+      // Consent (Privacy Policy + Terms) captured at the booking form; parked
+      // here and carried into the customer row by payment-webhook.
+      const consentVersion = body.consent_version ? String(body.consent_version) : null
       if (!org_id || !service_id || !scheduled_at || !first_name || !phone) {
         return Response.json({ error: 'missing_fields' }, { status: 400, headers: corsHeaders })
       }
@@ -115,6 +118,8 @@ Deno.serve(async (req) => {
           notes: notes ? String(notes).trim() : null,
           amount,
           currency: 'GEL',
+          consent_accepted_at: consentVersion ? new Date().toISOString() : null,
+          consent_version: consentVersion,
         })
         .select('id')
         .single()

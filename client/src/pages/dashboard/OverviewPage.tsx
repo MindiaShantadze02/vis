@@ -88,6 +88,8 @@ export default function OverviewPage() {
   const [adminNote, setAdminNote] = useState('')
   // Inline two-step guard for cancelling an already-approved appointment.
   const [confirmingCancel, setConfirmingCancel] = useState(false)
+  // Inline two-step guard for erasing a client's personal data (Art. 16).
+  const [confirmingErase, setConfirmingErase] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
 
   const [bookableMembers, setBookableMembers] = useState<StaffRef[]>([])
@@ -236,6 +238,22 @@ export default function OverviewPage() {
       setSelected(null)
       setAdminNote('')
       setConfirmingCancel(false)
+    }
+    setActionLoading(null)
+  }
+
+  // Honor a client's erasure request (Art. 16): anonymize their PII on this
+  // appointment via the erase_customer_data RPC (org-membership checked server-side).
+  async function eraseClientData(id: string) {
+    setActionLoading(id)
+    const { error } = await supabase.rpc('erase_customer_data', { p_appointment_id: id })
+    if (error) {
+      toast.error(error.message)
+    } else {
+      toast.success(t('dashboard.eraseDone'))
+      setSelected(null)
+      setConfirmingErase(false)
+      loadAppointments()
     }
     setActionLoading(null)
   }
@@ -484,7 +502,7 @@ export default function OverviewPage() {
       </Box>
 
       {/* Detail dialog */}
-      <Dialog open={!!selected} onClose={() => { setSelected(null); setConfirmingCancel(false) }} maxWidth="sm" fullWidth>
+      <Dialog open={!!selected} onClose={() => { setSelected(null); setConfirmingCancel(false); setConfirmingErase(false) }} maxWidth="sm" fullWidth>
         {selected && (
           <>
             <DialogTitle sx={{ fontWeight: 700 }}>
@@ -556,7 +574,18 @@ export default function OverviewPage() {
               </Stack>
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button onClick={() => { setSelected(null); setConfirmingCancel(false) }}>{t('common.cancel')}</Button>
+              {confirmingErase ? (
+                <Button variant="contained" color="error" sx={{ mr: 'auto' }} data-testid="appt-confirm-erase"
+                  onClick={() => eraseClientData(selected.id)} disabled={!!actionLoading}>
+                  {t('dashboard.eraseConfirm')}
+                </Button>
+              ) : (
+                <Button size="small" color="error" sx={{ mr: 'auto' }} data-testid="appt-erase"
+                  onClick={() => setConfirmingErase(true)} disabled={!!actionLoading}>
+                  {t('dashboard.eraseClientData')}
+                </Button>
+              )}
+              <Button onClick={() => { setSelected(null); setConfirmingCancel(false); setConfirmingErase(false) }}>{t('common.cancel')}</Button>
               {selected.status === 'pending' && (
                 <>
                   <Button variant="outlined" color="error" data-testid="appt-reject"

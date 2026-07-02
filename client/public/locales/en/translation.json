@@ -23,7 +23,10 @@
     "saved": "Changes saved",
     "deleted": "Deleted",
     "confirmDeleteTitle": "Confirm deletion",
-    "confirmDeleteMessage": "Are you sure? This action cannot be undone."
+    "confirmDeleteMessage": "Are you sure? This action cannot be undone.",
+    "consent": "I have read and agree to the <priv>Privacy Policy</priv> and <terms>Terms of Service</terms>",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service"
   },
   "validation": {
     "required": "Required field",
@@ -156,7 +159,8 @@
     "otpTooSoon": "Please wait a moment before requesting another code.",
     "otpSendFailed": "We couldn't send your code — please try again.",
     "bookFailed": "We couldn't finish your booking — please try again.",
-    "paymentStartFailed": "We couldn't start the payment — please try again."
+    "paymentStartFailed": "We couldn't start the payment — please try again.",
+    "notesSensitiveWarning": "Please do not enter health or other sensitive personal data."
   },
   "payment": {
     "sandbox": "Sandbox",
@@ -204,7 +208,10 @@
     "noBusinessTitle": "No business yet",
     "noBusinessCaption": "Set up a business to get started. If you're added to a team, the project will appear here.",
     "setUpBusiness": "Set up your business",
-    "superadmin": "Super admin"
+    "superadmin": "Super admin",
+    "eraseClientData": "Erase client data",
+    "eraseConfirm": "Confirm erasure",
+    "eraseDone": "Client data erased"
   },
   "notifications": {
     "title": "Notifications",

@@ -42,6 +42,9 @@ import SuperadminsPage from '@/pages/superadmin/SuperadminsPage'
 
 import NotFoundPage from '@/pages/NotFoundPage'
 
+// Legal
+import LegalPage from '@/pages/legal/LegalPage'
+
 function LoadingScreen() {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -126,6 +129,10 @@ export default function App() {
       <Route path="/pay/mock" element={<MockCheckoutPage />} />
       <Route path="/payment-return" element={<PaymentReturnPage />} />
       <Route path="/invite/:token" element={<InvitationAcceptPage />} />
+
+      {/* Public legal pages (data-protection compliance). */}
+      <Route path="/privacy" element={<LegalPage type="privacy" />} />
+      <Route path="/terms" element={<LegalPage type="terms" />} />
 
       <Route path="/superadmin" element={<AuthGuard><SuperAdminGuard><SuperAdminLayout /></SuperAdminGuard></AuthGuard>}>
         <Route index element={<PlatformOverviewPage />} />

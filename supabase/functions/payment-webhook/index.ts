@@ -101,7 +101,13 @@ Deno.serve(async (req) => {
       // per booking too, so we stay consistent rather than dedupe by phone.
       const { data: customer, error: custErr } = await admin
         .from('customers')
-        .insert({ first_name: pb.first_name, last_name: pb.last_name, phone_number: pb.phone })
+        .insert({
+          first_name: pb.first_name,
+          last_name: pb.last_name,
+          phone_number: pb.phone,
+          consent_accepted_at: pb.consent_accepted_at ?? null,
+          consent_version: pb.consent_version ?? null,
+        })
         .select('id')
         .single()
 

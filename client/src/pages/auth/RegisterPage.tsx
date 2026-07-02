@@ -2,9 +2,10 @@ import { useState } from 'react'
 import {
   Box, Card, CardContent, TextField, Button,
   Typography, CircularProgress, Alert, Link as MuiLink,
+  Checkbox, FormControlLabel,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
@@ -51,6 +52,7 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [consent, setConsent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -78,7 +80,7 @@ export default function RegisterPage() {
   const phoneInvalid = phone.trim().length > 0 && !phoneValid
   const passwordTooShort = password.length > 0 && password.length < 6
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
-  const canSignUp = phoneValid && password.length >= 6 && confirmPassword.length >= 6 && !passwordMismatch
+  const canSignUp = phoneValid && password.length >= 6 && confirmPassword.length >= 6 && !passwordMismatch && consent
 
   return (
     <AuthShell>
@@ -128,6 +130,30 @@ export default function RegisterPage() {
         helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
         sx={{ mb: 2 }}
         slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-confirm-password' } }}
+      />
+
+      <FormControlLabel
+        sx={{ alignItems: 'flex-start', mr: 0, mb: 2 }}
+        control={
+          <Checkbox
+            checked={consent}
+            onChange={e => setConsent(e.target.checked)}
+            size="small"
+            sx={{ pt: 0.25 }}
+            data-testid="register-consent"
+          />
+        }
+        label={
+          <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
+            <Trans
+              i18nKey="common.consent"
+              components={{
+                priv: <MuiLink href="/privacy" target="_blank" rel="noopener" underline="hover" />,
+                terms: <MuiLink href="/terms" target="_blank" rel="noopener" underline="hover" />,
+              }}
+            />
+          </Typography>
+        }
       />
 
       <Button
