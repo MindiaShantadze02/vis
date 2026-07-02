@@ -85,7 +85,13 @@
     "from": "С",
     "to": "До",
     "finish": "Завершить",
-    "skip": "Пропустить"
+    "skip": "Пропустить",
+    "welcomeTitle": "Настроим вашу страницу записи",
+    "welcomeSubtitle": "Три простых шага — и вы готовы принимать записи.",
+    "previewLabel": "Ваша страница записи",
+    "previewBusinessPlaceholder": "Ваш бизнес",
+    "previewNoServices": "Услуги появятся здесь",
+    "previewNoHours": "Рабочие часы ещё не заданы"
   },
   "booking": {
     "title": "Онлайн запись",

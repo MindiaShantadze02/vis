@@ -85,7 +85,13 @@
     "from": "From",
     "to": "To",
     "finish": "Finish",
-    "skip": "Skip for now"
+    "skip": "Skip for now",
+    "welcomeTitle": "Let's set up your booking page",
+    "welcomeSubtitle": "Three quick steps and you're ready to take bookings.",
+    "previewLabel": "Your booking page",
+    "previewBusinessPlaceholder": "Your business",
+    "previewNoServices": "Services will appear here",
+    "previewNoHours": "Working hours not set yet"
   },
   "booking": {
     "title": "Online Booking",

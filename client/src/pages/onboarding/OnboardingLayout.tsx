@@ -1,14 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useOrg } from '@/contexts/OrgContext'
-import {
-  Box, Typography, Container, Button,
-} from '@mui/material'
-import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { anim } from '@/theme/animations'
 import type { DaySchedule } from '@/lib/validation'
 import PendingInvites from '@/pages/dashboard/PendingInvites'
+import OnboardingShell from './OnboardingShell'
 
 // ── Shared state across onboarding steps ──────────────────────
 
@@ -82,7 +78,6 @@ const STEPS: Step[] = [
 // ── Layout ────────────────────────────────────────────────────
 
 export default function OnboardingLayout() {
-  const { t } = useTranslation()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { org } = useOrg()
@@ -103,6 +98,13 @@ export default function OnboardingLayout() {
   const steps = STEPS
   const activeStep = steps.findIndex(s => pathname.startsWith(s.path))
   const stepIdx = Math.max(0, activeStep)
+
+  // Slide direction for the step transition: forward when advancing, back when
+  // returning. Derived by comparing against the previous index using the
+  // adjust-state-during-render pattern (no ref reads during render).
+  const [nav, setNav] = useState({ prev: stepIdx, dir: 1 })
+  if (nav.prev !== stepIdx) setNav({ prev: stepIdx, dir: stepIdx > nav.prev ? 1 : -1 })
+  const direction = nav.dir
 
   // If someone lands on step 2 or 3 directly (e.g. browser back/forward or bookmark)
   // without filling step 1, send them back to the beginning.
@@ -135,85 +137,15 @@ export default function OnboardingLayout() {
 
   return (
     <OnboardingContext.Provider value={{ data, update }}>
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          bgcolor: 'background.default',
-        }}
+      <OnboardingShell
+        step={stepIdx}
+        direction={direction}
+        data={data}
+        onSkip={handleSkip}
+        banner={<PendingInvites />}
       >
-        {/* Top bar */}
-        <Box
-          sx={{
-            bgcolor: 'background.paper',
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            py: 1.75, px: 3,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.25,
-          }}
-        >
-          <Box
-            sx={{
-              width: 30, height: 30, borderRadius: '9px',
-              bgcolor: 'primary.dark',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 15, lineHeight: 1 }}>V</Typography>
-          </Box>
-          <Typography variant="h6" sx={{ color: 'primary.dark', fontWeight: 800, letterSpacing: '-0.3px' }}>Vis</Typography>
-
-          <Box sx={{ flex: 1 }} />
-
-          <Button
-            onClick={handleSkip}
-            size="small"
-            sx={{ color: 'text.secondary', fontWeight: 600 }}
-          >
-            {t('onboarding.skip')}
-          </Button>
-        </Box>
-
-        {/* Intentionally narrower (sm ≈ 600) than settings pages — this is a focused stepper flow. */}
-        <Container maxWidth="sm" sx={{ flex: 1, py: 5 }}>
-          {/* If this user was invited to an existing org, offer to join it here
-              rather than letting them create a redundant one. */}
-          <PendingInvites />
-
-          {/* Progress bar — 3 segments + step counter & title (replaces the Stepper). */}
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: '0.5px', color: 'text.secondary' }}>
-                {t('booking.stepCounter', { n: stepIdx + 1 })}
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                {t(steps[stepIdx].labelKey)}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 0.75 }}>
-              {steps.map((_, i) => (
-                <Box
-                  key={i}
-                  sx={{
-                    flex: 1, height: 5, borderRadius: 3,
-                    transition: 'background-color 0.3s',
-                    bgcolor: i <= stepIdx ? 'primary.main' : 'rgba(30,36,51,0.12)',
-                  }}
-                />
-              ))}
-            </Box>
-          </Box>
-
-          {/* key re-mounts on step change, re-firing the entrance animation */}
-          <Box key={activeStep} sx={{ animation: anim.fadeInUp }}>
-            <Outlet context={{ goNext, goBack, data, update }} />
-          </Box>
-        </Container>
-      </Box>
+        <Outlet context={{ goNext, goBack, data, update }} />
+      </OnboardingShell>
     </OnboardingContext.Provider>
   )
 }

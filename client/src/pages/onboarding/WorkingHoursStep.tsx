@@ -20,6 +20,7 @@ import { ActionIconButton } from '@/components/ui'
 import { supabase } from '@/lib/supabase'
 import { slugify } from '@/lib/slug'
 import { surface } from '@/theme/theme'
+import StepHeader from './StepHeader'
 import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -207,12 +208,11 @@ export default function WorkingHoursStep() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        {t('onboarding.step3')}
-      </Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
-        {t('onboarding.workingHours')}
-      </Typography>
+      <StepHeader
+        icon={<WorkOutlineOutlinedIcon />}
+        title={t('onboarding.step3')}
+        subtitle={t('onboarding.step3Subtitle')}
+      />
 
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="hours-error">{error}</Alert>}
 

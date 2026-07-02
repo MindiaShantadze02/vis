@@ -6,7 +6,7 @@ import { createTheme } from '@mui/material/styles'
 // near-ink charcoal-navy carries the brand; a citrus accent brings the
 // energy; honey lifts prices and celebratory moments.
 
-const INK = {
+export const INK = {
   900: '#161B26',
   800: '#181D29',
   700: '#1E2433', // brand ink — text, sidebar, headings

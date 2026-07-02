@@ -11,7 +11,9 @@ import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/componen
 import { Add as AddIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { ActionIconButton, EmptyState } from '@/components/ui'
+import { HONEY } from '@/theme/theme'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
+import StepHeader from './StepHeader'
 import type { OnboardingData, ServiceLocationType } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -113,12 +115,11 @@ export default function ServicesStep() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        {t('onboarding.step2')}
-      </Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
-        დაამატეთ მინიმუმ ერთი სერვისი
-      </Typography>
+      <StepHeader
+        icon={<DesignServicesOutlinedIcon />}
+        title={t('onboarding.step2')}
+        subtitle={t('onboarding.step2Subtitle')}
+      />
 
       {/* Existing services */}
       {data.services.length === 0 ? (
@@ -153,7 +154,7 @@ export default function ServicesStep() {
                     )}
                   </Box>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    {svc.duration_minutes} წთ · {svc.price} ₾
+                    {svc.duration_minutes} წთ · <Box component="span" sx={{ color: HONEY, fontWeight: 700 }}>{svc.price} ₾</Box>
                   </Typography>
                 </Box>
                 <ActionIconButton aria-label={t('common.edit')} data-testid="onb-service-edit" onClick={() => startEdit(i)}>

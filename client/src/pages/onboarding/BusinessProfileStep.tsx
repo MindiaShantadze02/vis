@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Box, TextField, Button, Typography } from '@mui/material'
+import { Box, TextField, Button } from '@mui/material'
+import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { slugify } from '@/lib/slug'
 import { isValidGeorgianPhone, FIELD_LIMITS } from '@/lib/validation'
+import StepHeader from './StepHeader'
 import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -30,12 +32,11 @@ export default function BusinessProfileStep() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        {t('onboarding.step1')}
-      </Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
-        {t('onboarding.step1Subtitle')}
-      </Typography>
+      <StepHeader
+        icon={<StorefrontOutlinedIcon />}
+        title={t('onboarding.step1')}
+        subtitle={t('onboarding.step1Subtitle')}
+      />
 
       <TextField
         fullWidth
