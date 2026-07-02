@@ -11,8 +11,7 @@ import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
 import { LAYOUT } from '@/theme/theme'
 
-// Sign-in only. Registration lives on /register/:vertical so each ad can point
-// at its own vertical-specific signup (see RegisterPage).
+// Sign-in only. Registration lives on /register (see RegisterPage).
 export default function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()

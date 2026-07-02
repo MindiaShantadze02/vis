@@ -6,10 +6,8 @@ import {
 } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/contexts/AuthContext'
 import { anim } from '@/theme/animations'
 import type { DaySchedule } from '@/lib/validation'
-import { VERTICALS, type Vertical } from '@/lib/verticals'
 import PendingInvites from '@/pages/dashboard/PendingInvites'
 
 // ── Shared state across onboarding steps ──────────────────────
@@ -25,52 +23,17 @@ export interface OnboardingService {
   meeting_link: string | null
 }
 
-// A hotel room TYPE — persisted as a `resources` row (kind='room_type') at org
-// creation. nightly_price / total_rooms land in the row's attrs jsonb.
-export interface OnboardingRoom {
-  name: string
-  capacity: number
-  nightly_price: number
-  total_rooms: number
-  is_active: boolean
-  // Photos picked during onboarding, uploaded to resource_images once the room
-  // row (and its id) exists at finish.
-  images: File[]
-}
-
-// A restaurant table — persisted as a `resources` row (kind='table').
-export interface OnboardingTable {
-  name: string
-  capacity: number
-  is_active: boolean
-}
-
 export interface OnboardingData {
   // Step 1
-  vertical: Vertical
   name: string
   description: string
   slug: string
   contact_phone: string
-  // Step 2 — the "catalog" step is vertical-specific: appointments add services,
-  // restaurants add tables, hotels add room types. Only the one matching
-  // `vertical` is populated; the others stay empty.
+  // Step 2 — services offered by the business.
   services: OnboardingService[]
-  rooms: OnboardingRoom[]
-  tables: OnboardingTable[]
-  turnMinutes: number // restaurant table turn time (minutes)
   // Step 3 — stored in the editable schedule shape so edits survive navigating
   // between steps without a lossy ranges↔schedule round-trip.
   workingHours: Record<string, DaySchedule>
-}
-
-/** Resolve the vertical a user signed up for (set on the `/register/:vertical`
- *  link, stored in auth metadata). Falls back to appointments. */
-function signupVertical(meta: Record<string, unknown> | undefined): Vertical {
-  const v = meta?.signup_vertical
-  return typeof v === 'string' && (VERTICALS as readonly string[]).includes(v)
-    ? (v as Vertical)
-    : 'appointments'
 }
 
 const open = (openTime: string, closeTime: string): DaySchedule =>
@@ -95,9 +58,8 @@ interface OnboardingContextValue {
 
 const OnboardingContext = createContext<OnboardingContextValue>({
   data: {
-    vertical: 'appointments',
     name: '', description: '', slug: '', contact_phone: '',
-    services: [], rooms: [], tables: [], turnMinutes: 120,
+    services: [],
     workingHours: defaultWorkingHours,
   },
   update: () => {},
@@ -111,21 +73,11 @@ export function useOnboarding() {
 
 type Step = { path: string; labelKey: string }
 
-const BUSINESS_STEP: Step = { path: '/onboarding/business', labelKey: 'onboarding.step1' }
-const SERVICES_STEP: Step = { path: '/onboarding/services', labelKey: 'onboarding.step2' }
-const TABLES_STEP:   Step = { path: '/onboarding/tables',   labelKey: 'restaurant.tables' }
-const ROOMS_STEP:    Step = { path: '/onboarding/rooms',    labelKey: 'hotel.rooms' }
-const HOURS_STEP:    Step = { path: '/onboarding/hours',    labelKey: 'onboarding.step3' }
-
-// The middle "catalog" step is vertical-specific: appointments configure
-// services, restaurants their tables, hotels their room types. Appointments and
-// restaurants finish on the working-hours step; hotels have no weekly hours
-// (availability is date-range based) so they finish on the rooms step instead.
-function stepsFor(vertical: Vertical): Step[] {
-  if (vertical === 'hotel') return [BUSINESS_STEP, ROOMS_STEP]
-  const catalog = vertical === 'restaurant' ? TABLES_STEP : SERVICES_STEP
-  return [BUSINESS_STEP, catalog, HOURS_STEP]
-}
+const STEPS: Step[] = [
+  { path: '/onboarding/business', labelKey: 'onboarding.step1' },
+  { path: '/onboarding/services', labelKey: 'onboarding.step2' },
+  { path: '/onboarding/hours',    labelKey: 'onboarding.step3' },
+]
 
 // ── Layout ────────────────────────────────────────────────────
 
@@ -134,7 +86,6 @@ export default function OnboardingLayout() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { org } = useOrg()
-  const { user } = useAuth()
 
   // Once an org exists (either just created via onboarding or already present),
   // redirect to the dashboard. This also fixes the race condition where
@@ -143,19 +94,13 @@ export default function OnboardingLayout() {
     if (org) navigate('/dashboard', { replace: true })
   }, [org])
 
-  // Seed the vertical from the link the user registered through (stored in auth
-  // metadata by the /register/:vertical page). This is the only place the
-  // vertical is decided — the in-onboarding chooser is gone.
   const [data, setData] = useState<OnboardingData>({
-    vertical: signupVertical(user?.user_metadata),
     name: '', description: '', slug: '', contact_phone: '',
-    services: [], rooms: [], tables: [], turnMinutes: 120,
+    services: [],
     workingHours: defaultWorkingHours,
   })
 
-  // Steps depend on the chosen vertical (set on step 1). Appointments default
-  // keeps the original 3-step flow; restaurants/hotels drop the services step.
-  const steps = stepsFor(data.vertical)
+  const steps = STEPS
   const activeStep = steps.findIndex(s => pathname.startsWith(s.path))
   const stepIdx = Math.max(0, activeStep)
 

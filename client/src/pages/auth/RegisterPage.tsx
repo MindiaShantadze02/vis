@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import {
   Box, Card, CardContent, TextField, Button,
-  Typography, CircularProgress, Alert, Link as MuiLink, Stack,
+  Typography, CircularProgress, Alert, Link as MuiLink,
 } from '@mui/material'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
 import { LAYOUT } from '@/theme/theme'
-import { VERTICALS, type Vertical } from '@/lib/verticals'
 
 // Shared dark-hero shell so /register matches /login.
 function AuthShell({ children }: { children: React.ReactNode }) {
@@ -45,60 +44,9 @@ function AuthShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function isVertical(v: string | undefined): v is Vertical {
-  return !!v && (VERTICALS as readonly string[]).includes(v)
-}
-
-// Bare /register (or an unknown vertical): let the visitor pick which kind of
-// business they're registering. Each choice deep-links to /register/:vertical,
-// which is where ads point. This is a marketing picker, NOT the (removed)
-// in-onboarding chooser.
-function VerticalPicker() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  return (
-    <AuthShell>
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, textAlign: 'center' }}>
-        {t('restaurant.choose')}
-      </Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, textAlign: 'center' }}>
-        {t('auth.registerSubtitle')}
-      </Typography>
-      <Stack spacing={1.25}>
-        {VERTICALS.map(v => (
-          <Box
-            key={v}
-            data-testid={`register-pick-${v}`}
-            onClick={() => navigate(`/register/${v}`)}
-            sx={{
-              p: 1.75, borderRadius: 2, cursor: 'pointer', border: '2px solid',
-              borderColor: 'divider', bgcolor: 'background.paper',
-              transition: 'all 0.15s ease',
-              '&:hover': { borderColor: 'primary.main' },
-            }}
-          >
-            <Typography variant="body1" sx={{ fontWeight: 700 }}>{t(`restaurant.${v}`)}</Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t(`restaurant.${v}Desc`)}</Typography>
-          </Box>
-        ))}
-      </Stack>
-      <Box sx={{ mt: 2.5, textAlign: 'center' }}>
-        <MuiLink
-          component="button" type="button" underline="hover"
-          onClick={() => navigate('/login')}
-          sx={{ fontSize: '0.875rem', color: 'text.secondary' }}
-        >
-          {t('auth.haveAccount')}
-        </MuiLink>
-      </Box>
-    </AuthShell>
-  )
-}
-
 export default function RegisterPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { vertical } = useParams<{ vertical?: string }>()
 
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
@@ -106,21 +54,16 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // No vertical (or an unknown one) → show the picker instead of a broken form.
-  if (!isVertical(vertical)) return <VerticalPicker />
-
   async function handleSignUp() {
     if (password.length < 6) { setError(t('validation.passwordTooShort')); return }
     if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
     setError(null)
     setLoading(true)
     // Phone confirmation is disabled (sms_autoconfirm) so a successful sign-up
-    // returns a live session. `signup_vertical` in user metadata is what seeds
-    // the onboarding flow and locks the org to this vertical.
+    // returns a live session.
     const { data, error: err } = await supabase.auth.signUp({
       phone: toE164Georgian(phone),
       password,
-      options: { data: { signup_vertical: vertical } },
     })
     setLoading(false)
     if (err) { setError(t(mapAuthError(err))); return }
@@ -140,10 +83,10 @@ export default function RegisterPage() {
   return (
     <AuthShell>
       <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, textAlign: 'center' }}>
-        {t('auth.registerTitleFor', { business: t(`restaurant.${vertical}`) })}
+        {t('auth.registerTitle')}
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, textAlign: 'center' }}>
-        {t(`restaurant.${vertical}Desc`)}
+        {t('auth.registerSubtitle')}
       </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="login-error">{error}</Alert>}

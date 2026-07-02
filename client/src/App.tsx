@@ -13,8 +13,6 @@ import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
 import OnboardingLayout from '@/pages/onboarding/OnboardingLayout'
 import BusinessProfileStep from '@/pages/onboarding/BusinessProfileStep'
 import ServicesStep from '@/pages/onboarding/ServicesStep'
-import RoomsStep from '@/pages/onboarding/RoomsStep'
-import TablesStep from '@/pages/onboarding/TablesStep'
 import WorkingHoursStep from '@/pages/onboarding/WorkingHoursStep'
 
 // Dashboard
@@ -23,8 +21,6 @@ import OverviewPage from '@/pages/dashboard/OverviewPage'
 import CalendarPage from '@/pages/dashboard/CalendarPage'
 import ProfileSettings from '@/pages/dashboard/settings/ProfileSettings'
 import ServicesSettings from '@/pages/dashboard/settings/ServicesSettings'
-import TablesSettings from '@/pages/dashboard/settings/TablesSettings'
-import RoomsSettings from '@/pages/dashboard/settings/RoomsSettings'
 import WorkingHoursSettings from '@/pages/dashboard/settings/WorkingHoursSettings'
 import TeamSettings from '@/pages/dashboard/settings/TeamSettings'
 import PaymentSettings from '@/pages/dashboard/settings/PaymentSettings'
@@ -33,7 +29,6 @@ import SubscriptionPage from '@/pages/dashboard/settings/SubscriptionPage'
 // Public booking
 import BookingLayout from '@/pages/book/BookingLayout'
 import BookingConfirmationPage from '@/pages/book/BookingConfirmationPage'
-import StayManagePage from '@/pages/book/StayManagePage'
 import MockCheckoutPage from '@/pages/book/MockCheckoutPage'
 import PaymentReturnPage from '@/pages/book/PaymentReturnPage'
 import InvitationAcceptPage from '@/pages/book/InvitationAcceptPage'
@@ -101,18 +96,13 @@ export default function App() {
       <Route path="/" element={<Navigate to="/login" replace />} />
 
       <Route path="/login" element={<PublicOnlyGuard><LoginPage /></PublicOnlyGuard>} />
-      {/* Vertical-specific registration — ads point at /register/:vertical. Bare
-          /register shows a picker. */}
       <Route path="/register" element={<PublicOnlyGuard><RegisterPage /></PublicOnlyGuard>} />
-      <Route path="/register/:vertical" element={<PublicOnlyGuard><RegisterPage /></PublicOnlyGuard>} />
       <Route path="/forgot-password" element={<PublicOnlyGuard><ForgotPasswordPage /></PublicOnlyGuard>} />
 
       <Route path="/onboarding" element={<AuthGuard><OnboardingLayout /></AuthGuard>}>
         <Route index element={<Navigate to="/onboarding/business" replace />} />
         <Route path="business" element={<BusinessProfileStep />} />
         <Route path="services" element={<ServicesStep />} />
-        <Route path="tables" element={<TablesStep />} />
-        <Route path="rooms" element={<RoomsStep />} />
         <Route path="hours" element={<WorkingHoursStep />} />
       </Route>
 
@@ -124,8 +114,6 @@ export default function App() {
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="settings/profile" element={<ProfileSettings />} />
           <Route path="settings/services" element={<ServicesSettings />} />
-          <Route path="settings/tables" element={<TablesSettings />} />
-          <Route path="settings/rooms" element={<RoomsSettings />} />
           <Route path="settings/hours" element={<WorkingHoursSettings />} />
           <Route path="settings/team" element={<TeamSettings />} />
           <Route path="settings/payment" element={<PaymentSettings />} />
@@ -135,7 +123,6 @@ export default function App() {
 
       <Route path="/book/:slug" element={<BookingLayout />} />
       <Route path="/booking-confirmation/:id" element={<BookingConfirmationPage />} />
-      <Route path="/stay/:id" element={<StayManagePage />} />
       <Route path="/pay/mock" element={<MockCheckoutPage />} />
       <Route path="/payment-return" element={<PaymentReturnPage />} />
       <Route path="/invite/:token" element={<InvitationAcceptPage />} />

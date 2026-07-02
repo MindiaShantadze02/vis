@@ -26,8 +26,7 @@ interface Props {
 /**
  * The live "your booking" summary shown in the booking sidebar: a white ticket
  * card being filled in as the customer progresses, with a perforated divider and
- * the running total. Extracted from the appointment flow so restaurant/hotel
- * render an identical summary (see BookingShell).
+ * the running total (see BookingShell).
  */
 export default function BookingSummaryCard({
   label, labelColor, rows, total, totalLabel, priceColor, notchColor,

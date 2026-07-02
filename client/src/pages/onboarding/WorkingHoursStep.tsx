@@ -11,13 +11,14 @@ import { CoffeeOutlined as CoffeeOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import {
   isEndAfterStart, timeToMinutes, minutesToTime, clampTime,
-  dayScheduleIssue,
+  dayScheduleIssue, scheduleToRanges, formatGeorgianPhone,
   type TimeRange, type DaySchedule,
 } from '@/lib/validation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
 import { ActionIconButton } from '@/components/ui'
-import { persistOnboarding } from '@/lib/onboarding'
+import { supabase } from '@/lib/supabase'
+import { slugify } from '@/lib/slug'
 import { surface } from '@/theme/theme'
 import type { OnboardingData } from './OnboardingLayout'
 
@@ -131,9 +132,71 @@ export default function WorkingHoursStep() {
     setError(null)
 
     try {
-      // Persist edits to shared state so persistOnboarding sees the latest hours
-      // even if the effect hasn't flushed yet.
-      await persistOnboarding({ ...data, workingHours: hours }, user.id)
+      // Guard against creating a duplicate org: if this user already belongs to
+      // one, just go to the dashboard instead of inserting another.
+      const { data: existing } = await supabase
+        .from('org_members')
+        .select('org_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle()
+      if (existing) {
+        await refresh()
+        navigate('/dashboard')
+        return
+      }
+
+      const suffix = Math.random().toString(36).slice(2, 6)
+      // Prefer the slug derived during the profile step; re-derive from the name
+      // as a fallback (both transliterate Georgian → Latin).
+      const slug = data.slug || slugify(data.name) || `org-${suffix}`
+      const orgRow = {
+        name: data.name,
+        description: data.description || null,
+        slug,
+        contact_phone: data.contact_phone.trim() ? formatGeorgianPhone(data.contact_phone) : null,
+        owner_id: user.id,
+        subscription_tier: 'free',
+      }
+
+      let attempt = await supabase.from('organisations').insert(orgRow).select('id').single()
+      // Slug collision — retry once with a random suffix.
+      if (attempt.error?.code === '23505') {
+        attempt = await supabase
+          .from('organisations')
+          .insert({ ...orgRow, slug: `${slug}-${suffix}` })
+          .select('id')
+          .single()
+      }
+      if (attempt.error) throw new Error(attempt.error.message)
+      const orgId = attempt.data!.id
+
+      const { error: memberErr } = await supabase
+        .from('org_members')
+        .insert({ org_id: orgId, user_id: user.id, role: 'owner', joined_at: new Date().toISOString() })
+      if (memberErr) throw new Error(memberErr.message)
+
+      if (data.services.length > 0) {
+        const { error: svcErr } = await supabase.from('services').insert(
+          data.services.map((s, i) => ({
+            org_id: orgId, name: s.name, duration_minutes: s.duration_minutes, price: s.price, sort_order: i,
+            location_type: s.location_type, meeting_link: s.meeting_link,
+          })),
+        )
+        if (svcErr) throw new Error(svcErr.message)
+      }
+
+      const templateRow: Record<string, unknown> = { org_id: orgId }
+      for (const day of DAYS) {
+        const s = hours[day]
+        templateRow[day] = {
+          open: s.open,
+          ranges: s.open ? scheduleToRanges(s.openTime, s.closeTime, s.breaks) : [],
+        }
+      }
+      const { error: hoursErr } = await supabase.from('working_hours_template').insert(templateRow)
+      if (hoursErr) throw new Error(hoursErr.message)
+
       await refresh()
       navigate('/dashboard')
     } catch (err) {

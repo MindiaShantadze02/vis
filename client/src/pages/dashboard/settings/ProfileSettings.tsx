@@ -12,8 +12,6 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
 import { PageHeader, CopyableText, useToast } from '@/components/ui'
-import ImageManager from '@/components/ImageManager'
-import { MAX_IMAGES_PER_ORG } from '@/lib/catalogImages'
 import { LAYOUT, surface } from '@/theme/theme'
 import {
   BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, getBookingTheme, type BookingThemeKey,
@@ -37,9 +35,6 @@ export default function ProfileSettings() {
   const [contactPhone, setContactPhone] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [bookingTheme, setBookingTheme] = useState<BookingThemeKey>(DEFAULT_BOOKING_THEME)
-  const [checkInTime, setCheckInTime] = useState('')
-  const [checkOutTime, setCheckOutTime] = useState('')
-  const [cancelHours, setCancelHours] = useState('')
 
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -54,9 +49,6 @@ export default function ProfileSettings() {
       setLogoUrl((org as unknown as Record<string, string>).logo_url ?? null)
       // Resolve any stored key (incl. the retired 'classic') to a current theme.
       setBookingTheme(getBookingTheme(org.booking_theme).key)
-      setCheckInTime((org.check_in_time ?? '').slice(0, 5))
-      setCheckOutTime((org.check_out_time ?? '').slice(0, 5))
-      setCancelHours(org.hotel_cancellation_hours == null ? '' : String(org.hotel_cancellation_hours))
     }
   }, [org])
 
@@ -120,11 +112,6 @@ export default function ProfileSettings() {
         description: description.trim() || null,
         contact_phone: formatGeorgianPhone(contactPhone),
         booking_theme: bookingTheme,
-        ...(org.vertical === 'hotel' ? {
-          check_in_time: checkInTime || null,
-          check_out_time: checkOutTime || null,
-          hotel_cancellation_hours: cancelHours.trim() === '' ? null : Number(cancelHours),
-        } : {}),
       })
       .eq('id', org.id)
 
@@ -314,55 +301,6 @@ export default function ProfileSettings() {
             </Box>
 
           </Stack>
-
-          {/* Hotel property times — shown read-only on the booking page. */}
-          {org?.vertical === 'hotel' && (
-            <>
-              <Divider sx={{ my: 3 }} />
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1.5 }}>{t('hotel.propertyTimes')}</Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5 }}>
-                <TextField
-                  type="time"
-                  label={t('hotel.checkInTime')}
-                  value={checkInTime}
-                  onChange={e => setCheckInTime(e.target.value)}
-                  fullWidth
-                  slotProps={{ inputLabel: { shrink: true }, htmlInput: { 'data-testid': 'check-in-time' } }}
-                />
-                <TextField
-                  type="time"
-                  label={t('hotel.checkOutTime')}
-                  value={checkOutTime}
-                  onChange={e => setCheckOutTime(e.target.value)}
-                  fullWidth
-                  slotProps={{ inputLabel: { shrink: true }, htmlInput: { 'data-testid': 'check-out-time' } }}
-                />
-              </Box>
-              <TextField
-                type="number"
-                label={t('hotel.cancellationHours')}
-                value={cancelHours}
-                onChange={e => setCancelHours(e.target.value.replace(/[^0-9]/g, ''))}
-                fullWidth
-                sx={{ mt: 1.5 }}
-                helperText={t('hotel.cancellationHoursHint')}
-                slotProps={{ htmlInput: { min: 0, inputMode: 'numeric', 'data-testid': 'cancel-hours' } }}
-              />
-            </>
-          )}
-
-          {/* Property gallery (hotels only) — exterior/lobby/pool shots shown at
-              the top of the booking page, separate from per-room photos. */}
-          {org?.vertical === 'hotel' && (
-            <>
-              <Divider sx={{ my: 3 }} />
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{t('image.gallery')}</Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1.5 }}>
-                {t('image.galleryHint')}
-              </Typography>
-              <ImageManager scope="property" orgId={org.id} max={MAX_IMAGES_PER_ORG} />
-            </>
-          )}
 
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
             <Button

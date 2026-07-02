@@ -15,9 +15,6 @@ import BookingSummaryCard from './BookingSummaryCard'
 import Step1ServiceSelect from './Step1ServiceSelect'
 import Step2DateTimeSelect from './Step2DateTimeSelect'
 import Step3CustomerForm from './Step3CustomerForm'
-import RestaurantBooking from './RestaurantBooking'
-import HotelBooking from './HotelBooking'
-import type { Vertical } from '@/lib/verticals'
 
 export interface BookingOrg {
   id: string
@@ -28,11 +25,6 @@ export interface BookingOrg {
   slug: string
   payment_config: Record<string, { enabled?: boolean }> | null
   booking_theme: string | null
-  vertical: Vertical
-  reservation_turn_minutes: number
-  /** Hotel property times ("HH:mm:ss" from Postgres `time`), null if unset. */
-  check_in_time: string | null
-  check_out_time: string | null
 }
 
 // Shape returned by the get_public_org RPC (secrets stripped server-side).
@@ -44,10 +36,6 @@ interface PublicOrg {
   logo_url: string | null
   slug: string
   booking_theme: string | null
-  vertical: Vertical | null
-  reservation_turn_minutes: number | null
-  check_in_time: string | null
-  check_out_time: string | null
   payment_methods: Record<string, { enabled?: boolean }> | null
 }
 
@@ -168,10 +156,6 @@ export default function BookingLayout() {
         slug: pub.slug,
         booking_theme: pub.booking_theme,
         payment_config: pub.payment_methods,
-        vertical: pub.vertical ?? 'appointments',
-        reservation_turn_minutes: pub.reservation_turn_minutes ?? 120,
-        check_in_time: pub.check_in_time ?? null,
-        check_out_time: pub.check_out_time ?? null,
       })
     }
     if (slug) loadOrg()
@@ -214,25 +198,6 @@ export default function BookingLayout() {
   }
 
   const bookingTheme = getBookingTheme(org.booking_theme)
-
-  // Restaurants and hotels use different booking models (party size + tables /
-  // date-range + rooms), but render inside the SAME BookingShell so all three
-  // verticals look identical apart from their domain-specific steps.
-  if (org.vertical === 'restaurant') {
-    return (
-      <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
-        <RestaurantBooking org={org} bookingTheme={bookingTheme} />
-      </ThemeProvider>
-    )
-  }
-
-  if (org.vertical === 'hotel') {
-    return (
-      <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
-        <HotelBooking org={org} bookingTheme={bookingTheme} />
-      </ThemeProvider>
-    )
-  }
 
   const stepTitles = [t('booking.progressService'), t('booking.progressTime'), t('booking.progressDetails')]
   // Resolved staff line for the summary, once a slot is chosen.

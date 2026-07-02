@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Box, TextField, Button, Typography, Chip } from '@mui/material'
+import { Box, TextField, Button, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { slugify } from '@/lib/slug'
 import { isValidGeorgianPhone, FIELD_LIMITS } from '@/lib/validation'
@@ -36,22 +36,6 @@ export default function BusinessProfileStep() {
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
         {t('onboarding.step1Subtitle')}
       </Typography>
-
-      {/* Business type is fixed by the registration link the user arrived through
-          (stored in auth metadata), so it's shown read-only rather than chosen. */}
-      <Box
-        data-testid={`vertical-${data.vertical}`}
-        sx={{
-          display: 'flex', alignItems: 'center', gap: 1.25, mb: 3,
-          p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider',
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Chip size="small" color="primary" variant="outlined" label={t('restaurant.businessType')} />
-        <Typography variant="body1" sx={{ fontWeight: 700 }}>
-          {t(`restaurant.${data.vertical}`)}
-        </Typography>
-      </Box>
 
       <TextField
         fullWidth

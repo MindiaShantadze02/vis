@@ -26,8 +26,6 @@ import type { AppointmentStatus } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import AddAppointmentDialog from './AddAppointmentDialog'
 import PendingInvites from './PendingInvites'
-import ReservationsOverview from './ReservationsOverview'
-import StaysOverview from './StaysOverview'
 import type { DashboardOutletContext } from './DashboardLayout'
 
 // ── Types ─────────────────────────────────────────────────────
@@ -261,15 +259,6 @@ export default function OverviewPage() {
         />
       </Box>
     )
-  }
-
-  // Restaurants have a different booking model (reservations, not appointments),
-  // so they get their own overview. The appointment overview below is unchanged.
-  if (org.vertical === 'restaurant') {
-    return <ReservationsOverview />
-  }
-  if (org.vertical === 'hotel') {
-    return <StaysOverview />
   }
 
   return (
