@@ -77,6 +77,19 @@ interface Invitation {
   accepted_at: string | null
 }
 
+const MEMBER_PHOTO_BUCKET = 'member-photos'
+
+// Extract the storage object path ("<org>/<member>.<ext>") from a stored
+// avatar_url so we can delete it via the Storage API. Returns null for external
+// or malformed URLs.
+function memberPhotoPath(avatarUrl: string | null): string | null {
+  if (!avatarUrl) return null
+  const marker = `/${MEMBER_PHOTO_BUCKET}/`
+  const at = avatarUrl.indexOf(marker)
+  if (at === -1) return null
+  return avatarUrl.slice(at + marker.length).split('?')[0] || null
+}
+
 
 export default function TeamSettings() {
   const { t, i18n } = useTranslation()
@@ -156,9 +169,9 @@ export default function TeamSettings() {
     }
     const ext = file.name.split('.').pop()
     const path = `${org.id}/${memberId}.${ext}`
-    const { error: upErr } = await supabase.storage.from('member-photos').upload(path, file, { upsert: true })
+    const { error: upErr } = await supabase.storage.from(MEMBER_PHOTO_BUCKET).upload(path, file, { upsert: true })
     if (upErr) { toast.error(upErr.message); return null }
-    const { data } = supabase.storage.from('member-photos').getPublicUrl(path)
+    const { data } = supabase.storage.from(MEMBER_PHOTO_BUCKET).getPublicUrl(path)
     return `${data.publicUrl}?v=${Date.now()}`
   }
 
@@ -254,8 +267,14 @@ export default function TeamSettings() {
   }
 
   async function handleRemove(memberId: string) {
+    const avatarUrl = members.find(m => m.id === memberId)?.avatar_url ?? null
     await supabase.from('org_members').delete().eq('id', memberId)
     setMembers(prev => prev.filter(m => m.id !== memberId))
+    // Best-effort cleanup of the member's photo so it isn't orphaned in the
+    // bucket. storage.protect_delete blocks SQL deletes, so this must go through
+    // the Storage API; a failure here is non-fatal (the row is already gone).
+    const path = memberPhotoPath(avatarUrl)
+    if (path) await supabase.storage.from(MEMBER_PHOTO_BUCKET).remove([path])
     toast.success(t('common.deleted'))
   }
 
