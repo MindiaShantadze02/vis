@@ -13,6 +13,10 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
+import ImageManager from '@/components/ImageManager'
+import RoomInventoryManager from '@/components/RoomInventoryManager'
+import { catalogThumbUrl, MAX_IMAGES_PER_RESOURCE } from '@/lib/catalogImages'
+import { imagesPerRoomForTier } from '@/lib/tiers'
 
 // A room TYPE is a resources row with kind='room_type'. capacity = max guests
 // per room; nightly_price + total_rooms (how many identical rooms exist) live
@@ -20,6 +24,7 @@ import { LAYOUT } from '@/theme/theme'
 interface RoomTypeAttrs {
   nightly_price?: number
   total_rooms?: number
+  description?: string
 }
 interface RoomType {
   id: string
@@ -32,13 +37,14 @@ interface RoomType {
 
 interface RoomForm {
   name: string
+  description: string
   capacity: string
   nightlyPrice: string
   totalRooms: string
   is_active: boolean
 }
 
-const EMPTY: RoomForm = { name: '', capacity: '2', nightlyPrice: '0', totalRooms: '1', is_active: true }
+const EMPTY: RoomForm = { name: '', description: '', capacity: '2', nightlyPrice: '0', totalRooms: '1', is_active: true }
 
 const onlyInt = (v: string) => v.replace(/[^0-9]/g, '')
 const onlyDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
@@ -49,6 +55,7 @@ export default function RoomsSettings() {
   const toast = useToast()
 
   const [rooms, setRooms] = useState<RoomType[]>([])
+  const [primaryThumbs, setPrimaryThumbs] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -73,6 +80,19 @@ export default function RoomsSettings() {
       .eq('kind', 'room_type')
       .order('sort_order')
     setRooms((data ?? []) as RoomType[])
+
+    // Primary thumbnail per room type for the list (one small query for the org).
+    const { data: imgs } = await supabase
+      .from('resource_images')
+      .select('resource_id, storage_path')
+      .eq('org_id', org.id)
+      .eq('is_primary', true)
+    const thumbs: Record<string, string> = {}
+    for (const im of (imgs ?? []) as { resource_id: string; storage_path: string }[]) {
+      thumbs[im.resource_id] = catalogThumbUrl(im.storage_path)
+    }
+    setPrimaryThumbs(thumbs)
+
     setLoading(false)
   }
 
@@ -86,6 +106,7 @@ export default function RoomsSettings() {
     setEditing(r)
     setForm({
       name: r.name,
+      description: r.attrs?.description ?? '',
       capacity: String(r.capacity),
       nightlyPrice: String(r.attrs?.nightly_price ?? 0),
       totalRooms: String(r.attrs?.total_rooms ?? 1),
@@ -106,6 +127,7 @@ export default function RoomsSettings() {
     const attrs: RoomTypeAttrs = {
       nightly_price: Number(form.nightlyPrice) || 0,
       total_rooms: Number(form.totalRooms),
+      description: form.description.trim() || undefined,
     }
 
     if (editing) {
@@ -114,9 +136,13 @@ export default function RoomsSettings() {
         .update({ name: form.name.trim(), capacity: Number(form.capacity), attrs, is_active: form.is_active })
         .eq('id', editing.id)
       if (err) { setError(t('validation.saveFailed')); setSaving(false); return }
+      setSaving(false)
+      setOpen(false)
+      toast.success(t('common.saved'))
+      load()
     } else {
       const maxOrder = rooms.reduce((m, x) => Math.max(m, x.sort_order), -1)
-      const { error: err } = await supabase
+      const { data: created, error: err } = await supabase
         .from('resources')
         .insert({
           org_id: org.id,
@@ -127,13 +153,15 @@ export default function RoomsSettings() {
           is_active: form.is_active,
           sort_order: maxOrder + 1,
         })
-      if (err) { setError(t('validation.saveFailed')); setSaving(false); return }
+        .select('id, name, capacity, attrs, is_active, sort_order')
+        .single()
+      if (err || !created) { setError(t('validation.saveFailed')); setSaving(false); return }
+      setSaving(false)
+      toast.success(t('common.saved'))
+      // Keep the dialog open in edit mode so photos can be added right away.
+      setEditing(created as RoomType)
+      load()
     }
-
-    setSaving(false)
-    setOpen(false)
-    toast.success(t('common.saved'))
-    load()
   }
 
   async function handleDelete(r: RoomType) {
@@ -175,6 +203,17 @@ export default function RoomsSettings() {
                 data-testid="room-row"
                 sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', gap: 2, opacity: r.is_active ? 1 : 0.55 }}
               >
+                <Box
+                  sx={{
+                    width: 44, height: 44, borderRadius: 1.5, flexShrink: 0, overflow: 'hidden',
+                    bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'text.disabled',
+                  }}
+                >
+                  {primaryThumbs[r.id]
+                    ? <Box component="img" src={primaryThumbs[r.id]} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <HotelOutlinedIcon fontSize="small" />}
+                </Box>
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>{r.name}</Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -194,7 +233,7 @@ export default function RoomsSettings() {
         }
       </Card>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
           {editing ? t('hotel.editRoom') : t('hotel.newRoom')}
         </DialogTitle>
@@ -206,6 +245,13 @@ export default function RoomsSettings() {
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               fullWidth required autoFocus
               slotProps={{ htmlInput: { maxLength: 60, 'data-testid': 'room-name' } }}
+            />
+            <TextField
+              label={t('hotel.roomDescription')}
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              fullWidth multiline rows={2}
+              slotProps={{ htmlInput: { maxLength: 300, 'data-testid': 'room-description' } }}
             />
             <TextField
               required
@@ -236,6 +282,15 @@ export default function RoomsSettings() {
               control={<Switch checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />}
               label={t('hotel.roomActive')}
             />
+
+            {editing && org && (
+              <>
+                <Divider />
+                <ImageManager scope="resource" orgId={org.id} resourceId={editing.id} max={imagesPerRoomForTier(org.subscription_tier, MAX_IMAGES_PER_RESOURCE)} />
+                <Divider />
+                <RoomInventoryManager orgId={org.id} roomTypeId={editing.id} totalRooms={Number(form.totalRooms) || 0} />
+              </>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

@@ -30,6 +30,9 @@ export interface BookingOrg {
   booking_theme: string | null
   vertical: Vertical
   reservation_turn_minutes: number
+  /** Hotel property times ("HH:mm:ss" from Postgres `time`), null if unset. */
+  check_in_time: string | null
+  check_out_time: string | null
 }
 
 // Shape returned by the get_public_org RPC (secrets stripped server-side).
@@ -43,6 +46,8 @@ interface PublicOrg {
   booking_theme: string | null
   vertical: Vertical | null
   reservation_turn_minutes: number | null
+  check_in_time: string | null
+  check_out_time: string | null
   payment_methods: Record<string, { enabled?: boolean }> | null
 }
 
@@ -165,6 +170,8 @@ export default function BookingLayout() {
         payment_config: pub.payment_methods,
         vertical: pub.vertical ?? 'appointments',
         reservation_turn_minutes: pub.reservation_turn_minutes ?? 120,
+        check_in_time: pub.check_in_time ?? null,
+        check_out_time: pub.check_out_time ?? null,
       })
     }
     if (slug) loadOrg()

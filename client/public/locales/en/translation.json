@@ -83,7 +83,21 @@
     "checkInAction": "Check in",
     "checkOutAction": "Check out",
     "addStay": "Add stay",
-    "newStay": "New stay"
+    "newStay": "New stay",
+    "roomDescription": "Description",
+    "propertyTimes": "Check-in & check-out times",
+    "checkInTime": "Check-in time",
+    "checkOutTime": "Check-out time",
+    "checkInFrom": "Check-in from {{time}}",
+    "checkOutUntil": "Check-out until {{time}}",
+    "availabilityOverrides": "Availability overrides",
+    "availabilityOverridesHint": "Block a date or reduce available rooms for maintenance or off-platform bookings. Unlisted dates use the default of {{total}} rooms.",
+    "noOverrides": "No overrides yet.",
+    "blocked": "Blocked",
+    "roomsAvailable": "{{count}} available",
+    "date": "Date",
+    "cancellationHours": "Free-cancellation window (hours)",
+    "cancellationHoursHint": "Hours before check-in a guest may cancel online. Leave blank to disable self-service cancellation."
   },
   "common": {
     "back": "Back",
@@ -130,7 +144,8 @@
     "lettersOnly": "Letters only, please",
     "fileTooLarge": "File is too large (max {{max}} MB)",
     "invalidImage": "Please choose an image file (PNG, JPG, GIF)",
-    "requiredWhenEnabled": "Required when this method is enabled"
+    "requiredWhenEnabled": "Required when this method is enabled",
+    "loadFailed": "Failed to load."
   },
   "authErrors": {
     "invalidCredentials": "Incorrect phone number or password",
@@ -465,5 +480,37 @@
     "totalOrgs": "Total organisations",
     "totalAppointments": "Total appointments",
     "changeTier": "Change tier"
+  },
+  "image": {
+    "photos": "Photos",
+    "photosHint": "{{count}} of {{max}} photos · drag to reorder, tap ★ to set the main photo",
+    "addPhoto": "Add photo",
+    "setPrimary": "Set as main",
+    "maxReached": "You can add up to {{max}} photos.",
+    "gallery": "Property gallery",
+    "galleryHint": "Exterior, lobby, pool — shown at the top of your booking page"
+  },
+  "stay": {
+    "manageHeading": "Your booking",
+    "manageLink": "Manage or cancel this booking",
+    "notFound": "Booking not found",
+    "cancelButton": "Cancel booking",
+    "cancelConfirm": "Cancel this booking? This cannot be undone.",
+    "cancelled": "Your booking has been cancelled.",
+    "cancelFailed": "Could not cancel. Please contact the hotel.",
+    "tooLate": "The free-cancellation window has passed. Please contact the hotel.",
+    "notCancellableMsg": "This booking can't be cancelled online. Please contact the hotel.",
+    "contactToCancel": "To cancel or change this booking, contact the hotel.",
+    "windowPassed": "The free-cancellation window has passed.",
+    "backToBooking": "Book again",
+    "status": {
+      "pending": "Pending",
+      "approved": "Confirmed",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled",
+      "checked_in": "Checked in",
+      "checked_out": "Checked out",
+      "no_show": "No-show"
+    }
   }
 }

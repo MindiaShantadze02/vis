@@ -13,28 +13,37 @@ export interface TierInfo {
   label: string
   price: string
   limit: number | null
+  /** Photos allowed per resource (room type / table). Mirrors the
+   *  enforce_resource_image_limit trigger (migration 057). null = unlimited. */
+  imagesPerRoom: number | null
   features: string[]
   colorKey: TierColorKey
 }
 
 export const TIERS: TierInfo[] = [
   {
-    key: 'free', label: 'უფასო', price: '₾0 / თვე', limit: 30, colorKey: 'grey',
+    key: 'free', label: 'უფასო', price: '₾0 / თვე', limit: 30, imagesPerRoom: 3, colorKey: 'grey',
     features: ['30 ჯავშანი/თვე', 'ონლაინ ბუქინგ გვერდი', 'SMS შეტყობინებები'],
   },
   {
-    key: 'starter', label: 'სტარტერი', price: '₾15 / თვე', limit: 200, colorKey: 'info',
+    key: 'starter', label: 'სტარტერი', price: '₾15 / თვე', limit: 200, imagesPerRoom: 6, colorKey: 'info',
     features: ['200 ჯავშანი/თვე', 'ყველა უფასო ფუნქცია', 'პრიორიტეტული მხარდაჭერა'],
   },
   {
-    key: 'pro', label: 'პრო', price: '₾40 / თვე', limit: 600, colorKey: 'primary',
+    key: 'pro', label: 'პრო', price: '₾40 / თვე', limit: 600, imagesPerRoom: 10, colorKey: 'primary',
     features: ['600 ჯავშანი/თვე', 'ყველა სტარტერის ფუნქცია', 'BOG / TBC ონლაინ გადახდა', 'გუნდის მართვა'],
   },
   {
-    key: 'business', label: 'ბიზნესი', price: '₾80 / თვე', limit: null, colorKey: 'success',
+    key: 'business', label: 'ბიზნესი', price: '₾80 / თვე', limit: null, imagesPerRoom: null, colorKey: 'success',
     features: ['ულიმიტო ჯავშნები', 'ყველა პრო ფუნქცია', 'VIP მხარდაჭერა'],
   },
 ]
+
+/** Photos allowed per resource for a tier (falls back to the hard ceiling). */
+export function imagesPerRoomForTier(tier: string | null | undefined, hardMax: number): number {
+  const v = tierInfo(tier).imagesPerRoom
+  return v == null ? hardMax : Math.min(v, hardMax)
+}
 
 /** All tier keys, in display order. */
 export const TIER_KEYS: Tier[] = TIERS.map(t => t.key)

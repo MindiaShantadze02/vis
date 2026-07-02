@@ -16,9 +16,11 @@ import { supabase } from '@/lib/supabase'
 import {
   isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS,
 } from '@/lib/validation'
-import { computeRoomAvailability, nightsBetween } from '@/lib/hotelInventory'
+import { nightsBetween } from '@/lib/hotelInventory'
+import { catalogImageUrl, catalogThumbUrl } from '@/lib/catalogImages'
+import ImageCarousel from '@/components/ImageCarousel'
 import { BookingTicket } from '@/components/ui'
-import type { HotelRoomType, StayRow, RoomOption } from '@/lib/hotelInventory'
+import type { RoomOption } from '@/lib/hotelInventory'
 import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
 import BookingShell from './BookingShell'
@@ -27,6 +29,17 @@ import BookingContactNote from './BookingContactNote'
 
 const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6]
 
+/** One row from the get_room_availability RPC (per active room type). */
+interface AvailRow {
+  room_type_id: string
+  name: string
+  description: string | null
+  capacity: number
+  nightly_price: number
+  total_rooms: number
+  remaining: number
+}
+
 interface Props {
   org: BookingOrg
   /** The resolved booking theme (drives the shared shell + accents). */
@@ -34,6 +47,8 @@ interface Props {
 }
 
 const dateKey = (d: Date) => format(d, 'yyyy-MM-dd')
+/** Postgres `time` comes back as "HH:mm:ss"; show "HH:mm". */
+const hhmm = (t?: string | null) => (t ? t.slice(0, 5) : '')
 
 export default function HotelBooking({ org, bookingTheme }: Props) {
   const { t } = useTranslation()
@@ -56,8 +71,14 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
 
-  const [roomTypes, setRoomTypes] = useState<HotelRoomType[]>([])
-  const [stays, setStays] = useState<StayRow[]>([])
+  // Per-room-type availability for the chosen range, from the server RPC (anon
+  // never reads raw stay rows). Loaded when entering step 1.
+  const [avail, setAvail] = useState<AvailRow[]>([])
+  // resource_id → ordered full-size photo URLs (primary first); property gallery.
+  const [roomImages, setRoomImages] = useState<Record<string, string[]>>({})
+  const [roomThumbs, setRoomThumbs] = useState<Record<string, string>>({})
+  const [propertyImages, setPropertyImages] = useState<string[]>([])
+  const [carousel, setCarousel] = useState<{ urls: string[]; index: number } | null>(null)
 
   const [phase, setPhase] = useState<'form' | 'otp'>('form')
   const [code, setCode] = useState('')
@@ -65,53 +86,75 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const [stayId, setStayId] = useState<string | null>(null)
 
-  // Load active room types once.
+  // Load room + property photos once (availability comes from the RPC per range).
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
-        .from('resources')
-        .select('id, name, capacity, attrs')
+      // Room photos (primary first) — public SELECT, same as resources.
+      const { data: imgs } = await supabase
+        .from('resource_images')
+        .select('resource_id, storage_path, is_primary, sort_order')
         .eq('org_id', org.id)
-        .eq('kind', 'room_type')
-        .eq('is_active', true)
-      const mapped: HotelRoomType[] = (data ?? []).map(r => {
-        const attrs = (r.attrs ?? {}) as { nightly_price?: number; total_rooms?: number }
-        return {
-          id: r.id as string,
-          name: r.name as string,
-          capacity: r.capacity as number,
-          totalRooms: Number(attrs.total_rooms ?? 0),
-          nightlyPrice: Number(attrs.nightly_price ?? 0),
-        }
-      })
-      setRoomTypes(mapped)
+        .order('is_primary', { ascending: false })
+        .order('sort_order', { ascending: true })
+      const byRoom: Record<string, string[]> = {}
+      const thumbs: Record<string, string> = {}
+      for (const im of (imgs ?? []) as { resource_id: string; storage_path: string }[]) {
+        ;(byRoom[im.resource_id] ??= []).push(catalogImageUrl(im.storage_path))
+        if (!thumbs[im.resource_id]) thumbs[im.resource_id] = catalogThumbUrl(im.storage_path)
+      }
+      setRoomImages(byRoom)
+      setRoomThumbs(thumbs)
+
+      // Property gallery.
+      const { data: gallery } = await supabase
+        .from('org_images')
+        .select('storage_path, is_primary, sort_order')
+        .eq('org_id', org.id)
+        .order('is_primary', { ascending: false })
+        .order('sort_order', { ascending: true })
+      setPropertyImages((gallery ?? []).map((g: { storage_path: string }) => catalogImageUrl(g.storage_path)))
     }
     load()
   }, [org.id])
 
-  // Load stays overlapping the chosen range (for availability) when entering step 1.
+  // Server-side availability for the chosen range when entering step 1. The RPC
+  // returns per-room-type `remaining` without exposing other guests' stay rows.
   useEffect(() => {
     if (step !== 1 || !checkIn || !checkOut) return
-    async function loadStays() {
-      const { data } = await supabase
-        .from('hotel_stays')
-        .select('room_type_id, check_in, check_out')
-        .eq('org_id', org.id)
-        .lt('check_in', dateKey(checkOut!))
-        .gt('check_out', dateKey(checkIn!))
-        .not('status', 'in', '(rejected,cancelled,no_show)')
-      setStays((data ?? []) as StayRow[])
+    async function loadAvailability() {
+      const { data } = await supabase.rpc('get_room_availability', {
+        p_org_id: org.id,
+        p_check_in: dateKey(checkIn!),
+        p_check_out: dateKey(checkOut!),
+      })
+      setAvail((data ?? []) as AvailRow[])
     }
-    loadStays()
+    loadAvailability()
   }, [step, org.id, checkIn, checkOut])
 
   const nights = checkIn && checkOut ? nightsBetween(checkIn, checkOut) : 0
 
-  const rooms = useMemo(() => {
+  // Bookable room types: fit the party and have a free room every night.
+  const rooms = useMemo<RoomOption[]>(() => {
     if (!checkIn || !checkOut || nights <= 0) return []
-    return computeRoomAvailability({ checkIn, checkOut, guests, roomTypes, existing: stays })
-  }, [checkIn, checkOut, guests, roomTypes, stays, nights])
+    return avail
+      .filter(a => Number(a.capacity) >= guests && Number(a.remaining) > 0)
+      .map(a => {
+        const nightlyPrice = Number(a.nightly_price)
+        return {
+          id: a.room_type_id,
+          name: a.name,
+          description: a.description,
+          capacity: Number(a.capacity),
+          nights,
+          nightlyPrice,
+          total: nights * nightlyPrice,
+          remaining: Number(a.remaining),
+        }
+      })
+  }, [avail, guests, nights, checkIn, checkOut])
 
   useEffect(() => {
     if (resendIn <= 0) return
@@ -189,18 +232,15 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
         return
       }
 
-      // Re-check the room type still has a free room across the range.
-      const { data: fresh } = await supabase
-        .from('hotel_stays')
-        .select('room_type_id, check_in, check_out')
-        .eq('org_id', org.id)
-        .lt('check_in', dateKey(checkOut))
-        .gt('check_out', dateKey(checkIn))
-        .not('status', 'in', '(rejected,cancelled,no_show)')
-
-      const still = computeRoomAvailability({
-        checkIn, checkOut, guests, roomTypes, existing: (fresh ?? []) as StayRow[],
-      }).find(r => r.id === room.id)
+      // Re-check availability via the RPC for a fast, friendly message. The
+      // enforce_hotel_inventory trigger is the authoritative guard against the
+      // last-room race and is handled below if this check passes but loses.
+      const { data: fresh } = await supabase.rpc('get_room_availability', {
+        p_org_id: org.id,
+        p_check_in: dateKey(checkIn),
+        p_check_out: dateKey(checkOut),
+      })
+      const still = ((fresh ?? []) as AvailRow[]).find(r => r.room_type_id === room.id && Number(r.remaining) > 0)
       if (!still) { setError(t('hotel.roomTaken')); setLoading(false); return }
 
       const customerId = crypto.randomUUID()
@@ -212,7 +252,7 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
       })
       if (custErr) throw new Error(custErr.message)
 
-      const { error: stayErr } = await supabase.from('hotel_stays').insert({
+      const { data: stayRow, error: stayErr } = await supabase.from('hotel_stays').insert({
         org_id: org.id,
         customer_id: customerId,
         room_type_id: room.id,
@@ -223,14 +263,18 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
         total_amount: room.total,
         status: 'pending',
         notes: notes.trim() || null,
-      })
+      }).select('id').single()
       if (stayErr) throw new Error(stayErr.message)
 
+      setStayId(stayRow?.id ?? null)
       setDone(true)
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('verification_required')) {
         setError(t('booking.otpExpired')); setCode(''); setPhase('form')
+      } else if (msg.includes('room_unavailable')) {
+        // Lost the last-room race at write time (trigger rejected the insert).
+        setError(t('hotel.roomTaken'))
       } else {
         setError(msg || t('booking.bookFailed'))
       }
@@ -257,6 +301,16 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
               { icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />, label: t('hotel.checkOut'), value: checkOut ? format(checkOut, 'd MMM yyyy', { locale: ka }) : '' },
             ]}
           />
+          {stayId && (
+            <Button
+              variant="text"
+              onClick={() => window.location.assign(`/stay/${stayId}`)}
+              sx={{ mt: 1 }}
+              data-testid="stay-manage-link"
+            >
+              {t('stay.manageLink')}
+            </Button>
+          )}
           <BookingContactNote phone={org.contact_phone} />
         </Box>
       </Box>
@@ -303,6 +357,24 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
       {/* Step 0 — dates + guests */}
       {step === 0 && (
         <Box>
+          {propertyImages.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 1, mb: 2.5, overflowX: 'auto', pb: 0.5 }}>
+              {propertyImages.map((url, i) => (
+                <Box
+                  key={i}
+                  component="img"
+                  src={url}
+                  alt=""
+                  loading="lazy"
+                  onClick={() => setCarousel({ urls: propertyImages, index: i })}
+                  sx={{
+                    width: i === 0 ? 220 : 120, height: 140, flexShrink: 0, objectFit: 'cover',
+                    borderRadius: 2, cursor: 'pointer',
+                  }}
+                />
+              ))}
+            </Box>
+          )}
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: accent }}>{t('hotel.selectDates')}</Typography>
           <Stack spacing={2}>
             <DatePicker
@@ -342,6 +414,13 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
                 {nights} {t('hotel.nights')}
               </Typography>
             )}
+            {(org.check_in_time || org.check_out_time) && (
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {org.check_in_time && t('hotel.checkInFrom', { time: hhmm(org.check_in_time) })}
+                {org.check_in_time && org.check_out_time && ' · '}
+                {org.check_out_time && t('hotel.checkOutUntil', { time: hhmm(org.check_out_time) })}
+              </Typography>
+            )}
             <Button
               fullWidth variant="contained" size="large"
               disabled={!datesValid}
@@ -370,16 +449,33 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
                   onClick={() => { setRoom(r); goToStep(2) }}
                   sx={{ p: 2, cursor: 'pointer', border: '1px solid', borderColor: 'divider', '&:hover': { borderColor: 'primary.main' } }}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box>
-                      <Typography variant="body1" sx={{ fontWeight: 700 }}>{r.name}</Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {r.capacity} {t('hotel.guests')} · {r.nightlyPrice} ₾ / {t('hotel.night')}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ textAlign: 'right' }}>
-                      <Typography variant="h6" sx={{ fontWeight: 800 }}>{r.total} ₾</Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>{r.nights} {t('hotel.nights')}</Typography>
+                  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                    {roomThumbs[r.id] && (
+                      <Box
+                        component="img"
+                        src={roomThumbs[r.id]}
+                        alt={r.name}
+                        loading="lazy"
+                        onClick={e => { e.stopPropagation(); setCarousel({ urls: roomImages[r.id] ?? [], index: 0 }) }}
+                        sx={{ width: 84, height: 84, borderRadius: 1.5, objectFit: 'cover', flexShrink: 0 }}
+                      />
+                    )}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flex: 1 }}>
+                      <Box>
+                        <Typography variant="body1" sx={{ fontWeight: 700 }}>{r.name}</Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                          {r.capacity} {t('hotel.guests')} · {r.nightlyPrice} ₾ / {t('hotel.night')}
+                        </Typography>
+                        {r.description && (
+                          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                            {r.description}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Box sx={{ textAlign: 'right' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 800 }}>{r.total} ₾</Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>{r.nights} {t('hotel.nights')}</Typography>
+                      </Box>
                     </Box>
                   </Box>
                 </Card>
@@ -455,6 +551,13 @@ export default function HotelBooking({ org, bookingTheme }: Props) {
           </Stack>
         </Box>
       )}
+
+      <ImageCarousel
+        open={!!carousel}
+        urls={carousel?.urls ?? []}
+        startIndex={carousel?.index ?? 0}
+        onClose={() => setCarousel(null)}
+      />
     </BookingShell>
   )
 }

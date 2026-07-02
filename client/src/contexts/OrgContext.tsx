@@ -18,6 +18,11 @@ export interface Organisation {
   // Restaurant table turn time, minutes (migration 052). Null-safe: callers
   // fall back to 120.
   reservation_turn_minutes: number | null
+  // Hotel property check-in / check-out times ("HH:mm:ss", migration 055).
+  check_in_time: string | null
+  check_out_time: string | null
+  // Hotel free-cancel window in hours; null = self-service cancel off (058).
+  hotel_cancellation_hours: number | null
 }
 
 interface OrgContextValue {

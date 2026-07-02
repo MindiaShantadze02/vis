@@ -43,6 +43,8 @@ export interface RoomOption {
   total: number
   /** Rooms of this type still free across the whole range (min over nights). */
   remaining: number
+  /** Optional marketing blurb (from resources.attrs.description). */
+  description?: string | null
 }
 
 const dayMs = 24 * 60 * 60 * 1000
