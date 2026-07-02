@@ -1,15 +1,23 @@
-import { useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useOutletContext, useNavigate } from 'react-router-dom'
 import {
   Box, Button, Typography, TextField,
-  Card, CardContent, Stack, Divider,
+  Card, CardContent, Stack, Divider, Alert, CircularProgress,
+  type SxProps, type Theme,
 } from '@mui/material'
 import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
 import { EditOutlined as EditOutlinedIcon } from '@/components/icons'
 import { HotelOutlined as HotelOutlinedIcon } from '@/components/icons'
 import { Add as AddIcon } from '@/components/icons'
+import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/icons'
+import { Close as CloseIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { ActionIconButton, EmptyState } from '@/components/ui'
+import { useAuth } from '@/contexts/AuthContext'
+import { useOrg } from '@/contexts/OrgContext'
+import { persistOnboarding } from '@/lib/onboarding'
+import { catalogImageFileError, MAX_IMAGES_PER_RESOURCE } from '@/lib/catalogImages'
+import { imagesPerRoomForTier } from '@/lib/tiers'
 import type { OnboardingData } from './OnboardingLayout'
 
 interface OutletCtx {
@@ -26,18 +34,37 @@ interface DraftRoom {
   capacity: string
   nightlyPrice: string
   totalRooms: string
+  images: File[]
 }
 
-const empty: DraftRoom = { name: '', capacity: '2', nightlyPrice: '0', totalRooms: '1' }
+const empty: DraftRoom = { name: '', capacity: '2', nightlyPrice: '0', totalRooms: '1', images: [] }
+
+// New orgs start on the free tier, so cap onboarding photos at the free-tier
+// per-room limit (the server trigger enforces the same ceiling).
+const MAX_PHOTOS = imagesPerRoomForTier('free', MAX_IMAGES_PER_RESOURCE)
 
 const onlyInt = (v: string) => v.replace(/[^0-9]/g, '')
 const onlyDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
 
+/** Thumbnail for a locally-picked File; owns its object URL and revokes on unmount. */
+function FileThumb({ file, sx }: { file: File; sx?: SxProps<Theme> }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file])
+  useEffect(() => () => URL.revokeObjectURL(url), [url])
+  return <Box component="img" src={url} alt="" sx={sx} />
+}
+
 export default function RoomsStep() {
   const { t } = useTranslation()
-  const { goNext, goBack, data, update } = useOutletContext<OutletCtx>()
+  const { goBack, data, update } = useOutletContext<OutletCtx>()
+  const { user } = useAuth()
+  const { refresh } = useOrg()
+  const navigate = useNavigate()
   const [draft, setDraft] = useState<DraftRoom>({ ...empty })
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const nameTooShort = draft.name.trim().length === 0
   const capacityInvalid = !(Number(draft.capacity) >= 1)
@@ -48,6 +75,7 @@ export default function RoomsStep() {
   function resetForm() {
     setDraft({ ...empty })
     setEditingIndex(null)
+    setPhotoError(null)
   }
 
   function saveRoom() {
@@ -58,6 +86,7 @@ export default function RoomsStep() {
       nightly_price: Number(draft.nightlyPrice) || 0,
       total_rooms: Number(draft.totalRooms),
       is_active: true,
+      images: draft.images,
     }
     if (isEditing) {
       update({ rooms: data.rooms.map((r, i) => (i === editingIndex ? room : r)) })
@@ -74,8 +103,10 @@ export default function RoomsStep() {
       capacity: String(r.capacity),
       nightlyPrice: String(r.nightly_price),
       totalRooms: String(r.total_rooms),
+      images: r.images ?? [],
     })
     setEditingIndex(index)
+    setPhotoError(null)
   }
 
   function removeRoom(index: number) {
@@ -83,7 +114,41 @@ export default function RoomsStep() {
     if (editingIndex !== null && index <= editingIndex) resetForm()
   }
 
+  function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return
+    setPhotoError(null)
+    const room = MAX_PHOTOS - draft.images.length
+    if (room <= 0) { setPhotoError(t('image.maxReached', { max: MAX_PHOTOS })); return }
+    const accepted: File[] = []
+    for (const file of Array.from(files)) {
+      if (accepted.length >= room) { setPhotoError(t('image.maxReached', { max: MAX_PHOTOS })); break }
+      const fileErr = catalogImageFileError(file)
+      if (fileErr) { setPhotoError(t(`validation.${fileErr}`)); continue }
+      accepted.push(file)
+    }
+    if (accepted.length) setDraft(d => ({ ...d, images: [...d.images, ...accepted] }))
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function removePhoto(idx: number) {
+    setDraft(d => ({ ...d, images: d.images.filter((_, i) => i !== idx) }))
+  }
+
   const canProceed = data.rooms.length > 0
+
+  async function handleFinish() {
+    if (!user) return
+    setLoading(true)
+    setError(null)
+    try {
+      await persistOnboarding(data, user.id)
+      await refresh()
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+      setLoading(false)
+    }
+  }
 
   return (
     <Box>
@@ -93,6 +158,8 @@ export default function RoomsStep() {
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
         {t('hotel.noRoomsCaption')}
       </Typography>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="rooms-error">{error}</Alert>}
 
       {/* Existing room types */}
       {data.rooms.length === 0 ? (
@@ -112,10 +179,16 @@ export default function RoomsStep() {
               <Box
                 data-testid="onb-room-row"
                 sx={{
-                  px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1,
+                  px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.25,
                   bgcolor: editingIndex === i ? 'action.selected' : 'transparent',
                 }}
               >
+                {r.images?.length ? (
+                  <FileThumb
+                    file={r.images[0]}
+                    sx={{ width: 44, height: 44, borderRadius: 1.5, objectFit: 'cover', flexShrink: 0 }}
+                  />
+                ) : null}
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography variant="body1" sx={{ fontWeight: 600 }} noWrap>{r.name}</Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -171,10 +244,73 @@ export default function RoomsStep() {
             label={t('hotel.nightlyPrice')}
             value={draft.nightlyPrice}
             onChange={e => setDraft(d => ({ ...d, nightlyPrice: onlyDecimal(e.target.value) }))}
-            sx={{ mb: 2 }}
+            sx={{ mb: 2.5 }}
             slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'onb-room-price' } }}
           />
-          <Stack direction="row" spacing={1}>
+
+          {/* Photos — held locally and uploaded once the room row exists at finish. */}
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{t('image.photos')}</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+            {t('image.photosHint', { count: draft.images.length, max: MAX_PHOTOS })}
+          </Typography>
+          {photoError && <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setPhotoError(null)}>{photoError}</Alert>}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, mb: 1 }}>
+            {draft.images.map((file, i) => (
+              <Box key={i} sx={{ position: 'relative' }}>
+                <Box
+                  sx={{
+                    width: 84, height: 84, borderRadius: 2, overflow: 'hidden',
+                    border: theme => `2px solid ${i === 0 ? theme.palette.primary.main : 'transparent'}`,
+                    boxShadow: 1,
+                  }}
+                >
+                  <FileThumb
+                    file={file}
+                    sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                </Box>
+                <Box
+                  role="button"
+                  aria-label={t('common.delete')}
+                  onClick={() => removePhoto(i)}
+                  sx={{
+                    position: 'absolute', top: 2, right: 2, width: 22, height: 22, borderRadius: '50%',
+                    bgcolor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', color: 'common.white',
+                  }}
+                >
+                  <CloseIcon sx={{ fontSize: 14 }} />
+                </Box>
+              </Box>
+            ))}
+            {draft.images.length < MAX_PHOTOS && (
+              <Box
+                role="button"
+                aria-label={t('image.addPhoto')}
+                data-testid="onb-room-add-photo"
+                onClick={() => fileRef.current?.click()}
+                sx={{
+                  width: 84, height: 84, borderRadius: 2, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 0.5, cursor: 'pointer',
+                  border: theme => `2px dashed ${theme.palette.divider}`, color: 'text.secondary',
+                  '&:hover': { borderColor: 'primary.main', color: 'primary.main' },
+                }}
+              >
+                <PhotoCameraOutlinedIcon sx={{ fontSize: 22 }} />
+                <Typography variant="caption">{t('image.addPhoto')}</Typography>
+              </Box>
+            )}
+          </Box>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            hidden
+            onChange={e => handleFiles(e.target.files)}
+          />
+
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             <Button
               variant="contained"
               startIcon={isEditing ? undefined : <AddIcon />}
@@ -194,16 +330,16 @@ export default function RoomsStep() {
       </Card>
 
       <Stack direction="row" spacing={2}>
-        <Button fullWidth variant="outlined" onClick={goBack}>
+        <Button fullWidth variant="outlined" onClick={goBack} disabled={loading}>
           {t('common.back')}
         </Button>
         <Button
           fullWidth variant="contained" size="large"
-          disabled={!canProceed}
-          onClick={goNext}
+          disabled={!canProceed || loading}
+          onClick={handleFinish}
           data-testid="onb-rooms-next"
         >
-          {t('common.next')}
+          {loading ? <CircularProgress size={20} color="inherit" /> : t('onboarding.finish')}
         </Button>
       </Stack>
     </Box>

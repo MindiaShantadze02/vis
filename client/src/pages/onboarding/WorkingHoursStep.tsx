@@ -9,16 +9,15 @@ import { Close as CloseIcon } from '@/components/icons'
 import { WorkOutlineOutlined as WorkOutlineOutlinedIcon } from '@/components/icons'
 import { CoffeeOutlined as CoffeeOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
-import { supabase } from '@/lib/supabase'
 import {
   isEndAfterStart, timeToMinutes, minutesToTime, clampTime,
-  scheduleToRanges, dayScheduleIssue, formatGeorgianPhone,
+  dayScheduleIssue,
   type TimeRange, type DaySchedule,
 } from '@/lib/validation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
 import { ActionIconButton } from '@/components/ui'
-import { slugify } from '@/lib/slug'
+import { persistOnboarding } from '@/lib/onboarding'
 import { surface } from '@/theme/theme'
 import type { OnboardingData } from './OnboardingLayout'
 
@@ -132,117 +131,9 @@ export default function WorkingHoursStep() {
     setError(null)
 
     try {
-      // Guard against creating a duplicate org: if this user already belongs to
-      // one, just go to the dashboard instead of inserting another.
-      const { data: existing } = await supabase
-        .from('org_members')
-        .select('org_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle()
-      if (existing) {
-        await refresh()
-        navigate('/dashboard')
-        return
-      }
-
-      const suffix = Math.random().toString(36).slice(2, 6)
-      // Prefer the slug derived during the profile step; re-derive from the
-      // name as a fallback (both now transliterate Georgian → Latin).
-      const slug = data.slug || slugify(data.name) || `org-${suffix}`
-
-      let attempt = await supabase
-        .from('organisations')
-        .insert({
-          name: data.name,
-          description: data.description || null,
-          slug,
-          contact_phone: data.contact_phone.trim() ? formatGeorgianPhone(data.contact_phone) : null,
-          owner_id: user.id,
-          subscription_tier: 'free',
-          vertical: data.vertical,
-        })
-        .select('id')
-        .single()
-
-      if (attempt.error?.code === '23505') {
-        attempt = await supabase
-          .from('organisations')
-          .insert({
-            name: data.name,
-            description: data.description || null,
-            slug: `${slug}-${suffix}`,
-            contact_phone: data.contact_phone.trim() ? formatGeorgianPhone(data.contact_phone) : null,
-            owner_id: user.id,
-            subscription_tier: 'free',
-            vertical: data.vertical,
-          })
-          .select('id')
-          .single()
-      }
-
-      if (attempt.error) throw new Error(attempt.error.message)
-      const orgId = attempt.data!.id
-
-      const { error: memberErr } = await supabase
-        .from('org_members')
-        .insert({ org_id: orgId, user_id: user.id, role: 'owner', joined_at: new Date().toISOString() })
-      if (memberErr) throw new Error(memberErr.message)
-
-      if (data.services.length > 0) {
-        const { error: svcErr } = await supabase
-          .from('services')
-          .insert(data.services.map((s, i) => ({
-            org_id: orgId, name: s.name, duration_minutes: s.duration_minutes, price: s.price, sort_order: i,
-            location_type: s.location_type, meeting_link: s.meeting_link,
-          })))
-        if (svcErr) throw new Error(svcErr.message)
-      }
-
-      // Vertical-specific inventory captured in the catalog step. Rooms/tables
-      // are `resources` rows (kinds room_type / table); nightly_price &
-      // total_rooms live in attrs (matches Rooms/TablesSettings).
-      if (data.rooms.length > 0) {
-        const { error: roomErr } = await supabase
-          .from('resources')
-          .insert(data.rooms.map((r, i) => ({
-            org_id: orgId, kind: 'room_type', name: r.name, capacity: r.capacity,
-            attrs: { nightly_price: r.nightly_price, total_rooms: r.total_rooms },
-            is_active: r.is_active, sort_order: i,
-          })))
-        if (roomErr) throw new Error(roomErr.message)
-      }
-
-      if (data.tables.length > 0) {
-        const { error: tblErr } = await supabase
-          .from('resources')
-          .insert(data.tables.map((tb, i) => ({
-            org_id: orgId, kind: 'table', name: tb.name, capacity: tb.capacity,
-            is_active: tb.is_active, sort_order: i,
-          })))
-        if (tblErr) throw new Error(tblErr.message)
-      }
-
-      if (data.vertical === 'restaurant') {
-        const { error: turnErr } = await supabase
-          .from('organisations')
-          .update({ reservation_turn_minutes: data.turnMinutes })
-          .eq('id', orgId)
-        if (turnErr) throw new Error(turnErr.message)
-      }
-
-      const templateRow: Record<string, unknown> = { org_id: orgId }
-      for (const day of DAYS) {
-        const s = hours[day]
-        templateRow[day] = {
-          open: s.open,
-          ranges: s.open ? scheduleToRanges(s.openTime, s.closeTime, s.breaks) : [],
-        }
-      }
-
-      const { error: hoursErr } = await supabase.from('working_hours_template').insert(templateRow)
-      if (hoursErr) throw new Error(hoursErr.message)
-
+      // Persist edits to shared state so persistOnboarding sees the latest hours
+      // even if the effect hasn't flushed yet.
+      await persistOnboarding({ ...data, workingHours: hours }, user.id)
       await refresh()
       navigate('/dashboard')
     } catch (err) {

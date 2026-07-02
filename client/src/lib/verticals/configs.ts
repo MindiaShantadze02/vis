@@ -48,7 +48,9 @@ export const VERTICAL_CONFIGS: Record<Vertical, VerticalConfig> = {
       hasNightlyPricing: true,
       hasDeposits: true,
     },
-    settingsNav: ['profile', 'rooms', 'hours', 'payment', 'subscription'],
+    // No 'hours': hotels have no weekly working hours (availability is date-range
+    // based). Check-in/out times live in the Profile tab.
+    settingsNav: ['profile', 'rooms', 'payment', 'subscription'],
     showCalendar: false,
   },
 }

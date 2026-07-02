@@ -33,6 +33,9 @@ export interface OnboardingRoom {
   nightly_price: number
   total_rooms: number
   is_active: boolean
+  // Photos picked during onboarding, uploaded to resource_images once the room
+  // row (and its id) exists at finish.
+  images: File[]
 }
 
 // A restaurant table — persisted as a `resources` row (kind='table').
@@ -115,13 +118,12 @@ const ROOMS_STEP:    Step = { path: '/onboarding/rooms',    labelKey: 'hotel.roo
 const HOURS_STEP:    Step = { path: '/onboarding/hours',    labelKey: 'onboarding.step3' }
 
 // The middle "catalog" step is vertical-specific: appointments configure
-// services, restaurants their tables, hotels their room types. All verticals
-// finish with working hours (where the org is actually created).
+// services, restaurants their tables, hotels their room types. Appointments and
+// restaurants finish on the working-hours step; hotels have no weekly hours
+// (availability is date-range based) so they finish on the rooms step instead.
 function stepsFor(vertical: Vertical): Step[] {
-  const catalog =
-    vertical === 'restaurant' ? TABLES_STEP :
-    vertical === 'hotel'      ? ROOMS_STEP :
-    SERVICES_STEP
+  if (vertical === 'hotel') return [BUSINESS_STEP, ROOMS_STEP]
+  const catalog = vertical === 'restaurant' ? TABLES_STEP : SERVICES_STEP
   return [BUSINESS_STEP, catalog, HOURS_STEP]
 }
 
