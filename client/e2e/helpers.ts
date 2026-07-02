@@ -64,6 +64,30 @@ export async function passBookingOtp(page: Page) {
   await page.getByTestId('book-otp-verify').click()
 }
 
+/**
+ * Drive the public booking wizard from the org page through service + the first
+ * day/slot with availability, leaving the browser on the step-3 details form.
+ * Returns true if a bookable slot was found this week.
+ */
+export async function bookToDetails(page: Page, slug = SEED.slug): Promise<boolean> {
+  await page.goto(`/book/${slug}`)
+  const service = page.getByTestId('book-service').first()
+  await service.waitFor({ state: 'visible', timeout: 30_000 })
+  await service.click()
+
+  const days = page.locator('[data-testid^="book-day-"][data-disabled="false"]')
+  await expect(days.first()).toBeVisible()
+  for (let i = 0, n = await days.count(); i < n; i++) {
+    await days.nth(i).click()
+    const slot = page.getByTestId('book-slot').first()
+    if (await slot.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
+      await slot.click()
+      return true
+    }
+  }
+  return false
+}
+
 /** A short, unique label so created rows are easy to spot and clean up. */
 export function tag(prefix: string): string {
   return `${prefix} ${Date.now().toString().slice(-6)}`

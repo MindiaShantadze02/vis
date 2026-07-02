@@ -37,4 +37,27 @@ test.describe('Settings — Team', () => {
     await page.getByTestId('invite-cancel').first().click()
     await expect(page.getByText(invitePhone)).toHaveCount(0)
   })
+
+  // --- edge cases ---
+
+  test('invite send is disabled until the phone is valid', async ({ page }) => {
+    await page.getByTestId('team-invite-btn').click()
+    const send = page.getByTestId('invite-send')
+    await expect(send).toBeDisabled()                       // empty
+    await page.getByTestId('invite-phone').fill('123')      // invalid
+    await expect(send).toBeDisabled()
+    await page.getByTestId('invite-phone').fill('577000222')  // valid
+    await expect(send).toBeEnabled()
+  })
+
+  test('add-professional save is disabled until the name is long enough', async ({ page }) => {
+    await page.getByTestId('add-professional-btn').click()
+    const save = page.getByTestId('professional-save')
+    await expect(save).toBeDisabled()                       // empty
+    await page.getByTestId('professional-name').fill('A')   // too short
+    await expect(save).toBeDisabled()
+    await page.getByTestId('professional-name').fill('Ana')
+    await expect(save).toBeEnabled()
+    // Nothing submitted.
+  })
 })

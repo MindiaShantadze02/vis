@@ -50,3 +50,33 @@ test.describe('Business onboarding', () => {
     await expect(page).toHaveURL(/\/login/, { timeout: 20_000 })
   })
 })
+
+test.describe('Business onboarding — edge cases', () => {
+  // These leave a throwaway account with no org (like the auth signup test).
+
+  test('the first step gates "next" until name + valid phone are present', async ({ page }) => {
+    await register(page, uniquePhone())
+    const next = page.getByTestId('biz-next')
+    await expect(next).toBeDisabled()                       // empty
+
+    await fillStable(page.getByTestId('biz-name'), 'AB')
+    await expect(next).toBeDisabled()                       // no phone yet
+
+    await fillStable(page.getByTestId('biz-phone'), '123')  // invalid phone
+    await expect(next).toBeDisabled()
+
+    await fillStable(page.getByTestId('biz-phone'), '599123456')
+    await expect(next).toBeEnabled()
+  })
+
+  test('skip sends the user to the dashboard, and org-only routes bounce back', async ({ page }) => {
+    await register(page, uniquePhone())
+    // Skip control lives in the shell header (no testid) — target by label.
+    await page.getByRole('button', { name: /გამოტოვება/ }).click()
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 })
+
+    // With no org yet, an org-guarded route redirects back to the dashboard.
+    await page.goto('/dashboard/calendar')
+    await expect(page).toHaveURL(/\/dashboard$/)
+  })
+})

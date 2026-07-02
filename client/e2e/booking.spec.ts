@@ -1,35 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { SEED, passBookingOtp, fillStable } from './helpers'
+import { passBookingOtp, fillStable, bookToDetails } from './helpers'
 
 test.describe('Public booking', () => {
   // NOTE: a successful run creates a real pending appointment + customer on the
   // seeded org (guests can't self-delete). See e2e/README.md.
   test('a guest books an in-person appointment end to end', async ({ page }) => {
-    await page.goto(`/book/${SEED.slug}`)
-
-    // Step 1 — choose the service. The public page fetches the org first; under a
-    // loaded dev server that can take a while, so wait generously for the card.
-    const service = page.getByTestId('book-service').first()
-    await service.waitFor({ state: 'visible', timeout: 30_000 })
-    await service.click()
-
-    // Step 2 — pick the first day that actually exposes free slots
-    await expect(page.getByRole('heading', { name: 'თარიღის არჩევა' })).toBeVisible()
-    const days = page.locator('[data-testid^="book-day-"][data-disabled="false"]')
-    await expect(days.first()).toBeVisible()
-
-    let booked = false
-    for (let i = 0, n = await days.count(); i < n; i++) {
-      await days.nth(i).click()
-      const slot = page.getByTestId('book-slot').first()
-      const hasSlot = await slot.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)
-      if (hasSlot) {
-        await slot.click()
-        booked = true
-        break
-      }
-    }
-    expect(booked, 'expected at least one open day with a free slot this week').toBeTruthy()
+    expect(await bookToDetails(page), 'expected an open day with a free slot this week').toBeTruthy()
 
     // Step 3 — customer details (seeded org is in-person only, so no pay selector).
     // Name must be letters only (isValidPersonName rejects digits).
@@ -51,5 +27,36 @@ test.describe('Public booking', () => {
     await page.goto('/book/this-slug-does-not-exist-xyz')
     // BookingLayout renders an empty/unavailable state rather than the wizard.
     await expect(page.getByTestId('book-service')).toHaveCount(0)
+  })
+
+  // --- edge cases ---
+
+  test('submit stays disabled for an invalid name or phone', async ({ page }) => {
+    expect(await bookToDetails(page)).toBeTruthy()
+    const submit = page.getByTestId('book-submit')
+
+    // Digits in the name are rejected by isValidPersonName.
+    await fillStable(page.getByTestId('book-first-name'), 'Nino2')
+    await fillStable(page.getByTestId('book-phone'), '599112233')
+    await expect(submit).toBeDisabled()
+
+    // Fix the name but break the phone (too short).
+    await fillStable(page.getByTestId('book-first-name'), 'Nino')
+    await fillStable(page.getByTestId('book-phone'), '123')
+    await expect(submit).toBeDisabled()
+  })
+
+  test('a wrong OTP is rejected and stays on the verification step', async ({ page }) => {
+    expect(await bookToDetails(page)).toBeTruthy()
+    await fillStable(page.getByTestId('book-first-name'), 'Nino')
+    await fillStable(page.getByTestId('book-phone'), '599445566')
+    await page.getByTestId('book-submit').click()
+
+    // Enter a wrong code — verification fails, no appointment is created.
+    await page.getByTestId('book-otp-code').fill('111111')
+    await page.getByTestId('book-otp-verify').click()
+
+    await expect(page.getByTestId('book-error')).toBeVisible()
+    await expect(page).not.toHaveURL(/\/booking-confirmation\//)
   })
 })
