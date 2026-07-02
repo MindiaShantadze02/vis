@@ -36,19 +36,37 @@ export default function BookingConfirmationPage() {
 
   useEffect(() => {
     if (!id) return
-    supabase
-      .from('appointments')
-      // NB: no `customers(...)` embed — anon (the guest viewing their own
-      // confirmation) has no SELECT on the customers table (see RLS
-      // customers_select) nor the customer_id column (040 hardening), so
-      // embedding it 401s the whole query. The page never renders it anyway.
-      .select('id, scheduled_at, duration_minutes, status, payment_method, organisations(name, slug, booking_theme, contact_phone), services(name, price)')
-      .eq('id', id)
-      .single()
-      .then(({ data }) => {
-        setAppt(data as unknown as AppointmentDetail)
-        setLoading(false)
-      })
+    let cancelled = false
+
+    // We almost always land here immediately after creating the booking, so a
+    // missing row is far more likely a transient read (network blip, a brief
+    // 5xx, read lag right after the write) than a genuinely absent booking.
+    // `.single()` also raises PGRST116 on zero rows, which the old code
+    // swallowed and rendered as a permanent "not found". Use `.maybeSingle()`
+    // (null, not error, when absent) and retry on any error/empty before giving
+    // up, so a real booking never gets stuck on the not-found screen.
+    async function load(attempt = 0) {
+      const { data, error } = await supabase
+        .from('appointments')
+        // NB: no `customers(...)` embed — anon (the guest viewing their own
+        // confirmation) has no SELECT on the customers table (see RLS
+        // customers_select) nor the customer_id column (040 hardening), so
+        // embedding it 401s the whole query. The page never renders it anyway.
+        .select('id, scheduled_at, duration_minutes, status, payment_method, organisations(name, slug, booking_theme, contact_phone), services(name, price)')
+        .eq('id', id)
+        .maybeSingle()
+      if (cancelled) return
+      if ((error || !data) && attempt < 4) {
+        // Back off a little between tries: ~0.4s, 0.8s, 1.2s, 1.6s (≈4s total).
+        setTimeout(() => { if (!cancelled) load(attempt + 1) }, 400 * (attempt + 1))
+        return
+      }
+      setAppt((data as unknown as AppointmentDetail) ?? null)
+      setLoading(false)
+    }
+
+    load()
+    return () => { cancelled = true }
   }, [id])
 
   if (loading) {
