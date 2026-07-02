@@ -12,6 +12,24 @@ interface Member {
   joined_at: string | null
 }
 
+// deno-lint-ignore no-explicit-any
+type Admin = any
+
+// Deleting the org row cascades its DB rows but NOT its storage objects (SQL
+// deletes on storage.objects are blocked by storage.protect_delete). Remove the
+// org's folder from a public bucket via the Storage API so logos / member photos
+// don't orphan. Best-effort: never fails the account deletion.
+async function purgeOrgFolder(admin: Admin, bucket: string, orgId: string) {
+  try {
+    const { data: files } = await admin.storage.from(bucket).list(orgId)
+    if (files && files.length) {
+      await admin.storage.from(bucket).remove(files.map((f: { name: string }) => `${orgId}/${f.name}`))
+    }
+  } catch (_err) {
+    // ignore — storage cleanup is best-effort
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -71,6 +89,10 @@ Deno.serve(async (req) => {
     const soleMember = loginMembers.length === 1
 
     if (deleteOrg && soleMember) {
+      // Free the org's storage first (the DB cascade below won't touch it).
+      await purgeOrgFolder(admin, 'logos', orgId)
+      await purgeOrgFolder(admin, 'member-photos', orgId)
+
       // Sole member opted to remove the whole org. The cascade (migration 027 +
       // existing FKs) clears services, members, hours, overrides, invitations,
       // notifications, appointments, subscription_payments and service_staff.
