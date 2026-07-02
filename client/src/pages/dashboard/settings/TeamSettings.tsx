@@ -11,7 +11,7 @@ import { EditOutlined as EditOutlinedIcon } from '@/components/icons'
 import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidEmail, imageFileError, FIELD_LIMITS } from '@/lib/validation'
+import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageHeader, LoadingState, ActionIconButton, useToast } from '@/components/ui'
@@ -104,7 +104,7 @@ export default function TeamSettings() {
 
   // Invite dialog
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState('')
+  const [invitePhone, setInvitePhone] = useState('')
   const [inviting, setInviting] = useState(false)
 
   // Edit member dialog
@@ -240,17 +240,19 @@ export default function TeamSettings() {
   }
 
   async function handleInvite() {
-    if (!org || !inviteEmail.trim()) return
+    if (!org || !isValidGeorgianPhone(invitePhone)) return
     setInviting(true)
     setError(null)
 
-    const email = inviteEmail.trim().toLowerCase()
+    // Store the national 9-digit form so it matches the caller's phone claim
+    // (see accept_invitation / invitations_invitee_select in migration 063).
+    const phone = formatGeorgianPhone(invitePhone)
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
     const { error: err } = await supabase.from('invitations').insert({
       org_id: org.id,
-      email,
+      phone_number: phone,
       role: 'admin',
       invited_by: user?.id,
       token,
@@ -261,8 +263,8 @@ export default function TeamSettings() {
     if (err) { setError(err.message); return }
 
     setInviteOpen(false)
-    setInviteEmail('')
-    toast.success(t('settings.inviteSent', { email }))
+    setInvitePhone('')
+    toast.success(t('settings.inviteSent', { phone }))
     load()
   }
 
@@ -310,7 +312,7 @@ export default function TeamSettings() {
     toast.success(t('common.saved'))
   }
 
-  const inviteEmailInvalid = inviteEmail.trim().length > 0 && !isValidEmail(inviteEmail)
+  const invitePhoneInvalid = invitePhone.trim().length > 0 && !isValidGeorgianPhone(invitePhone)
 
   return (
     <Box sx={{ maxWidth: LAYOUT.formPage }}>
@@ -445,7 +447,7 @@ export default function TeamSettings() {
                 {i > 0 && <Divider />}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2.5, py: 2 }}>
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{inv.email ?? inv.phone_number}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{inv.phone_number ?? inv.email}</Typography>
                     {inv.expires_at && (
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                         {t('settings.expires', { date: new Date(inv.expires_at).toLocaleDateString(i18n.language) })}
@@ -473,15 +475,14 @@ export default function TeamSettings() {
             </Typography>
             <TextField
               required
-              label={t('common.email')}
-              type="email"
-              value={inviteEmail}
-              onChange={e => setInviteEmail(e.target.value)}
+              label={t('settings.phone')}
+              value={invitePhone}
+              onChange={e => setInvitePhone(e.target.value)}
               fullWidth
-              placeholder="admin@example.com"
-              error={inviteEmailInvalid}
-              helperText={inviteEmailInvalid ? t('validation.invalidEmail') : ' '}
-              slotProps={{ htmlInput: { inputMode: 'email' as const, maxLength: FIELD_LIMITS.email, 'data-testid': 'invite-email' } }}
+              placeholder="555 123 456"
+              error={invitePhoneInvalid}
+              helperText={invitePhoneInvalid ? t('validation.invalidPhone') : ' '}
+              slotProps={{ htmlInput: { inputMode: 'tel' as const, 'data-testid': 'invite-phone' } }}
               autoFocus
             />
           </Stack>
@@ -491,7 +492,7 @@ export default function TeamSettings() {
           <Button
             variant="contained"
             onClick={handleInvite}
-            disabled={inviting || !isValidEmail(inviteEmail)}
+            disabled={inviting || !isValidGeorgianPhone(invitePhone)}
             data-testid="invite-send"
           >
             {inviting ? <CircularProgress size={20} color="inherit" /> : t('common.send')}

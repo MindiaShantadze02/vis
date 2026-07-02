@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, Box, Typography, Button, Stack, CircularProgress } from '@mui/material'
 import { MailOutlined as MailOutlineIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
+import { formatGeorgianPhone } from '@/lib/validation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
 import { useToast } from '@/components/ui'
@@ -25,8 +26,9 @@ const ACCEPT_ERRORS: Record<string, string> = {
 
 /**
  * Banner shown to a logged-in user who has a pending invitation addressed to
- * their email. Accepting joins them to the org. Renders nothing when there are
- * no invites, so it's safe to mount unconditionally at the top of a page.
+ * their phone number. Accepting joins them to the org. Renders nothing when
+ * there are no invites, so it's safe to mount unconditionally at the top of a
+ * page.
  */
 export default function PendingInvites() {
   const { user } = useAuth()
@@ -37,14 +39,16 @@ export default function PendingInvites() {
   const [invites, setInvites] = useState<Invite[]>([])
   const [accepting, setAccepting] = useState<string | null>(null)
 
-  const email = user?.email?.toLowerCase() ?? null
+  // Auth is phone-based; invitations are matched by the national 9-digit number
+  // (formatGeorgianPhone strips the 995 prefix from the stored auth phone).
+  const phone = user?.phone ? formatGeorgianPhone(user.phone) : null
 
   const load = useCallback(async () => {
-    if (!email) return
+    if (!phone) return
     const { data } = await supabase
       .from('invitations')
       .select('id, token, role, organisations(name)')
-      .eq('email', email)
+      .eq('phone_number', phone)
       .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
@@ -55,7 +59,7 @@ export default function PendingInvites() {
       const org = Array.isArray(orgRel) ? orgRel[0] : orgRel
       return { id: r.id as string, token: r.token as string, role: r.role as string, org_name: org?.name ?? '—' }
     }))
-  }, [email])
+  }, [phone])
 
   useEffect(() => { load() }, [load])
 
