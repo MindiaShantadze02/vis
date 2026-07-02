@@ -52,6 +52,7 @@ export interface BookingStaff {
   display_name: string | null
   title: string | null
   sort_order: number
+  avatar_url: string | null
 }
 
 export interface BookingState {

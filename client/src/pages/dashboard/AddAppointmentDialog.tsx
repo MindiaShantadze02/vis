@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   TextField, Stack, FormControl, InputLabel, Select, MenuItem,
-  FormHelperText, Alert, CircularProgress, Box, Typography,
+  FormHelperText, Alert, CircularProgress, Box, Typography, Avatar,
 } from '@mui/material'
 import { AppDatePicker } from '@/components/AppDatePicker'
 import { format, isValid } from 'date-fns'
@@ -23,7 +23,7 @@ interface ServiceOption {
   max_per_slot: number
 }
 
-interface StaffOption { id: string; display_name: string | null; sort_order: number }
+interface StaffOption { id: string; display_name: string | null; sort_order: number; avatar_url: string | null }
 
 // Appointments + override fetched for one specific date. Keyed by dateKey so a
 // stale fetch from the previous date doesn't drive slot computation.
@@ -111,7 +111,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
     if (!serviceId) return
     supabase
       .from('service_staff')
-      .select('org_members(id, display_name, is_bookable, sort_order)')
+      .select('org_members(id, display_name, is_bookable, sort_order, avatar_url)')
       .eq('service_id', serviceId)
       .then(({ data }) => {
         // PostgREST types the nested relation as an array but returns an object.
@@ -325,7 +325,12 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               >
                 <MenuItem value=""><em>{t('dashboard.unassigned')}</em></MenuItem>
                 {staff.map(m => (
-                  <MenuItem key={m.id} value={m.id}>{m.display_name || '—'}</MenuItem>
+                  <MenuItem key={m.id} value={m.id} sx={{ gap: 1 }}>
+                    <Avatar src={m.avatar_url ?? undefined} sx={{ width: 24, height: 24, fontSize: 12 }}>
+                      {(m.display_name?.trim() || '?').charAt(0).toUpperCase()}
+                    </Avatar>
+                    {m.display_name || '—'}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>

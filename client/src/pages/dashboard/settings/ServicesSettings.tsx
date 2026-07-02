@@ -3,7 +3,7 @@ import {
   Box, Typography, Card, Button, TextField, Stack,
   Switch, FormControlLabel, Divider, Alert,
   CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
-  Chip, ToggleButtonGroup, ToggleButton,
+  Chip, ToggleButtonGroup, ToggleButton, Avatar,
 } from '@mui/material'
 import { Add as AddIcon } from '@/components/icons'
 import { EditOutlined as EditOutlinedIcon } from '@/components/icons'
@@ -34,6 +34,7 @@ interface BookableMember {
   id: string
   display_name: string | null
   title: string | null
+  avatar_url: string | null
 }
 
 // Numeric fields are held as strings while editing so the inputs can be
@@ -107,7 +108,7 @@ export default function ServicesSettings() {
       supabase.from('services').select('*').eq('org_id', org.id).order('sort_order'),
       supabase
         .from('org_members')
-        .select('id, display_name, title')
+        .select('id, display_name, title, avatar_url')
         .eq('org_id', org.id)
         .eq('is_bookable', true)
         .order('sort_order'),
@@ -405,6 +406,7 @@ export default function ServicesSettings() {
                       <Chip
                         key={m.id}
                         label={m.display_name || '—'}
+                        avatar={<Avatar src={m.avatar_url ?? undefined}>{(m.display_name?.trim() || '?').charAt(0).toUpperCase()}</Avatar>}
                         data-testid="service-staff-chip"
                         onClick={() => toggleMember(m.id)}
                         color={sel ? 'primary' : 'default'}

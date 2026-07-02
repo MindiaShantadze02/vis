@@ -7,8 +7,8 @@ const corsHeaders = {
 
 interface Member {
   id: string
-  user_id: string
-  role: 'owner' | 'admin'
+  user_id: string | null
+  role: 'owner' | 'admin' | 'staff'
   joined_at: string | null
 }
 
@@ -63,7 +63,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'forbidden' }, { status: 403, headers: corsHeaders })
     }
 
-    const soleMember = members.length === 1
+    // Only login members (user_id set) can own an org. Account-less staff
+    // profiles (role='staff', user_id null) never count toward sole-member or
+    // successor selection — promoting one to owner would violate the
+    // org_members_role_check constraint.
+    const loginMembers = members.filter(m => m.user_id)
+    const soleMember = loginMembers.length === 1
 
     if (deleteOrg && soleMember) {
       // Sole member opted to remove the whole org. The cascade (migration 027 +
@@ -77,7 +82,7 @@ Deno.serve(async (req) => {
       // Keep the org. If the caller is the owner and others remain, promote the
       // longest-standing remaining member so the org is never left without one.
       if (caller.role === 'owner') {
-        const others = members
+        const others = loginMembers
           .filter(m => m.user_id !== callerId)
           .sort((a, b) => {
             if (!a.joined_at) return 1

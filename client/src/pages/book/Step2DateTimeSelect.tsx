@@ -105,7 +105,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   useEffect(() => {
     supabase
       .from('service_staff')
-      .select('member_id, org_members(id, display_name, title, is_bookable, sort_order)')
+      .select('member_id, org_members(id, display_name, title, is_bookable, sort_order, avatar_url)')
       .eq('service_id', service.id)
       .then(({ data }) => {
         // PostgREST returns the nested relation as an object at runtime but
@@ -117,7 +117,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
               (BookingStaff & { is_bookable: boolean }) | null
           })
           .filter((m): m is BookingStaff & { is_bookable: boolean } => !!m && m.is_bookable)
-          .map(m => ({ id: m.id, display_name: m.display_name, title: m.title, sort_order: m.sort_order }))
+          .map(m => ({ id: m.id, display_name: m.display_name, title: m.title, sort_order: m.sort_order, avatar_url: m.avatar_url }))
           .sort((a, b) => a.sort_order - b.sort_order)
         setAssignedStaff(staff)
       })
@@ -339,8 +339,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
     : `${format(weekStart, 'LLL', { locale })} – ${format(weekEnd, 'LLL yyyy', { locale })}`
 
   const staffOptions = [
-    { id: ANY, label: t('booking.anyAvailable'), any: true },
-    ...assignedStaff.map(m => ({ id: m.id, label: m.display_name || '—', any: false })),
+    { id: ANY, label: t('booking.anyAvailable'), any: true, avatar_url: null as string | null },
+    ...assignedStaff.map(m => ({ id: m.id, label: m.display_name || '—', any: false, avatar_url: m.avatar_url })),
   ]
 
   // Group the available slots into Morning / Afternoon / Evening for a calmer,
@@ -410,6 +410,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                   }}
                 >
                   <Avatar
+                    src={opt.avatar_url ?? undefined}
                     sx={{
                       width: 30, height: 30, fontSize: '0.8rem', fontWeight: 700,
                       bgcolor: selected ? 'primary.main' : 'text.disabled',

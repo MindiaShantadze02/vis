@@ -125,10 +125,13 @@ export default function ProfileSettings() {
   // of the org (which surfaces the "delete the organisation too" choice).
   async function openDeleteDialog() {
     if (!org) return
+    // Only login members count toward "sole member" — account-less staff
+    // profiles (user_id IS NULL) never own the org.
     const { count } = await supabase
       .from('org_members')
       .select('id', { count: 'exact', head: true })
       .eq('org_id', org.id)
+      .not('user_id', 'is', null)
     const sole = (count ?? 0) <= 1
     setSoleMember(sole)
     setDeleteOrgToo(sole) // default to removing the org when no one else is left
