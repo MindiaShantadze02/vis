@@ -304,7 +304,8 @@
     "owner": "Owner",
     "admin": "Admin",
     "pendingInvites": "Pending invitations",
-    "expires": "Expires: {{date}}"
+    "expires": "Expires: {{date}}",
+    "customColor": "Custom color"
   },
   "days": {
     "monday": "Monday",

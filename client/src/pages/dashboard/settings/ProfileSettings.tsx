@@ -14,7 +14,7 @@ import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS
 import { PageHeader, CopyableText, useToast } from '@/components/ui'
 import { LAYOUT, surface } from '@/theme/theme'
 import {
-  BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, getBookingTheme, type BookingThemeKey,
+  BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, getBookingTheme, isCustomBookingColor,
 } from '@/theme/bookingThemes'
 
 export default function ProfileSettings() {
@@ -34,7 +34,8 @@ export default function ProfileSettings() {
   const [description, setDescription] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
-  const [bookingTheme, setBookingTheme] = useState<BookingThemeKey>(DEFAULT_BOOKING_THEME)
+  // Preset key (e.g. 'citrus') or a custom brand colour as a #RRGGBB hex.
+  const [bookingTheme, setBookingTheme] = useState<string>(DEFAULT_BOOKING_THEME)
 
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -300,6 +301,52 @@ export default function ProfileSettings() {
                     </Box>
                   )
                 })}
+
+                {/* Custom brand colour — match the business's own website. The whole
+                    tile is a <label> for a native colour input, so clicking it opens
+                    the OS colour picker; the accent then themes the whole booking UI
+                    (and any embed) via customBookingTheme(). */}
+                {(() => {
+                  const customActive = isCustomBookingColor(bookingTheme)
+                  return (
+                    <Box
+                      component="label"
+                      role="button"
+                      aria-pressed={customActive}
+                      sx={{
+                        position: 'relative',
+                        display: 'flex', alignItems: 'center', gap: 1,
+                        px: 1.5, py: 1, borderRadius: 2, cursor: 'pointer',
+                        border: '2px solid',
+                        borderColor: customActive ? 'primary.main' : 'divider',
+                        bgcolor: customActive ? surface.hover : 'transparent',
+                        transition: 'border-color 0.15s ease, background-color 0.15s ease',
+                        '&:hover': { borderColor: customActive ? 'primary.main' : 'text.disabled' },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 22, height: 22, borderRadius: '50%',
+                          background: customActive
+                            ? bookingTheme
+                            : 'conic-gradient(from 0deg, #FF6B35, #F6B042, #0E9F6E, #5B4BE0, #C4572F, #FF6B35)',
+                          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Typography variant="body2" sx={{ fontWeight: customActive ? 600 : 500 }}>
+                        {customActive ? bookingTheme.toUpperCase() : t('settings.customColor')}
+                      </Typography>
+                      <input
+                        type="color"
+                        value={customActive ? bookingTheme : '#B76E79'}
+                        onChange={e => setBookingTheme(e.target.value)}
+                        style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                        data-testid="booking-custom-color"
+                      />
+                    </Box>
+                  )
+                })()}
               </Box>
             </Box>
 

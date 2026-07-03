@@ -307,7 +307,8 @@
     "owner": "მფლობელი",
     "admin": "ადმინი",
     "pendingInvites": "მოლოდინში მყოფი მოწვევები",
-    "expires": "ვადა: {{date}}"
+    "expires": "ვადა: {{date}}",
+    "customColor": "ინდივიდუალური"
   },
   "days": {
     "monday": "ორშაბათი",

@@ -304,7 +304,8 @@
     "owner": "Владелец",
     "admin": "Администратор",
     "pendingInvites": "Ожидающие приглашения",
-    "expires": "Истекает: {{date}}"
+    "expires": "Истекает: {{date}}",
+    "customColor": "Свой цвет"
   },
   "days": {
     "monday": "Понедельник",

@@ -1,4 +1,4 @@
-import { createTheme, type Theme } from '@mui/material/styles'
+import { createTheme, lighten, darken, getLuminance, hexToRgb, type Theme } from '@mui/material/styles'
 import baseTheme from './theme'
 
 // Per-organisation colour themes for the public booking pages (the flow your
@@ -119,8 +119,40 @@ export const BOOKING_THEME_LIST: BookingTheme[] = Object.values(BOOKING_THEMES)
 
 export const DEFAULT_BOOKING_THEME: BookingThemeKey = 'citrus'
 
-/** Resolve a stored key (possibly null/retired/unknown) to a theme, falling back to default. */
+/** A stored booking_theme is a custom brand colour when it's a #RRGGBB hex. */
+const HEX_RE = /^#[0-9a-f]{6}$/i
+export function isCustomBookingColor(key: string | null | undefined): boolean {
+  return !!key && HEX_RE.test(key)
+}
+
+/**
+ * Build a full booking theme from a single brand colour (the business's custom
+ * accent). Derives the light/dark/tint shades so one colour themes the entire
+ * booking UI — buttons, inputs, cards, progress, staff pills — exactly like a
+ * preset. `key` is the hex itself so makeBookingTheme's cache keys per colour.
+ */
+export function customBookingTheme(hex: string): BookingTheme {
+  const rgb = hexToRgb(hex).replace(/^rgb\(|\)$/g, '') // "r, g, b" → strip wrapper
+  // Light brand colours (pale) need dark sidebar text to stay legible.
+  const light = getLuminance(hex) > 0.5
+  return {
+    key: hex as BookingThemeKey,
+    label: hex.toUpperCase(),
+    sidebar: hex,
+    sidebarText: light ? 'dark' : 'light',
+    pageBg: lighten(hex, 0.94),
+    primary: hex,
+    primaryLight: lighten(hex, 0.35),
+    primaryDark: darken(hex, 0.25),
+    deep: darken(hex, 0.25),
+    tint: lighten(hex, 0.85),
+    rgb: rgb.replace(/\s/g, ''),
+  }
+}
+
+/** Resolve a stored value to a theme: a custom hex, a preset key, or the default. */
 export function getBookingTheme(key: string | null | undefined): BookingTheme {
+  if (key && HEX_RE.test(key)) return customBookingTheme(key)
   return BOOKING_THEMES[(key as BookingThemeKey)] ?? BOOKING_THEMES[DEFAULT_BOOKING_THEME]
 }
 
