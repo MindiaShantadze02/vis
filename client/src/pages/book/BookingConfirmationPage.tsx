@@ -46,15 +46,12 @@ export default function BookingConfirmationPage() {
     // (null, not error, when absent) and retry on any error/empty before giving
     // up, so a real booking never gets stuck on the not-found screen.
     async function load(attempt = 0) {
+      // Fetched via a SECURITY DEFINER RPC (not a direct table read): the
+      // organisations table is org-scoped by RLS (066 hardening), so anon can't
+      // read it directly; the RPC returns only the public confirmation fields
+      // (appointment + org public + service) for this appointment id.
       const { data, error } = await supabase
-        .from('appointments')
-        // NB: no `customers(...)` embed — anon (the guest viewing their own
-        // confirmation) has no SELECT on the customers table (see RLS
-        // customers_select) nor the customer_id column (040 hardening), so
-        // embedding it 401s the whole query. The page never renders it anyway.
-        .select('id, scheduled_at, duration_minutes, status, payment_method, organisations(name, slug, booking_theme, contact_phone), services(name, price)')
-        .eq('id', id)
-        .maybeSingle()
+        .rpc('get_booking_confirmation', { p_appointment_id: id })
       if (cancelled) return
       if ((error || !data) && attempt < 4) {
         // Back off a little between tries: ~0.4s, 0.8s, 1.2s, 1.6s (≈4s total).

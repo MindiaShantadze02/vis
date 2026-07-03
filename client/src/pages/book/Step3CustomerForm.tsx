@@ -132,13 +132,12 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
       // since it was computed in Step 2 (capacity and per-person freedom).
       const dayStart = `${booking.date}T00:00:00.000Z`
       const dayEnd = `${booking.date}T23:59:59.999Z`
+      // Org-scoped busy slots via SECURITY DEFINER RPC — anon has no direct read
+      // on the appointments table (066 hardening).
       const { data: existing } = await supabase
-        .from('appointments')
-        .select('scheduled_at, duration_minutes, service_id, staff_id')
-        .eq('org_id', org.id)
-        .gte('scheduled_at', dayStart)
-        .lte('scheduled_at', dayEnd)
-        .not('status', 'in', '(rejected,cancelled)')
+        .rpc('get_org_busy_slots', { p_org_id: org.id, p_from: dayStart, p_to: dayEnd }) as {
+          data: Array<{ scheduled_at: string; duration_minutes: number; service_id: string; staff_id: string | null }> | null
+        }
 
       const slotStart = scheduledAt.getTime()
       const slotEnd = slotStart + booking.service.duration_minutes * 60000

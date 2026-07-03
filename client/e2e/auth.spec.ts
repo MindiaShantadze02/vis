@@ -46,6 +46,8 @@ test.describe('Authentication — edge cases', () => {
     await page.getByTestId('login-phone').fill(SEED.phone)
     await page.getByTestId('login-password').fill('password123')
     await page.getByTestId('login-confirm-password').fill('password123')
+    // Required consent to Privacy Policy + Terms (gates sign-up).
+    await page.getByTestId('register-consent').locator('input').check()
     await page.getByTestId('login-submit').click()
     await expect(page.getByTestId('login-error')).toBeVisible()
   })

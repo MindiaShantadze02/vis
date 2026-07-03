@@ -132,13 +132,11 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
     const dayEnd = dateKey + 'T23:59:59.999Z'
 
     Promise.all([
+      // Busy slots via a SECURITY DEFINER RPC (org-scoped): anon can't read the
+      // appointments table directly (066 hardening) to prevent cross-org
+      // schedule enumeration.
       supabase
-        .from('appointments')
-        .select('scheduled_at, duration_minutes, service_id, staff_id')
-        .eq('org_id', orgId)
-        .gte('scheduled_at', dayStart)
-        .lte('scheduled_at', dayEnd)
-        .not('status', 'in', '(rejected,cancelled)')
+        .rpc('get_org_busy_slots', { p_org_id: orgId, p_from: dayStart, p_to: dayEnd })
         .then(({ data }) => (data ?? []) as ApptRow[]),
 
       supabase
@@ -163,12 +161,11 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
 
     Promise.all([
       supabase
-        .from('appointments')
-        .select('scheduled_at, duration_minutes, service_id, staff_id')
-        .eq('org_id', orgId)
-        .gte('scheduled_at', startKey + 'T00:00:00.000Z')
-        .lte('scheduled_at', endKey + 'T23:59:59.999Z')
-        .not('status', 'in', '(rejected,cancelled)')
+        .rpc('get_org_busy_slots', {
+          p_org_id: orgId,
+          p_from: startKey + 'T00:00:00.000Z',
+          p_to: endKey + 'T23:59:59.999Z',
+        })
         .then(({ data }) => (data ?? []) as ApptRow[]),
 
       supabase
@@ -259,12 +256,11 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
 
       const [appts, ovs] = await Promise.all([
         supabase
-          .from('appointments')
-          .select('scheduled_at, duration_minutes, service_id, staff_id')
-          .eq('org_id', orgId)
-          .gte('scheduled_at', startKey + 'T00:00:00.000Z')
-          .lte('scheduled_at', endKey + 'T23:59:59.999Z')
-          .not('status', 'in', '(rejected,cancelled)')
+          .rpc('get_org_busy_slots', {
+            p_org_id: orgId,
+            p_from: startKey + 'T00:00:00.000Z',
+            p_to: endKey + 'T23:59:59.999Z',
+          })
           .then(({ data }) => (data ?? []) as ApptRow[]),
         supabase
           .from('working_hours_overrides')

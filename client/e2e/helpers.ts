@@ -54,6 +54,8 @@ export async function register(page: Page, phone: string, password = 'password12
   await page.getByTestId('login-phone').fill(phone)
   await page.getByTestId('login-password').fill(password)
   await page.getByTestId('login-confirm-password').fill(password)
+  // Required consent to Privacy Policy + Terms (gates sign-up).
+  await page.getByTestId('register-consent').locator('input').check()
   await page.getByTestId('login-submit').click()
   await expect(page).toHaveURL(/\/onboarding\/business/, { timeout: 20_000 })
 }
@@ -82,6 +84,8 @@ export async function bookToDetails(page: Page, slug = SEED.slug): Promise<boole
     const slot = page.getByTestId('book-slot').first()
     if (await slot.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
       await slot.click()
+      // Step 3 requires ticking the Privacy Policy + Terms consent before submit.
+      await page.getByTestId('book-consent').locator('input').check()
       return true
     }
   }

@@ -57,7 +57,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
 
   async function handleSignUp() {
-    if (password.length < 6) { setError(t('validation.passwordTooShort')); return }
+    if (password.length < 10) { setError(t('validation.passwordTooShortReset')); return }
     if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
     setError(null)
     setLoading(true)
@@ -78,9 +78,9 @@ export default function RegisterPage() {
 
   const phoneValid = isValidGeorgianPhone(phone)
   const phoneInvalid = phone.trim().length > 0 && !phoneValid
-  const passwordTooShort = password.length > 0 && password.length < 6
+  const passwordTooShort = password.length > 0 && password.length < 10
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
-  const canSignUp = phoneValid && password.length >= 6 && confirmPassword.length >= 6 && !passwordMismatch && consent
+  const canSignUp = phoneValid && password.length >= 10 && confirmPassword.length >= 10 && !passwordMismatch && consent
 
   return (
     <AuthShell>
@@ -114,7 +114,7 @@ export default function RegisterPage() {
         value={password}
         onChange={e => setPassword(e.target.value)}
         error={passwordTooShort}
-        helperText={passwordTooShort ? t('validation.passwordTooShort') : ' '}
+        helperText={passwordTooShort ? t('validation.passwordTooShortReset') : ' '}
         sx={{ mb: 1 }}
         slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' } }}
       />
