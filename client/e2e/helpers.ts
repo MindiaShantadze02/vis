@@ -96,3 +96,69 @@ export async function bookToDetails(page: Page, slug = SEED.slug): Promise<boole
 export function tag(prefix: string): string {
   return `${prefix} ${Date.now().toString().slice(-6)}`
 }
+
+/**
+ * A unique, letters-only first name for booking/appointment tests. Customer
+ * names must pass isValidPersonName (no digits), so we map the clock's digits
+ * to letters — keeping it unique per run while staying a valid person name.
+ */
+export function letterName(): string {
+  // Map each clock digit to a letter so the whole name is letters-only (no digit
+  // may appear — isValidPersonName rejects them).
+  const letters = Date.now().toString().split('').map(d => 'abcdefghij'[Number(d)]).join('')
+  return `Etest${letters}`
+}
+
+/**
+ * Book a public in-person appointment end to end, leaving a real *pending*
+ * appointment on the seeded org under `firstName`. Callers identify/clean it up
+ * later via openApptByName. Asserts a bookable slot exists this week.
+ */
+export async function bookPending(page: Page, firstName: string): Promise<void> {
+  const found = await bookToDetails(page)
+  expect(found, 'expected an open day with a free slot this week').toBeTruthy()
+  await fillStable(page.getByTestId('book-first-name'), firstName)
+  // A unique phone per booking so back-to-back bookings don't trip the per-phone
+  // OTP resend rate limit ('too_soon'), which would hide the verification step.
+  await fillStable(page.getByTestId('book-phone'), uniquePhone())
+  await expect(page.getByTestId('book-submit')).toBeEnabled()
+  await page.getByTestId('book-submit').click()
+  await passBookingOtp(page)
+  await expect(page).toHaveURL(/\/booking-confirmation\//, { timeout: 20_000 })
+}
+
+/**
+ * On the dashboard overview, search for an appointment by customer name and open
+ * its detail dialog. Assumes the caller is already logged in.
+ */
+export async function openApptByName(page: Page, name: string): Promise<void> {
+  await page.goto('/dashboard')
+  const search = page.getByTestId('appt-search')
+  await search.waitFor({ state: 'visible', timeout: 20_000 })
+  await fillStable(search, name)
+  const row = page.getByTestId('appt-row').filter({ hasText: name })
+  await expect(row.first()).toBeVisible({ timeout: 20_000 })
+  await row.first().click()
+  await expect(page.getByTestId('appt-erase')).toBeVisible()
+}
+
+/**
+ * Clean up a test appointment by driving it to a terminal state, so it drops out
+ * of the org's monthly tier count (cancelled/rejected are excluded). Cancels an
+ * approved one or rejects a pending one — whichever action the dialog offers.
+ * The row itself remains (a guest booking can't be hard-deleted client-side),
+ * matching booking.spec's documented persistence.
+ */
+export async function cancelAppt(page: Page, name: string): Promise<void> {
+  await openApptByName(page, name)
+  const cancel = page.getByTestId('appt-cancel')
+  const reject = page.getByTestId('appt-reject')
+  if (await cancel.count()) {
+    await cancel.click()
+    await page.getByTestId('appt-confirm-cancel').click()
+    await expect(page.getByRole('dialog')).toBeHidden({ timeout: 20_000 })
+  } else if (await reject.count()) {
+    await reject.click()
+    await expect(page.getByRole('dialog')).toBeHidden({ timeout: 20_000 })
+  }
+}

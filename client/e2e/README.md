@@ -27,8 +27,38 @@ Happy paths + edge cases (validation gating, route guards, error states):
 | `onboarding.spec.ts` | full 3-step onboarding → org (self-cleans) | step-1 "next" gating, skip → dashboard, org-guard bounce |
 | `booking.spec.ts` | public in-person booking + OTP → confirmation | unknown slug, invalid name/phone gating, **wrong OTP rejected** |
 | `dashboard.spec.ts` | overview stats + link, add-appt dialog, calendar nav | add-appt save gating |
-| `settings-services.spec.ts` | service create → edit → delete (self-cleans) | save gating (empty name / out-of-range price / bad duration) |
+| `settings-services.spec.ts` | service create → edit → delete (self-cleans) | save gating (empty name / out-of-range price / bad duration); **BVA** on duration/capacity/price + **pairwise** online × meeting-link |
 | `settings-team.spec.ts` | add/delete professional; invite by phone + cancel (self-clean) | invite-send gating, add-professional name gating |
+| `appointment-status.spec.ts` | **state-transition** of the status machine (pending→approved→cancelled, pending→rejected) | terminal-state & illegal-transition guardrails, status-filter **ECP** — self-cleans (cancel + erase) |
+| `calendar.spec.ts` | approve a pending booking from the calendar drawer | resilient pill/group locate — self-cleans |
+| `forgot-password.spec.ts` | phase transition (`phone`→`reset`), neutral messaging | wrong-code rejected, resend cooldown, submit-gating **BVA** (throwaway phone — never touches the seed password) |
+| `working-hours.spec.ts` | override add → delete (self-clean state cycle) | **decision** (endBeforeStart) + **BVA** (advance days 0/731) rejects — non-persisting |
+| `profile-settings.spec.ts` | custom booking colour | name/phone save-gating, logo image **BVA** (>2 MB / non-image), delete-account confirm-word guard (never confirmed) |
+| `superadmin.spec.ts` | — | role **ECP**: a normal owner is redirected off `/superadmin` and its sub-routes |
+
+### Design techniques applied
+
+- **ECP / BVA / statement / decision / path / data-flow** — the bulk lives in the
+  Vitest unit layer (`src/lib/*.test.ts`, run with `npm run test`): 100% stmt/branch
+  on `validation.ts`, `slug.ts`, `tiers.ts`. Boundary cases too numerous or slow to
+  drive through the live UI (every phone length, price/duration/advance-day edge, the
+  60-char slug cut, the 2 MB image edge) live there.
+- **State-transition** — appointment status machine, forgot-password phases.
+- **Pairwise** — booking Step-3 field combinations, service online × meeting-link.
+- **Error-guessing** — catalogued below.
+
+### Error-guessing catalogue
+
+Cases seeded from experience of where this app tends to break:
+
+- Booking: name with digits, whitespace-only name, `<script>` injection, `+995`-pasted
+  phone (must normalize & pass), consent unticked, **wrong OTP**.
+- Forgot-password: wrong 6-digit code, resend within the 60 s cooldown, unknown phone
+  must NOT leak account existence (neutral messaging).
+- Services/working-hours: over-`MAX_PRICE` price, duration `0`/`1441`, capacity `0`,
+  advance-days `0`/`731`, day closing before it opens.
+- Profile: image just over 2 MB, non-image upload, delete-account confirm word.
+- Superadmin: a non-superadmin reaching a privileged route.
 
 ## Test data & the seeded account
 
@@ -47,6 +77,19 @@ its active service + Mon–Fri hours intact, or the booking/dashboard specs will
   path self-deletes its account. Prune the rest with:
   `delete from auth.users u where u.created_at > now() - interval '1 hour'
    and not exists (select 1 from org_members m where m.user_id = u.id);`
+- `appointment-status.spec.ts` and `calendar.spec.ts` each book real appointments
+  but **self-clean**: they cancel (so the row drops out of the monthly tier count)
+  and then erase the client's PII. The rows remain as anonymized/cancelled records.
+
+## Not yet covered (follow-ups)
+
+- **Superadmin privileged flows** (tier change, add/remove superadmin) need a
+  superadmin test account — not provisioned here. `superadmin.spec.ts` covers only
+  the access guard.
+- **Online-payment booking path** and the mock checkout (`/pay/mock`) — the seeded
+  org is in-person only, so the payment selector never renders. Needs an org with a
+  BOG/TBC provider enabled to exercise `create-payment` → `payment-webhook`.
+- **Embed postMessage bridge** and **invitation-accept** — need extra harness setup.
 
 Because everything shares one hosted DB and one seeded account, the suite runs
 **serially** (`workers: 1`). Don't switch it to parallel without per-worker orgs.
