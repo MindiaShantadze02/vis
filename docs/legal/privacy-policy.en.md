@@ -72,8 +72,11 @@ for cross-border data transfer (Article 34).
 
 - **Verification codes:** deleted shortly after they are used or expire.
 - **Incomplete online bookings:** deleted within 7 days.
-- **Appointment and client records:** retained for up to [24] months after the appointment,
-  then deleted or anonymized.
+- **Appointment records:** after [24] months, the personal data attached to an appointment
+  (client name, phone number, and notes) is **anonymized** — permanently stripped so the
+  record can no longer be linked to you. The anonymized appointment (service, price, date)
+  may be kept for the business’s statistics and for tax/accounting records required by law.
+- **Client contact records:** anonymized on the same [24]-month basis.
 - **SMS logs:** retained for up to [12] months.
 - **Business-account data:** kept for the life of the account, plus any period required by
   law.

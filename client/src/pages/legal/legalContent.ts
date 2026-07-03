@@ -8,7 +8,7 @@
 // Placeholders in [BRACKETS] are filled once the legal entity is registered.
 
 /** Version tag stored with each consent (customers.consent_version). Bump on change. */
-export const CONSENT_VERSION = '2026-07-03'
+export const CONSENT_VERSION = '2026-07-03.2'
 
 export type LegalDocType = 'privacy' | 'terms'
 
@@ -81,7 +81,8 @@ const PRIVACY: Record<Lang, LegalDoc> = {
         body: [[
           'Verification codes: deleted shortly after use or expiry.',
           'Incomplete online bookings: deleted within 7 days.',
-          'Appointment and client records: retained for up to [24] months after the appointment, then deleted or anonymized.',
+          'Appointment records: after [24] months, the personal data attached to an appointment (client name, phone number, notes) is anonymized — permanently stripped so the record can no longer be linked to you. The anonymized appointment (service, price, date) may be kept for the business’s statistics and for tax/accounting records required by law.',
+          'Client contact records: anonymized on the same [24]-month basis.',
           'SMS logs: retained for up to [12] months.',
           'Business-account data: kept for the life of the account, plus any period required by law.',
         ], 'You may ask us to delete your data sooner (see Section 9).'],
@@ -158,7 +159,8 @@ const PRIVACY: Record<Lang, LegalDoc> = {
         body: [[
           'დამადასტურებელი კოდები: იშლება გამოყენების ან ვადის გასვლისთანავე.',
           'დაუსრულებელი ონლაინ ჯავშნები: იშლება 7 დღეში.',
-          'ვიზიტისა და კლიენტის ჩანაწერები: ვიზიტიდან [24] თვემდე, შემდეგ იშლება ან ანონიმდება.',
+          'ვიზიტის ჩანაწერები: [24] თვის შემდეგ ვიზიტს მიბმული პერსონალური მონაცემები (სახელი, ტელეფონი, შენიშვნები) ანონიმდება — სამუდამოდ იშლება ისე, რომ ჩანაწერი ვეღარ დაუკავშირდება თქვენ. ანონიმიზებული ვიზიტი (სერვისი, ფასი, თარიღი) შესაძლოა შენარჩუნდეს ბიზნესის სტატისტიკისა და კანონით მოთხოვნილი საგადასახადო/ბუღალტრული აღრიცხვისთვის.',
+          'კლიენტის საკონტაქტო ჩანაწერები: ანონიმდება იმავე [24]-თვიანი პრინციპით.',
           'SMS-ჟურნალები: [12] თვემდე.',
           'ბიზნეს-ანგარიშის მონაცემები: ანგარიშის მოქმედების პერიოდში, კანონით მოთხოვნილი ვადით.',
         ], 'შეგიძლიათ მოგვთხოვოთ მონაცემების უფრო ადრე წაშლა (იხ. ნაწილი 9).'],
