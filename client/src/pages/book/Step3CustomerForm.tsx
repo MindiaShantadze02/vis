@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
 import { CONSENT_VERSION } from '@/pages/legal/legalContent'
+import { postToParent } from './useEmbedBridge'
 import { elevation } from '@/theme/theme'
 import type { BookingOrg, BookingState } from './BookingLayout'
 
@@ -26,6 +27,8 @@ interface Props {
   onDone: (appointmentId: string) => void
   /** Booking-theme "deep" accent for the price/total (e.g. brass on the charcoal theme). */
   priceColor?: string
+  /** Running inside an embed iframe — payment must break out to the top window. */
+  embed?: boolean
 }
 
 /** Above-the-input field label, matching the booking design (no floating MUI label). */
@@ -40,7 +43,7 @@ function FieldLabel({ children, required }: { children: string; required?: boole
   )
 }
 
-export default function Step3CustomerForm({ org, booking, onChange, onBack, onDone, priceColor }: Props) {
+export default function Step3CustomerForm({ org, booking, onChange, onBack, onDone, priceColor, embed }: Props) {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -198,7 +201,13 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           setLoading(false)
           return
         }
-        window.location.assign(pay.checkoutUrl)
+        if (embed) {
+          // Payment gateways refuse to load inside an iframe. Hand the URL to the
+          // host page (embed.js) to navigate the top window out to the gateway.
+          postToParent({ type: 'vis:redirect', url: pay.checkoutUrl })
+        } else {
+          window.location.assign(pay.checkoutUrl)
+        }
         return
       }
 

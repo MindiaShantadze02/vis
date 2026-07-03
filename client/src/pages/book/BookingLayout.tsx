@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { SUPPORTED_LANGUAGES } from '@/lib/i18n'
+import { inIframe } from './useEmbedBridge'
 import { Box, Typography } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
 import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
@@ -95,7 +97,21 @@ function loadPersisted(slug: string | undefined): PersistedBooking | null {
 export default function BookingLayout() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const [searchParams] = useSearchParams()
+
+  // Render the bare/chromeless layout when the embedder opts in (?embed=1) or
+  // whenever we're inside any iframe.
+  const embed = searchParams.get('embed') === '1' || inIframe
+
+  // Let an embed pin the language via ?lang= (e.g. ?embed=1&lang=en). Standalone
+  // visitors get a language switcher instead (rendered in BookingShell).
+  useEffect(() => {
+    const lang = searchParams.get('lang')
+    if (lang && SUPPORTED_LANGUAGES.some(l => l.code === lang) && i18n.resolvedLanguage !== lang) {
+      void i18n.changeLanguage(lang)
+    }
+  }, [searchParams, i18n])
 
   const [org, setOrg] = useState<BookingOrg | null>(null)
   const [notFound, setNotFound] = useState(false)
@@ -247,6 +263,7 @@ export default function BookingLayout() {
         stepTitles={stepTitles}
         summary={summary}
         mobileAside={mobileAside}
+        embed={embed}
       >
         {step === 0 && (
           <Step1ServiceSelect
@@ -271,6 +288,7 @@ export default function BookingLayout() {
             org={org}
             booking={booking}
             priceColor={bookingTheme.deep}
+            embed={embed}
             onChange={patch}
             onBack={() => goToStep(1)}
             onDone={(appointmentId) => {

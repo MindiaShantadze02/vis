@@ -16,6 +16,7 @@ import { ThemeProvider, alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
 import { listItem } from '@/theme/motion'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
+import { inIframe, postToParent } from './useEmbedBridge'
 import type { AppointmentStatus } from '@/components/ui'
 
 interface AppointmentDetail {
@@ -66,9 +67,15 @@ export default function BookingConfirmationPage() {
     return () => { cancelled = true }
   }, [id])
 
+  // Let the embedding site react to a completed booking (e.g. analytics, custom
+  // thank-you). No-op when not embedded.
+  useEffect(() => {
+    if (appt) postToParent({ type: 'vis:booked', appointmentId: appt.id, status: appt.status })
+  }, [appt])
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: inIframe ? 320 : '100vh' }}>
         <LoadingState />
       </Box>
     )
@@ -76,7 +83,7 @@ export default function BookingConfirmationPage() {
 
   if (!appt) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: inIframe ? 320 : '100vh' }}>
         <EmptyState icon={<SearchOffOutlinedIcon />} title="ჯავშანი ვერ მოიძებნა" />
       </Box>
     )
@@ -90,11 +97,11 @@ export default function BookingConfirmationPage() {
     <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: inIframe ? 'auto' : '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: bookingTheme.pageBg,
+        bgcolor: inIframe ? 'background.paper' : bookingTheme.pageBg,
         p: 2,
       }}
     >

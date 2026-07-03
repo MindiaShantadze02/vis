@@ -45,6 +45,8 @@ import NotFoundPage from '@/pages/NotFoundPage'
 // Legal
 import LegalPage from '@/pages/legal/LegalPage'
 
+import { EmbedBridge } from '@/pages/book/useEmbedBridge'
+
 function LoadingScreen() {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -95,6 +97,8 @@ function PublicOnlyGuard({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <>
+    <EmbedBridge />
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -143,5 +147,6 @@ export default function App() {
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </>
   )
 }

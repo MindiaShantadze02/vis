@@ -283,14 +283,22 @@ export default function OverviewPage() {
     <Box>
       <PageHeader title={t('dashboard.overview')} />
 
-      {/* Booking link — shown prominently so the business can copy & share it */}
+      {/* Booking link + website embed code — copy & share / paste into a site */}
       {org?.slug && (
-        <Box sx={{ mb: 4, maxWidth: 480 }}>
+        <Box sx={{ mb: 4, maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           <CopyableText
             label="თქვენი ბუქინგ ბმული"
             text={`vis.ge/book/${org.slug}`}
             value={`https://vis.ge/book/${org.slug}`}
             href={`https://vis.ge/book/${org.slug}`}
+          />
+          <CopyableText
+            label="ჩაშენების კოდი (თქვენს ვებსაიტზე)"
+            text={`<iframe data-vis src="…/book/${org.slug}?embed=1"> … + embed.js`}
+            value={
+              `<iframe data-vis src="https://vis.ge/book/${org.slug}?embed=1&lang=ka" style="width:100%;border:0"></iframe>\n` +
+              `<script src="https://vis.ge/embed.js" async></script>`
+            }
           />
         </Box>
       )}

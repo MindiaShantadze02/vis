@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { stepVariants } from '@/theme/motion'
+import { LanguageSwitcher } from '@/components/ui'
 import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
 
@@ -22,6 +23,8 @@ interface Props {
   summary?: ReactNode
   /** Compact aside shown in the mobile header (e.g. running price). */
   mobileAside?: ReactNode
+  /** Bare/chromeless layout for embedding in a third-party site (no sidebar/branding). */
+  embed?: boolean
   /** The current step's content. */
   children: ReactNode
 }
@@ -37,7 +40,7 @@ interface Props {
  * (makeBookingTheme) — BookingLayout provides that for every vertical.
  */
 export default function BookingShell({
-  org, bookingTheme, step, direction, stepTitles, summary, mobileAside, children,
+  org, bookingTheme, step, direction, stepTitles, summary, mobileAside, embed, children,
 }: Props) {
   const { t } = useTranslation()
   const theme = useTheme()
@@ -108,12 +111,21 @@ export default function BookingShell({
   )
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: '100vh' }}>
-      {!isMobile && sidebar}
+    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: embed ? 'auto' : '100vh' }}>
+      {/* Branded sidebar — hidden in embed mode (the host site provides branding). */}
+      {!isMobile && !embed && sidebar}
 
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: bookingTheme.pageBg, minWidth: 0 }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: embed ? 'background.paper' : bookingTheme.pageBg, minWidth: 0 }}>
+        {/* Standalone language switcher (the biggest UX gap for non-Georgian
+            visitors). In embed mode language comes from ?lang=, so it's hidden. */}
+        {!embed && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: { xs: 1.5, md: 3 }, pt: 1.25, bgcolor: 'background.paper' }}>
+            <LanguageSwitcher />
+          </Box>
+        )}
+
         {/* Compact mobile header — replaces the full sidebar below md. */}
-        {isMobile && (
+        {isMobile && !embed && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, background: bookingTheme.sidebar, color: sideFg }}>
             <Avatar
               src={org.logo_url ?? undefined}
