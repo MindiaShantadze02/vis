@@ -211,7 +211,10 @@
     "superadmin": "Super admin",
     "eraseClientData": "Erase client data",
     "eraseConfirm": "Confirm erasure",
-    "eraseDone": "Client data erased"
+    "eraseDone": "Client data erased",
+    "yourBookingLink": "Your booking link",
+    "embedCode": "Website embed code",
+    "embedProOnly": "Embed the booking widget on your own website — available on the Pro plan."
   },
   "notifications": {
     "title": "Notifications",
@@ -400,5 +403,26 @@
     "totalOrgs": "Total organisations",
     "totalAppointments": "Total appointments",
     "changeTier": "Change tier"
+  },
+  "reviews": {
+    "title": "Leave a review",
+    "ratingLabel": "Your rating",
+    "commentLabel": "Comment (optional)",
+    "submit": "Submit review",
+    "thanksTitle": "Thank you!",
+    "thanksBody": "Your review has been submitted.",
+    "alreadyTitle": "Already reviewed",
+    "alreadyBody": "This appointment has already been reviewed.",
+    "notCompletedTitle": "Not yet",
+    "notCompletedBody": "You can leave a review after your visit is complete.",
+    "disabledTitle": "Reviews are off",
+    "disabledBody": "This business isn't accepting reviews right now.",
+    "notFoundTitle": "Not found",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "countLabel": "{{count}} reviews",
+    "anonymous": "Anonymous",
+    "settingTitle": "Customer reviews",
+    "settingHelp": "Show a rating badge and reviews on your booking page.",
+    "reviewLinkLabel": "Review link (share with the client)"
   }
 }

@@ -9,6 +9,7 @@ import { stepVariants } from '@/theme/motion'
 import { LanguageSwitcher } from '@/components/ui'
 import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
+import BookingReviews from './BookingReviews'
 
 interface Props {
   org: BookingOrg
@@ -178,6 +179,16 @@ export default function BookingShell({
               sx={{ px: { xs: 2, md: 5 }, py: 4, width: { xs: '100%', md: '85%' }, mx: 'auto' }}
             >
               {children}
+              {/* Reviews live on the landing step, in the main content area so
+                  they show in the chromeless embed too. */}
+              {step === 0 && (
+                <BookingReviews
+                  slug={org.slug}
+                  enabled={org.reviews_enabled}
+                  avg={org.review_avg}
+                  count={org.review_count}
+                />
+              )}
             </Box>
           </AnimatePresence>
         </Box>

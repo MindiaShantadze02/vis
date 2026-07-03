@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Theme } from '@mui/material'
-import { TIERS, TIER_KEYS, tierInfo, tierColor } from './tiers'
+import { TIERS, TIER_KEYS, tierInfo, tierColor, tierAtLeast } from './tiers'
 
 /**
  * ECP + decision coverage for the tier lookup helpers. Limits mirror
@@ -32,6 +32,28 @@ describe('tierInfo (fallback path)', () => {
       expect(tierInfo(key as string | null | undefined).key).toBe('free')
     },
   )
+})
+
+describe('tierAtLeast (feature gating)', () => {
+  // BVA around the pro boundary — the embed widget is gated to pro+.
+  it.each([
+    ['free', false],
+    ['starter', false],
+    ['pro', true],
+    ['business', true],
+  ])('%s vs pro → %s', (current, expected) => {
+    expect(tierAtLeast(current, 'pro')).toBe(expected)
+  })
+
+  it('an unknown / null / undefined tier never meets a target', () => {
+    expect(tierAtLeast('enterprise', 'pro')).toBe(false)
+    expect(tierAtLeast(null, 'free')).toBe(false)
+    expect(tierAtLeast(undefined, 'free')).toBe(false)
+  })
+
+  it('every tier meets the free floor', () => {
+    for (const k of TIER_KEYS) expect(tierAtLeast(k, 'free')).toBe(true)
+  })
 })
 
 describe('tierColor (both branches)', () => {

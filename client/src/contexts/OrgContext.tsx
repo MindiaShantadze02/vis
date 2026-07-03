@@ -12,6 +12,7 @@ export interface Organisation {
   logo_url: string | null
   subscription_tier: 'free' | 'starter' | 'pro' | 'business'
   booking_theme: string | null
+  reviews_enabled: boolean
 }
 
 interface OrgContextValue {

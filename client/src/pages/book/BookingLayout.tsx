@@ -27,6 +27,9 @@ export interface BookingOrg {
   slug: string
   payment_config: Record<string, { enabled?: boolean }> | null
   booking_theme: string | null
+  reviews_enabled: boolean
+  review_avg: number | null
+  review_count: number
 }
 
 // Shape returned by the get_public_org RPC (secrets stripped server-side).
@@ -39,6 +42,9 @@ interface PublicOrg {
   slug: string
   booking_theme: string | null
   payment_methods: Record<string, { enabled?: boolean }> | null
+  reviews_enabled: boolean
+  review_avg: number | null
+  review_count: number
 }
 
 export interface BookingService {
@@ -173,6 +179,10 @@ export default function BookingLayout() {
         slug: pub.slug,
         booking_theme: pub.booking_theme,
         payment_config: pub.payment_methods,
+        reviews_enabled: pub.reviews_enabled,
+        // PostgREST returns numeric as a string; coerce for display/math.
+        review_avg: pub.review_avg != null ? Number(pub.review_avg) : null,
+        review_count: Number(pub.review_count ?? 0),
       })
     }
     if (slug) loadOrg()

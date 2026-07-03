@@ -28,7 +28,7 @@ export const TIERS: TierInfo[] = [
   },
   {
     key: 'pro', label: 'პრო', price: '₾40 / თვე', limit: 600, colorKey: 'primary',
-    features: ['600 ჯავშანი/თვე', 'ყველა სტარტერის ფუნქცია', 'BOG / TBC ონლაინ გადახდა', 'გუნდის მართვა'],
+    features: ['600 ჯავშანი/თვე', 'ყველა სტარტერის ფუნქცია', 'BOG / TBC ონლაინ გადახდა', 'გუნდის მართვა', 'ვებსაიტის ვიჯეტი'],
   },
   {
     key: 'business', label: 'ბიზნესი', price: '₾80 / თვე', limit: null, colorKey: 'success',
@@ -36,8 +36,19 @@ export const TIERS: TierInfo[] = [
   },
 ]
 
-/** All tier keys, in display order. */
+/** All tier keys, in display order (free < starter < pro < business). */
 export const TIER_KEYS: Tier[] = TIERS.map(t => t.key)
+
+/**
+ * True when `current` is at least as high as `target` in the tier order.
+ * Used to gate features by plan (e.g. the embed widget is Pro+). An unknown
+ * current tier is treated as the lowest (free), so it never unlocks anything.
+ */
+export function tierAtLeast(current: string | null | undefined, target: Tier): boolean {
+  const ci = TIER_KEYS.indexOf(current as Tier)
+  const ti = TIER_KEYS.indexOf(target)
+  return ci >= 0 && ci >= ti
+}
 
 /** Look up a tier's info, falling back to the free tier. */
 export function tierInfo(key: string | null | undefined): TierInfo {

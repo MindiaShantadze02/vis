@@ -3,7 +3,7 @@ import {
   Box, Typography, Card, CardContent, TextField, Button,
   Avatar, CircularProgress, Alert, Stack, Divider, Link,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
-  Checkbox, FormControlLabel,
+  Checkbox, FormControlLabel, Switch,
 } from '@mui/material'
 import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/icons'
 import { useNavigate } from 'react-router-dom'
@@ -36,6 +36,8 @@ export default function ProfileSettings() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   // Preset key (e.g. 'citrus') or a custom brand colour as a #RRGGBB hex.
   const [bookingTheme, setBookingTheme] = useState<string>(DEFAULT_BOOKING_THEME)
+  // Whole-feature on/off for customer reviews (badge + list on the booking page).
+  const [reviewsEnabled, setReviewsEnabled] = useState(true)
 
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -50,6 +52,7 @@ export default function ProfileSettings() {
       setLogoUrl((org as unknown as Record<string, string>).logo_url ?? null)
       // Resolve any stored key (incl. the retired 'classic') to a current theme.
       setBookingTheme(getBookingTheme(org.booking_theme).key)
+      setReviewsEnabled(org.reviews_enabled)
     }
   }, [org])
 
@@ -113,6 +116,7 @@ export default function ProfileSettings() {
         description: description.trim() || null,
         contact_phone: formatGeorgianPhone(contactPhone),
         booking_theme: bookingTheme,
+        reviews_enabled: reviewsEnabled,
       })
       .eq('id', org.id)
 
@@ -348,6 +352,30 @@ export default function ProfileSettings() {
                   )
                 })()}
               </Box>
+            </Box>
+
+            {/* Customer reviews — whole-feature on/off. When off, the public
+                booking page shows no rating badge or reviews list, and new
+                reviews can't be submitted. */}
+            <Box>
+              <FormControlLabel
+                sx={{ ml: 0 }}
+                control={
+                  <Switch
+                    checked={reviewsEnabled}
+                    onChange={e => setReviewsEnabled(e.target.checked)}
+                    data-testid="reviews-enabled-toggle"
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('reviews.settingTitle')}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {t('reviews.settingHelp')}
+                    </Typography>
+                  </Box>
+                }
+              />
             </Box>
 
           </Stack>

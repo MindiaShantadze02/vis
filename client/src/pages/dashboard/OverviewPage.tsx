@@ -20,6 +20,7 @@ import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
+import { tierAtLeast } from '@/lib/tiers'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 import { PageHeader, StatStrip, StatusChip, EmptyState, CopyableText, useToast } from '@/components/ui'
 import type { AppointmentStatus } from '@/components/ui'
@@ -283,23 +284,43 @@ export default function OverviewPage() {
     <Box>
       <PageHeader title={t('dashboard.overview')} />
 
-      {/* Booking link + website embed code — copy & share / paste into a site */}
+      {/* Booking link + website embed code — copy & share / paste into a site.
+          The embed widget is a Pro+ feature; lower tiers see an upsell instead. */}
       {org?.slug && (
         <Box sx={{ mb: 4, maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           <CopyableText
-            label="თქვენი ბუქინგ ბმული"
+            label={t('dashboard.yourBookingLink')}
             text={`vis.ge/book/${org.slug}`}
             value={`https://vis.ge/book/${org.slug}`}
             href={`https://vis.ge/book/${org.slug}`}
           />
-          <CopyableText
-            label="ჩაშენების კოდი (თქვენს ვებსაიტზე)"
-            text={`<iframe data-vis src="…/book/${org.slug}?embed=1"> … + embed.js`}
-            value={
-              `<iframe data-vis src="https://vis.ge/book/${org.slug}?embed=1&lang=ka" style="width:100%;border:0"></iframe>\n` +
-              `<script src="https://vis.ge/embed.js" async></script>`
-            }
-          />
+          {tierAtLeast(org.subscription_tier, 'pro') ? (
+            <CopyableText
+              label={t('dashboard.embedCode')}
+              text={`<iframe data-vis src="…/book/${org.slug}?embed=1"> … + embed.js`}
+              value={
+                `<iframe data-vis src="https://vis.ge/book/${org.slug}?embed=1&lang=ka" style="width:100%;border:0"></iframe>\n` +
+                `<script src="https://vis.ge/embed.js" async></script>`
+              }
+            />
+          ) : (
+            <Box
+              sx={{
+                border: '1px dashed', borderColor: 'divider', borderRadius: 2,
+                p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5,
+              }}
+            >
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('dashboard.embedCode')}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {t('dashboard.embedProOnly')}
+                </Typography>
+              </Box>
+              <Button size="small" variant="outlined" onClick={() => navigate('/dashboard/settings/subscription')}>
+                {t('subscription.upgrade')}
+              </Button>
+            </Box>
+          )}
         </Box>
       )}
 
@@ -569,6 +590,16 @@ export default function OverviewPage() {
                     {selected.payment_status === 'paid' ? '✓ გადახდილია' : 'გადაუხდელი'}
                   </Typography>
                 </Box>
+                {/* A completed visit can be reviewed: share this capability link with
+                    the client (via the owner's own Viber/WhatsApp). Gated by the
+                    org-level reviews toggle. */}
+                {selected.status === 'completed' && org.reviews_enabled && (
+                  <CopyableText
+                    label={t('reviews.reviewLinkLabel')}
+                    text={`vis.ge/review/${selected.id.slice(0, 8)}…`}
+                    value={`${window.location.origin}/review/${selected.id}`}
+                  />
+                )}
                 {(selected.status === 'pending' || selected.status === 'approved') && (
                   <TextField
                     fullWidth size="small"

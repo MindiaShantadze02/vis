@@ -211,7 +211,10 @@
     "superadmin": "Супер-админ",
     "eraseClientData": "Удалить данные клиента",
     "eraseConfirm": "Подтвердить удаление",
-    "eraseDone": "Данные клиента удалены"
+    "eraseDone": "Данные клиента удалены",
+    "yourBookingLink": "Ваша ссылка для записи",
+    "embedCode": "Код для встраивания на сайт",
+    "embedProOnly": "Встройте виджет записи на свой сайт — доступно в тарифе Pro."
   },
   "notifications": {
     "title": "Уведомления",
@@ -402,5 +405,26 @@
     "totalOrgs": "Всего организаций",
     "totalAppointments": "Всего записей",
     "changeTier": "Изменить план"
+  },
+  "reviews": {
+    "title": "Оставьте отзыв",
+    "ratingLabel": "Ваша оценка",
+    "commentLabel": "Комментарий (необязательно)",
+    "submit": "Отправить отзыв",
+    "thanksTitle": "Спасибо!",
+    "thanksBody": "Ваш отзыв отправлен.",
+    "alreadyTitle": "Отзыв уже оставлен",
+    "alreadyBody": "Эта запись уже была оценена.",
+    "notCompletedTitle": "Ещё рано",
+    "notCompletedBody": "Вы сможете оставить отзыв после завершения визита.",
+    "disabledTitle": "Отзывы отключены",
+    "disabledBody": "Этот бизнес сейчас не принимает отзывы.",
+    "notFoundTitle": "Не найдено",
+    "errorGeneric": "Что-то пошло не так. Попробуйте снова.",
+    "countLabel": "{{count}} отзывов",
+    "anonymous": "Аноним",
+    "settingTitle": "Отзывы клиентов",
+    "settingHelp": "Показывать рейтинг и отзывы на странице записи.",
+    "reviewLinkLabel": "Ссылка на отзыв (отправьте клиенту)"
   }
 }
