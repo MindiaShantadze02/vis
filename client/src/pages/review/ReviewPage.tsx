@@ -187,13 +187,14 @@ export default function ReviewPage() {
       {header}
       <Divider sx={{ mb: 3 }} />
 
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{t('reviews.title')}</Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>{t('reviews.prompt')}</Typography>
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>{t('reviews.title')}</Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="review-error">{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2.5 }} data-testid="review-error">{error}</Alert>}
 
-      {/* Rating — the focal point: large stars + a live label. */}
-      <Box sx={{ textAlign: 'center', py: 1, mb: 3 }}>
+      {/* Rating — left-aligned like every other field, with the descriptor inline
+          so there's no reserved empty gap. */}
+      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>{t('reviews.prompt')}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, minHeight: 40 }}>
         <Rating
           value={rating}
           onChange={(_, v) => setRating(v)}
@@ -201,22 +202,24 @@ export default function ReviewPage() {
           icon={<StarRoundedIcon weight="fill" fontSize="inherit" />}
           emptyIcon={<StarRoundedIcon weight="regular" fontSize="inherit" />}
           sx={{
-            fontSize: '3rem',
+            fontSize: '2.25rem',
             '& .MuiRating-iconFilled': { color: 'primary.main' },
             '& .MuiRating-iconEmpty': { color: 'action.disabledBackground' },
             '& .MuiRating-iconHover': { transform: 'scale(1.15)' },
           }}
           data-testid="review-rating"
         />
-        <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600, color: 'primary.main', minHeight: 22 }}>
-          {ratingLabel}
-        </Typography>
+        {shown ? (
+          <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+            {ratingLabel}
+          </Typography>
+        ) : null}
       </Box>
 
       <TextField
         fullWidth
         multiline
-        rows={4}
+        rows={3}
         placeholder={t('reviews.commentPlaceholder')}
         label={t('reviews.commentLabel')}
         value={comment}
