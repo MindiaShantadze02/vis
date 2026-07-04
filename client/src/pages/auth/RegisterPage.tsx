@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Box, Card, CardContent, TextField, Button,
   Typography, CircularProgress, Alert, Link as MuiLink,
@@ -53,10 +53,28 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [consent, setConsent] = useState(false)
+  const [consentError, setConsentError] = useState(false)
+  // Bumped on each blocked submit so the hint re-animates (re-flashes) every time.
+  const [consentNudge, setConsentNudge] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Auto-clear the consent highlight after a few seconds so it can trigger again
+  // rather than staying red forever.
+  const consentTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (consentTimer.current) clearTimeout(consentTimer.current) }, [])
+
+  function flagConsent() {
+    setConsentError(true)
+    setConsentNudge(n => n + 1)
+    if (consentTimer.current) clearTimeout(consentTimer.current)
+    consentTimer.current = setTimeout(() => setConsentError(false), 4000)
+  }
+
   async function handleSignUp() {
+    // Consent is required — surface it explicitly rather than silently disabling
+    // the button, which leaves users stuck without knowing why.
+    if (!consent) { flagConsent(); return }
     if (password.length < 10) { setError(t('validation.passwordTooShortReset')); return }
     if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
     setError(null)
@@ -80,7 +98,9 @@ export default function RegisterPage() {
   const phoneInvalid = phone.trim().length > 0 && !phoneValid
   const passwordTooShort = password.length > 0 && password.length < 10
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
-  const canSignUp = phoneValid && password.length >= 10 && confirmPassword.length >= 10 && !passwordMismatch && consent
+  // Enabled once the credentials are valid; consent is checked on submit (with a
+  // visible message) so the button never blocks for a hidden reason.
+  const credsValid = phoneValid && password.length >= 10 && confirmPassword.length >= 10 && !passwordMismatch
 
   return (
     <AuthShell>
@@ -125,41 +145,60 @@ export default function RegisterPage() {
         type="password"
         value={confirmPassword}
         onChange={e => setConfirmPassword(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && canSignUp && handleSignUp()}
+        onKeyDown={e => e.key === 'Enter' && credsValid && handleSignUp()}
         error={passwordMismatch}
         helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
         sx={{ mb: 2 }}
         slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-confirm-password' } }}
       />
 
-      <FormControlLabel
-        sx={{ alignItems: 'flex-start', mr: 0, mb: 2 }}
-        control={
-          <Checkbox
-            checked={consent}
-            onChange={e => setConsent(e.target.checked)}
-            size="small"
-            sx={{ pt: 0.25 }}
-            data-testid="register-consent"
-          />
-        }
-        label={
-          <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
-            <Trans
-              i18nKey="common.consent"
-              components={{
-                priv: <MuiLink href="/privacy" target="_blank" rel="noopener" underline="hover" />,
-                terms: <MuiLink href="/terms" target="_blank" rel="noopener" underline="hover" />,
+      <Box sx={{ mb: 2 }}>
+        <FormControlLabel
+          sx={{ alignItems: 'flex-start', mr: 0 }}
+          control={
+            <Checkbox
+              checked={consent}
+              onChange={e => {
+                setConsent(e.target.checked)
+                if (e.target.checked) {
+                  setConsentError(false)
+                  if (consentTimer.current) clearTimeout(consentTimer.current)
+                }
               }}
+              size="small"
+              color={consentError ? 'error' : 'primary'}
+              sx={{ pt: 0.25 }}
+              data-testid="register-consent"
             />
+          }
+          label={
+            <Typography variant="caption" sx={{ color: consentError ? 'error.main' : 'text.secondary', lineHeight: 1.5 }}>
+              <Trans
+                i18nKey="common.consent"
+                components={{
+                  priv: <MuiLink href="/privacy" target="_blank" rel="noopener" underline="hover" />,
+                  terms: <MuiLink href="/terms" target="_blank" rel="noopener" underline="hover" />,
+                }}
+              />
+            </Typography>
+          }
+        />
+        {consentError && (
+          <Typography
+            key={consentNudge}
+            variant="caption"
+            sx={{ color: 'error.main', display: 'block', ml: '30px', mt: 0.25, animation: anim.fadeIn }}
+            data-testid="consent-error"
+          >
+            {t('validation.consentRequired')}
           </Typography>
-        }
-      />
+        )}
+      </Box>
 
       <Button
         fullWidth variant="contained" size="large"
         onClick={handleSignUp}
-        disabled={loading || !canSignUp}
+        disabled={loading || !credsValid}
         data-testid="login-submit"
       >
         {loading ? <CircularProgress size={20} color="inherit" /> : 'ანგარიშის შექმნა'}

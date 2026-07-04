@@ -48,7 +48,8 @@
     "fileTooLarge": "Файл слишком большой (макс. {{max}} МБ)",
     "invalidImage": "Выберите файл изображения (PNG, JPG, GIF)",
     "requiredWhenEnabled": "Обязательно, когда этот метод включён",
-    "loadFailed": "Не удалось загрузить."
+    "loadFailed": "Не удалось загрузить.",
+    "consentRequired": "Примите Политику конфиденциальности и Условия, чтобы продолжить."
   },
   "authErrors": {
     "invalidCredentials": "Неверный номер или пароль",

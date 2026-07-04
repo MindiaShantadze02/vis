@@ -48,7 +48,8 @@
     "fileTooLarge": "File is too large (max {{max}} MB)",
     "invalidImage": "Please choose an image file (PNG, JPG, GIF)",
     "requiredWhenEnabled": "Required when this method is enabled",
-    "loadFailed": "Failed to load."
+    "loadFailed": "Failed to load.",
+    "consentRequired": "Please accept the Privacy Policy and Terms to continue."
   },
   "authErrors": {
     "invalidCredentials": "Incorrect phone number or password",
