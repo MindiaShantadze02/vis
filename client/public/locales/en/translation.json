@@ -94,7 +94,8 @@
     "previewLabel": "Your booking page",
     "previewBusinessPlaceholder": "Your business",
     "previewNoServices": "Services will appear here",
-    "previewNoHours": "Working hours not set yet"
+    "previewNoHours": "Working hours not set yet",
+    "finishServiceFirst": "Please add or clear the service you're entering first."
   },
   "booking": {
     "title": "Online Booking",

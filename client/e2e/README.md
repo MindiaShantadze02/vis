@@ -24,7 +24,7 @@ Happy paths + edge cases (validation gating, route guards, error states):
 | Spec | Flows | Edge cases |
 |------|-------|-----------|
 | `auth.spec.ts` | login, logout, phone signup → onboarding | bad password, unknown phone, duplicate-phone signup, mismatch/invalid-phone gating, protected-route redirect, logged-in `/login` redirect, forgot-password gating |
-| `onboarding.spec.ts` | full 3-step onboarding → org (self-cleans) | step-1 "next" gating, skip → dashboard, org-guard bounce |
+| `onboarding.spec.ts` | full 3-step onboarding → org (self-cleans) | step-1 "next" gating, a typed-but-not-added service is kept on Next, skip → dashboard, org-guard bounce |
 | `booking.spec.ts` | public in-person booking + OTP → confirmation | unknown slug, invalid name/phone gating, **wrong OTP rejected** |
 | `dashboard.spec.ts` | overview stats + link, add-appt dialog, calendar nav | add-appt save gating |
 | `settings-services.spec.ts` | service create → edit → delete (self-cleans) | save gating (empty name / out-of-range price / bad duration); **BVA** on duration/capacity/price + **pairwise** online × meeting-link |

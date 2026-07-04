@@ -69,6 +69,34 @@ test.describe('Business onboarding — edge cases', () => {
     await expect(next).toBeEnabled()
   })
 
+  test('a service typed but not "added" is kept when clicking Next', async ({ page }) => {
+    await register(page, uniquePhone())
+    await fillStable(page.getByTestId('biz-name'), tag('E2E Studio'))
+    await fillStable(page.getByTestId('biz-phone'), '555123456')
+    await page.getByTestId('biz-next').click()
+    await expect(page).toHaveURL(/\/onboarding\/services/)
+
+    // Fill a valid service but DON'T click "Add service", then hit Next. The step
+    // animates in (framer-motion) and briefly detaches its buttons, so retry the
+    // whole fill → enabled → click → navigate until it lands (mirrors the
+    // happy-path's toPass). Next advancing proves the draft was auto-added rather
+    // than silently dropped.
+    const next = page.getByTestId('onb-services-next')
+    await expect(async () => {
+      await page.getByTestId('onb-service-name').fill('Massage')
+      await page.getByTestId('onb-service-price').fill('40')
+      await expect(next).toBeEnabled({ timeout: 1_500 })
+      await next.click({ timeout: 2_500 })
+      await expect(page).toHaveURL(/\/onboarding\/hours/, { timeout: 2_500 })
+    }).toPass({ timeout: 25_000 })
+
+    // Going back shows the service was saved (one row present).
+    await page.getByTestId('hours-back').click()
+    await expect(page).toHaveURL(/\/onboarding\/services/)
+    await expect(page.getByTestId('onb-service-row')).toHaveCount(1)
+    // Leaves a throwaway account with no org (never reached hours-finish).
+  })
+
   test('skip sends the user to the dashboard, and org-only routes bounce back', async ({ page }) => {
     await register(page, uniquePhone())
     // Skip control lives in the shell header (no testid) — target by label.

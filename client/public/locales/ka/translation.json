@@ -97,7 +97,8 @@
     "previewLabel": "თქვენი ჯავშნის გვერდი",
     "previewBusinessPlaceholder": "თქვენი ბიზნესი",
     "previewNoServices": "სერვისები მალე დაემატება",
-    "previewNoHours": "სამუშაო საათები ჯერ არ არის დაყენებული"
+    "previewNoHours": "სამუშაო საათები ჯერ არ არის დაყენებული",
+    "finishServiceFirst": "ჯერ დაამატეთ ან წაშალეთ სერვისი, რომელსაც ავსებთ."
   },
   "booking": {
     "title": "ონლაინ ჯავშანი",

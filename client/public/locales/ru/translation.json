@@ -94,7 +94,8 @@
     "previewLabel": "Ваша страница записи",
     "previewBusinessPlaceholder": "Ваш бизнес",
     "previewNoServices": "Услуги появятся здесь",
-    "previewNoHours": "Рабочие часы ещё не заданы"
+    "previewNoHours": "Рабочие часы ещё не заданы",
+    "finishServiceFirst": "Сначала добавьте или очистите заполняемую услугу."
   },
   "booking": {
     "title": "Онлайн запись",

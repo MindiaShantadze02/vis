@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import {
   Box, Button, Typography, TextField,
   Card, CardContent, Stack, Divider,
-  Chip, ToggleButtonGroup, ToggleButton,
+  Chip, ToggleButtonGroup, ToggleButton, Alert,
 } from '@mui/material'
 import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
 import { EditOutlined as EditOutlinedIcon } from '@/components/icons'
@@ -51,6 +51,9 @@ export default function ServicesStep() {
   const [draft, setDraft] = useState<DraftService>({ ...empty })
   // null = the form is adding a new service; a number = editing that index.
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  // Set when the user hits "Next" with an in-progress service that isn't valid
+  // yet — so we can explain why we didn't move on (instead of silently dropping it).
+  const [draftError, setDraftError] = useState(false)
 
   const durationTooLong = Number(draft.duration_minutes) > MAX_DURATION_MINUTES
   const nameTooShort = draft.name.trim().length > 0 && draft.name.trim().length < 2
@@ -111,7 +114,22 @@ export default function ServicesStep() {
     if (editingIndex !== null && index <= editingIndex) resetForm()
   }
 
-  const canProceed = data.services.length > 0
+  // A service the user has started entering (needs at least a name to matter).
+  const hasPendingDraft = draft.name.trim().length > 0 || isEditing
+  // Can move on once there's a saved service, or a valid one still in the form
+  // (which Next will add for them).
+  const canProceed = data.services.length > 0 || draftValid
+
+  // "Next" must not throw away a service the user typed but didn't add. If the
+  // form holds a valid service, add it first; if it's half-finished, keep them
+  // here and say why rather than silently dropping it.
+  function handleNext() {
+    if (hasPendingDraft) {
+      if (!draftValid) { setDraftError(true); return }
+      saveService()
+    }
+    goNext()
+  }
 
   return (
     <Box>
@@ -178,7 +196,6 @@ export default function ServicesStep() {
           <TextField
             fullWidth
             required
-            size="small"
             label={t('onboarding.serviceName')}
             value={draft.name}
             onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
@@ -191,7 +208,6 @@ export default function ServicesStep() {
             <TextField
               fullWidth
               required
-              size="small"
               label={t('onboarding.duration')}
               value={draft.duration_minutes}
               onChange={e => setDraft(d => ({ ...d, duration_minutes: onlyInt(e.target.value) }))}
@@ -201,7 +217,6 @@ export default function ServicesStep() {
             />
             <TextField
               fullWidth
-              size="small"
               label={t('onboarding.price')}
               value={draft.price}
               onChange={e => setDraft(d => ({ ...d, price: onlyDecimal(e.target.value) }))}
@@ -217,7 +232,6 @@ export default function ServicesStep() {
             <ToggleButtonGroup
               exclusive
               fullWidth
-              size="small"
               value={draft.location_type}
               onChange={(_, v: ServiceLocationType | null) => {
                 if (v) setDraft(d => ({ ...d, location_type: v }))
@@ -230,7 +244,6 @@ export default function ServicesStep() {
           {draft.location_type === 'online' && (
             <TextField
               fullWidth
-              size="small"
               label={t('settings.meetingLink')}
               value={draft.meeting_link}
               onChange={e => setDraft(d => ({ ...d, meeting_link: e.target.value }))}
@@ -265,6 +278,12 @@ export default function ServicesStep() {
         </CardContent>
       </Card>
 
+      {draftError && !draftValid && (
+        <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setDraftError(false)} data-testid="onb-service-draft-warning">
+          {t('onboarding.finishServiceFirst')}
+        </Alert>
+      )}
+
       <Stack direction="row" spacing={2}>
         <Button fullWidth variant="outlined" onClick={goBack}>
           {t('common.back')}
@@ -274,7 +293,7 @@ export default function ServicesStep() {
           variant="contained"
           size="large"
           disabled={!canProceed}
-          onClick={goNext}
+          onClick={handleNext}
           data-testid="onb-services-next"
         >
           {t('common.next')}
