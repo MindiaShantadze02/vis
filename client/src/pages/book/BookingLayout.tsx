@@ -217,9 +217,12 @@ export default function BookingLayout() {
   }
 
   if (!org) {
+    // The org (and therefore its booking theme) isn't loaded yet, so we can't
+    // colour this spinner with the org's accent. Render it neutral grey rather
+    // than let it inherit the base app accent.
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <LoadingState />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'text.secondary' }}>
+        <LoadingState color="inherit" />
       </Box>
     )
   }

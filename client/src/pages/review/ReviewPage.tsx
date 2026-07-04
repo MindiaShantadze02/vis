@@ -91,9 +91,11 @@ export default function ReviewPage() {
   const theme = makeBookingTheme(bookingTheme)
 
   if (view === 'loading') {
+    // Review context (and its org booking theme) not loaded yet — keep the
+    // spinner neutral grey instead of inheriting the base app accent.
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <LoadingState />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'text.secondary' }}>
+        <LoadingState color="inherit" />
       </Box>
     )
   }

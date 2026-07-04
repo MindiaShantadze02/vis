@@ -74,9 +74,11 @@ export default function BookingConfirmationPage() {
   }, [appt])
 
   if (loading) {
+    // Appointment (and its org booking theme) not loaded yet — keep the spinner
+    // neutral grey instead of inheriting the base app accent.
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: inIframe ? 320 : '100vh' }}>
-        <LoadingState />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: inIframe ? 320 : '100vh', color: 'text.secondary' }}>
+        <LoadingState color="inherit" />
       </Box>
     )
   }

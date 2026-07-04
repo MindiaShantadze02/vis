@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
-import { PageHeader, StatStrip, StatusChip, EmptyState, CopyableText, useToast } from '@/components/ui'
+import { PageHeader, StatStrip, StatusChip, EmptyState, CopyableText, LoadingState, useToast } from '@/components/ui'
 import type { AppointmentStatus } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import AddAppointmentDialog from './AddAppointmentDialog'
@@ -275,6 +275,18 @@ export default function OverviewPage() {
             </Button>
           }
         />
+      </Box>
+    )
+  }
+
+  // First page load: nothing has come back yet. Show a centred spinner (the
+  // admin theme's accent) rather than a bare stat/appointment skeleton frame.
+  // stays non-null once loaded, so this doesn't re-trigger on filter/refresh.
+  if (statsLoading && apptLoading && !stats && appointments.length === 0) {
+    return (
+      <Box>
+        <PageHeader title={t('dashboard.overview')} />
+        <LoadingState />
       </Box>
     )
   }
