@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import {
   Box, Button, Typography, Switch, FormControlLabel,
-  TextField, Stack, Alert, CircularProgress, Tooltip,
+  TextField, Stack, Alert, CircularProgress, Tooltip, Card, Divider,
 } from '@mui/material'
 import { Add as AddIcon } from '@/components/icons'
 import { Close as CloseIcon } from '@/components/icons'
@@ -19,7 +19,6 @@ import { useOrg } from '@/contexts/OrgContext'
 import { ActionIconButton } from '@/components/ui'
 import { supabase } from '@/lib/supabase'
 import { slugify } from '@/lib/slug'
-import { surface } from '@/theme/theme'
 import StepHeader from './StepHeader'
 import type { OnboardingData } from './OnboardingLayout'
 
@@ -216,24 +215,17 @@ export default function WorkingHoursStep() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="hours-error">{error}</Alert>}
 
-      <Stack spacing={1.5} sx={{ mb: 4 }}>
-        {DAYS.map(day => {
+      {/* One calm container with the days separated by dividers (matches the
+          dashboard Working Hours settings) rather than a stack of bordered
+          cards. The accent lives only on the toggle + the green working rail. */}
+      <Card variant="outlined" sx={{ borderRadius: 3, mb: 4, overflow: 'hidden' }}>
+        {DAYS.map((day, di) => {
           const cfg = hours[day]
           const windowValid = isEndAfterStart(cfg.openTime, cfg.closeTime)
           return (
-            <Box
-              key={day}
-              sx={{
-                p: 1.5,
-                borderRadius: 2,
-                border: '1px solid',
-                // Calm, neutral rows (matches the dashboard Working Hours settings):
-                // no citrus border/fill flooding every open day — the accent lives
-                // only on the toggle and the green working-window rail.
-                borderColor: 'divider',
-                bgcolor: cfg.open ? surface.subtle : 'transparent',
-              }}
-            >
+            <Box key={day}>
+              {di > 0 && <Divider />}
+              <Box sx={{ px: { xs: 1.5, sm: 2 }, py: 1.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <FormControlLabel
                   control={<Switch checked={cfg.open} onChange={() => toggleDay(day)} color="primary" data-testid={`hours-toggle-${day}`} />}
@@ -336,10 +328,11 @@ export default function WorkingHoursStep() {
                   </Button>
                 </Box>
               )}
+              </Box>
             </Box>
           )
         })}
-      </Stack>
+      </Card>
 
       <Stack direction="row" spacing={2}>
         <Button fullWidth variant="outlined" onClick={goBack} disabled={loading} data-testid="hours-back">
