@@ -1,87 +1,90 @@
-import { useEffect, useState } from 'react'
-import { Box, Typography, Rating, Divider, Skeleton } from '@mui/material'
-import { format } from 'date-fns'
+import { Box, Typography, Rating, Divider } from '@mui/material'
+import { StarRounded as StarRoundedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
-import { supabase } from '@/lib/supabase'
-import { dateLocale } from '@/lib/dateLocale'
-
-interface PublicReview {
-  author_name: string | null
-  rating: number
-  comment: string | null
-  created_at: string
-}
+import { anim } from '@/theme/animations'
 
 interface Props {
-  slug: string
   enabled: boolean
   avg: number | null
   count: number
+  /** 'sidebar' = on the branded ink panel; 'inline' = on the paper content (embed/mobile). */
+  variant?: 'sidebar' | 'inline'
+  /** Sidebar only — the panel's foreground colour + its overlay helper. */
+  fg?: string
+  overlay?: (a: number) => string
+  /** Filled-star accent (the theme's honey/deep on the sidebar). */
+  accent?: string
 }
 
 /**
- * "What customers say" — the public rating badge + reviews list shown on the
- * booking landing (step 0). Rendered in the main content area so it appears in
- * both the standalone page and the chromeless embed. Renders nothing when the
- * business has reviews off or none yet. The aggregate (avg/count) comes from the
- * org fetch; the list is loaded lazily here via get_public_reviews.
+ * The public rating on the booking page — the business's *overall* score only
+ * (average + review count), never a list of individual reviews. Rendered in the
+ * branded sidebar on desktop (see BookingShell) and inline on embed/mobile.
+ * Self-hides when the business has reviews off or none yet.
  */
-export default function BookingReviews({ slug, enabled, avg, count }: Props) {
+export default function BookingReviews({
+  enabled, avg, count, variant = 'inline', fg, overlay, accent,
+}: Props) {
   const { t } = useTranslation()
-  const [reviews, setReviews] = useState<PublicReview[] | null>(null)
-
-  useEffect(() => {
-    if (!enabled || count === 0) return
-    let cancelled = false
-    supabase.rpc('get_public_reviews', { p_slug: slug }).then(({ data }) => {
-      if (!cancelled) setReviews(((data as PublicReview[] | null) ?? []).map(r => ({ ...r, rating: Number(r.rating) })))
-    })
-    return () => { cancelled = true }
-  }, [slug, enabled, count])
 
   if (!enabled || count === 0) return null
 
+  const sidebar = variant === 'sidebar'
+  const starFilled = sidebar ? (accent ?? fg) : 'primary.main'
+  const starEmpty = sidebar ? overlay?.(0.28) : undefined
+  const dividerColor = sidebar ? overlay?.(0.15) : 'divider'
+
+  const aggregate = (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+      <Typography sx={{ fontWeight: 800, fontSize: '1.9rem', lineHeight: 1, color: sidebar ? fg : 'text.primary' }}>
+        {avg != null ? avg.toFixed(1) : '—'}
+      </Typography>
+      <Box>
+        <Rating
+          value={avg ?? 0}
+          precision={0.5}
+          readOnly
+          size="small"
+          icon={<StarRoundedIcon weight="fill" fontSize="inherit" />}
+          emptyIcon={<StarRoundedIcon weight="regular" fontSize="inherit" />}
+          sx={{
+            '& .MuiRating-iconFilled': { color: starFilled },
+            ...(starEmpty && { '& .MuiRating-iconEmpty': { color: starEmpty } }),
+          }}
+        />
+        <Typography
+          variant="caption"
+          sx={{ display: 'block', color: sidebar ? fg : 'text.secondary', ...(sidebar && { opacity: 0.7 }) }}
+        >
+          {t('reviews.countLabel', { count })}
+        </Typography>
+      </Box>
+    </Box>
+  )
+
+  if (sidebar) {
+    return (
+      <Box sx={{ animation: anim.fadeInUp }}>
+        <Divider sx={{ borderColor: dividerColor, mb: 2 }} />
+        <Typography
+          variant="caption"
+          sx={{
+            display: 'block', fontWeight: 700, letterSpacing: '1px',
+            textTransform: 'uppercase', color: fg, opacity: 0.55, mb: 1.25,
+          }}
+        >
+          {t('reviews.sectionLabel')}
+        </Typography>
+        {aggregate}
+      </Box>
+    )
+  }
+
+  // Inline (embed / mobile) — on the paper content surface.
   return (
     <Box sx={{ mt: 5 }}>
       <Divider sx={{ mb: 3 }} />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1 }}>
-          {avg != null ? avg.toFixed(1) : '—'}
-        </Typography>
-        <Box>
-          <Rating value={avg ?? 0} precision={0.1} readOnly size="small" />
-          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-            {t('reviews.countLabel', { count })}
-          </Typography>
-        </Box>
-      </Box>
-
-      {reviews === null ? (
-        <Skeleton variant="rounded" height={72} />
-      ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {reviews.map((r, i) => (
-            <Box key={i}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {r.author_name?.trim() || t('reviews.anonymous')}
-                  </Typography>
-                  <Rating value={r.rating} readOnly size="small" />
-                </Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {format(new Date(r.created_at), 'd MMM yyyy', { locale: dateLocale() })}
-                </Typography>
-              </Box>
-              {r.comment && (
-                <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-                  {r.comment}
-                </Typography>
-              )}
-            </Box>
-          ))}
-        </Box>
-      )}
+      {aggregate}
     </Box>
   )
 }

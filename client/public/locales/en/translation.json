@@ -423,6 +423,15 @@
     "anonymous": "Anonymous",
     "settingTitle": "Customer reviews",
     "settingHelp": "Show a rating badge and reviews on your booking page.",
-    "reviewLinkLabel": "Review link (share with the client)"
+    "reviewLinkLabel": "Review link (share with the client)",
+    "sectionLabel": "Reviews",
+    "more": "+{{count}} more",
+    "prompt": "How was your visit?",
+    "commentPlaceholder": "Tell others about your experience (optional)",
+    "rating1": "Poor",
+    "rating2": "Fair",
+    "rating3": "Good",
+    "rating4": "Very good",
+    "rating5": "Excellent"
   }
 }

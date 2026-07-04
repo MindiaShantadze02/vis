@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
-  Box, Typography, Card, CardContent, Button, TextField, Rating, Alert, CircularProgress,
+  Box, Typography, Card, CardContent, Button, TextField, Rating, Alert, CircularProgress, Avatar, Divider,
 } from '@mui/material'
+import { StarRounded as StarRoundedIcon } from '@/components/icons'
 import { CheckCircleOutlined as CheckCircleOutlinedIcon } from '@/components/icons'
-import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
+import { ScheduleOutlined as ScheduleOutlinedIcon } from '@/components/icons'
+import { VisibilityOffOutlined as VisibilityOffOutlinedIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { ThemeProvider } from '@mui/material/styles'
 import { supabase } from '@/lib/supabase'
 import { LoadingState, EmptyState } from '@/components/ui'
-import { LAYOUT } from '@/theme/theme'
+import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
+import { LAYOUT, elevation } from '@/theme/theme'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { dateLocale } from '@/lib/dateLocale'
 import { FIELD_LIMITS } from '@/lib/validation'
+import { anim } from '@/theme/animations'
 
-// Everything the page needs to pick its state, from get_review_context().
 interface ReviewContext {
   org_name: string
   slug: string
@@ -27,13 +30,12 @@ interface ReviewContext {
   already_reviewed: boolean
 }
 
-// The page state a given appointment resolves to.
 type View = 'loading' | 'not_found' | 'disabled' | 'not_completed' | 'already' | 'form' | 'done'
 
 /**
  * Public review page — /review/:appointmentId. The appointment id is the
- * capability: only a real attendee has it, so no login is needed. Renders a
- * star form for a completed, un-reviewed visit; otherwise a matching info state.
+ * capability: only a real attendee has it, so no login is needed. Styled to
+ * match the booking/confirmation pages (themed page + narrow card).
  */
 export default function ReviewPage() {
   const { appointmentId } = useParams<{ appointmentId: string }>()
@@ -43,6 +45,7 @@ export default function ReviewPage() {
   const [view, setView] = useState<View>('loading')
 
   const [rating, setRating] = useState<number | null>(null)
+  const [hover, setHover] = useState(-1)
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -84,7 +87,8 @@ export default function ReviewPage() {
     setView('done')
   }
 
-  const theme = makeBookingTheme(getBookingTheme(ctx?.booking_theme))
+  const bookingTheme = getBookingTheme(ctx?.booking_theme)
+  const theme = makeBookingTheme(bookingTheme)
 
   if (view === 'loading') {
     return (
@@ -102,85 +106,123 @@ export default function ReviewPage() {
     )
   }
 
-  // Shared themed shell for every non-loading state.
+  const subtitle = [ctx?.service_name, ctx?.scheduled_at
+    ? format(new Date(ctx.scheduled_at), 'd MMM yyyy', { locale: dateLocale() })
+    : null].filter(Boolean).join(' · ')
+
+  // Branded header — the business identity, so the page never reads as generic.
+  const header = (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+      <Avatar sx={{ width: 44, height: 44, bgcolor: 'primary.main', fontWeight: 700 }}>
+        {ctx?.org_name?.charAt(0) ?? '?'}
+      </Avatar>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography variant="subtitle1" noWrap sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+          {ctx?.org_name}
+        </Typography>
+        {subtitle && (
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{subtitle}</Typography>
+        )}
+      </Box>
+    </Box>
+  )
+
+  // Themed card shell reused by every state.
   const shell = (children: React.ReactNode) => (
     <ThemeProvider theme={theme}>
       <Box
         sx={{
           minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          bgcolor: getBookingTheme(ctx?.booking_theme).pageBg, p: 2,
+          bgcolor: bookingTheme.pageBg, p: 2,
         }}
       >
-        <Card sx={{ maxWidth: LAYOUT.narrowCard, width: '100%', borderRadius: 4 }}>
+        <Card sx={{ maxWidth: LAYOUT.narrowCard, width: '100%', borderRadius: 4, boxShadow: elevation.modal, animation: anim.scaleIn }}>
           <CardContent sx={{ p: 4 }}>{children}</CardContent>
         </Card>
       </Box>
     </ThemeProvider>
   )
 
-  const heading = (title: string, body: string, icon?: React.ReactNode) => (
+  // A centred outcome state (thanks / already / disabled / not-completed).
+  const outcome = (icon: React.ReactNode, title: string, body: string) => shell(
     <Box sx={{ textAlign: 'center' }}>
-      {icon && (
-        <Box
-          sx={{
-            width: 64, height: 64, borderRadius: '50%', bgcolor: 'success.light',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2,
-          }}
-        >
-          {icon}
-        </Box>
-      )}
+      <Box
+        sx={{
+          width: 64, height: 64, borderRadius: '50%', mx: 'auto', mb: 2,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          bgcolor: (th) => `${th.palette.primary.main}1A`, color: 'primary.main',
+        }}
+      >
+        {icon}
+      </Box>
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{title}</Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>{body}</Typography>
-    </Box>
+      {ctx?.org_name && (
+        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 2 }}>
+          {ctx.org_name}
+        </Typography>
+      )}
+    </Box>,
   )
 
   if (view === 'done') {
-    return shell(heading(t('reviews.thanksTitle'), t('reviews.thanksBody'),
-      <CheckCircleOutlinedIcon sx={{ fontSize: 34, color: 'success.main' }} />))
+    return outcome(<CheckCircleOutlinedIcon sx={{ fontSize: 34 }} />, t('reviews.thanksTitle'), t('reviews.thanksBody'))
   }
   if (view === 'already') {
-    return shell(heading(t('reviews.alreadyTitle'), t('reviews.alreadyBody')))
+    return outcome(<CheckCircleOutlinedIcon sx={{ fontSize: 34 }} />, t('reviews.alreadyTitle'), t('reviews.alreadyBody'))
   }
   if (view === 'disabled') {
-    return shell(heading(t('reviews.disabledTitle'), t('reviews.disabledBody')))
+    return outcome(<VisibilityOffOutlinedIcon sx={{ fontSize: 32 }} />, t('reviews.disabledTitle'), t('reviews.disabledBody'))
   }
   if (view === 'not_completed') {
-    return shell(heading(t('reviews.notCompletedTitle'), t('reviews.notCompletedBody')))
+    return outcome(<ScheduleOutlinedIcon sx={{ fontSize: 32 }} />, t('reviews.notCompletedTitle'), t('reviews.notCompletedBody'))
   }
 
   // view === 'form'
-  const subtitleParts = [ctx?.service_name, ctx?.scheduled_at
-    ? format(new Date(ctx.scheduled_at), 'd MMM yyyy', { locale: dateLocale() })
-    : null].filter(Boolean)
+  const shown = hover !== -1 ? hover : rating
+  const ratingLabel = shown ? t(`reviews.rating${shown}`) : ' '
 
   return shell(
     <>
+      {header}
+      <Divider sx={{ mb: 3 }} />
+
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{t('reviews.title')}</Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        {ctx?.org_name}{subtitleParts.length ? ` · ${subtitleParts.join(' · ')}` : ''}
-      </Typography>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>{t('reviews.prompt')}</Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="review-error">{error}</Alert>}
 
-      <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>{t('reviews.ratingLabel')}</Typography>
-      <Rating
-        value={rating}
-        onChange={(_, v) => setRating(v)}
-        size="large"
-        sx={{ mb: 3, '& .MuiRating-iconFilled': { color: 'primary.main' } }}
-        data-testid="review-rating"
-      />
+      {/* Rating — the focal point: large stars + a live label. */}
+      <Box sx={{ textAlign: 'center', py: 1, mb: 3 }}>
+        <Rating
+          value={rating}
+          onChange={(_, v) => setRating(v)}
+          onChangeActive={(_, v) => setHover(v)}
+          icon={<StarRoundedIcon weight="fill" fontSize="inherit" />}
+          emptyIcon={<StarRoundedIcon weight="regular" fontSize="inherit" />}
+          sx={{
+            fontSize: '3rem',
+            '& .MuiRating-iconFilled': { color: 'primary.main' },
+            '& .MuiRating-iconEmpty': { color: 'action.disabledBackground' },
+            '& .MuiRating-iconHover': { transform: 'scale(1.15)' },
+          }}
+          data-testid="review-rating"
+        />
+        <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600, color: 'primary.main', minHeight: 22 }}>
+          {ratingLabel}
+        </Typography>
+      </Box>
 
       <TextField
         fullWidth
         multiline
         rows={4}
+        placeholder={t('reviews.commentPlaceholder')}
         label={t('reviews.commentLabel')}
         value={comment}
         onChange={e => setComment(e.target.value)}
         sx={{ mb: 3 }}
-        slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.description, 'data-testid': 'review-comment' } }}
+        slotProps={{ inputLabel: { shrink: true }, htmlInput: { maxLength: FIELD_LIMITS.description, 'data-testid': 'review-comment' } }}
       />
 
       <Button

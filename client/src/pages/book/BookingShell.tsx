@@ -108,6 +108,18 @@ export default function BookingShell({
       )}
 
       {summary}
+
+      {/* Social proof lives in the branded panel (desktop). Self-hides when the
+          business has reviews off or none yet. */}
+      <BookingReviews
+        variant="sidebar"
+        enabled={org.reviews_enabled}
+        avg={org.review_avg}
+        count={org.review_count}
+        fg={sideFg}
+        overlay={sideOverlay}
+        accent={bookingTheme.deep}
+      />
     </Box>
   )
 
@@ -179,11 +191,12 @@ export default function BookingShell({
               sx={{ px: { xs: 2, md: 5 }, py: 4, width: { xs: '100%', md: '85%' }, mx: 'auto' }}
             >
               {children}
-              {/* Reviews live on the landing step, in the main content area so
-                  they show in the chromeless embed too. */}
-              {step === 0 && (
+              {/* When the branded sidebar isn't shown (embed / mobile), fall back
+                  to an inline reviews block on the landing step so social proof
+                  still appears. */}
+              {step === 0 && (isMobile || embed) && (
                 <BookingReviews
-                  slug={org.slug}
+                  variant="inline"
                   enabled={org.reviews_enabled}
                   avg={org.review_avg}
                   count={org.review_count}
