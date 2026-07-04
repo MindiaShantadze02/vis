@@ -20,6 +20,8 @@ import DashboardLayout from '@/pages/dashboard/DashboardLayout'
 import OverviewPage from '@/pages/dashboard/OverviewPage'
 import CalendarPage from '@/pages/dashboard/CalendarPage'
 import ProfileSettings from '@/pages/dashboard/settings/ProfileSettings'
+import BookingPageSettings from '@/pages/dashboard/settings/BookingPageSettings'
+import AccountSettings from '@/pages/dashboard/settings/AccountSettings'
 import ServicesSettings from '@/pages/dashboard/settings/ServicesSettings'
 import WorkingHoursSettings from '@/pages/dashboard/settings/WorkingHoursSettings'
 import TeamSettings from '@/pages/dashboard/settings/TeamSettings'
@@ -121,11 +123,13 @@ export default function App() {
         <Route element={<OrgGuard><Outlet /></OrgGuard>}>
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="settings/profile" element={<ProfileSettings />} />
+          <Route path="settings/booking" element={<BookingPageSettings />} />
           <Route path="settings/services" element={<ServicesSettings />} />
           <Route path="settings/hours" element={<WorkingHoursSettings />} />
           <Route path="settings/team" element={<TeamSettings />} />
           <Route path="settings/payment" element={<PaymentSettings />} />
           <Route path="settings/subscription" element={<SubscriptionPage />} />
+          <Route path="settings/account" element={<AccountSettings />} />
         </Route>
       </Route>
 

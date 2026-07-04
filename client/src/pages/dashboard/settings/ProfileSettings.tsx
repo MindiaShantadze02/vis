@@ -1,43 +1,30 @@
 import { useEffect, useState, useRef } from 'react'
 import {
   Box, Typography, Card, CardContent, TextField, Button,
-  Avatar, CircularProgress, Alert, Stack, Divider, Link,
-  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
-  Checkbox, FormControlLabel, Switch,
+  Avatar, CircularProgress, Alert, Stack, Divider,
 } from '@mui/material'
 import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/icons'
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
-import { PageHeader, CopyableText, useToast } from '@/components/ui'
+import { PageHeader, useToast } from '@/components/ui'
 import { LAYOUT, surface } from '@/theme/theme'
-import {
-  BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, getBookingTheme, isCustomBookingColor,
-} from '@/theme/bookingThemes'
 
+/**
+ * Business identity settings: logo, name, description, contact phone. Anything
+ * about the public booking page (theme, reviews, link) lives on the Booking-page
+ * settings; account deletion lives on Account settings.
+ */
 export default function ProfileSettings() {
   const { t } = useTranslation()
   const { org, refresh } = useOrg()
   const toast = useToast()
-  const navigate = useNavigate()
-
-  // Account deletion (danger zone)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [soleMember, setSoleMember] = useState(false)
-  const [deleteOrgToo, setDeleteOrgToo] = useState(true)
-  const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  const [deleting, setDeleting] = useState(false)
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
-  // Preset key (e.g. 'citrus') or a custom brand colour as a #RRGGBB hex.
-  const [bookingTheme, setBookingTheme] = useState<string>(DEFAULT_BOOKING_THEME)
-  // Whole-feature on/off for customer reviews (badge + list on the booking page).
-  const [reviewsEnabled, setReviewsEnabled] = useState(true)
 
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -50,9 +37,6 @@ export default function ProfileSettings() {
       setDescription((org as unknown as Record<string, string>).description ?? '')
       setContactPhone((org as unknown as Record<string, string>).contact_phone ?? '')
       setLogoUrl((org as unknown as Record<string, string>).logo_url ?? null)
-      // Resolve any stored key (incl. the retired 'classic') to a current theme.
-      setBookingTheme(getBookingTheme(org.booking_theme).key)
-      setReviewsEnabled(org.reviews_enabled)
     }
   }, [org])
 
@@ -83,10 +67,8 @@ export default function ProfileSettings() {
     }
 
     // The storage path is stable (<org>/logo.<ext>), so getPublicUrl always
-    // returns the same URL. Without a version param, the browser and Supabase's
-    // CDN keep serving the previously cached image after a replace (and a
-    // negatively-cached miss can hide the logo for fresh/incognito visitors).
-    // Append a cache-busting version so every upload yields a unique URL.
+    // returns the same URL. Append a cache-busting version so every upload
+    // yields a unique URL (otherwise the CDN keeps serving the old image).
     const { data } = supabase.storage.from('logos').getPublicUrl(path)
     const url = `${data.publicUrl}?v=${Date.now()}`
 
@@ -115,8 +97,6 @@ export default function ProfileSettings() {
         name: name.trim(),
         description: description.trim() || null,
         contact_phone: formatGeorgianPhone(contactPhone),
-        booking_theme: bookingTheme,
-        reviews_enabled: reviewsEnabled,
       })
       .eq('id', org.id)
 
@@ -126,62 +106,14 @@ export default function ProfileSettings() {
     toast.success(t('common.saved'))
   }
 
-  // Open the delete dialog, first checking whether the user is the only member
-  // of the org (which surfaces the "delete the organisation too" choice).
-  async function openDeleteDialog() {
-    if (!org) return
-    // Only login members count toward "sole member" — account-less staff
-    // profiles (user_id IS NULL) never own the org.
-    const { count } = await supabase
-      .from('org_members')
-      .select('id', { count: 'exact', head: true })
-      .eq('org_id', org.id)
-      .not('user_id', 'is', null)
-    const sole = (count ?? 0) <= 1
-    setSoleMember(sole)
-    setDeleteOrgToo(sole) // default to removing the org when no one else is left
-    setDeleteConfirmText('')
-    setDeleteOpen(true)
-  }
-
-  async function handleDeleteAccount() {
-    if (!org) return
-    setDeleting(true)
-    const { error: err } = await supabase.functions.invoke('delete-account', {
-      body: { orgId: org.id, deleteOrg: soleMember && deleteOrgToo },
-    })
-    if (err) {
-      setDeleting(false)
-      setDeleteOpen(false)
-      toast.error(t('settings.deleteAccountFailed'))
-      return
-    }
-    await supabase.auth.signOut()
-    toast.success(t('settings.accountDeleted'))
-    navigate('/login')
-  }
-
   return (
     <Box sx={{ maxWidth: LAYOUT.formPage }}>
-      <PageHeader title={t('settings.profile')} />
+      <PageHeader title={t('settings.business')} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="profile-error">{error}</Alert>}
 
       <Card>
         <CardContent sx={{ p: 3 }}>
-          {/* Public booking link — surfaced at the top as the most shareable item */}
-          {org?.slug && (
-            <>
-              <CopyableText
-                label={t('settings.yourBookingLink')}
-                text={`vis.ge/book/${org.slug}`}
-                value={`https://vis.ge/book/${org.slug}`}
-                href={`https://vis.ge/book/${org.slug}`}
-              />
-              <Divider sx={{ my: 3 }} />
-            </>
-          )}
-
           {/* Logo upload */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
             <Box sx={{ position: 'relative' }}>
@@ -258,126 +190,6 @@ export default function ProfileSettings() {
               helperText={phoneInvalid ? t('validation.invalidPhone') : undefined}
               slotProps={{ htmlInput: { inputMode: 'tel', maxLength: 20, 'data-testid': 'profile-phone' } }}
             />
-            {/* Booking page colour theme — what customers see when booking. */}
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                {t('settings.bookingPageColor')}
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {t('settings.bookingPageColorHelp')}
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 1.5 }}>
-                {BOOKING_THEME_LIST.map(th => {
-                  const selected = th.key === bookingTheme
-                  return (
-                    <Box
-                      key={th.key}
-                      onClick={() => setBookingTheme(th.key)}
-                      role="button"
-                      aria-pressed={selected}
-                      sx={{
-                        display: 'flex', alignItems: 'center', gap: 1,
-                        px: 1.5, py: 1, borderRadius: 2, cursor: 'pointer',
-                        border: '2px solid',
-                        borderColor: selected ? 'primary.main' : 'divider',
-                        bgcolor: selected ? surface.hover : 'transparent',
-                        transition: 'border-color 0.15s ease, background-color 0.15s ease',
-                        '&:hover': { borderColor: selected ? 'primary.main' : 'text.disabled' },
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 22, height: 22, borderRadius: '50%',
-                          // Match what customers actually see: the theme's primary
-                          // accent. Two-tone themes (deep ≠ primary, e.g. brass)
-                          // show the primary dominant with the deep accent as a
-                          // wedge, mirroring the charcoal UI + brass price.
-                          background: th.deep !== th.primary
-                            ? `linear-gradient(135deg, ${th.primary} 0 58%, ${th.deep} 58% 100%)`
-                            : th.primary,
-                          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
-                          flexShrink: 0,
-                        }}
-                      />
-                      <Typography variant="body2" sx={{ fontWeight: selected ? 600 : 500 }}>
-                        {th.label}
-                      </Typography>
-                    </Box>
-                  )
-                })}
-
-                {/* Custom brand colour — match the business's own website. The whole
-                    tile is a <label> for a native colour input, so clicking it opens
-                    the OS colour picker; the accent then themes the whole booking UI
-                    (and any embed) via customBookingTheme(). */}
-                {(() => {
-                  const customActive = isCustomBookingColor(bookingTheme)
-                  return (
-                    <Box
-                      component="label"
-                      role="button"
-                      aria-pressed={customActive}
-                      sx={{
-                        position: 'relative',
-                        display: 'flex', alignItems: 'center', gap: 1,
-                        px: 1.5, py: 1, borderRadius: 2, cursor: 'pointer',
-                        border: '2px solid',
-                        borderColor: customActive ? 'primary.main' : 'divider',
-                        bgcolor: customActive ? surface.hover : 'transparent',
-                        transition: 'border-color 0.15s ease, background-color 0.15s ease',
-                        '&:hover': { borderColor: customActive ? 'primary.main' : 'text.disabled' },
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 22, height: 22, borderRadius: '50%',
-                          background: customActive
-                            ? bookingTheme
-                            : 'conic-gradient(from 0deg, #FF6B35, #F6B042, #0E9F6E, #5B4BE0, #C4572F, #FF6B35)',
-                          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
-                          flexShrink: 0,
-                        }}
-                      />
-                      <Typography variant="body2" sx={{ fontWeight: customActive ? 600 : 500 }}>
-                        {customActive ? bookingTheme.toUpperCase() : t('settings.customColor')}
-                      </Typography>
-                      <input
-                        type="color"
-                        value={customActive ? bookingTheme : '#B76E79'}
-                        onChange={e => setBookingTheme(e.target.value)}
-                        style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-                        data-testid="booking-custom-color"
-                      />
-                    </Box>
-                  )
-                })()}
-              </Box>
-            </Box>
-
-            {/* Customer reviews — whole-feature on/off. When off, the public
-                booking page shows no rating badge or reviews list, and new
-                reviews can't be submitted. */}
-            <Box>
-              <FormControlLabel
-                sx={{ ml: 0 }}
-                control={
-                  <Switch
-                    checked={reviewsEnabled}
-                    onChange={e => setReviewsEnabled(e.target.checked)}
-                    data-testid="reviews-enabled-toggle"
-                  />
-                }
-                label={
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('reviews.settingTitle')}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {t('reviews.settingHelp')}
-                    </Typography>
-                  </Box>
-                }
-              />
-            </Box>
-
           </Stack>
 
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
@@ -390,84 +202,8 @@ export default function ProfileSettings() {
               {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
             </Button>
           </Box>
-
-          {/* Danger zone — kept deliberately quiet: a plain text link below a divider. */}
-          <Divider sx={{ mt: 4 }} />
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-            <Link
-              component="button"
-              type="button"
-              onClick={openDeleteDialog}
-              data-testid="delete-account-btn"
-              underline="hover"
-              sx={{ color: 'error.main', fontSize: 14, fontWeight: 500 }}
-            >
-              {t('settings.deleteAccount')}
-            </Link>
-          </Box>
         </CardContent>
       </Card>
-
-      {/* Delete account confirmation */}
-      <Dialog open={deleteOpen} onClose={deleting ? undefined : () => setDeleteOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.deleteAccountTitle')}</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: 'text.secondary' }}>
-            {t('settings.deleteAccountMessage')}
-          </DialogContentText>
-          {soleMember ? (
-            <FormControlLabel
-              sx={{ mt: 2 }}
-              control={
-                <Checkbox
-                  checked={deleteOrgToo}
-                  onChange={e => setDeleteOrgToo(e.target.checked)}
-                  data-testid="delete-org-too"
-                />
-              }
-              label={t('settings.deleteOrgToo', { name: org?.name ?? '' })}
-            />
-          ) : (
-            <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
-              {t('settings.deleteAccountKeepOrg')}
-            </Typography>
-          )}
-
-          {/* Require the user to type the confirmation word — a deliberate
-              friction step for an irreversible action. */}
-          <Typography variant="body2" sx={{ mt: 3, color: 'text.secondary' }}>
-            {t('settings.deleteConfirmPrompt', { word: t('settings.deleteConfirmWord') })}
-          </Typography>
-          <TextField
-            fullWidth
-            size="small"
-            autoComplete="off"
-            sx={{ mt: 1 }}
-            value={deleteConfirmText}
-            onChange={e => setDeleteConfirmText(e.target.value)}
-            placeholder={t('settings.deleteConfirmWord')}
-            disabled={deleting}
-            slotProps={{ htmlInput: { 'data-testid': 'delete-confirm-input' } }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteOpen(false)} disabled={deleting} color="inherit">
-            {t('common.cancel')}
-          </Button>
-          <Button
-            onClick={handleDeleteAccount}
-            disabled={
-              deleting ||
-              deleteConfirmText.trim().toLowerCase() !== t('settings.deleteConfirmWord').toLowerCase()
-            }
-            variant="contained"
-            color="error"
-            data-testid="delete-account-confirm"
-          >
-            {deleting ? <CircularProgress size={20} color="inherit" /> : t('settings.deleteAccount')}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   )
 }

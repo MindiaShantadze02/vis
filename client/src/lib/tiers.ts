@@ -28,7 +28,7 @@ export const TIERS: TierInfo[] = [
   },
   {
     key: 'pro', label: 'პრო', price: '₾40 / თვე', limit: 600, colorKey: 'primary',
-    features: ['600 ჯავშანი/თვე', 'ყველა სტარტერის ფუნქცია', 'BOG / TBC ონლაინ გადახდა', 'გუნდის მართვა', 'ვებსაიტის ვიჯეტი'],
+    features: ['600 ჯავშანი/თვე', 'ყველა სტარტერის ფუნქცია', 'BOG / TBC ონლაინ გადახდა', 'გუნდის მართვა'],
   },
   {
     key: 'business', label: 'ბიზნესი', price: '₾80 / თვე', limit: null, colorKey: 'success',

@@ -311,7 +311,16 @@
     "admin": "ადმინი",
     "pendingInvites": "მოლოდინში მყოფი მოწვევები",
     "expires": "ვადა: {{date}}",
-    "customColor": "ინდივიდუალური"
+    "customColor": "ინდივიდუალური",
+    "business": "ბიზნესის ინფო",
+    "bookingPage": "ჯავშნის გვერდი",
+    "account": "ანგარიში",
+    "shareBookingPage": "გააზიარეთ ჯავშნის გვერდი",
+    "viewBookingPage": "გვერდის ნახვა",
+    "groupBusiness": "ბიზნესი",
+    "groupBookingPage": "ჯავშნის გვერდი",
+    "groupBilling": "ბილინგი",
+    "groupAccount": "ანგარიში"
   },
   "days": {
     "monday": "ორშაბათი",

@@ -308,7 +308,16 @@
     "admin": "Admin",
     "pendingInvites": "Pending invitations",
     "expires": "Expires: {{date}}",
-    "customColor": "Custom color"
+    "customColor": "Custom color",
+    "business": "Business info",
+    "bookingPage": "Booking page",
+    "account": "Account",
+    "shareBookingPage": "Share your booking page",
+    "viewBookingPage": "View page",
+    "groupBusiness": "Business",
+    "groupBookingPage": "Booking page",
+    "groupBilling": "Billing",
+    "groupAccount": "Account"
   },
   "days": {
     "monday": "Monday",

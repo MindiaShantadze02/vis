@@ -33,7 +33,9 @@ Happy paths + edge cases (validation gating, route guards, error states):
 | `calendar.spec.ts` | approve a pending booking from the calendar drawer | resilient pill/group locate — self-cleans |
 | `forgot-password.spec.ts` | phase transition (`phone`→`reset`), neutral messaging | wrong-code rejected, resend cooldown, submit-gating **BVA** (throwaway phone — never touches the seed password) |
 | `working-hours.spec.ts` | override add → delete (self-clean state cycle) | **decision** (endBeforeStart) + **BVA** (advance days 0/731) rejects — non-persisting |
-| `profile-settings.spec.ts` | custom booking colour | name/phone save-gating, logo image **BVA** (>2 MB / non-image), delete-account confirm-word guard (never confirmed) |
+| `profile-settings.spec.ts` | Business settings — | name/phone save-gating, logo image **BVA** (>2 MB / non-image) |
+| `booking-settings.spec.ts` | Booking-page settings — share link/embed + preview link | custom booking colour, reviews toggle switchable (non-persisting) |
+| `account-settings.spec.ts` | Account settings — | delete-account confirm-word guard (never confirmed) |
 | `superadmin.spec.ts` | — | role **ECP**: a normal owner is redirected off `/superadmin` and its sub-routes |
 
 ### Design techniques applied

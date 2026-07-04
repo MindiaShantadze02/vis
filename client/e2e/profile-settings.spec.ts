@@ -2,13 +2,13 @@ import { test, expect } from '@playwright/test'
 import { login, fillStable } from './helpers'
 
 /**
- * Profile settings — validation gating, Error-Guessing on the logo upload, the
- * delete-account confirm-word guard, and the custom booking colour. All cases
- * are non-persisting (Save is never clicked with changed values; oversized/
- * invalid uploads are rejected before hitting storage; the delete is never
- * confirmed), so the seeded org is left untouched.
+ * Business settings (formerly "Profile") — business identity only: name, phone,
+ * logo. Booking-page appearance/reviews live in booking-settings.spec; account
+ * deletion in account-settings.spec. All cases here are non-persisting (Save is
+ * never clicked with changed values; oversized/invalid uploads are rejected
+ * before hitting storage), so the seeded org is left untouched.
  */
-test.describe('Settings — Profile', () => {
+test.describe('Settings — Business', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
     await page.goto('/dashboard/settings/profile')
@@ -54,32 +54,5 @@ test.describe('Settings — Profile', () => {
       buffer: Buffer.from('not an image'),
     })
     await expect(page.getByTestId('profile-error')).toContainText('სურათის ფაილი')
-  })
-
-  test('delete-account is gated on typing the confirmation word (never confirmed)', async ({ page }) => {
-    await page.getByTestId('delete-account-btn').click()
-    const confirm = page.getByTestId('delete-account-confirm')
-    await expect(confirm).toBeVisible()
-    await expect(confirm).toBeDisabled()
-
-    // Wrong word keeps it disabled.
-    await fillStable(page.getByTestId('delete-confirm-input'), 'delete')
-    await expect(confirm).toBeDisabled()
-
-    // The exact confirmation word (case-insensitive) enables it — but we DO NOT
-    // click it, so the seeded owner is never deleted.
-    await fillStable(page.getByTestId('delete-confirm-input'), 'წაშლა')
-    await expect(confirm).toBeEnabled()
-
-    // Abort — close the dialog without deleting.
-    await page.keyboard.press('Escape')
-    await expect(confirm).toHaveCount(0)
-  })
-
-  test('a custom booking colour is accepted and reflected in the swatch', async ({ page }) => {
-    await page.getByTestId('booking-custom-color').fill('#123456')
-    // The custom tile shows the chosen hex (uppercased) once selected.
-    await expect(page.getByText('#123456', { exact: false })).toBeVisible()
-    // Not saved — booking theme is left unchanged on the seed.
   })
 })

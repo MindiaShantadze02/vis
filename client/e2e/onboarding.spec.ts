@@ -42,8 +42,8 @@ test.describe('Business onboarding', () => {
     await expect(page.getByText(bizName)).toBeVisible()
     await expect(page.getByText(/vis\.ge\/book\//)).toBeVisible()
 
-    // --- self-clean: delete the throwaway account + org ---
-    await page.goto('/dashboard/settings/profile')
+    // --- self-clean: delete the throwaway account + org (Account settings) ---
+    await page.goto('/dashboard/settings/account')
     await page.getByTestId('delete-account-btn').click()
     await page.getByTestId('delete-confirm-input').fill(DELETE_CONFIRM_WORD)
     await page.getByTestId('delete-account-confirm').click()

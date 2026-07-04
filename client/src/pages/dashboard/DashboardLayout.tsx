@@ -40,14 +40,37 @@ const NAV_ITEMS = [
   { labelKey: 'dashboard.calendar',     path: '/dashboard/calendar',     icon: <CalendarMonthOutlinedIcon /> },
 ]
 
-// Dashboard settings sections, in display order.
-const SETTINGS_ITEMS = [
-  { labelKey: 'settings.profile',      path: '/dashboard/settings/profile' },
-  { labelKey: 'settings.services',     path: '/dashboard/settings/services' },
-  { labelKey: 'settings.workingHours', path: '/dashboard/settings/hours' },
-  { labelKey: 'settings.team',         path: '/dashboard/settings/team' },
-  { labelKey: 'settings.payment',      path: '/dashboard/settings/payment' },
-  { labelKey: 'settings.subscription', path: '/dashboard/settings/subscription' },
+// Dashboard settings, grouped by concern so the submenu teaches the mental
+// model: business setup, the public booking page, billing, then the account.
+const SETTINGS_GROUPS = [
+  {
+    headerKey: 'settings.groupBusiness',
+    items: [
+      { labelKey: 'settings.business',     path: '/dashboard/settings/profile' },
+      { labelKey: 'settings.services',     path: '/dashboard/settings/services' },
+      { labelKey: 'settings.workingHours', path: '/dashboard/settings/hours' },
+      { labelKey: 'settings.team',         path: '/dashboard/settings/team' },
+    ],
+  },
+  {
+    headerKey: 'settings.groupBookingPage',
+    items: [
+      { labelKey: 'settings.bookingPage',  path: '/dashboard/settings/booking' },
+    ],
+  },
+  {
+    headerKey: 'settings.groupBilling',
+    items: [
+      { labelKey: 'settings.payment',      path: '/dashboard/settings/payment' },
+      { labelKey: 'settings.subscription', path: '/dashboard/settings/subscription' },
+    ],
+  },
+  {
+    headerKey: 'settings.groupAccount',
+    items: [
+      { labelKey: 'settings.account',      path: '/dashboard/settings/account' },
+    ],
+  },
 ]
 
 export default function DashboardLayout() {
@@ -55,7 +78,7 @@ export default function DashboardLayout() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { org } = useOrg()
-  const settingsItems = SETTINGS_ITEMS
+  const settingsGroups = SETTINGS_GROUPS
   const mainNav = NAV_ITEMS
   const { isSuperadmin } = useSuperadmin()
   const navigate = useNavigate()
@@ -182,33 +205,47 @@ export default function DashboardLayout() {
           />
         </ListItemButton>
 
-        {settingsOpen && settingsItems.map((item, i) => (
-          <ListItemButton
-            key={item.path}
-            component={NavLink}
-            to={item.path}
-            onClick={() => setMobileOpen(false)}
-            sx={{
-              borderRadius: 2,
-              mb: 0.25,
-              pl: '36px',
-              borderLeft: '3px solid transparent',
-              transition: 'all 0.15s ease',
-              animation: anim.fadeInUp,
-              animationDelay: `${i * 30}ms`,
-              '&.active': {
-                bgcolor: 'secondary.main',
-                color: 'primary.dark',
-                borderLeftColor: 'primary.main',
-              },
-              '&:not(.active):hover': {
-                bgcolor: tint.hover,
-                borderLeftColor: tint.hoverBorder,
-              },
-            }}
-          >
-            <ListItemText primary={t(item.labelKey)} slotProps={{ primary: { variant: 'body2' } }} />
-          </ListItemButton>
+        {settingsOpen && settingsGroups.map(group => (
+          <Box key={group.headerKey}>
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block', pl: '36px', mt: 1, mb: 0.5,
+                fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
+                color: 'text.disabled', fontSize: '0.66rem',
+              }}
+            >
+              {t(group.headerKey)}
+            </Typography>
+            {group.items.map((item, i) => (
+              <ListItemButton
+                key={item.path}
+                component={NavLink}
+                to={item.path}
+                onClick={() => setMobileOpen(false)}
+                sx={{
+                  borderRadius: 2,
+                  mb: 0.25,
+                  pl: '36px',
+                  borderLeft: '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                  animation: anim.fadeInUp,
+                  animationDelay: `${i * 30}ms`,
+                  '&.active': {
+                    bgcolor: 'secondary.main',
+                    color: 'primary.dark',
+                    borderLeftColor: 'primary.main',
+                  },
+                  '&:not(.active):hover': {
+                    bgcolor: tint.hover,
+                    borderLeftColor: tint.hoverBorder,
+                  },
+                }}
+              >
+                <ListItemText primary={t(item.labelKey)} slotProps={{ primary: { variant: 'body2' } }} />
+              </ListItemButton>
+            ))}
+          </Box>
         ))}
         </>)}
 
