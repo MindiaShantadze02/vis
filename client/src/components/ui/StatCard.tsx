@@ -1,9 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Card, CardContent, Box, Typography, Skeleton } from '@mui/material'
-import { alpha } from '@mui/material/styles'
 import { motion, animate, useMotionValue, useTransform } from 'framer-motion'
 import { EASE, fadeInUp } from '@/theme/motion'
-import { elevation } from '@/theme/theme'
 
 interface StatCardProps {
   label: string
@@ -54,13 +52,12 @@ export default function StatCard({ label, value, icon, color, loading }: StatCar
       variants={fadeInUp}
       initial="hidden"
       animate="visible"
-      whileHover={{ y: -2 }}
     >
       <CardContent sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
         <Box
           sx={{
-            width: 48, height: 48, borderRadius: 2,
-            bgcolor: alpha(color, 0.12),
+            width: 44, height: 44, borderRadius: 2,
+            bgcolor: 'rgba(30,36,51,0.05)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color, flexShrink: 0,
           }}
@@ -103,8 +100,6 @@ export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boo
         mb: 4,
         display: 'flex',
         flexDirection: { xs: 'column', sm: 'row' },
-        // Full-width band — suppress the global card hover-lift.
-        '&:hover': { transform: 'none', boxShadow: elevation.card },
       }}
     >
       {items.map((it, i) => (
@@ -128,7 +123,7 @@ export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boo
           <Box
             sx={{
               width: 44, height: 44, borderRadius: 2, flexShrink: 0,
-              bgcolor: alpha(it.color, 0.12), color: it.color,
+              bgcolor: 'rgba(30,36,51,0.05)', color: it.color,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >

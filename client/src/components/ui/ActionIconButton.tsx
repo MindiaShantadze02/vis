@@ -9,10 +9,8 @@ interface ActionIconButtonProps extends Omit<IconButtonProps, 'color'> {
 }
 
 /**
- * Soft-tinted, rounded square icon button used for inline row actions
- * (edit / delete). Reads as a solid control at rest and fills with the brand
- * (or error) colour on hover, so it sits visually alongside the Switch and
- * Button family instead of floating as a bare ghost icon.
+ * Quiet ghost icon button for inline row actions (edit / delete). Borderless at
+ * rest so lists stay calm; tints with a soft neutral (or error) wash on hover.
  *
  * forwardRef so it can be used as a Tooltip child.
  */
@@ -30,19 +28,11 @@ const ActionIconButton = forwardRef<HTMLButtonElement, ActionIconButtonProps>(
           height: side,
           borderRadius: compact ? '8px' : '10px',
           color: danger ? 'error.main' : 'text.secondary',
-          bgcolor: danger ? 'rgba(220,38,38,0.06)' : 'rgba(255,107,53,0.07)',
-          border: '1px solid',
-          borderColor: danger ? 'rgba(220,38,38,0.18)' : 'rgba(255,107,53,0.18)',
-          transition: 'all 0.15s ease',
+          transition: 'background-color 0.15s ease, color 0.15s ease',
           '&:hover': {
-            color: '#fff',
-            bgcolor: danger ? 'error.main' : 'primary.main',
-            borderColor: danger ? 'error.main' : 'primary.main',
-            boxShadow: danger
-              ? '0 4px 12px rgba(220,38,38,0.25)'
-              : '0 4px 12px rgba(255,107,53,0.28)',
+            color: danger ? 'error.main' : 'text.primary',
+            bgcolor: danger ? 'rgba(220,38,38,0.09)' : 'rgba(30,36,51,0.06)',
           },
-          '&:active': { transform: 'scale(0.94)' },
           ...sx,
         }}
       />

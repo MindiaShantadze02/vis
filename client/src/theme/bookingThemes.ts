@@ -1,5 +1,5 @@
 import { createTheme, lighten, darken, getLuminance, hexToRgb, type Theme } from '@mui/material/styles'
-import baseTheme from './theme'
+import baseTheme, { elevation } from './theme'
 
 // Per-organisation colour themes for the public booking pages (the flow your
 // customers actually see). A curated set of five accent directions (see the
@@ -179,12 +179,16 @@ export function makeBookingTheme(bt: BookingTheme): Theme {
       background: { default: pageBg, paper: '#FFFFFF' },
     },
     components: {
+      // The admin theme is flat/mature; the booking pages keep their softer,
+      // lifted look — so we re-specify the button + card here rather than inherit
+      // the flattened base (the user considers the booking flow finished).
       MuiButton: {
         styleOverrides: {
+          root: { transition: 'all 0.18s ease', '&:active': { transform: 'scale(0.97)' } },
           contained: {
             boxShadow: `0 1px 2px rgba(${rgb},0.12)`,
-            '&:hover': { boxShadow: `0 3px 10px rgba(${rgb},0.18)` },
-            '&:active': { boxShadow: `0 1px 2px rgba(${rgb},0.12)` },
+            '&:hover': { boxShadow: `0 3px 10px rgba(${rgb},0.18)`, transform: 'translateY(-1px)' },
+            '&:active': { boxShadow: `0 1px 2px rgba(${rgb},0.12)`, transform: 'scale(0.97) translateY(0)' },
           },
           outlined: {
             borderColor: `rgba(${rgb},0.35)`,
@@ -196,7 +200,14 @@ export function makeBookingTheme(bt: BookingTheme): Theme {
       MuiCard: {
         styleOverrides: {
           root: {
-            '&:hover': { boxShadow: `0 8px 24px rgba(${rgb},0.10), 0 2px 8px rgba(0,0,0,0.04)` },
+            boxShadow: elevation.card,
+            borderRadius: 16,
+            border: '1px solid rgba(30,36,51,0.07)',
+            transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: `0 8px 24px rgba(${rgb},0.10), 0 2px 8px rgba(0,0,0,0.04)`,
+            },
           },
         },
       },

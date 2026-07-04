@@ -161,14 +161,13 @@ export default function DashboardLayout() {
               animation: anim.slideInLeft,
               animationDelay: `${i * 50}ms`,
               '&.active': {
-                bgcolor: 'secondary.main',
+                bgcolor: 'rgba(30,36,51,0.05)',
                 color: 'primary.dark',
                 borderLeftColor: 'primary.main',
                 '& .MuiListItemIcon-root': { color: 'primary.main' },
               },
               '&:not(.active):hover': {
                 bgcolor: tint.hover,
-                borderLeftColor: tint.hoverBorder,
               },
             }}
           >
@@ -232,13 +231,13 @@ export default function DashboardLayout() {
                   animation: anim.fadeInUp,
                   animationDelay: `${i * 30}ms`,
                   '&.active': {
-                    bgcolor: 'secondary.main',
+                    bgcolor: 'rgba(30,36,51,0.05)',
                     color: 'primary.dark',
                     borderLeftColor: 'primary.main',
+                    fontWeight: 600,
                   },
                   '&:not(.active):hover': {
                     bgcolor: tint.hover,
-                    borderLeftColor: tint.hoverBorder,
                   },
                 }}
               >

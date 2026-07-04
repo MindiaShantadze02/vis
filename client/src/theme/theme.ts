@@ -1,46 +1,54 @@
 import { createTheme } from '@mui/material/styles'
 
-// ── Brand palette: "Warm Ink & Citrus" ───────────────────────
-// Grafiki (გრაფიკი = "schedule") should feel like being warmly welcomed
-// and confidently looked-after — not like a framework default. Confident
-// near-ink charcoal-navy carries the brand; a citrus accent brings the
-// energy; honey lifts prices and celebratory moments.
+// ── Brand palette: "Ink & Clay" ──────────────────────────────
+// The admin panel should feel calm, mature and precise — a clean near-white
+// surface, confident near-ink text, and a single MUTED warm accent used
+// sparingly (primary CTAs + active markers only). The louder citrus lives on
+// per-tenant booking pages (see bookingThemes.ts), not in the admin chrome.
 
 export const INK = {
   900: '#161B26',
   800: '#181D29',
-  700: '#1E2433', // brand ink — text, sidebar, headings
+  700: '#1E2433', // brand ink — text, headings, avatars
   600: '#2A3242',
   500: '#3A4253',
 }
 
-const CITRUS = {
-  light: '#FF8B5E',
-  main:  '#FF6B35', // signature accent — CTAs, selected states
-  dark:  '#E55320',
-  deep:  '#C2441A',
+// Muted terracotta — warm but restrained (was the neon citrus #FF6B35).
+// Applied only to primary buttons, the active-nav marker, focus rings and the
+// "on" switch/progress state.
+const ACCENT = {
+  light: '#D68C6E',
+  main:  '#C15F3E',
+  dark:  '#A44E30',
+  deep:  '#8F4227',
 }
 
-export const HONEY = '#F6B042' // second accent — price/total, celebratory sparkle
+export const HONEY = '#F6B042' // reserved accent — price/total on booking pages
 
-// rgb tuples for translucent shadows/tints
-const CITRUS_RGB = '255,107,53'
+// rgb tuples for translucent tints/shadows
+const ACCENT_RGB = '193,95,62'
 const INK_RGB = '30,36,51'
 
 // ── Shared design tokens ──────────────────────────────────────
-// Single source of truth for the tinted shadows and brand surfaces
-// that were previously re-typed inline across pages.
+
+// A single neutral hairline for every border/divider — kills the old boxy
+// look of three near-identical ink alphas (0.07 / 0.08 / 0.10).
+export const HAIRLINE = '#E6E7EB'
 
 export const elevation = {
   card:      '0 1px 3px rgba(30,36,51,0.06), 0 1px 2px rgba(30,36,51,0.04)',
-  cardHover: `0 8px 24px rgba(${CITRUS_RGB},0.12), 0 2px 8px rgba(30,36,51,0.05)`,
-  glow:      `0 4px 16px rgba(${CITRUS_RGB},0.32)`,
-  glowSoft:  `0 4px 12px rgba(${CITRUS_RGB},0.18)`,
+  cardHover: `0 8px 24px rgba(${ACCENT_RGB},0.12), 0 2px 8px rgba(30,36,51,0.05)`,
+  glow:      `0 4px 16px rgba(${ACCENT_RGB},0.28)`,
+  glowSoft:  `0 4px 12px rgba(${ACCENT_RGB},0.16)`,
   modal:     '0 24px 48px rgba(22,27,38,0.16), 0 0 0 1px rgba(30,36,51,0.06)',
 }
 
-// Flat brand surfaces (kept as a named map so page chrome stays consistent
-// and lives in one place). Ink chrome lets the citrus accent stay the star.
+// One small radius scale so nested elements share a rhythm (was 2/3/4/5/8/10/
+// 12/16/20 scattered everywhere).
+export const radii = { control: 10, card: 14, pill: 999 }
+
+// Flat brand surfaces (dark chrome for onboarding/superadmin sidebars, logo).
 export const gradient = {
   brand:   INK[700],
   topbar:  INK[700],
@@ -48,27 +56,24 @@ export const gradient = {
   panel:   '#FFFFFF',
 }
 
-// Subtle citrus tints for hover/selected surfaces (e.g. nav items).
+// Neutral hover/selected tints for nav + rows (was citrus-tinted).
 export const tint = {
-  hover:       `rgba(${CITRUS_RGB},0.06)`,
-  hoverBorder: `rgba(${CITRUS_RGB},0.22)`,
+  hover:       `rgba(${INK_RGB},0.04)`,
+  hoverBorder: `rgba(${INK_RGB},0.10)`,
 }
 
-// Warm neutral surfaces — replace MUI's cool `grey.50`/`action.hover` (which
-// clash with the warm chalk background) for table headers, summary panels and
-// row hovers across the dashboard.
+// Neutral surfaces — section/table headers, inset panels, row hovers. Cool and
+// clean to match the near-white page (was warm chalk).
 export const surface = {
-  header: '#F4EEE6', // warm chalk — table/section headers
-  subtle: '#F8F4EE', // slightly lighter — inset summary panels
-  hover:  `rgba(${CITRUS_RGB},0.05)`, // citrus-tinted row hover
+  header: '#F1F2F4', // section/table headers
+  subtle: '#F8F9FB', // inset summary panels
+  hover:  `rgba(${INK_RGB},0.035)`, // row hover
 }
 
-// Warm display stack for headings (Georgian-capable serif → personality).
+// Warm display serif for headings (Georgian-capable → personality without loudness).
 export const displayFont = '"Noto Serif Georgian", "Noto Serif", Georgia, serif'
 
 // ── Layout width tokens ───────────────────────────────────────
-// Named max-widths so page containers stay consistent within each
-// context instead of drifting across hardcoded values (600/640/680…).
 export const LAYOUT = {
   formPage:   720, // settings + content-form pages
   narrowCard: 460, // centered single-purpose cards (auth, confirmation)
@@ -78,44 +83,41 @@ export const LAYOUT = {
 const theme = createTheme({
   palette: {
     primary: {
-      main:         CITRUS.main,
-      light:        CITRUS.light,
-      dark:         CITRUS.dark,
+      main:         ACCENT.main,
+      light:        ACCENT.light,
+      dark:         ACCENT.dark,
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main:         '#FFE9DD', // pale citrus tint — chip/avatar/empty-state surfaces
-      contrastText: CITRUS.deep,
+      main:         '#F4EBE6', // pale clay tint — empty-state/selected surfaces
+      contrastText: ACCENT.deep,
     },
     background: {
-      default: '#FBF8F4', // warm chalk
+      default: '#F7F8FA', // clean neutral near-white
       paper:   '#FFFFFF',
     },
-    // ── Status palette ──────────────────────────────────────────
-    // Tuned to sit warmly beside the citrus accent. Drive appointment
-    // status presentation (see StatusChip): approved→success,
-    // pending→warning, rejected→error, completed→info. `light` values
-    // are pale tints used as surfaces.
+    // Status palette — muted, semantic (StatusChip: approved→success,
+    // pending→warning, rejected→error, completed→info).
     success: {
-      main:         '#0E9F6E', // approved — pine green
+      main:         '#0E9F6E',
       light:        '#D6F3E7',
       dark:         '#0A7D55',
       contrastText: '#FFFFFF',
     },
     warning: {
-      main:         '#C8801F', // pending — warm amber
+      main:         '#C8801F',
       light:        '#FBEFD8',
       dark:         '#9A5C0F',
       contrastText: '#FFFFFF',
     },
     error: {
-      main:         '#DC3C45', // rejected — crimson (distinct from citrus orange)
+      main:         '#DC3C45',
       light:        '#FBE0E1',
       dark:         '#B82A33',
       contrastText: '#FFFFFF',
     },
     info: {
-      main:         '#5B7A99', // completed — calm slate-blue (reads "done/archived")
+      main:         '#5B7A99',
       light:        '#E5ECF2',
       dark:         '#415D75',
       contrastText: '#FFFFFF',
@@ -125,26 +127,16 @@ const theme = createTheme({
       secondary: '#5A6273', // slate
       disabled:  '#9AA1AE',
     },
-    divider: `rgba(${INK_RGB},0.10)`,
+    divider: HAIRLINE,
   },
 
   typography: {
-    // Body / UI face: Noto Sans Georgian (the only Georgian-capable Google
-    // font besides the serif). It's paired with the serif display deliberately,
-    // not left to chance: the larger sans roles below borrow the serif's tight,
-    // negative tracking so the two families share a rhythm, while body copy
-    // stays open and editorial. That shared rhythm is what makes a serif +
-    // neutral-sans pairing read as "chosen" rather than mismatched.
     fontFamily: '"Google Sans", "Noto Sans Georgian", "Noto Sans", "Roboto", sans-serif',
-    // Headings carry the personality — warm editorial serif. Applied through
-    // h5 because pages use h4/h5 for titles (h1–h3 are unused).
     h1: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.25px' },
     h2: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.25px' },
     h3: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.15px' },
     h4: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.15px' },
     h5: { fontFamily: displayFont, fontWeight: 700, letterSpacing: '-0.1px' },
-    // Sans subheads bridge the bold serif and the regular body: a semibold step
-    // with a hair of negative tracking that echoes the serif above it.
     h6:        { fontWeight: 600, letterSpacing: '-0.15px' },
     subtitle1: { fontWeight: 600, letterSpacing: '-0.15px', lineHeight: 1.4 },
     subtitle2: { fontWeight: 600, letterSpacing: '-0.1px' },
@@ -160,50 +152,49 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
+          borderRadius: radii.control,
           padding: '10px 24px',
           fontWeight: 600,
-          transition: 'all 0.18s ease',
-          '&:active': { transform: 'scale(0.97)' },
+          transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
         },
+        // Flat: solid accent that simply darkens on hover — no glow, no lift.
         contained: {
-          boxShadow: `0 1px 3px rgba(${CITRUS_RGB},0.20)`,
-          '&:hover': {
-            boxShadow: `0 4px 16px rgba(${CITRUS_RGB},0.32)`,
-            transform: 'translateY(-1px)',
-          },
-          '&:active': {
-            boxShadow: `0 1px 3px rgba(${CITRUS_RGB},0.20)`,
-            transform: 'scale(0.97) translateY(0)',
-          },
+          boxShadow: 'none',
+          '&:hover': { boxShadow: 'none', backgroundColor: ACCENT.dark },
+          '&:active': { boxShadow: 'none' },
         },
         outlined: {
-          borderColor: `rgba(${CITRUS_RGB},0.40)`,
+          borderColor: `rgba(${INK_RGB},0.18)`,
           '&:hover': {
-            borderColor: CITRUS.dark,
-            backgroundColor: `rgba(${CITRUS_RGB},0.05)`,
+            borderColor: ACCENT.main,
+            backgroundColor: `rgba(${INK_RGB},0.03)`,
           },
         },
         text: {
-          '&:hover': { backgroundColor: `rgba(${CITRUS_RGB},0.07)` },
+          '&:hover': { backgroundColor: `rgba(${INK_RGB},0.04)` },
         },
         sizeSmall: { padding: '6px 14px', fontSize: '0.8125rem' },
-        sizeLarge: { padding: '14px 32px', fontSize: '1rem', borderRadius: 12 },
+        sizeLarge: { padding: '13px 30px', fontSize: '1rem', borderRadius: 12 },
       },
     },
 
+    // Flat hairline card: one faint border, no shadow, no hover-lift.
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: '0 1px 3px rgba(30,36,51,0.06), 0 1px 2px rgba(30,36,51,0.04)',
-          borderRadius: 16,
-          border: `1px solid rgba(${INK_RGB},0.07)`,
-          transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-          '&:hover': {
-            boxShadow: `0 8px 24px rgba(${CITRUS_RGB},0.12), 0 2px 8px rgba(30,36,51,0.05)`,
-            transform: 'translateY(-2px)',
-          },
+          boxShadow: 'none',
+          borderRadius: radii.card,
+          border: `1px solid ${HAIRLINE}`,
+          backgroundImage: 'none',
         },
+      },
+    },
+
+    MuiPaper: {
+      styleOverrides: {
+        // Keep elevated Paper (menus/popovers) from painting the tonal overlay,
+        // so surfaces stay clean white.
+        root: { backgroundImage: 'none' },
       },
     },
 
@@ -212,21 +203,21 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 10,
+            borderRadius: radii.control,
             transition: 'box-shadow 0.15s ease',
             '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: CITRUS.dark,
+              borderColor: `rgba(${INK_RGB},0.34)`,
             },
             '&.Mui-focused': {
-              boxShadow: `0 0 0 3px rgba(${CITRUS_RGB},0.14)`,
+              boxShadow: `0 0 0 3px rgba(${ACCENT_RGB},0.14)`,
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: CITRUS.dark,
+              borderColor: ACCENT.main,
               borderWidth: '1.5px',
             },
           },
           '& .MuiInputLabel-root.Mui-focused': {
-            color: CITRUS.dark,
+            color: ACCENT.dark,
           },
         },
       },
@@ -241,13 +232,13 @@ const theme = createTheme({
     MuiLinearProgress: {
       styleOverrides: {
         root: {
-          height: 4,
-          borderRadius: 2,
-          backgroundColor: `rgba(${CITRUS_RGB},0.12)`,
+          height: 6,
+          borderRadius: 999,
+          backgroundColor: `rgba(${INK_RGB},0.08)`,
         },
         bar: {
-          borderRadius: 2,
-          backgroundColor: CITRUS.main,
+          borderRadius: 999,
+          backgroundColor: ACCENT.main,
           transition: 'transform 0.5s cubic-bezier(0.16,1,0.3,1)',
         },
       },
@@ -257,10 +248,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           color: `rgba(${INK_RGB},0.18)`,
-          '&.Mui-active': {
-            color: CITRUS.main,
-            filter: `drop-shadow(0 2px 6px rgba(${CITRUS_RGB},0.35))`,
-          },
+          '&.Mui-active': { color: ACCENT.main },
           '&.Mui-completed': { color: '#0E9F6E' },
         },
       },
@@ -268,32 +256,34 @@ const theme = createTheme({
 
     MuiStepConnector: {
       styleOverrides: {
-        line: { borderColor: `rgba(${INK_RGB},0.15)` },
+        line: { borderColor: HAIRLINE },
       },
     },
 
     MuiStepLabel: {
       styleOverrides: {
         label: {
-          '&.Mui-active':    { fontWeight: 600, color: CITRUS.dark },
+          '&.Mui-active':    { fontWeight: 600, color: ACCENT.dark },
           '&.Mui-completed': { fontWeight: 500 },
         },
       },
     },
 
+    // Neutral segmented control — the selected segment reads via a soft gray
+    // fill + ink text, not a coloured wash.
     MuiToggleButton: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
+          borderRadius: radii.control,
           textTransform: 'none',
           fontWeight: 500,
           transition: 'all 0.15s ease',
           '&.Mui-selected': {
-            backgroundColor: `rgba(${CITRUS_RGB},0.10)`,
-            color: CITRUS.deep,
-            borderColor: CITRUS.main,
+            backgroundColor: `rgba(${INK_RGB},0.06)`,
+            color: INK[700],
+            borderColor: `rgba(${INK_RGB},0.20)`,
             fontWeight: 600,
-            '&:hover': { backgroundColor: `rgba(${CITRUS_RGB},0.16)` },
+            '&:hover': { backgroundColor: `rgba(${INK_RGB},0.09)` },
           },
         },
       },
@@ -301,14 +291,14 @@ const theme = createTheme({
 
     MuiToggleButtonGroup: {
       styleOverrides: {
-        root: { borderRadius: 10 },
+        root: { borderRadius: radii.control },
       },
     },
 
     MuiDialog: {
       styleOverrides: {
         paper: {
-          borderRadius: 20,
+          borderRadius: 16,
           boxShadow: '0 24px 48px rgba(22,27,38,0.16), 0 0 0 1px rgba(30,36,51,0.06)',
         },
       },
@@ -317,7 +307,7 @@ const theme = createTheme({
     MuiListItemButton: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
+          borderRadius: radii.control,
           transition: 'all 0.15s ease',
         },
       },
@@ -326,8 +316,8 @@ const theme = createTheme({
     MuiTabs: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
-          backgroundColor: '#F0EBE3',
+          borderRadius: radii.control,
+          backgroundColor: '#EFF1F4',
           padding: '3px',
           minHeight: 40,
         },
@@ -335,7 +325,7 @@ const theme = createTheme({
           height: '100%',
           borderRadius: 8,
           backgroundColor: '#FFFFFF',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
           zIndex: 0,
         },
       },
@@ -357,16 +347,10 @@ const theme = createTheme({
       },
     },
 
-    // Clean rounded "pill" toggle — the thumb sits inside a full-radius track
-    // (no overflowing Material shadow), so it reads as flat and modern like the
-    // rest of the chrome. Off = ink tint, on = citrus.
+    // Flat pill switch — off = ink tint, on = muted accent.
     MuiSwitch: {
       styleOverrides: {
-        root: {
-          width: 42,
-          height: 24,
-          padding: 0,
-        },
+        root: { width: 42, height: 24, padding: 0 },
         switchBase: {
           padding: 0,
           margin: 3,
@@ -376,7 +360,7 @@ const theme = createTheme({
             transform: 'translateX(18px)',
             color: '#FFFFFF',
             '& + .MuiSwitch-track': {
-              backgroundColor: CITRUS.main,
+              backgroundColor: ACCENT.main,
               opacity: 1,
               border: 0,
             },
@@ -398,8 +382,6 @@ const theme = createTheme({
       },
     },
 
-    // The compact pill has no outer padding, so add a small gap to its label
-    // when used in a FormControlLabel (scoped to switches; checkboxes keep theirs).
     MuiFormControlLabel: {
       styleOverrides: {
         root: {
@@ -429,16 +411,14 @@ const theme = createTheme({
       },
     },
 
+    // Flat accordion — hairline border, no shadow (even when expanded).
     MuiAccordion: {
       styleOverrides: {
         root: {
           borderRadius: '12px !important',
-          border: `1px solid rgba(${INK_RGB},0.08)`,
+          border: `1px solid ${HAIRLINE}`,
           boxShadow: 'none',
           '&:before': { display: 'none' },
-          '&.Mui-expanded': {
-            boxShadow: `0 4px 16px rgba(${CITRUS_RGB},0.10)`,
-          },
         },
       },
     },
