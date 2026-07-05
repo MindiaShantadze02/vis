@@ -15,7 +15,10 @@ import { dateLocale } from '@/lib/dateLocale'
 import { useTheme, alpha } from '@mui/material/styles'
 import { anim } from '@/theme/animations'
 import { LoadingState } from '@/components/ui'
-import { computeAvailableSlots, computeAvailableSlotsWithCapacity, getDayKey } from '@/lib/slots'
+import {
+  computeAvailableSlots, computeAvailableSlotsWithCapacity, getDayKey,
+  businessToday, businessDayKey, businessDayWindow,
+} from '@/lib/slots'
 import type { SlotApptRow, SlotOverride, SlotCapacity } from '@/lib/slots'
 import type { BookingService, BookingStaff } from './BookingLayout'
 
@@ -54,7 +57,9 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   const theme = useTheme()
   const glow = `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`
   const glowSoft = `0 4px 12px ${alpha(theme.palette.primary.main, 0.18)}`
-  const today = startOfDay(new Date())
+  // "Today" in the business's timezone, not the viewer's — a customer browsing
+  // from another zone must see the same bookable days as one in Georgia.
+  const today = businessToday()
   // Mobile day strip scrolls horizontally; keep the active day in view.
   const dayStripRef = useRef<HTMLDivElement>(null)
   // Restore a previously chosen date (yyyy-MM-dd) so it stays selected when
@@ -128,8 +133,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
     if (!selectedDate) return
     setLoadingSlots(true)
     const dateKey = format(selectedDate, 'yyyy-MM-dd')
-    const dayStart = dateKey + 'T00:00:00.000Z'
-    const dayEnd = dateKey + 'T23:59:59.999Z'
+    const { from: dayStart, to: dayEnd } = businessDayWindow(dateKey)
 
     Promise.all([
       // Busy slots via a SECURITY DEFINER RPC (org-scoped): anon can't read the
@@ -163,8 +167,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
       supabase
         .rpc('get_org_busy_slots', {
           p_org_id: orgId,
-          p_from: startKey + 'T00:00:00.000Z',
-          p_to: endKey + 'T23:59:59.999Z',
+          p_from: businessDayWindow(startKey).from,
+          p_to: businessDayWindow(endKey).to,
         })
         .then(({ data }) => (data ?? []) as ApptRow[]),
 
@@ -220,7 +224,10 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
     if (!template) return map
     for (const day of days) {
       const key = format(day, 'yyyy-MM-dd')
-      const dayList = weekAppts.filter(a => a.scheduled_at.startsWith(key))
+      // Bucket by the appointment's *business-time* date — scheduled_at comes
+      // back as UTC, so a raw startsWith(key) would shift 00:00–03:59 bookings
+      // onto the previous day.
+      const dayList = weekAppts.filter(a => businessDayKey(a.scheduled_at) === key)
       map[key] = computeAvailableSlots({
         date: day,
         template,
@@ -258,8 +265,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         supabase
           .rpc('get_org_busy_slots', {
             p_org_id: orgId,
-            p_from: startKey + 'T00:00:00.000Z',
-            p_to: endKey + 'T23:59:59.999Z',
+            p_from: businessDayWindow(startKey).from,
+            p_to: businessDayWindow(endKey).to,
           })
           .then(({ data }) => (data ?? []) as ApptRow[]),
         supabase
@@ -278,7 +285,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
           date: d,
           template,
           override: ovMap[key] ?? null,
-          existing: appts.filter(a => a.scheduled_at.startsWith(key)),
+          existing: appts.filter(a => businessDayKey(a.scheduled_at) === key),
           serviceId: service.id,
           durationMinutes: service.duration_minutes,
           maxPerSlot: service.max_per_slot,

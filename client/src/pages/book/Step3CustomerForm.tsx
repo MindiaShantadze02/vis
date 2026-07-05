@@ -14,6 +14,7 @@ import { ka } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
+import { BUSINESS_UTC_OFFSET, businessDayWindow, toBusinessWallClock } from '@/lib/slots'
 import { CONSENT_VERSION } from '@/pages/legal/legalContent'
 import { postToParent } from './useEmbedBridge'
 import { elevation } from '@/theme/theme'
@@ -66,9 +67,14 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
   // Only worth asking the customer when there's an actual choice to make.
   const multiplePaymentOptions = availableMethods.length > 1
 
+  // The chosen slot is business (Georgia) wall-clock time — pin the stored
+  // instant to the business offset so it doesn't shift with the viewer's zone.
   const scheduledAt = booking.date && booking.time
-    ? new Date(`${booking.date}T${booking.time}:00`)
+    ? new Date(`${booking.date}T${booking.time}:00${BUSINESS_UTC_OFFSET}`)
     : null
+  // For format() in the summary lines — renders the business wall clock
+  // (i.e. exactly what the customer picked) in any viewer timezone.
+  const scheduledAtDisplay = scheduledAt ? toBusinessWallClock(scheduledAt) : null
 
   // Resend cooldown countdown.
   useEffect(() => {
@@ -133,8 +139,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     try {
       // Re-check availability right before inserting: the slot may have filled
       // since it was computed in Step 2 (capacity and per-person freedom).
-      const dayStart = `${booking.date}T00:00:00.000Z`
-      const dayEnd = `${booking.date}T23:59:59.999Z`
+      const { from: dayStart, to: dayEnd } = businessDayWindow(booking.date)
       // Org-scoped busy slots via SECURITY DEFINER RPC — anon has no direct read
       // on the appointments table (066 hardening).
       const { data: existing } = await supabase
@@ -301,7 +306,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{t('booking.detailsHeading')}</Typography>
       {scheduledAt && (
         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-          {booking.service?.name} · {format(scheduledAt, 'd MMMM, HH:mm', { locale: ka })}
+          {booking.service?.name} · {format(scheduledAtDisplay!, 'd MMMM, HH:mm', { locale: ka })}
         </Typography>
       )}
 
@@ -409,7 +414,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: staffLabel ? 1 : 0 }}>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('booking.summaryDate')}</Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {scheduledAt ? format(scheduledAt, 'd MMM, HH:mm', { locale: ka }) : '—'}
+              {scheduledAtDisplay ? format(scheduledAtDisplay, 'd MMM, HH:mm', { locale: ka }) : '—'}
             </Typography>
           </Box>
           {staffLabel && (

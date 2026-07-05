@@ -10,6 +10,7 @@ import { format } from 'date-fns'
 import { ka } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
 import { displayGeorgianPhone, toE164Georgian } from '@/lib/validation'
+import { toBusinessWallClock } from '@/lib/slots'
 import { LoadingState, EmptyState, StatusChip, BookingTicket } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 import { ThemeProvider, alpha } from '@mui/material/styles'
@@ -91,7 +92,9 @@ export default function BookingConfirmationPage() {
     )
   }
 
-  const scheduledAt = new Date(appt.scheduled_at)
+  // Render in the business's (Georgia) wall clock, not the viewer's zone —
+  // the appointment happens at the salon, wherever the customer is browsing.
+  const scheduledAt = toBusinessWallClock(appt.scheduled_at)
   const isPending = appt.status === 'pending'
   const bookingTheme = getBookingTheme(appt.organisations?.booking_theme)
 

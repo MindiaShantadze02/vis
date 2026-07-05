@@ -6,6 +6,57 @@
  */
 import { format, isBefore } from 'date-fns'
 
+/**
+ * All wall-clock times in the booking domain (working-hours templates,
+ * overrides, slot labels, scheduled_at) mean **business time — Georgia**.
+ * Georgia is permanently UTC+4 (no DST since 2005), so a fixed offset is
+ * exact. Anchoring slot instants to this offset — instead of the viewer's
+ * timezone — means a customer browsing from abroad sees and books the same
+ * wall-clock slots the business actually operates.
+ */
+export const BUSINESS_UTC_OFFSET = '+04:00'
+const OFFSET_MS = 4 * 60 * 60_000
+const DAY_MS = 24 * 60 * 60_000
+
+/** The yyyy-MM-dd calendar date of an instant, in business (Tbilisi) time. */
+export function businessDayKey(at: string | Date): string {
+  const t = typeof at === 'string' ? new Date(at).getTime() : at.getTime()
+  return new Date(t + OFFSET_MS).toISOString().slice(0, 10)
+}
+
+/**
+ * "Today" in business time, as a viewer-local midnight Date — so existing
+ * calendar math (addDays / isBefore / format) keeps working on it unchanged.
+ */
+export function businessToday(now: Date = new Date()): Date {
+  return new Date(businessDayKey(now) + 'T00:00:00')
+}
+
+/**
+ * UTC ISO bounds of one business-time calendar day, for scheduled_at range
+ * queries. Replaces the old `dateKey + 'T00:00:00.000Z'` windows, which
+ * treated the local day as a UTC day and so missed appointments between
+ * 00:00 and 03:59 Tbilisi time.
+ */
+export function businessDayWindow(dateKey: string): { from: string; to: string } {
+  const start = Date.parse(`${dateKey}T00:00:00${BUSINESS_UTC_OFFSET}`)
+  return {
+    from: new Date(start).toISOString(),
+    to: new Date(start + DAY_MS - 1).toISOString(),
+  }
+}
+
+/**
+ * A Date whose *viewer-local* fields mirror the instant's Tbilisi wall clock,
+ * so date-fns `format()` renders business time regardless of where the
+ * customer's browser is. Display-only — never store or compare it.
+ */
+export function toBusinessWallClock(at: string | Date): Date {
+  const t = typeof at === 'string' ? new Date(at).getTime() : at.getTime()
+  // Shift to UTC+4, then re-parse the wall-clock digits as viewer-local.
+  return new Date(new Date(t + OFFSET_MS).toISOString().slice(0, -1))
+}
+
 export interface SlotApptRow {
   scheduled_at: string
   duration_minutes: number
@@ -86,24 +137,30 @@ export function computeAvailableSlotsWithCapacity(p: SlotParams): SlotCapacity[]
   const now = p.now ?? new Date()
   const generated: SlotCapacity[] = []
 
+  // Anchor the day at business-time midnight so slot instants (and therefore
+  // overlap checks and the past-slot cutoff) don't depend on the viewer's
+  // timezone. `date` is a calendar day; format() extracts it zone-free.
+  const dayStartMs = Date.parse(`${format(date, 'yyyy-MM-dd')}T00:00:00${BUSINESS_UTC_OFFSET}`)
+
   for (const range of cfg.ranges) {
     const [sh, sm] = range.start.split(':').map(Number)
     const [eh, em] = range.end.split(':').map(Number)
-    let cur = new Date(date)
-    cur.setHours(sh, sm, 0, 0)
-    const end = new Date(date)
-    end.setHours(eh, em, 0, 0)
+    let curMin = sh * 60 + sm
+    const endMin = eh * 60 + em
 
-    while (cur < end) {
+    while (curMin + durationMinutes <= endMin) {
+      const cur = new Date(dayStartMs + curMin * 60000)
       const slotEnd = new Date(cur.getTime() + durationMinutes * 60000)
-      if (slotEnd > end) break
 
       if (!isBefore(cur, now)) {
         const cap = slotCapacity(cur, slotEnd, p)
-        if (cap.remaining > 0) generated.push({ time: format(cur, 'HH:mm'), ...cap })
+        if (cap.remaining > 0) {
+          const label = `${String(Math.floor(curMin / 60)).padStart(2, '0')}:${String(curMin % 60).padStart(2, '0')}`
+          generated.push({ time: label, ...cap })
+        }
       }
 
-      cur = new Date(cur.getTime() + durationMinutes * 60000)
+      curMin += durationMinutes
     }
   }
 

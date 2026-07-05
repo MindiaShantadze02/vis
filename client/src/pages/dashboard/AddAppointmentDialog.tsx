@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
-import { computeAvailableSlots, getDayKey } from '@/lib/slots'
+import { computeAvailableSlots, getDayKey, businessDayWindow, BUSINESS_UTC_OFFSET } from '@/lib/slots'
 import type { SlotApptRow, SlotOverride, WeekTemplate } from '@/lib/slots'
 import { useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
@@ -132,8 +132,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
     // it's truthy but format() throws on it, so bail until it's a real date.
     if (!date || !isValid(date)) return
     const dateKey = format(date, 'yyyy-MM-dd')
-    const dayStart = dateKey + 'T00:00:00.000Z'
-    const dayEnd = dateKey + 'T23:59:59.999Z'
+    const { from: dayStart, to: dayEnd } = businessDayWindow(dateKey)
 
     Promise.all([
       supabase
@@ -196,13 +195,10 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
   const noSlots = dayReady && slots.length === 0
   const timeValid = slots.includes(timeStr)
 
-  const scheduledAt = date && timeValid
-    ? (() => {
-      const [h, m] = timeStr.split(':').map(Number)
-      const d = new Date(date)
-      d.setHours(h, m, 0, 0)
-      return d
-    })()
+  // Slot times are business (Georgia) wall-clock — pin the stored instant to
+  // the business offset rather than the admin's browser zone.
+  const scheduledAt = date && timeValid && dateKey
+    ? new Date(`${dateKey}T${timeStr}:00${BUSINESS_UTC_OFFSET}`)
     : null
 
   const phoneInvalid = phone.trim().length > 0 && !isValidGeorgianPhone(phone)

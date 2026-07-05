@@ -17,6 +17,7 @@ import { LAYOUT, elevation } from '@/theme/theme'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { dateLocale } from '@/lib/dateLocale'
 import { FIELD_LIMITS } from '@/lib/validation'
+import { toBusinessWallClock } from '@/lib/slots'
 import { anim } from '@/theme/animations'
 
 interface ReviewContext {
@@ -109,7 +110,8 @@ export default function ReviewPage() {
   }
 
   const subtitle = [ctx?.service_name, ctx?.scheduled_at
-    ? format(new Date(ctx.scheduled_at), 'd MMM yyyy', { locale: dateLocale() })
+    // Business (Georgia) wall-clock date, wherever the reviewer is browsing.
+    ? format(toBusinessWallClock(ctx.scheduled_at), 'd MMM yyyy', { locale: dateLocale() })
     : null].filter(Boolean).join(' · ')
 
   // Branded header — the business identity, so the page never reads as generic.
