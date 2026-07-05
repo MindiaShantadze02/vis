@@ -7,6 +7,7 @@ import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { stepVariants } from '@/theme/motion'
 import { LanguageSwitcher } from '@/components/ui'
+import { displayGeorgianPhone } from '@/lib/validation'
 import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
 import BookingReviews from './BookingReviews'
@@ -92,7 +93,7 @@ export default function BookingShell({
           {org.contact_phone && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
               <PhoneOutlinedIcon sx={{ fontSize: 14, opacity: 0.8 }} />
-              <Typography variant="caption" sx={{ opacity: 0.8 }}>{org.contact_phone}</Typography>
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>{displayGeorgianPhone(org.contact_phone)}</Typography>
             </Box>
           )}
         </Box>

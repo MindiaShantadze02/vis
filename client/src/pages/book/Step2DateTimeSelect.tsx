@@ -249,6 +249,21 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
     return bookable && (weekAvailability[key] ?? 0) > 0
   })
 
+  // First-visit convenience: once the week's availability is known and nothing
+  // is selected yet, pre-select the first bookable day with free slots so its
+  // times appear without an extra tap. Never overrides a user's (or restored)
+  // choice — it only fires while selectedDate is null.
+  useEffect(() => {
+    if (selectedDate || weekLoading || !template) return
+    const first = days.find(d => {
+      const key = format(d, 'yyyy-MM-dd')
+      const bookable = isDayOpen(d) && !isBefore(d, today) && (!maxDate || !isAfter(d, maxDate))
+      return bookable && (weekAvailability[key] ?? 0) > 0
+    })
+    if (first) setSelectedDate(first)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, weekLoading, template, weekAvailability])
+
   // Scan forward for the first day with a free slot, in bounded windows so a
   // long advance limit can't trigger an unbounded query.
   async function findNextAvailable(from: Date): Promise<Date | null> {
@@ -599,6 +614,12 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                   // Only flag scarcity on genuinely multi-capacity slots; for
                   // single-seat services every slot would read "1 left" (noise).
                   const scarce = total > 1 && remaining <= SCARCITY_THRESHOLD
+                  // End time for the tooltip/aria ("14:00–14:30") so people can
+                  // plan around the visit without doing the duration math.
+                  const [sh2, sm2] = time.split(':').map(Number)
+                  const endMin = sh2 * 60 + sm2 + service.duration_minutes
+                  const endTime = `${String(Math.floor(endMin / 60) % 24).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`
+                  const rangeLabel = `${time}–${endTime}`
                   const select = () => onSelect(
                     format(selectedDate, 'yyyy-MM-dd'),
                     time,
@@ -612,9 +633,10 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                       tabIndex={0}
                       data-testid="book-slot"
                       data-remaining={remaining}
+                      title={rangeLabel}
                       aria-label={scarce
-                        ? `${time} — ${t('booking.slotsLeft', { n: remaining })}`
-                        : time}
+                        ? `${rangeLabel} — ${t('booking.slotsLeft', { n: remaining })}`
+                        : rangeLabel}
                       onClick={select}
                       onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select() }

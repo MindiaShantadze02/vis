@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { format } from 'date-fns'
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n'
+import { dateLocale } from '@/lib/dateLocale'
 import { inIframe } from './useEmbedBridge'
 import { Box, Typography } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
@@ -255,7 +257,9 @@ export default function BookingLayout() {
         },
         ...(booking.date && booking.time ? [{
           icon: <AccessTimeOutlinedIcon sx={{ fontSize: 18 }} />,
-          primary: `${booking.date} · ${booking.time}`,
+          // booking.date is the raw yyyy-MM-dd key — render it like the rest
+          // of the flow ("6 Jul · 14:00"), in the active language.
+          primary: `${format(new Date(`${booking.date}T00:00:00`), 'd MMM', { locale: dateLocale() })} · ${booking.time}`,
           secondary: sideStaffLabel ?? undefined,
         }] : []),
       ]}

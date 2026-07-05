@@ -162,7 +162,14 @@
     "otpSendFailed": "We couldn't send your code — please try again.",
     "bookFailed": "We couldn't finish your booking — please try again.",
     "paymentStartFailed": "We couldn't start the payment — please try again.",
-    "notesSensitiveWarning": "Please do not enter health or other sensitive personal data."
+    "notesSensitiveWarning": "Please do not enter health or other sensitive personal data.",
+    "confirmPendingTitle": "Booking received!",
+    "confirmApprovedTitle": "Booking confirmed!",
+    "confirmPendingSub": "The business will confirm shortly",
+    "confirmApprovedSub": "They'll be expecting you",
+    "statusLabel": "Status",
+    "callToChange": "To cancel or change your booking, call us",
+    "bookAnother": "Book another appointment"
   },
   "payment": {
     "sandbox": "Sandbox",

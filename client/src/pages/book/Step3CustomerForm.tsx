@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Box, Typography, Button, TextField, Stack,
   Alert, CircularProgress, ToggleButtonGroup, ToggleButton,
@@ -10,10 +10,10 @@ import { CreditCardOutlined as CreditCardOutlinedIcon } from '@/components/icons
 import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
 import { SmsOutlined as SmsOutlinedIcon } from '@/components/icons'
 import { format } from 'date-fns'
-import { ka } from 'date-fns/locale'
+import { dateLocale } from '@/lib/dateLocale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
+import { isValidGeorgianPhone, formatGeorgianPhone, displayGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
 import { BUSINESS_UTC_OFFSET, businessDayWindow, toBusinessWallClock } from '@/lib/slots'
 import { CONSENT_VERSION } from '@/pages/legal/legalContent'
 import { postToParent } from './useEmbedBridge'
@@ -57,6 +57,9 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
   const [phase, setPhase] = useState<'form' | 'otp'>('form')
   const [code, setCode] = useState('')
   const [resendIn, setResendIn] = useState(0)
+  // Last code we auto-submitted, so a failed attempt isn't retried in a loop
+  // while the same 6 digits sit in the field.
+  const autoSubmitted = useRef<string | null>(null)
 
   const onlineEnabled = org.payment_config?.bog?.enabled || org.payment_config?.tbc?.enabled
   const inPersonEnabled = org.payment_config?.inPerson?.enabled !== false
@@ -115,7 +118,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
 
   // Step 2: verify the entered code, then create the booking.
   async function verifyAndBook() {
-    if (code.length !== 6) return
+    if (code.length !== 6 || loading) return
     setLoading(true)
     setError(null)
     const { data, error: fnErr } = await supabase.functions.invoke('verify-booking-otp', {
@@ -130,6 +133,17 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     }
     await confirmBooking()
   }
+
+  // Auto-verify the moment the 6th digit lands — one less tap. The Verify
+  // button stays as the retry path; the ref stops the same (failed) code from
+  // resubmitting itself in a loop.
+  useEffect(() => {
+    if (phase !== 'otp' || code.length !== 6 || loading) return
+    if (autoSubmitted.current === code) return
+    autoSubmitted.current = code
+    void verifyAndBook()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, phase])
 
   async function confirmBooking() {
     if (!booking.service || !scheduledAt) return
@@ -306,7 +320,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{t('booking.detailsHeading')}</Typography>
       {scheduledAt && (
         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-          {booking.service?.name} · {format(scheduledAtDisplay!, 'd MMMM, HH:mm', { locale: ka })}
+          {booking.service?.name} · {format(scheduledAtDisplay!, 'd MMMM, HH:mm', { locale: dateLocale() })}
         </Typography>
       )}
 
@@ -414,7 +428,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: staffLabel ? 1 : 0 }}>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('booking.summaryDate')}</Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {scheduledAtDisplay ? format(scheduledAtDisplay, 'd MMM, HH:mm', { locale: ka }) : '—'}
+              {scheduledAtDisplay ? format(scheduledAtDisplay, 'd MMM, HH:mm', { locale: dateLocale() }) : '—'}
             </Typography>
           </Box>
           {staffLabel && (
@@ -501,20 +515,24 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           </Box>
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.75 }}>{t('booking.verifyNumber')}</Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-            {t('booking.otpSent', { phone: booking.phone })}
+            {t('booking.otpSent', { phone: displayGeorgianPhone(booking.phone) })}
           </Typography>
           <Stack spacing={2}>
-            <TextField
-              required
-              label={t('booking.otpLabel')}
-              value={code}
-              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              fullWidth
-              autoFocus
-              placeholder="••••••"
-              sx={{ '& input': { textAlign: 'center', fontSize: '1.6rem', letterSpacing: '0.5em', fontWeight: 700 } }}
-              slotProps={{ htmlInput: { inputMode: 'numeric' as const, maxLength: 6, 'data-testid': 'book-otp-code' } }}
-            />
+            {/* Same above-the-input label style as the rest of the form (the
+                floating MUI label was the one inconsistent field in the flow). */}
+            <Box>
+              <FieldLabel required>{t('booking.otpLabel')}</FieldLabel>
+              <TextField
+                required
+                value={code}
+                onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                fullWidth
+                autoFocus
+                placeholder="••••••"
+                sx={{ '& input': { textAlign: 'center', fontSize: '1.6rem', letterSpacing: '0.5em', fontWeight: 700 } }}
+                slotProps={{ htmlInput: { inputMode: 'numeric' as const, maxLength: 6, 'data-testid': 'book-otp-code' } }}
+              />
+            </Box>
             <Button
               fullWidth
               variant="contained"

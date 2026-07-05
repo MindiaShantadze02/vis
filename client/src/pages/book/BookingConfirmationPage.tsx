@@ -7,7 +7,8 @@ import { CalendarMonthOutlined as CalendarMonthOutlinedIcon } from '@/components
 import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
 import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
 import { format } from 'date-fns'
-import { ka } from 'date-fns/locale'
+import { useTranslation } from 'react-i18next'
+import { dateLocale } from '@/lib/dateLocale'
 import { supabase } from '@/lib/supabase'
 import { displayGeorgianPhone, toE164Georgian } from '@/lib/validation'
 import { toBusinessWallClock } from '@/lib/slots'
@@ -33,6 +34,7 @@ interface AppointmentDetail {
 export default function BookingConfirmationPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [appt, setAppt] = useState<AppointmentDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -131,13 +133,10 @@ export default function BookingConfirmationPage() {
           </Box>
 
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {isPending ? 'ჯავშანი მიღებულია!' : 'ჯავშანი დადასტურებულია!'}
+            {isPending ? t('booking.confirmPendingTitle') : t('booking.confirmApprovedTitle')}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-            {isPending
-              ? 'ბიზნესი მალე დაგიდასტურებთ'
-              : 'გელოდებიან დანიშნულ დროს'
-            }
+            {isPending ? t('booking.confirmPendingSub') : t('booking.confirmApprovedSub')}
           </Typography>
 
           {/* Details — rendered as a tear-off ticket stub (the signature). */}
@@ -151,7 +150,7 @@ export default function BookingConfirmationPage() {
             <BookingTicket
               notchColor={bookingTheme.pageBg}
               priceColor={bookingTheme.deep}
-              statusLabel="სტატუსი"
+              statusLabel={t('booking.statusLabel')}
               status={<StatusChip status={appt.status as AppointmentStatus} />}
               price={`${appt.services?.price} ₾`}
               rows={[
@@ -162,8 +161,8 @@ export default function BookingConfirmationPage() {
                 },
                 {
                   icon: <AccessTimeOutlinedIcon />,
-                  label: format(scheduledAt, 'EEEE', { locale: ka }),
-                  value: format(scheduledAt, 'd MMMM yyyy, HH:mm', { locale: ka }),
+                  label: format(scheduledAt, 'EEEE', { locale: dateLocale() }),
+                  value: format(scheduledAt, 'd MMMM yyyy, HH:mm', { locale: dateLocale() }),
                 },
               ]}
             />
@@ -184,7 +183,7 @@ export default function BookingConfirmationPage() {
               <PhoneOutlinedIcon fontSize="small" sx={{ color: 'primary.dark' }} />
               <Box>
                 <Typography variant="caption" sx={{ display: 'block', color: 'primary.dark', opacity: 0.9 }}>
-                  ჯავშნის გასაუქმებლად ან შესაცვლელად დაგვირეკეთ
+                  {t('booking.callToChange')}
                 </Typography>
                 <Typography
                   variant="body2"
@@ -204,7 +203,7 @@ export default function BookingConfirmationPage() {
             onClick={() => navigate(`/book/${appt.organisations?.slug}`)}
             data-testid="confirm-book-another"
           >
-            კიდევ ერთი ჯავშანი
+            {t('booking.bookAnother')}
           </Button>
         </CardContent>
       </Card>

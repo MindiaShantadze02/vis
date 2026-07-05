@@ -62,8 +62,10 @@ export async function register(page: Page, phone: string, password = 'password12
 
 /** Complete the booking OTP step with the master code. */
 export async function passBookingOtp(page: Page) {
+  // Filling all 6 digits auto-submits (verifyAndBook fires from an effect), so
+  // no Verify click here — clicking would race the navigation to the
+  // confirmation page and time out on the disabled/unmounted button.
   await page.getByTestId('book-otp-code').fill(BOOKING_OTP)
-  await page.getByTestId('book-otp-verify').click()
 }
 
 /**
