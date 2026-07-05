@@ -49,7 +49,8 @@
     "invalidImage": "აირჩიეთ სურათის ფაილი (PNG, JPG, GIF)",
     "requiredWhenEnabled": "სავალდებულოა, როცა ეს მეთოდი ჩართულია",
     "loadFailed": "ჩატვირთვა ვერ მოხერხდა.",
-    "consentRequired": "გასაგრძელებლად დაეთანხმეთ კონფიდენციალურობის პოლიტიკას და მომსახურების პირობებს."
+    "consentRequired": "გასაგრძელებლად დაეთანხმეთ კონფიდენციალურობის პოლიტიკას და მომსახურების პირობებს.",
+    "passwordHint": "მინიმუმ 10 სიმბოლო"
   },
   "authErrors": {
     "invalidCredentials": "არასწორი ნომერი ან პაროლი",
@@ -69,7 +70,12 @@
     "registerSubtitle": "შექმენით ანგარიში, რომ დაიწყოთ",
     "haveAccount": "უკვე გაქვთ ანგარიში? შესვლა",
     "noAccount": "არ გაქვთ ანგარიში? დარეგისტრირდით",
-    "registerTitle": "რეგისტრაცია"
+    "registerTitle": "რეგისტრაცია",
+    "password": "პაროლი",
+    "confirmPassword": "პაროლის დადასტურება",
+    "createAccount": "ანგარიშის შექმნა",
+    "forgotPassword": "პაროლი დაგავიწყდათ?",
+    "togglePassword": "პაროლის ჩვენება/დამალვა"
   },
   "onboarding": {
     "step1": "ბიზნესის ინფო",
@@ -99,7 +105,8 @@
     "previewBusinessPlaceholder": "თქვენი ბიზნესი",
     "previewNoServices": "სერვისები მალე დაემატება",
     "previewNoHours": "სამუშაო საათები ჯერ არ არის დაყენებული",
-    "finishServiceFirst": "ჯერ დაამატეთ ან წაშალეთ სერვისი, რომელსაც ავსებთ."
+    "finishServiceFirst": "ჯერ დაამატეთ ან წაშალეთ სერვისი, რომელსაც ავსებთ.",
+    "applyToAllDays": "ყველა დღეზე გავრცელება"
   },
   "booking": {
     "title": "ონლაინ ჯავშანი",
@@ -226,7 +233,10 @@
     "eraseDone": "კლიენტის მონაცემები წაიშალა",
     "yourBookingLink": "თქვენი ბუქინგ ბმული",
     "embedCode": "ჩაშენების კოდი (თქვენს ვებსაიტზე)",
-    "embedProOnly": "ჩააშენეთ ჯავშნის ვიჯეტი თქვენს საიტზე — ხელმისაწვდომია Pro გეგმაზე."
+    "embedProOnly": "ჩააშენეთ ჯავშნის ვიჯეტი თქვენს საიტზე — ხელმისაწვდომია Pro გეგმაზე.",
+    "noBookingsYetTitle": "ჯავშნები ჯერ არ არის",
+    "noBookingsYetCaption": "გააზიარეთ თქვენი ჯავშნის ბმული ზემოთ — ახალი ჯავშნები აქ გამოჩნდება.",
+    "noBookingsFound": "ჯავშნები ვერ მოიძებნა"
   },
   "notifications": {
     "title": "შეტყობინებები",
@@ -329,7 +339,13 @@
     "groupBusiness": "ბიზნესი",
     "groupBookingPage": "ჯავშნის გვერდი",
     "groupBilling": "ბილინგი",
-    "groupAccount": "ანგარიში"
+    "groupAccount": "ანგარიში",
+    "loginInfo": "შესვლის მონაცემები",
+    "loggedInAs": "თქვენ შესული ხართ ნომრით",
+    "changePassword": "პაროლის შეცვლა",
+    "newPassword": "ახალი პაროლი",
+    "passwordChanged": "პაროლი შეიცვალა",
+    "passwordChangeFailed": "პაროლის შეცვლა ვერ მოხერხდა — სცადეთ თავიდან."
   },
   "days": {
     "monday": "ორშაბათი",
@@ -359,7 +375,8 @@
     "nameOptional": "სახელი (არასავალდებულო)",
     "restPlaceholder": "მაგ: სადილი, შესვენება",
     "apptsCount_one": "{{count}} ჯავშანი",
-    "apptsCount_other": "{{count}} ჯავშანი"
+    "apptsCount_other": "{{count}} ჯავშანი",
+    "addAppointment": "ჯავშნის დამატება"
   },
   "tiers": {
     "free": {

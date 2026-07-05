@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useOrg } from '@/contexts/OrgContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { formatGeorgianPhone } from '@/lib/validation'
 import type { DaySchedule } from '@/lib/validation'
 import PendingInvites from '@/pages/dashboard/PendingInvites'
 import OnboardingShell from './OnboardingShell'
@@ -89,11 +91,15 @@ export default function OnboardingLayout() {
     if (org) navigate('/dashboard', { replace: true })
   }, [org])
 
-  const [data, setData] = useState<OnboardingData>({
-    name: '', description: '', slug: '', contact_phone: '',
+  const { user } = useAuth()
+  const [data, setData] = useState<OnboardingData>(() => ({
+    name: '', description: '', slug: '',
+    // Pre-fill the business contact phone from the account they registered
+    // with seconds ago (editable — it's just the overwhelmingly common case).
+    contact_phone: user?.phone ? formatGeorgianPhone(user.phone) : '',
     services: [],
     workingHours: defaultWorkingHours,
-  })
+  }))
 
   const steps = STEPS
   const activeStep = steps.findIndex(s => pathname.startsWith(s.path))

@@ -90,6 +90,9 @@ export interface StatItem {
  * cliché). Segments sit side by side on desktop and stack on mobile.
  */
 export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boolean }) {
+  // Mobile packs the segments 2-up instead of stacking four full-width rows
+  // (which pushed the content below them under the fold).
+  const lastRowStart = items.length - 2
   return (
     <Card
       component={motion.div}
@@ -98,8 +101,9 @@ export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boo
       animate="visible"
       sx={{
         mb: 4,
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
+        display: { xs: 'grid', sm: 'flex' },
+        gridTemplateColumns: '1fr 1fr',
+        flexDirection: { sm: 'row' },
       }}
     >
       {items.map((it, i) => (
@@ -111,11 +115,16 @@ export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boo
             alignItems: 'center',
             gap: 1.75,
             p: 2.5,
+            minWidth: 0,
             borderColor: 'divider',
             borderStyle: 'solid',
             borderWidth: 0,
+            // Desktop: hairline between horizontal segments. Mobile 2×2 grid:
+            // hairline after odd columns and under the top row.
             ...(i < items.length - 1 && {
-              borderRightWidth: { xs: 0, sm: '1px' },
+              borderRightWidth: { xs: i % 2 === 0 ? '1px' : 0, sm: '1px' },
+            }),
+            ...(i < lastRowStart && {
               borderBottomWidth: { xs: '1px', sm: 0 },
             }),
           }}

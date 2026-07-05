@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { anim } from '@/theme/animations'
 import { LAYOUT } from '@/theme/theme'
+import { LanguageSwitcher } from '@/components/ui'
 
 type Step = 'phone' | 'reset'
 
@@ -99,8 +100,13 @@ export default function ForgotPasswordPage() {
         justifyContent: 'center',
         background: '#1E2433',
         p: 2,
+        position: 'relative',
       }}
     >
+      {/* Same language escape hatch as /login and /register. */}
+      <Box sx={{ position: 'absolute', top: 12, right: 16, '& .MuiButton-root': { color: 'rgba(255,255,255,0.85)' } }}>
+        <LanguageSwitcher />
+      </Box>
       <Card
         sx={{
           width: '100%',

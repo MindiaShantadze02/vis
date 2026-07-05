@@ -55,12 +55,17 @@ test.describe('Business onboarding — edge cases', () => {
   // These leave a throwaway account with no org (like the auth signup test).
 
   test('the first step gates "next" until name + valid phone are present', async ({ page }) => {
-    await register(page, uniquePhone())
+    const phone = uniquePhone()
+    await register(page, phone)
     const next = page.getByTestId('biz-next')
-    await expect(next).toBeDisabled()                       // empty
+
+    // The contact phone arrives pre-filled from the login phone the user just
+    // registered with, so initially only the missing name gates "next".
+    await expect(page.getByTestId('biz-phone')).toHaveValue(phone)
+    await expect(next).toBeDisabled()                       // no name yet
 
     await fillStable(page.getByTestId('biz-name'), 'AB')
-    await expect(next).toBeDisabled()                       // no phone yet
+    await expect(next).toBeEnabled()                        // name + pre-filled phone
 
     await fillStable(page.getByTestId('biz-phone'), '123')  // invalid phone
     await expect(next).toBeDisabled()

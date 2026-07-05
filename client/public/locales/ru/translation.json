@@ -49,7 +49,8 @@
     "invalidImage": "Выберите файл изображения (PNG, JPG, GIF)",
     "requiredWhenEnabled": "Обязательно, когда этот метод включён",
     "loadFailed": "Не удалось загрузить.",
-    "consentRequired": "Примите Политику конфиденциальности и Условия, чтобы продолжить."
+    "consentRequired": "Примите Политику конфиденциальности и Условия, чтобы продолжить.",
+    "passwordHint": "Минимум 10 символов"
   },
   "authErrors": {
     "invalidCredentials": "Неверный номер или пароль",
@@ -69,7 +70,12 @@
     "registerSubtitle": "Создайте аккаунт, чтобы начать",
     "haveAccount": "Уже есть аккаунт? Войти",
     "noAccount": "Нет аккаунта? Зарегистрируйтесь",
-    "registerTitle": "Регистрация"
+    "registerTitle": "Регистрация",
+    "password": "Пароль",
+    "confirmPassword": "Подтвердите пароль",
+    "createAccount": "Создать аккаунт",
+    "forgotPassword": "Забыли пароль?",
+    "togglePassword": "Показать или скрыть пароль"
   },
   "onboarding": {
     "step1": "Информация о бизнесе",
@@ -96,7 +102,8 @@
     "previewBusinessPlaceholder": "Ваш бизнес",
     "previewNoServices": "Услуги появятся здесь",
     "previewNoHours": "Рабочие часы ещё не заданы",
-    "finishServiceFirst": "Сначала добавьте или очистите заполняемую услугу."
+    "finishServiceFirst": "Сначала добавьте или очистите заполняемую услугу.",
+    "applyToAllDays": "Применить ко всем дням"
   },
   "booking": {
     "title": "Онлайн запись",
@@ -223,7 +230,10 @@
     "eraseDone": "Данные клиента удалены",
     "yourBookingLink": "Ваша ссылка для записи",
     "embedCode": "Код для встраивания на сайт",
-    "embedProOnly": "Встройте виджет записи на свой сайт — доступно в тарифе Pro."
+    "embedProOnly": "Встройте виджет записи на свой сайт — доступно в тарифе Pro.",
+    "noBookingsYetTitle": "Записей пока нет",
+    "noBookingsYetCaption": "Поделитесь ссылкой на запись выше — новые записи появятся здесь.",
+    "noBookingsFound": "Записи не найдены"
   },
   "notifications": {
     "title": "Уведомления",
@@ -326,7 +336,13 @@
     "groupBusiness": "Бизнес",
     "groupBookingPage": "Страница записи",
     "groupBilling": "Оплата",
-    "groupAccount": "Аккаунт"
+    "groupAccount": "Аккаунт",
+    "loginInfo": "Данные входа",
+    "loggedInAs": "Вы вошли с номером",
+    "changePassword": "Сменить пароль",
+    "newPassword": "Новый пароль",
+    "passwordChanged": "Пароль изменён",
+    "passwordChangeFailed": "Не удалось сменить пароль — попробуйте снова."
   },
   "days": {
     "monday": "Понедельник",
@@ -358,7 +374,8 @@
     "apptsCount_one": "{{count}} запись",
     "apptsCount_few": "{{count}} записи",
     "apptsCount_many": "{{count}} записей",
-    "apptsCount_other": "{{count}} записи"
+    "apptsCount_other": "{{count}} записи",
+    "addAppointment": "Добавить запись"
   },
   "tiers": {
     "free": {

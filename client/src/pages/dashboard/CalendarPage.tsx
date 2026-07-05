@@ -5,6 +5,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Select, MenuItem, FormControl, InputLabel, TextField,
 } from '@mui/material'
+import { Add as AddIcon } from '@/components/icons'
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { ArrowForwardIos as ArrowForwardIosIcon } from '@/components/icons'
 import { Today as TodayIcon } from '@/components/icons'
@@ -18,6 +19,7 @@ import { useBreakpoints } from '@/hooks/useBreakpoints'
 import { anim } from '@/theme/animations'
 import { StatusChip, ConfirmDialog, LoadingState } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
+import AddAppointmentDialog from './AddAppointmentDialog'
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -232,7 +234,12 @@ export default function CalendarPage() {
   // the first visible day and prev/next page by however many days are shown.
   const dayCount = isMobile ? 3 : 7
 
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
+  // Desktop opens on the current week; mobile's 3-day window opens on *today*
+  // (starting at the week's Monday would hide today behind two taps — the
+  // "today" button below already used this split, the initial state didn't).
+  const [weekStart, setWeekStart] = useState(() =>
+    isMobile ? startOfDay(new Date()) : startOfWeek(new Date(), { weekStartsOn: 1 }),
+  )
   const [restToRemove, setRestToRemove] = useState<{ dateKey: string; idx: number } | null>(null)
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
@@ -276,6 +283,7 @@ export default function CalendarPage() {
   }, [appointments])
 
   // Rest period dialog
+  const [addOpen, setAddOpen] = useState(false)
   const [restDialog, setRestDialog] = useState(false)
   const [restDate, setRestDate] = useState('')
   const [restStart, setRestStart] = useState('13:00')
@@ -490,6 +498,24 @@ export default function CalendarPage() {
 
   const weekLabel = `${format(weekStart, 'd MMM', { locale: dateLocale() })} – ${format(addDays(weekStart, dayCount - 1), 'd MMM yyyy', { locale: dateLocale() })}`
 
+  // True when [hour, hour+1) lies fully outside the day's working ranges, so
+  // closed time can be shaded and the open schedule reads at a glance. An
+  // hour that's even partially open stays unshaded (pills already show detail).
+  function isHourClosed(day: Date, hour: number): boolean {
+    if (!template) return false
+    const ov = overrides[format(day, 'yyyy-MM-dd')]
+    if (ov?.is_closed) return true
+    const dayCfg = template[DAY_KEYS[day.getDay()]]
+    const ranges = ov?.ranges ?? (dayCfg?.open ? dayCfg.ranges : [])
+    const hStart = hour * 60
+    const hEnd = hStart + 60
+    return !ranges.some(r => {
+      const [sh, sm] = r.start.split(':').map(Number)
+      const [eh, em] = r.end.split(':').map(Number)
+      return sh * 60 + sm < hEnd && eh * 60 + em > hStart
+    })
+  }
+
   return (
     <Box>
       {/* Header */}
@@ -497,6 +523,16 @@ export default function CalendarPage() {
         <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>
           {t('dashboard.calendar')}
         </Typography>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={() => setAddOpen(true)}
+          sx={{ borderRadius: 2 }}
+          data-testid="cal-add-btn"
+        >
+          {t('calendar.addAppointment')}
+        </Button>
         <Button
           variant="outlined"
           size="small"
@@ -609,6 +645,7 @@ export default function CalendarPage() {
               {days.map((day, di) => {
                 const slotGroups = getGroupsForSlot(day, hour)
                 const slotRests = getRestsForSlot(day, hour)
+                const closed = isHourClosed(day, hour)
 
                 return (
                   <Box
@@ -621,6 +658,13 @@ export default function CalendarPage() {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: 0.5,
+                      // Closed time is hatched grey so gaps in the working
+                      // schedule are visible without opening settings.
+                      ...(closed && {
+                        bgcolor: 'grey.50',
+                        backgroundImage:
+                          'repeating-linear-gradient(-45deg, transparent, transparent 5px, rgba(30,36,51,0.03) 5px, rgba(30,36,51,0.03) 10px)',
+                      }),
                     }}
                   >
                     {/* Appointment pills — absolutely positioned so their height
@@ -951,6 +995,16 @@ export default function CalendarPage() {
           setRestToRemove(null)
         }}
       />
+
+      {/* Manual appointment entry, same dialog as the overview — admins log
+          phone bookings from wherever they're looking at the schedule. */}
+      {addOpen && org && (
+        <AddAppointmentDialog
+          orgId={org.id}
+          onClose={() => setAddOpen(false)}
+          onCreated={loadWeek}
+        />
+      )}
     </Box>
   )
 }

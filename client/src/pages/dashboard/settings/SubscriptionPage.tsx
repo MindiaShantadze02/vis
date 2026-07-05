@@ -5,6 +5,8 @@ import {
 } from '@mui/material'
 import { Check as CheckIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
+import { format } from 'date-fns'
+import { dateLocale } from '@/lib/dateLocale'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader } from '@/components/ui'
@@ -12,7 +14,7 @@ import { LAYOUT } from '@/theme/theme'
 import { TIERS, type Tier } from '@/lib/tiers'
 
 export default function SubscriptionPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { org } = useOrg()
 
   const [used, setUsed] = useState<number | null>(null)
@@ -86,7 +88,8 @@ export default function SubscriptionPage() {
               </Box>
               {expires && (
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  {t('subscription.expiresOn', { date: new Date(expires).toLocaleDateString(i18n.language) })}
+                  {/* Spelled-out month — "05/08/2026" is ambiguous (DD/MM vs MM/DD). */}
+                  {t('subscription.expiresOn', { date: format(new Date(expires), 'd MMMM yyyy', { locale: dateLocale() }) })}
                 </Typography>
               )}
             </Box>
@@ -123,7 +126,7 @@ export default function SubscriptionPage() {
             )}
             {periodEnd && (
               <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
-                {t('subscription.renews', { date: new Date(periodEnd).toLocaleDateString(i18n.language) })}
+                {t('subscription.renews', { date: format(new Date(periodEnd), 'd MMMM yyyy', { locale: dateLocale() }) })}
               </Typography>
             )}
             {nearLimit && limit && used !== null && used < limit && (

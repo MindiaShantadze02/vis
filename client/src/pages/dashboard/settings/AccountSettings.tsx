@@ -8,18 +8,42 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { displayGeorgianPhone } from '@/lib/validation'
 import { PageHeader, useToast } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
 
 /**
- * Account settings — the danger zone (delete account / organisation). Kept in its
- * own destructive-actions area, separate from business/booking settings.
+ * Account settings — who you're signed in as, password change, and the danger
+ * zone (delete account / organisation) kept last as its own destructive area.
  */
 export default function AccountSettings() {
   const { t } = useTranslation()
   const { org } = useOrg()
+  const { user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
+
+  // Change password — no "current password" field: the user is already
+  // authenticated, and Supabase updateUser only needs the session.
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
+
+  const passwordTooShort = newPassword.length > 0 && newPassword.length < 10
+  const passwordMismatch = confirmNewPassword.length > 0 && newPassword !== confirmNewPassword
+  const canChangePassword =
+    newPassword.length >= 10 && newPassword === confirmNewPassword && !changingPassword
+
+  async function handleChangePassword() {
+    setChangingPassword(true)
+    const { error: err } = await supabase.auth.updateUser({ password: newPassword })
+    setChangingPassword(false)
+    if (err) { toast.error(t('settings.passwordChangeFailed')); return }
+    setNewPassword('')
+    setConfirmNewPassword('')
+    toast.success(t('settings.passwordChanged'))
+  }
 
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [soleMember, setSoleMember] = useState(false)
@@ -63,6 +87,57 @@ export default function AccountSettings() {
   return (
     <Box sx={{ maxWidth: LAYOUT.formPage }}>
       <PageHeader title={t('settings.account')} />
+
+      {/* Who you're signed in as — the page previously held only the danger
+          zone, with no way to see your login phone or change the password. */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+            {t('settings.loginInfo')}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            {t('settings.loggedInAs')}{' '}
+            <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+              {displayGeorgianPhone(user?.phone)}
+            </Box>
+          </Typography>
+
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
+            {t('settings.changePassword')}
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5, mb: 1.5 }}>
+            <TextField
+              size="small"
+              type="password"
+              label={t('settings.newPassword')}
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              error={passwordTooShort}
+              helperText={passwordTooShort ? t('validation.passwordTooShortReset') : t('validation.passwordHint')}
+              slotProps={{ htmlInput: { 'data-testid': 'account-new-password' } }}
+            />
+            <TextField
+              size="small"
+              type="password"
+              label={t('auth.confirmPassword')}
+              value={confirmNewPassword}
+              onChange={e => setConfirmNewPassword(e.target.value)}
+              error={passwordMismatch}
+              helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
+              slotProps={{ htmlInput: { 'data-testid': 'account-confirm-password' } }}
+            />
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleChangePassword}
+            disabled={!canChangePassword}
+            data-testid="account-change-password"
+          >
+            {changingPassword ? <CircularProgress size={18} color="inherit" /> : t('settings.changePassword')}
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card sx={{ borderColor: 'error.light' }}>
         <CardContent sx={{ p: 3 }}>

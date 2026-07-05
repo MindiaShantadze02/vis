@@ -417,7 +417,15 @@ export default function OverviewPage() {
             </Box>
           ))
           : appointments.length === 0
-          ? <EmptyState icon={<EventBusyOutlinedIcon />} title="ჯავშნები ვერ მოიძებნა" />
+          // A fresh org with no bookings at all gets a welcoming "share your
+          // link" nudge; "not found" is reserved for filtered/searched views.
+          ? (statusFilter === 'all' && !debouncedSearch && !dateFrom && !dateTo
+            ? <EmptyState
+                icon={<EventBusyOutlinedIcon />}
+                title={t('dashboard.noBookingsYetTitle')}
+                caption={t('dashboard.noBookingsYetCaption')}
+              />
+            : <EmptyState icon={<EventBusyOutlinedIcon />} title={t('dashboard.noBookingsFound')} />)
           : appointments.map((appt, i) => {
             const rowProps = {
               'data-testid': 'appt-row',

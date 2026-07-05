@@ -49,7 +49,8 @@
     "invalidImage": "Please choose an image file (PNG, JPG, GIF)",
     "requiredWhenEnabled": "Required when this method is enabled",
     "loadFailed": "Failed to load.",
-    "consentRequired": "Please accept the Privacy Policy and Terms to continue."
+    "consentRequired": "Please accept the Privacy Policy and Terms to continue.",
+    "passwordHint": "At least 10 characters"
   },
   "authErrors": {
     "invalidCredentials": "Incorrect phone number or password",
@@ -69,7 +70,12 @@
     "registerSubtitle": "Create your account to get started",
     "haveAccount": "Already have an account? Sign in",
     "noAccount": "No account? Register",
-    "registerTitle": "Register"
+    "registerTitle": "Register",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "createAccount": "Create account",
+    "forgotPassword": "Forgot password?",
+    "togglePassword": "Show or hide password"
   },
   "onboarding": {
     "step1": "Business info",
@@ -96,7 +102,8 @@
     "previewBusinessPlaceholder": "Your business",
     "previewNoServices": "Services will appear here",
     "previewNoHours": "Working hours not set yet",
-    "finishServiceFirst": "Please add or clear the service you're entering first."
+    "finishServiceFirst": "Please add or clear the service you're entering first.",
+    "applyToAllDays": "Apply to all days"
   },
   "booking": {
     "title": "Online Booking",
@@ -223,7 +230,10 @@
     "eraseDone": "Client data erased",
     "yourBookingLink": "Your booking link",
     "embedCode": "Website embed code",
-    "embedProOnly": "Embed the booking widget on your own website — available on the Pro plan."
+    "embedProOnly": "Embed the booking widget on your own website — available on the Pro plan.",
+    "noBookingsYetTitle": "No bookings yet",
+    "noBookingsYetCaption": "Share your booking link above — new bookings will appear here.",
+    "noBookingsFound": "No bookings found"
   },
   "notifications": {
     "title": "Notifications",
@@ -326,7 +336,13 @@
     "groupBusiness": "Business",
     "groupBookingPage": "Booking page",
     "groupBilling": "Billing",
-    "groupAccount": "Account"
+    "groupAccount": "Account",
+    "loginInfo": "Sign-in details",
+    "loggedInAs": "You are signed in with",
+    "changePassword": "Change password",
+    "newPassword": "New password",
+    "passwordChanged": "Password changed",
+    "passwordChangeFailed": "Couldn't change the password — please try again."
   },
   "days": {
     "monday": "Monday",
@@ -356,7 +372,8 @@
     "nameOptional": "Name (optional)",
     "restPlaceholder": "e.g. Lunch, break",
     "apptsCount_one": "{{count}} appointment",
-    "apptsCount_other": "{{count}} appointments"
+    "apptsCount_other": "{{count}} appointments",
+    "addAppointment": "Add appointment"
   },
   "tiers": {
     "free": {

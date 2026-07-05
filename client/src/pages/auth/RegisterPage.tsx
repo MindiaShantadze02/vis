@@ -2,15 +2,18 @@ import { useState, useEffect, useRef } from 'react'
 import {
   Box, Card, CardContent, TextField, Button,
   Typography, CircularProgress, Alert, Link as MuiLink,
-  Checkbox, FormControlLabel,
+  Checkbox, FormControlLabel, IconButton, InputAdornment,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
+import { VisibilityOutlined as VisibilityIcon } from '@/components/icons'
+import { VisibilityOffOutlined as VisibilityOffIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
 import { LAYOUT } from '@/theme/theme'
+import { LanguageSwitcher } from '@/components/ui'
 
 // Shared dark-hero shell so /register matches /login.
 function AuthShell({ children }: { children: React.ReactNode }) {
@@ -19,8 +22,13 @@ function AuthShell({ children }: { children: React.ReactNode }) {
       sx={{
         minHeight: '100vh', display: 'flex', alignItems: 'center',
         justifyContent: 'center', background: '#1E2433', p: 2,
+        position: 'relative',
       }}
     >
+      {/* Same escape hatch as /login — don't gate non-Georgian speakers. */}
+      <Box sx={{ position: 'absolute', top: 12, right: 16, '& .MuiButton-root': { color: 'rgba(255,255,255,0.85)' } }}>
+        <LanguageSwitcher />
+      </Box>
       <Card
         sx={{
           width: '100%', maxWidth: LAYOUT.narrowCard, borderRadius: 4,
@@ -52,6 +60,7 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [consent, setConsent] = useState(false)
   const [consentError, setConsentError] = useState(false)
   // Bumped on each blocked submit so the hint re-animates (re-flashes) every time.
@@ -129,20 +138,38 @@ export default function RegisterPage() {
 
       <TextField
         fullWidth required
-        label="პაროლი"
-        type="password"
+        label={t('auth.password')}
+        type={showPassword ? 'text' : 'password'}
         value={password}
         onChange={e => setPassword(e.target.value)}
         error={passwordTooShort}
-        helperText={passwordTooShort ? t('validation.passwordTooShortReset') : ' '}
+        // The min-length requirement is stated up front, not first revealed by
+        // a rejection after the user has already picked a password.
+        helperText={passwordTooShort ? t('validation.passwordTooShortReset') : t('validation.passwordHint')}
         sx={{ mb: 1 }}
-        slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' } }}
+        slotProps={{
+          htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' },
+          input: {
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  aria-label={t('auth.togglePassword')}
+                  onClick={() => setShowPassword(s => !s)}
+                  edge="end"
+                  size="small"
+                >
+                  {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          },
+        }}
       />
 
       <TextField
         fullWidth required
-        label="პაროლის დადასტურება"
-        type="password"
+        label={t('auth.confirmPassword')}
+        type={showPassword ? 'text' : 'password'}
         value={confirmPassword}
         onChange={e => setConfirmPassword(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && credsValid && handleSignUp()}
@@ -201,7 +228,7 @@ export default function RegisterPage() {
         disabled={loading || !credsValid}
         data-testid="login-submit"
       >
-        {loading ? <CircularProgress size={20} color="inherit" /> : 'ანგარიშის შექმნა'}
+        {loading ? <CircularProgress size={20} color="inherit" /> : t('auth.createAccount')}
       </Button>
 
       <Box sx={{ mt: 2, textAlign: 'center' }}>

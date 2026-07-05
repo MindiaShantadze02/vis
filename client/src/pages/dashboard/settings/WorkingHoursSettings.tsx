@@ -6,6 +6,7 @@ import {
   Chip,
 } from '@mui/material'
 import { Add as AddIcon } from '@/components/icons'
+import { ContentCopyOutlined as ContentCopyOutlinedIcon } from '@/components/icons'
 import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
 import { Close as CloseIcon } from '@/components/icons'
 import { WorkOutlineOutlined as WorkOutlineOutlinedIcon } from '@/components/icons'
@@ -143,6 +144,21 @@ export default function WorkingHoursSettings() {
           breaks: s.breaks.map((b, i) => i === idx ? { ...b, [field]: clamped } : b),
         },
       }
+    })
+  }
+
+  // Copy this day's window + breaks to every other *open* day — hours are
+  // usually uniform, so one edit shouldn't have to be repeated five times.
+  function applyToAllOpenDays(source: keyof WeekTemplate) {
+    setTemplate(prev => {
+      const src = prev[source]
+      const next = { ...prev }
+      for (const d of Object.keys(next) as (keyof WeekTemplate)[]) {
+        if (d !== source && next[d].open) {
+          next[d] = { ...next[d], openTime: src.openTime, closeTime: src.closeTime, breaks: src.breaks.map(b => ({ ...b })) }
+        }
+      }
+      return next
     })
   }
 
@@ -347,6 +363,15 @@ export default function WorkingHoursSettings() {
                         sx={{ color: 'text.secondary', fontSize: 12 }}
                       >
                         {t('settings.addBreak')}
+                      </Button>
+                      <Button
+                        size="small"
+                        startIcon={<ContentCopyOutlinedIcon sx={{ fontSize: 14 }} />}
+                        onClick={() => applyToAllOpenDays(day)}
+                        sx={{ color: 'text.secondary', fontSize: 12, ml: 1 }}
+                        data-testid={`hours-apply-all-${day}`}
+                      >
+                        {t('onboarding.applyToAllDays')}
                       </Button>
                     </Box>
                   )}

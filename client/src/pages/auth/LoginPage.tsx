@@ -2,14 +2,18 @@ import { useState } from 'react'
 import {
   Box, Card, CardContent, TextField, Button,
   Typography, CircularProgress, Alert, Link as MuiLink, Stack,
+  IconButton, InputAdornment,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { VisibilityOutlined as VisibilityIcon } from '@/components/icons'
+import { VisibilityOffOutlined as VisibilityOffIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
 import { LAYOUT } from '@/theme/theme'
+import { LanguageSwitcher } from '@/components/ui'
 
 // Sign-in only. Registration lives on /register (see RegisterPage).
 export default function LoginPage() {
@@ -17,6 +21,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,8 +46,14 @@ export default function LoginPage() {
         justifyContent: 'center',
         background: '#1E2433',
         p: 2,
+        position: 'relative',
       }}
     >
+      {/* Auth pages had no language switcher — Russian/English-speaking owners
+          hit a Georgian-only wall before ever reaching the dashboard. */}
+      <Box sx={{ position: 'absolute', top: 12, right: 16, '& .MuiButton-root': { color: 'rgba(255,255,255,0.85)' } }}>
+        <LanguageSwitcher />
+      </Box>
       <Card
         sx={{
           width: '100%',
@@ -95,13 +106,29 @@ export default function LoginPage() {
           <TextField
             fullWidth
             required
-            label="პაროლი"
-            type="password"
+            label={t('auth.password')}
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && canSignIn && handleSignIn()}
             sx={{ mb: 2 }}
-            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' } }}
+            slotProps={{
+              htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' },
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={t('auth.togglePassword')}
+                      onClick={() => setShowPassword(s => !s)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
 
           <Button
@@ -112,7 +139,7 @@ export default function LoginPage() {
             disabled={loading || !canSignIn}
             data-testid="login-submit"
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'შესვლა'}
+            {loading ? <CircularProgress size={20} color="inherit" /> : t('auth.login')}
           </Button>
 
           <Stack spacing={1.25} sx={{ mt: 2, textAlign: 'center' }}>
@@ -124,7 +151,7 @@ export default function LoginPage() {
               sx={{ fontSize: '0.875rem', color: 'text.secondary' }}
               data-testid="login-forgot-password"
             >
-              პაროლი დაგავიწყდათ?
+              {t('auth.forgotPassword')}
             </MuiLink>
             <MuiLink
               component="button"
