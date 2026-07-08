@@ -13,7 +13,10 @@ import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/valida
 import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
 import AuthShell from './AuthShell'
+import OtpStep from './OtpStep'
 
+// Flow: credentials + consent → phone OTP (request-booking-otp / verify-booking-otp)
+// → signUp. The OTP proves the phone belongs to whoever is creating the account.
 export default function RegisterPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -28,6 +31,7 @@ export default function RegisterPage() {
   const [consentNudge, setConsentNudge] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [phase, setPhase] = useState<'form' | 'otp'>('form')
 
   // Auto-clear the consent highlight after a few seconds so it can trigger again
   // rather than staying red forever.
@@ -41,29 +45,6 @@ export default function RegisterPage() {
     consentTimer.current = setTimeout(() => setConsentError(false), 4000)
   }
 
-  async function handleSignUp() {
-    // Consent is required — surface it explicitly rather than silently disabling
-    // the button, which leaves users stuck without knowing why.
-    if (!consent) { flagConsent(); return }
-    if (password.length < 10) { setError(t('validation.passwordTooShortReset')); return }
-    if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
-    setError(null)
-    setLoading(true)
-    // Phone confirmation is disabled (sms_autoconfirm) so a successful sign-up
-    // returns a live session.
-    const { data, error: err } = await supabase.auth.signUp({
-      phone: toE164Georgian(phone),
-      password,
-    })
-    setLoading(false)
-    if (err) { setError(t(mapAuthError(err))); return }
-    // Supabase returns an empty `identities` array when the phone is already
-    // registered (no error, to avoid leaking account existence).
-    if (data.user && data.user.identities?.length === 0) {
-      setError(t('authErrors.phoneTaken')); return
-    }
-  }
-
   const phoneValid = isValidGeorgianPhone(phone)
   const phoneInvalid = phone.trim().length > 0 && !phoneValid
   const passwordTooShort = password.length > 0 && password.length < 10
@@ -71,6 +52,82 @@ export default function RegisterPage() {
   // Enabled once the credentials are valid; consent is checked on submit (with a
   // visible message) so the button never blocks for a hidden reason.
   const credsValid = phoneValid && password.length >= 10 && confirmPassword.length >= 10 && !passwordMismatch
+
+  // Step 1: validate creds + consent, then text a verification code and switch
+  // to the code-entry view. The account is only created after the code checks out.
+  async function startSignUp() {
+    // Consent is required — surface it explicitly rather than silently disabling
+    // the button, which leaves users stuck without knowing why.
+    if (!consent) { flagConsent(); return }
+    if (password.length < 10) { setError(t('validation.passwordTooShortReset')); return }
+    if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
+    setError(null)
+    setLoading(true)
+    const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
+      body: { phone },
+    })
+    setLoading(false)
+    // 'too_soon' = a still-valid code was just sent; proceed to entry anyway.
+    if (fnErr || (!data?.ok && data?.error !== 'too_soon')) {
+      setError(t('auth.otpSendFailed'))
+      return
+    }
+    setPhase('otp')
+  }
+
+  // Step 2: verify the code, then create the account.
+  async function submitOtp(code: string) {
+    setLoading(true)
+    setError(null)
+    const { data, error: fnErr } = await supabase.functions.invoke('verify-booking-otp', {
+      body: { phone, code },
+    })
+    if (fnErr || !data?.verified) {
+      setLoading(false)
+      setError(data?.error === 'wrong_code'
+        ? t('auth.otpWrong', { remaining: data?.remaining ?? 0 })
+        : t('auth.otpExpired'))
+      return
+    }
+    // Phone confirmation is disabled (sms_autoconfirm) so a successful sign-up
+    // returns a live session.
+    const { data: signUpData, error: err } = await supabase.auth.signUp({
+      phone: toE164Georgian(phone),
+      password,
+    })
+    setLoading(false)
+    if (err) { setError(t(mapAuthError(err))); setPhase('form'); return }
+    // Supabase returns an empty `identities` array when the phone is already
+    // registered (no error, to avoid leaking account existence).
+    if (signUpData.user && signUpData.user.identities?.length === 0) {
+      setError(t('authErrors.phoneTaken'))
+      setPhase('form')
+      return
+    }
+    // Success: the AuthContext session listener redirects to onboarding.
+  }
+
+  async function resend() {
+    setError(null)
+    const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
+      body: { phone },
+    })
+    if (fnErr || (!data?.ok && data?.error !== 'too_soon')) setError(t('auth.otpSendFailed'))
+  }
+
+  if (phase === 'otp') {
+    return (
+      <AuthShell title={t('auth.otpTitle')} subtitle={t('auth.otpSubtitle', { phone })}>
+        <OtpStep
+          onSubmit={submitOtp}
+          onResend={resend}
+          onBack={() => { setPhase('form'); setError(null) }}
+          loading={loading}
+          error={error}
+        />
+      </AuthShell>
+    )
+  }
 
   return (
     <AuthShell title={t('auth.registerTitle')} subtitle={t('auth.registerSubtitle')}>
@@ -126,7 +183,7 @@ export default function RegisterPage() {
         type={showPassword ? 'text' : 'password'}
         value={confirmPassword}
         onChange={e => setConfirmPassword(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && credsValid && handleSignUp()}
+        onKeyDown={e => e.key === 'Enter' && credsValid && startSignUp()}
         error={passwordMismatch}
         helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
         sx={{ mb: 2 }}
@@ -178,7 +235,7 @@ export default function RegisterPage() {
 
       <Button
         fullWidth variant="contained" size="large"
-        onClick={handleSignUp}
+        onClick={startSignUp}
         disabled={loading || !credsValid}
         data-testid="login-submit"
       >

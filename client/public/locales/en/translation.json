@@ -75,7 +75,16 @@
     "confirmPassword": "Confirm password",
     "createAccount": "Create account",
     "forgotPassword": "Forgot password?",
-    "togglePassword": "Show or hide password"
+    "togglePassword": "Show or hide password",
+    "otpTitle": "Verify your phone",
+    "otpSubtitle": "We sent a code to {{phone}}",
+    "otpLabel": "Verification code",
+    "otpResend": "Resend code",
+    "otpResendIn": "Resend in {{seconds}}s",
+    "otpWrong": "Wrong code. {{remaining}} attempts left.",
+    "otpExpired": "The code expired. Please request a new one.",
+    "otpSendFailed": "We couldn't send the code — please try again.",
+    "otpChangePhone": "← Change number"
   },
   "onboarding": {
     "step1": "Business info",

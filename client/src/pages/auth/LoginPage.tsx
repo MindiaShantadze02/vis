@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
   Box, TextField, Button,
   CircularProgress, Alert, Link as MuiLink, Stack,
@@ -12,8 +12,11 @@ import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
 import AuthShell from './AuthShell'
+import OtpStep from './OtpStep'
 
 // Sign-in only. Registration lives on /register (see RegisterPage).
+// Flow: credentials → phone OTP (request-booking-otp / verify-booking-otp) →
+// signInWithPassword. The OTP proves phone ownership before the session is issued.
 export default function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -22,18 +25,86 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  async function handleSignIn() {
-    setError(null)
-    setLoading(true)
-    const { error: err } = await supabase.auth.signInWithPassword({ phone: toE164Georgian(phone), password })
-    setLoading(false)
-    if (err) setError(t(mapAuthError(err)))
-  }
+  const [phase, setPhase] = useState<'form' | 'otp'>('form')
+  // Phone whose OTP we already verified this session, so a wrong-password retry
+  // doesn't re-request (and rate-limit) a fresh code.
+  const otpVerifiedFor = useRef<string | null>(null)
 
   const phoneValid = isValidGeorgianPhone(phone)
   const phoneInvalid = phone.trim().length > 0 && !phoneValid
   const canSignIn = phoneValid && password.length >= 6
+
+  async function signIn() {
+    setLoading(true)
+    setError(null)
+    const { error: err } = await supabase.auth.signInWithPassword({ phone: toE164Georgian(phone), password })
+    setLoading(false)
+    if (err) {
+      // Wrong password — send them back to the form to fix it. The OTP stays
+      // verified (otpVerifiedFor), so the retry won't request a new code.
+      setError(t(mapAuthError(err)))
+      setPhase('form')
+    }
+    // Success: the AuthContext session listener redirects to the dashboard.
+  }
+
+  async function startSignIn() {
+    if (!canSignIn) return
+    setError(null)
+    // Already verified this phone moments ago (e.g. a wrong-password retry) —
+    // go straight to sign-in without another code.
+    if (otpVerifiedFor.current === toE164Georgian(phone)) { await signIn(); return }
+    setLoading(true)
+    const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
+      body: { phone },
+    })
+    setLoading(false)
+    // 'too_soon' = a still-valid code was just sent; proceed to entry anyway.
+    if (fnErr || (!data?.ok && data?.error !== 'too_soon')) {
+      setError(t('auth.otpSendFailed'))
+      return
+    }
+    setPhase('otp')
+  }
+
+  async function submitOtp(code: string) {
+    setLoading(true)
+    setError(null)
+    const { data, error: fnErr } = await supabase.functions.invoke('verify-booking-otp', {
+      body: { phone, code },
+    })
+    if (fnErr || !data?.verified) {
+      setLoading(false)
+      setError(data?.error === 'wrong_code'
+        ? t('auth.otpWrong', { remaining: data?.remaining ?? 0 })
+        : t('auth.otpExpired'))
+      return
+    }
+    otpVerifiedFor.current = toE164Georgian(phone)
+    await signIn()
+  }
+
+  async function resend() {
+    setError(null)
+    const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
+      body: { phone },
+    })
+    if (fnErr || (!data?.ok && data?.error !== 'too_soon')) setError(t('auth.otpSendFailed'))
+  }
+
+  if (phase === 'otp') {
+    return (
+      <AuthShell title={t('auth.otpTitle')} subtitle={t('auth.otpSubtitle', { phone })}>
+        <OtpStep
+          onSubmit={submitOtp}
+          onResend={resend}
+          onBack={() => { setPhase('form'); setError(null) }}
+          loading={loading}
+          error={error}
+        />
+      </AuthShell>
+    )
+  }
 
   return (
     <AuthShell title={t('auth.login')}>
@@ -61,7 +132,7 @@ export default function LoginPage() {
         type={showPassword ? 'text' : 'password'}
         value={password}
         onChange={e => setPassword(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && canSignIn && handleSignIn()}
+        onKeyDown={e => e.key === 'Enter' && canSignIn && startSignIn()}
         sx={{ mb: 2 }}
         slotProps={{
           htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' },
@@ -86,7 +157,7 @@ export default function LoginPage() {
         fullWidth
         variant="contained"
         size="large"
-        onClick={handleSignIn}
+        onClick={startSignIn}
         disabled={loading || !canSignIn}
         data-testid="login-submit"
       >

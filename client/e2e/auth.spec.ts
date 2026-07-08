@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { login, register, uniquePhone, SEED } from './helpers'
+import { login, register, passAuthOtp, uniquePhone, SEED } from './helpers'
 
 test.describe('Authentication', () => {
   test('owner can log in and reach the dashboard', async ({ page }) => {
@@ -13,6 +13,9 @@ test.describe('Authentication', () => {
     await page.getByTestId('login-phone').fill(SEED.phone)
     await page.getByTestId('login-password').fill('definitely-wrong')
     await page.getByTestId('login-submit').click()
+    // Pass the OTP gate; the bad password is only rejected at sign-in, which
+    // sends us back to the form with an error.
+    await passAuthOtp(page)
     await expect(page.getByTestId('login-error')).toBeVisible()
     await expect(page).toHaveURL(/\/login/)
   })
@@ -24,7 +27,8 @@ test.describe('Authentication', () => {
   })
 
   test('a new phone signup lands on onboarding', async ({ page }) => {
-    // sms_autoconfirm: registration returns a live session with no OTP step.
+    // register() passes the phone-OTP gate (master code); sms_autoconfirm then
+    // returns a live session, landing on onboarding.
     await register(page, uniquePhone())
     await expect(page.getByRole('heading', { name: 'ბიზნესის ინფო' })).toBeVisible()
   })
@@ -36,6 +40,9 @@ test.describe('Authentication — edge cases', () => {
     await page.getByTestId('login-phone').fill('500000000')
     await page.getByTestId('login-password').fill('password123')
     await page.getByTestId('login-submit').click()
+    // OTP verifies (any phone can request a code); the unknown account is only
+    // rejected at sign-in.
+    await passAuthOtp(page)
     await expect(page.getByTestId('login-error')).toBeVisible()
   })
 
@@ -49,6 +56,8 @@ test.describe('Authentication — edge cases', () => {
     // Required consent to Privacy Policy + Terms (gates sign-up).
     await page.getByTestId('register-consent').locator('input').check()
     await page.getByTestId('login-submit').click()
+    // OTP verifies, then signUp reports the phone is already taken.
+    await passAuthOtp(page)
     await expect(page.getByTestId('login-error')).toBeVisible()
   })
 

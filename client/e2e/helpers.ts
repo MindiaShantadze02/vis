@@ -45,6 +45,8 @@ export async function login(page: Page, phone: string = SEED.phone, password: st
   await page.getByTestId('login-phone').fill(phone)
   await page.getByTestId('login-password').fill(password)
   await page.getByTestId('login-submit').click()
+  // Phone-OTP gate — the master code auto-verifies then signs in.
+  await passAuthOtp(page)
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 })
 }
 
@@ -57,7 +59,17 @@ export async function register(page: Page, phone: string, password = 'password12
   // Required consent to Privacy Policy + Terms (gates sign-up).
   await page.getByTestId('register-consent').locator('input').check()
   await page.getByTestId('login-submit').click()
+  // Phone-OTP gate — the master code auto-verifies then creates the account.
+  await passAuthOtp(page)
   await expect(page).toHaveURL(/\/onboarding\/business/, { timeout: 20_000 })
+}
+
+/**
+ * Complete the login/register phone-OTP step with the master code. Filling all
+ * six digits auto-submits (verify → sign in/up), so no Verify click here.
+ */
+export async function passAuthOtp(page: Page) {
+  await page.getByTestId('auth-otp-code').fill(BOOKING_OTP)
 }
 
 /** Complete the booking OTP step with the master code. */

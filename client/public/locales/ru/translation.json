@@ -75,7 +75,16 @@
     "confirmPassword": "Подтвердите пароль",
     "createAccount": "Создать аккаунт",
     "forgotPassword": "Забыли пароль?",
-    "togglePassword": "Показать или скрыть пароль"
+    "togglePassword": "Показать или скрыть пароль",
+    "otpTitle": "Подтвердите номер",
+    "otpSubtitle": "Мы отправили код подтверждения на {{phone}}",
+    "otpLabel": "Код подтверждения",
+    "otpResend": "Отправить код повторно",
+    "otpResendIn": "Повтор через {{seconds}} с",
+    "otpWrong": "Неверный код. Осталось попыток: {{remaining}}.",
+    "otpExpired": "Срок действия кода истёк. Запросите новый.",
+    "otpSendFailed": "Не удалось отправить код — попробуйте снова.",
+    "otpChangePhone": "← Изменить номер"
   },
   "onboarding": {
     "step1": "Информация о бизнесе",
