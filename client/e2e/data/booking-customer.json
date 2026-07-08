@@ -1,0 +1,31 @@
+{
+  "_doc": "Public booking Step-3 gating (Step3CustomerForm: canBook = firstName trimmed >= 2 && isValidPersonName(firstName) && lastName empty-or-valid && isValidGeorgianPhone(phone) && consent). Driven by e2e/data-driven/booking-customer.spec.ts. The spec reaches Step 3 once, then applies each case's full field set. 'valid' = book-submit enabled. Never submitted — the end-to-end booking lives in booking.spec.ts.",
+  "meta": { "firstNameMin": 2, "notesMax": 500 },
+  "base": { "firstName": "Nino", "lastName": "Beridze", "phone": "599112233", "consent": true },
+  "cases": [
+    { "id": "pairwise-all-valid", "technique": "pairwise", "fields": {}, "valid": true, "note": "base: valid names + phone + consent" },
+    { "id": "firstname-ecp-digit", "technique": "ECP", "fields": { "firstName": "Nino2" }, "valid": false, "note": "digit in first name (isValidPersonName)" },
+    { "id": "firstname-bva-1", "technique": "BVA", "fields": { "firstName": "N" }, "valid": false, "note": "1 char = minimum 2 − 1" },
+    { "id": "firstname-bva-2", "technique": "BVA", "fields": { "firstName": "Ni" }, "valid": true, "note": "2 chars = minimum boundary" },
+    { "id": "firstname-ecp-georgian", "technique": "ECP", "fields": { "firstName": "მარიამ" }, "valid": true, "note": "Georgian Unicode letters accepted (\\p{L})" },
+    { "id": "firstname-ecp-apostrophe-hyphen", "technique": "ECP", "fields": { "firstName": "Anne-Marie O'Brien" }, "valid": true, "note": "hyphen/apostrophe/space allowed in real names" },
+    { "id": "firstname-error-whitespace", "technique": "error-guessing", "fields": { "firstName": "   " }, "valid": false, "note": "whitespace-only name" },
+    { "id": "firstname-error-script", "technique": "error-guessing", "fields": { "firstName": "<script>" }, "valid": false, "note": "injection attempt rejected by the letters-only rule" },
+    { "id": "lastname-ecp-invalid", "technique": "pairwise", "fields": { "lastName": "Beridze9" }, "valid": false, "note": "valid first name × invalid last name" },
+    { "id": "lastname-ecp-empty", "technique": "pairwise", "fields": { "lastName": "" }, "valid": true, "note": "last name is optional" },
+    { "id": "phone-ecp-short", "technique": "pairwise", "fields": { "phone": "123" }, "valid": false, "note": "valid names × invalid phone" },
+    { "id": "phone-ecp-plus995-paste", "technique": "error-guessing", "fields": { "phone": "+995 599 11 22 33" }, "valid": true, "note": "full +995 paste is normalized and accepted" },
+    { "id": "consent-pairwise-off", "technique": "pairwise", "fields": { "consent": false }, "valid": false, "note": "everything valid × consent unticked" }
+  ],
+  "notesClampCase": { "id": "notes-bva-clamp-501", "technique": "BVA", "typeLength": 501, "expectLength": 500, "note": "typing 501 chars is clamped to FIELD_LIMITS.notes (500) by maxLength" },
+  "invariants": [
+    { "fn": "isValidPersonName", "input": "Nino2", "expect": false },
+    { "fn": "isValidPersonName", "input": "მარიამ", "expect": true },
+    { "fn": "isValidPersonName", "input": "Anne-Marie O'Brien", "expect": true },
+    { "fn": "isValidPersonName", "input": "   ", "expect": false },
+    { "fn": "isValidPersonName", "input": "<script>", "expect": false },
+    { "fn": "isValidPersonName", "input": "Beridze9", "expect": false },
+    { "fn": "isValidGeorgianPhone", "input": "+995 599 11 22 33", "expect": true },
+    { "fn": "isValidGeorgianPhone", "input": "123", "expect": false }
+  ]
+}

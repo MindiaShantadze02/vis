@@ -61,19 +61,9 @@ test.describe('Authentication — edge cases', () => {
     await expect(page.getByTestId('login-error')).toBeVisible()
   })
 
-  test('register submit is disabled on invalid phone or mismatched passwords', async ({ page }) => {
-    await page.goto('/register')
-    const submit = page.getByTestId('login-submit')
-
-    await page.getByTestId('login-phone').fill('123')            // invalid phone
-    await page.getByTestId('login-password').fill('password123')
-    await page.getByTestId('login-confirm-password').fill('password123')
-    await expect(submit).toBeDisabled()
-
-    await page.getByTestId('login-phone').fill('599123456')      // valid phone now
-    await page.getByTestId('login-confirm-password').fill('different')  // mismatch
-    await expect(submit).toBeDisabled()
-  })
+  // Login/register submit gating (phone + password partitions) is data-driven
+  // now — see e2e/data/auth-login.json, e2e/data/auth-register.json +
+  // e2e/data-driven/auth.spec.ts.
 
   test('unauthenticated access to a protected route redirects to login', async ({ page }) => {
     await page.goto('/dashboard/settings/services')
@@ -87,12 +77,11 @@ test.describe('Authentication — edge cases', () => {
     await expect(page).toHaveURL(/\/dashboard/)
   })
 
-  test('forgot-password: send is disabled until the phone is valid', async ({ page }) => {
+  test('the login page links to forgot-password', async ({ page }) => {
     await page.goto('/login')
     await page.getByTestId('login-forgot-password').click()
     await expect(page).toHaveURL(/\/forgot-password/)
-    await expect(page.getByTestId('forgot-send')).toBeDisabled()
-    await page.getByTestId('forgot-phone').fill('599123456')
-    await expect(page.getByTestId('forgot-send')).toBeEnabled()
+    // Send gating across phone partitions is data-driven — see
+    // e2e/data-driven/forgot-password.spec.ts.
   })
 })

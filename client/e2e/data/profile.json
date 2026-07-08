@@ -1,0 +1,20 @@
+{
+  "_doc": "Business-profile save gating (ProfileSettings: name >= 2 && valid contact phone) + logo upload validation (imageFileError: image mime, <= 2 MB). Driven by e2e/data-driven/profile.spec.ts. Save is never clicked with changed values; invalid logos are rejected before hitting storage. The exact-2MB ACCEPTED boundary is deliberately NOT exercised e2e (it would really upload to storage) — it is asserted logically in consistency.spec.ts via the imageInvariants below.",
+  "meta": { "nameMin": 2, "maxLogoBytes": 2097152 },
+  "gatingCases": [
+    { "id": "name-bva-1", "technique": "BVA", "fields": { "name": "A" }, "valid": false, "note": "1 char = minimum 2 − 1" },
+    { "id": "name-bva-2", "technique": "BVA", "fields": { "name": "Ab" }, "valid": true, "note": "2 chars = minimum boundary" },
+    { "id": "phone-ecp-empty", "technique": "ECP", "fields": { "name": "Valid Studio", "phone": "" }, "valid": false, "note": "contact phone is required" },
+    { "id": "phone-ecp-short", "technique": "ECP", "fields": { "name": "Valid Studio", "phone": "123" }, "valid": false, "note": "invalid contact phone" },
+    { "id": "phone-ecp-valid", "technique": "ECP", "fields": { "name": "Valid Studio", "phone": "555108509" }, "valid": true, "note": "valid name + valid phone" }
+  ],
+  "logoCases": [
+    { "id": "logo-bva-over-2mb", "technique": "BVA", "bytes": 2097153, "mime": "image/png", "filename": "big.png", "error": "ძალიან დიდია", "note": "2 MB + 1 byte — rejected before upload" },
+    { "id": "logo-ecp-non-image", "technique": "ECP", "bytes": 12, "mime": "text/plain", "filename": "notes.txt", "error": "სურათის ფაილი", "note": "non-image mime rejected" }
+  ],
+  "imageInvariants": [
+    { "id": "logo-bva-exactly-2mb", "bytes": 2097152, "mime": "image/png", "expect": null, "note": "exact boundary accepted (checked logically, not uploaded)" },
+    { "id": "logo-bva-over-2mb", "bytes": 2097153, "mime": "image/png", "expect": "fileTooLarge" },
+    { "id": "logo-ecp-non-image", "bytes": 12, "mime": "text/plain", "expect": "invalidImage" }
+  ]
+}

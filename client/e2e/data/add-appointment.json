@@ -1,0 +1,13 @@
+{
+  "_doc": "Dashboard add-appointment dialog field validation (AddAppointmentDialog: firstNameTooShort / firstNameInvalid / lastNameInvalid / phoneInvalid drive per-field error states; canSave additionally needs service + slot). The dialog's date picker has no testid, so this spec asserts per-field aria-invalid instead of driving a full create — real appointment creation is covered by the public-booking flows. Driven by e2e/data-driven/add-appointment.spec.ts.",
+  "meta": { "firstNameMin": 2 },
+  "fieldCases": [
+    { "id": "firstname-ecp-digit", "technique": "ECP", "field": "firstName", "value": "Ana2", "errorShown": true, "note": "letters-only violation flags the field" },
+    { "id": "firstname-bva-1", "technique": "BVA", "field": "firstName", "value": "A", "errorShown": true, "note": "1 char = minimum 2 − 1 (minLength helper)" },
+    { "id": "firstname-bva-2", "technique": "BVA", "field": "firstName", "value": "An", "errorShown": false, "note": "2 chars = minimum boundary, no error" },
+    { "id": "phone-ecp-short", "technique": "ECP", "field": "phone", "value": "123", "errorShown": true, "note": "invalid phone flags the field" },
+    { "id": "phone-ecp-valid", "technique": "ECP", "field": "phone", "value": "599112233", "errorShown": false, "note": "valid phone, no error" },
+    { "id": "phone-ecp-plus995", "technique": "ECP", "field": "phone", "value": "+995599112233", "errorShown": false, "note": "+995 paste accepted" }
+  ],
+  "alwaysDisabledNote": "add-appt-save stays disabled for every case above because no service/date/slot is selected — asserted once per case as a guard."
+}

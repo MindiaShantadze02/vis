@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { login, tag, fillStable } from './helpers'
+import { login, tag } from './helpers'
 
 test.describe('Settings — Services', () => {
   test.beforeEach(async ({ page }) => {
@@ -41,68 +41,6 @@ test.describe('Settings — Services', () => {
     await expect(page.getByText(renamed)).toHaveCount(0)
   })
 
-  test('save is disabled for an empty name or an out-of-range price', async ({ page }) => {
-    await page.getByTestId('service-add').click()
-    const save = page.getByTestId('service-save')
-    await expect(save).toBeDisabled()                       // empty name
-
-    await fillStable(page.getByTestId('service-name'), 'Valid Name')
-    await fillStable(page.getByTestId('service-duration'), '30')
-    await expect(save).toBeEnabled()
-
-    await fillStable(page.getByTestId('service-price'), '999999999')  // over MAX_PRICE
-    await expect(save).toBeDisabled()
-
-    await fillStable(page.getByTestId('service-duration'), '0')       // fix price, break duration
-    await fillStable(page.getByTestId('service-price'), '10')
-    await expect(save).toBeDisabled()
-    // Nothing submitted — no data created.
-  })
-
-  test('save gating: duration, capacity, price boundaries + online link (BVA + pairwise)', async ({ page }) => {
-    await page.getByTestId('service-add').click()
-    const save = page.getByTestId('service-save')
-    await fillStable(page.getByTestId('service-name'), 'Boundary Svc')
-    await fillStable(page.getByTestId('service-price'), '10')
-    await fillStable(page.getByTestId('service-max-per-slot'), '1')
-
-    // Duration BVA around (0, 1440].
-    await fillStable(page.getByTestId('service-duration'), '0')       // below lower bound
-    await expect(save).toBeDisabled()
-    await fillStable(page.getByTestId('service-duration'), '1')       // lower boundary
-    await expect(save).toBeEnabled()
-    await fillStable(page.getByTestId('service-duration'), '1440')    // upper boundary
-    await expect(save).toBeEnabled()
-    await fillStable(page.getByTestId('service-duration'), '1441')    // above upper bound
-    await expect(save).toBeDisabled()
-    await fillStable(page.getByTestId('service-duration'), '60')      // back to valid
-
-    // Capacity (max_per_slot) BVA around the ≥1 rule.
-    await fillStable(page.getByTestId('service-max-per-slot'), '0')
-    await expect(save).toBeDisabled()
-    await fillStable(page.getByTestId('service-max-per-slot'), '1')
-    await expect(save).toBeEnabled()
-
-    // Price BVA: 0 is allowed; just over MAX_PRICE is rejected.
-    await fillStable(page.getByTestId('service-price'), '0')
-    await expect(save).toBeEnabled()
-    await fillStable(page.getByTestId('service-price'), '100000000')  // > 99999999.99
-    await expect(save).toBeDisabled()
-    await fillStable(page.getByTestId('service-price'), '10')
-
-    // Pairwise: {online} × {meeting link empty / invalid / valid}.
-    await page.getByRole('button', { name: 'ონლაინ', exact: true }).click() // switch to online
-    // Meeting link field appears only for online services.
-    const meetingLink = page.locator('input[inputmode="url"]')
-    await expect(save).toBeDisabled()                                  // online + empty link
-    await fillStable(meetingLink, 'not-a-url')
-    await expect(save).toBeDisabled()                                  // online + invalid link
-    await fillStable(meetingLink, 'https://meet.example.com/room')
-    await expect(save).toBeEnabled()                                   // online + valid link
-
-    // Back to in-person → the meeting link no longer matters.
-    await page.getByRole('button', { name: 'ადგილზე', exact: true }).click()
-    await expect(save).toBeEnabled()
-    // Never saved — no data created.
-  })
+  // Save-gating boundaries (name/duration/price/capacity/online-link) are
+  // data-driven now — see e2e/data/services.json + e2e/data-driven/services.spec.ts.
 })

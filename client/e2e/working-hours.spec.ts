@@ -2,48 +2,16 @@ import { test, expect } from '@playwright/test'
 import { login } from './helpers'
 
 /**
- * Working-hours settings. Decision coverage of the save-time validation
- * (dayScheduleIssue → endBeforeStart) and Boundary Value Analysis of the
- * advance-booking window (1..730). The invalid cases return before any DB write,
- * so they don't mutate the seed. The override add/delete is a self-cleaning
- * state cycle.
+ * Working-hours settings — the self-cleaning override add/delete state cycle.
+ * Save-time validation (dayScheduleIssue decision table) and the
+ * advance-booking-window BVA are data-driven now — see
+ * e2e/data/working-hours.json + e2e/data-driven/working-hours.spec.ts.
  */
 test.describe('Settings — Working hours', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
     await page.goto('/dashboard/settings/hours')
     await expect(page.getByTestId('wh-save')).toBeVisible()
-  })
-
-  test('save is rejected when a day closes before it opens (endBeforeStart)', async ({ page }) => {
-    // Monday is open on the seed org, so its time fields are editable.
-    const open = page.getByTestId('wh-monday-open')
-    await expect(open).toBeVisible()
-    await open.fill('18:00')
-    await page.getByTestId('wh-monday-close').fill('09:00')
-
-    await page.getByTestId('wh-save').click()
-
-    // Validation blocks the save (nothing persisted) and surfaces the reason.
-    await expect(page.getByTestId('wh-error')).toBeVisible()
-    await expect(page.getByTestId('wh-error')).toContainText('დასრულების დრო')
-  })
-
-  test('advance-booking window rejects out-of-range values (BVA 0 and 731)', async ({ page }) => {
-    const max = page.getByTestId('wh-max-advance')
-
-    // Below the lower bound (0 < 1).
-    await max.fill('0')
-    await page.getByTestId('wh-save').click()
-    await expect(page.getByTestId('wh-error')).toBeVisible()
-    await expect(page.getByTestId('wh-error')).toContainText('1–730')
-
-    // Above the upper bound (731 > 730).
-    await max.fill('731')
-    await page.getByTestId('wh-save').click()
-    await expect(page.getByTestId('wh-error')).toBeVisible()
-    await expect(page.getByTestId('wh-error')).toContainText('1–730')
-    // Nothing was persisted — handleSave returns before the DB write on error.
   })
 
   test('add then delete a per-day override (self-clean state cycle)', async ({ page }) => {

@@ -1,0 +1,17 @@
+{
+  "_doc": "Register form gating (RegisterPage: credsValid = phoneValid && password >= 10 && confirm >= 10 && !mismatch). Consent does NOT gate the button — it is enforced on submit with a highlight (consent-error). Driven by e2e/data-driven/auth.spec.ts. 'valid' = login-submit enabled. No row creates an account.",
+  "meta": { "passwordMin": 10 },
+  "cases": [
+    { "id": "password-bva-9", "technique": "BVA", "target": "password", "fields": { "phone": "599123456", "password": "123456789", "confirm": "123456789" }, "valid": false, "note": "length 9 = register minimum 10 − 1" },
+    { "id": "password-bva-10", "technique": "BVA", "target": "password", "fields": { "phone": "599123456", "password": "1234567890", "confirm": "1234567890" }, "valid": true, "note": "length 10 = register minimum boundary" },
+    { "id": "password-ecp-mismatch", "technique": "ECP", "target": "confirm", "fields": { "phone": "599123456", "password": "1234567890", "confirm": "1234567899" }, "valid": false, "note": "both at boundary but mismatched" },
+    { "id": "phone-ecp-short", "technique": "ECP", "target": "phone", "fields": { "phone": "123", "password": "1234567890", "confirm": "1234567890" }, "valid": false, "note": "invalid phone with valid passwords" },
+    { "id": "phone-ecp-plus995", "technique": "ECP", "target": "phone", "fields": { "phone": "+995599123456", "password": "1234567890", "confirm": "1234567890" }, "valid": true, "note": "pasted +995 form accepted" }
+  ],
+  "consentCase": {
+    "id": "consent-enforced-on-submit",
+    "technique": "error-guessing",
+    "fields": { "phone": "599123456", "password": "1234567890", "confirm": "1234567890" },
+    "note": "with consent unchecked the button stays ENABLED, but clicking flags consent-error and never leaves /register (no OTP request is sent)"
+  }
+}
