@@ -1,47 +1,49 @@
 import { createTheme } from '@mui/material/styles'
 
-// ── Brand palette: "Ink & Clay" ──────────────────────────────
+// ── Brand palette: "Deep Harbor" ─────────────────────────────
 // The admin panel should feel calm, mature and precise — a clean near-white
-// surface, confident near-ink text, and a single MUTED warm accent used
-// sparingly (primary CTAs + active markers only). The louder citrus lives on
-// per-tenant booking pages (see bookingThemes.ts), not in the admin chrome.
+// surface with the whole chrome living in ONE dark blue family: blue-navy ink
+// for text and sidebars, and a dark Prussian/petrol accent (no bright SaaS
+// blue anywhere) used sparingly (primary CTAs + active markers only). The
+// louder colour lives on per-tenant booking pages (see bookingThemes.ts),
+// not in the admin chrome.
 
 export const INK = {
-  900: '#161B26',
-  800: '#181D29',
-  700: '#1E2433', // brand ink — text, headings, avatars
-  600: '#2A3242',
-  500: '#3A4253',
+  900: '#0D1626',
+  800: '#101B2D',
+  700: '#16233A', // brand ink — text, headings, avatars
+  600: '#21314D',
+  500: '#32435F',
 }
 
-// Muted terracotta — warm but restrained (was the neon citrus #FF6B35).
-// Applied only to primary buttons, the active-nav marker, focus rings and the
-// "on" switch/progress state.
+// Dark Prussian/petrol blue — deep and restrained (was the muted terracotta
+// #C15F3E). Applied only to primary buttons, the active-nav marker, focus
+// rings and the "on" switch/progress state.
 const ACCENT = {
-  light: '#D68C6E',
-  main:  '#C15F3E',
-  dark:  '#A44E30',
-  deep:  '#8F4227',
+  light: '#4E7FA4',
+  main:  '#1D5B84',
+  dark:  '#164A6D',
+  deep:  '#113A57',
 }
 
 export const HONEY = '#F6B042' // reserved accent — price/total on booking pages
 
 // rgb tuples for translucent tints/shadows
-const ACCENT_RGB = '193,95,62'
-const INK_RGB = '30,36,51'
+const ACCENT_RGB = '29,91,132'
+const INK_RGB = '22,35,58'
 
 // ── Shared design tokens ──────────────────────────────────────
 
 // A single neutral hairline for every border/divider — kills the old boxy
 // look of three near-identical ink alphas (0.07 / 0.08 / 0.10).
-export const HAIRLINE = '#E6E7EB'
+export const HAIRLINE = '#E3E7ED'
 
 export const elevation = {
-  card:      '0 1px 3px rgba(30,36,51,0.06), 0 1px 2px rgba(30,36,51,0.04)',
-  cardHover: `0 8px 24px rgba(${ACCENT_RGB},0.12), 0 2px 8px rgba(30,36,51,0.05)`,
+  card:      '0 1px 3px rgba(22,35,58,0.06), 0 1px 2px rgba(22,35,58,0.04)',
+  cardHover: `0 8px 24px rgba(${ACCENT_RGB},0.12), 0 2px 8px rgba(22,35,58,0.05)`,
   glow:      `0 4px 16px rgba(${ACCENT_RGB},0.28)`,
   glowSoft:  `0 4px 12px rgba(${ACCENT_RGB},0.16)`,
-  modal:     '0 24px 48px rgba(22,27,38,0.16), 0 0 0 1px rgba(30,36,51,0.06)',
+  modal:     '0 24px 48px rgba(13,22,38,0.16), 0 0 0 1px rgba(22,35,58,0.06)',
 }
 
 // One small radius scale so nested elements share a rhythm (was 2/3/4/5/8/10/
@@ -65,8 +67,8 @@ export const tint = {
 // Neutral surfaces — section/table headers, inset panels, row hovers. Cool and
 // clean to match the near-white page (was warm chalk).
 export const surface = {
-  header: '#F1F2F4', // section/table headers
-  subtle: '#F8F9FB', // inset summary panels
+  header: '#EFF2F6', // section/table headers
+  subtle: '#F7F9FB', // inset summary panels
   hover:  `rgba(${INK_RGB},0.035)`, // row hover
 }
 
@@ -89,11 +91,11 @@ const theme = createTheme({
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main:         '#F4EBE6', // pale clay tint — empty-state/selected surfaces
+      main:         '#E7EEF4', // pale ice-blue tint — empty-state/selected surfaces
       contrastText: ACCENT.deep,
     },
     background: {
-      default: '#F7F8FA', // clean neutral near-white
+      default: '#F6F8FA', // clean cool near-white
       paper:   '#FFFFFF',
     },
     // Status palette — muted, semantic (StatusChip: approved→success,
@@ -124,8 +126,8 @@ const theme = createTheme({
     },
     text: {
       primary:   INK[700],
-      secondary: '#5A6273', // slate
-      disabled:  '#9AA1AE',
+      secondary: '#54627A', // cool slate
+      disabled:  '#96A0B2',
     },
     divider: HAIRLINE,
   },
@@ -299,7 +301,7 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           borderRadius: 16,
-          boxShadow: '0 24px 48px rgba(22,27,38,0.16), 0 0 0 1px rgba(30,36,51,0.06)',
+          boxShadow: '0 24px 48px rgba(13,22,38,0.16), 0 0 0 1px rgba(22,35,58,0.06)',
         },
       },
     },
@@ -317,7 +319,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: radii.control,
-          backgroundColor: '#EFF1F4',
+          backgroundColor: '#ECF0F5',
           padding: '3px',
           minHeight: 40,
         },
@@ -340,7 +342,7 @@ const theme = createTheme({
           padding: '6px 16px',
           borderRadius: 8,
           zIndex: 1,
-          color: '#5A6273',
+          color: '#54627A',
           transition: 'color 0.15s ease',
           '&.Mui-selected': { color: INK[700], fontWeight: 600 },
         },
@@ -371,7 +373,7 @@ const theme = createTheme({
           boxSizing: 'border-box',
           width: 18,
           height: 18,
-          boxShadow: '0 1px 2px rgba(30,36,51,0.25)',
+          boxShadow: '0 1px 2px rgba(22,35,58,0.25)',
         },
         track: {
           borderRadius: 12,
