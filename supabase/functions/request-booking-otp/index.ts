@@ -1,11 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendSms, verificationCodeBody } from '../_shared/sms/index.ts'
-import { generateCode, hashCode, normalizeGeorgianPhone } from '../_shared/otp.ts'
+import { clientIp, generateCode, hashCode, normalizeGeorgianPhone } from '../_shared/otp.ts'
 
 // Step 1 of the guest-booking phone verification. Generates a one-time code,
 // stores its hash, and texts it to the customer (mock provider for now). The
 // code is never returned in the response. Public (verify_jwt=false) — anyone
-// can request a code for a phone they control; rate-limited per phone.
+// can request a code for a phone they control; rate-limited per phone (60s
+// cooldown) and by check_otp_rate_limit (per-IP burst/daily, per-phone daily,
+// global daily — SMS-pumping protection, migration 070).
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,13 +49,25 @@ Deno.serve(async (req) => {
       return Response.json({ ok: false, error: 'too_soon' }, { headers: corsHeaders })
     }
 
+    // Volume caps (per-IP, per-phone, global) — anti SMS-pumping. Fail closed:
+    // if the check itself errors we'd rather refuse a code than send unmetered.
+    const ip = clientIp(req)
+    const { data: limited, error: rlErr } = await supabase
+      .rpc('check_otp_rate_limit', { p_phone: local, p_ip: ip })
+    if (rlErr) {
+      return Response.json({ error: rlErr.message }, { status: 500, headers: corsHeaders })
+    }
+    if (limited) {
+      return Response.json({ ok: false, error: 'too_many_requests' }, { headers: corsHeaders })
+    }
+
     const code = generateCode()
     const code_hash = await hashCode(code, local, secret)
     const expires_at = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000).toISOString()
 
     const { error: insErr } = await supabase
       .from('booking_verifications')
-      .insert({ phone: local, code_hash, expires_at })
+      .insert({ phone: local, code_hash, expires_at, request_ip: ip })
     if (insErr) {
       return Response.json({ error: insErr.message }, { status: 500, headers: corsHeaders })
     }

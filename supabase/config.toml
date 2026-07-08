@@ -37,12 +37,6 @@ refresh_token_reuse_interval = 10
 enable_signup = true
 enable_confirmations = false
 
-[functions.get-available-slots]
-verify_jwt = false
-
-[functions.book-appointment]
-verify_jwt = false
-
 [functions.delete-account]
 verify_jwt = true
 

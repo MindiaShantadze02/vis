@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendSms, passwordResetCodeBody } from '../_shared/sms/index.ts'
-import { generateCode, hashCode, normalizeGeorgianPhone } from '../_shared/otp.ts'
+import { clientIp, generateCode, hashCode, normalizeGeorgianPhone } from '../_shared/otp.ts'
 
 // Step 1 of phone-OTP password recovery. Generates a one-time code, stores its
 // hash, and texts it to the user (mock provider for now). The code is never
@@ -57,13 +57,22 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true }, { headers: corsHeaders })
     }
 
+    // Volume caps (per-IP, per-phone, global) — anti SMS-pumping (migration
+    // 070). Neutral response either way: a limited caller learns nothing.
+    const ip = clientIp(req)
+    const { data: limited, error: rlErr } = await supabase
+      .rpc('check_otp_rate_limit', { p_phone: local, p_ip: ip })
+    if (rlErr || limited) {
+      return Response.json({ ok: true }, { headers: corsHeaders })
+    }
+
     const code = generateCode()
     const code_hash = await hashCode(code, local, secret)
     const expires_at = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000).toISOString()
 
     const { error: insErr } = await supabase
       .from('password_reset_verifications')
-      .insert({ phone: local, code_hash, expires_at })
+      .insert({ phone: local, code_hash, expires_at, request_ip: ip })
     if (insErr) {
       return Response.json({ error: insErr.message }, { status: 500, headers: corsHeaders })
     }

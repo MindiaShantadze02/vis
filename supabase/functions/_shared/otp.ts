@@ -1,10 +1,10 @@
-// Shared helpers for the booking phone-verification (OTP) flow, used by the
-// request-booking-otp and verify-booking-otp edge functions.
+// Shared helpers for the phone-verification (OTP) flows, used by the
+// request-booking-otp / verify-booking-otp and request-password-reset /
+// reset-password edge functions.
 
 // Normalise a user-entered phone to a bare 9-digit Georgian local number
 // (mobile starts with 5, landline with 3/4), matching how the rest of the app
 // stores numbers. Returns null if it isn't a valid Georgian number.
-// Mirrors the logic in book-appointment/index.ts.
 export function normalizeGeorgianPhone(input: unknown): string | null {
   const digits = String(input ?? '').replace(/\D/g, '')
   const local = digits.startsWith('995') ? digits.slice(3) : digits
@@ -24,4 +24,14 @@ export async function hashCode(code: string, phone: string, secret: string): Pro
 // A random 6-digit numeric code (zero-padded).
 export function generateCode(): string {
   return String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, '0')
+}
+
+// Caller IP for rate limiting: the first x-forwarded-for hop (set by the
+// Supabase edge gateway; the client can't spoof the first entry). Null when
+// absent — check_otp_rate_limit then skips the per-IP caps but still applies
+// the per-phone and global ones.
+export function clientIp(req: Request): string | null {
+  const fwd = req.headers.get('x-forwarded-for')
+  const first = fwd?.split(',')[0]?.trim()
+  return first || null
 }
