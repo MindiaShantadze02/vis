@@ -58,13 +58,27 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'mock_disabled' }, { status: 403, headers: corsHeaders })
       }
     } else {
-      // Real provider callback: shared-secret gate (signature verification would
-      // be added per provider here).
+      // Real provider callback: shared-secret gate.
+      // ⚠️ GO-LIVE: a static shared secret is NOT what BOG/TBC send — before real
+      // payments launch, replace this with per-provider cryptographic signature
+      // verification of the raw callback body (HMAC/RSA over the gateway payload).
       const expected = Deno.env.get('PAYMENT_WEBHOOK_SECRET')
       if (!expected || req.headers.get('x-payment-secret') !== expected) {
         return Response.json({ error: 'unauthorized' }, { status: 401, headers: corsHeaders })
       }
     }
+
+    // For a real gateway, never trust `outcome` alone: the callback must also
+    // carry the charged amount/currency, and they must match what we recorded
+    // when starting checkout. (Mock is dev-only and exempt.) Verified per-purpose
+    // below against the stored pending_bookings / subscription_payments amount.
+    const isRealProvider = provider !== 'mock'
+    const claimedAmount = body.amount != null ? Number(body.amount) : null
+    const claimedCurrency = typeof body.currency === 'string' ? body.currency : null
+    const amountMatches = (expected: number, currency: string): boolean =>
+      claimedAmount != null
+      && Math.abs(claimedAmount - Number(expected)) < 0.005
+      && (claimedCurrency == null || claimedCurrency === currency)
 
     // --- Apply side effects -------------------------------------------------
     if (purpose === 'appointment') {
@@ -91,6 +105,14 @@ Deno.serve(async (req) => {
         await admin.from('pending_bookings').update({ status: 'failed' }).eq('id', id)
         await finalizePaymentLog(admin, ref, 'failed')
         return Response.json({ ok: true, outcome: 'failed' }, { headers: corsHeaders })
+      }
+
+      // Real gateway must have charged exactly what we parked. A mismatch means a
+      // tampered/mis-routed callback — never fulfil it.
+      if (isRealProvider && !amountMatches(Number(pb.amount), pb.currency ?? 'GEL')) {
+        await admin.from('pending_bookings').update({ status: 'failed' }).eq('id', id)
+        await finalizePaymentLog(admin, ref, 'failed', 'amount_mismatch')
+        return Response.json({ error: 'amount_mismatch' }, { status: 422, headers: corsHeaders })
       }
 
       // Paid → create the real customer + appointment now. The appointment
@@ -153,7 +175,7 @@ Deno.serve(async (req) => {
     if (purpose === 'subscription') {
       const { data: sub } = await admin
         .from('subscription_payments')
-        .select('id, org_id, tier, status, period_end, payment_reference')
+        .select('id, org_id, tier, status, period_end, payment_reference, amount, currency')
         .eq('id', id)
         .maybeSingle()
       if (!sub || sub.payment_reference !== ref) {
@@ -161,6 +183,12 @@ Deno.serve(async (req) => {
       }
       if (sub.status === 'pending') {
         if (outcome === 'paid') {
+          // Real gateway must have charged the recorded tier price.
+          if (isRealProvider && !amountMatches(Number(sub.amount), sub.currency ?? 'GEL')) {
+            await admin.from('subscription_payments').update({ status: 'failed' }).eq('id', id)
+            await finalizePaymentLog(admin, ref, 'failed', 'amount_mismatch')
+            return Response.json({ error: 'amount_mismatch' }, { status: 422, headers: corsHeaders })
+          }
           await admin
             .from('subscription_payments')
             .update({ status: 'paid' })

@@ -44,6 +44,21 @@ Deno.serve(async (req) => {
       return Response.json({ ok: false, error: 'no_account' }, { headers: corsHeaders })
     }
 
+    // Reject once the phone has burned through its attempts across ALL recent,
+    // still-valid challenges. Counting a single row lets an attacker request a
+    // fresh code to reset the 5-guess budget, so sum failures over the live
+    // window (mirrors verify-booking-otp's hardening).
+    const { data: liveRows } = await supabase
+      .from('password_reset_verifications')
+      .select('attempts')
+      .eq('phone', local)
+      .is('consumed_at', null)
+      .gt('expires_at', new Date().toISOString())
+    const totalAttempts = (liveRows ?? []).reduce((sum, r) => sum + (r.attempts ?? 0), 0)
+    if (totalAttempts >= MAX_ATTEMPTS) {
+      return Response.json({ ok: false, error: 'too_many_attempts' }, { headers: corsHeaders })
+    }
+
     // Latest challenge for this phone that hasn't been used or expired.
     const { data: row } = await supabase
       .from('password_reset_verifications')
@@ -57,9 +72,6 @@ Deno.serve(async (req) => {
 
     if (!row) {
       return Response.json({ ok: false, error: 'expired' }, { headers: corsHeaders })
-    }
-    if (row.attempts >= MAX_ATTEMPTS) {
-      return Response.json({ ok: false, error: 'too_many_attempts' }, { headers: corsHeaders })
     }
 
     const matches = row.code_hash === (await hashCode(String(code), local, secret))
