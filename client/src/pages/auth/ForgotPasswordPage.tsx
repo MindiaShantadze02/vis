@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react'
 import {
-  Box, Card, CardContent, TextField, Button,
-  Typography, CircularProgress, Alert, Link as MuiLink,
+  Box, TextField, Button,
+  CircularProgress, Alert, Link as MuiLink,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
-import { anim } from '@/theme/animations'
-import { LAYOUT } from '@/theme/theme'
-import { LanguageSwitcher } from '@/components/ui'
+import AuthShell from './AuthShell'
 
 type Step = 'phone' | 'reset'
 
@@ -92,161 +90,124 @@ export default function ForgotPasswordPage() {
   const canReset = codeValid && password.length >= 10 && confirmPassword.length >= 10 && !passwordMismatch
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#1E2433',
-        p: 2,
-        position: 'relative',
-      }}
+    <AuthShell
+      title="პაროლის აღდგენა"
+      subtitle={step === 'phone'
+        ? 'შეიყვანეთ ტელეფონის ნომერი და გამოგიგზავნით კოდს.'
+        : 'შეიყვანეთ მიღებული კოდი და ახალი პაროლი.'}
     >
-      {/* Same language escape hatch as /login and /register. */}
-      <Box sx={{ position: 'absolute', top: 12, right: 16, '& .MuiButton-root': { color: 'rgba(255,255,255,0.85)' } }}>
-        <LanguageSwitcher />
-      </Box>
-      <Card
-        sx={{
-          width: '100%',
-          maxWidth: LAYOUT.narrowCard,
-          borderRadius: 4,
-          animation: anim.scaleIn,
-          background: 'rgba(255,255,255,0.97)',
-          backdropFilter: 'blur(20px)',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.20), 0 0 0 1px rgba(255,255,255,0.10)',
-          border: 'none',
-          '&:hover': { transform: 'none', boxShadow: '0 24px 64px rgba(0,0,0,0.20), 0 0 0 1px rgba(255,255,255,0.10)' },
-        }}
-      >
-        <CardContent sx={{ p: 4 }}>
-          <Typography
-            variant="h5"
-            sx={{ fontWeight: 800, color: 'primary.main', letterSpacing: '-0.5px', mb: 1, textAlign: 'center' }}
+      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="forgot-error">{error}</Alert>}
+
+      {step === 'phone' ? (
+        <>
+          <TextField
+            fullWidth
+            required
+            label={t('auth.phoneNumber')}
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && phoneValid && !loading && requestCode()}
+            error={phoneInvalid}
+            helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
+            placeholder="599 12 34 56"
+            autoFocus
+            slotProps={{ htmlInput: { inputMode: 'tel' as const, maxLength: FIELD_LIMITS.phone, 'data-testid': 'forgot-phone' } }}
+          />
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            onClick={requestCode}
+            disabled={loading || !phoneValid}
+            sx={{ mt: 1 }}
+            data-testid="forgot-send"
           >
-            პაროლის აღდგენა
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, textAlign: 'center' }}>
-            {step === 'phone'
-              ? 'შეიყვანეთ ტელეფონის ნომერი და გამოგიგზავნით კოდს.'
-              : 'შეიყვანეთ მიღებული კოდი და ახალი პაროლი.'}
-          </Typography>
+            {loading ? <CircularProgress size={20} color="inherit" /> : 'კოდის გაგზავნა'}
+          </Button>
+        </>
+      ) : (
+        <>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            თუ ამ ნომერზე ანგარიში არსებობს, კოდი გამოგზავნილია.
+          </Alert>
 
-          {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="forgot-error">{error}</Alert>}
+          <TextField
+            fullWidth
+            required
+            label="კოდი"
+            value={code}
+            onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+            placeholder="123456"
+            autoFocus
+            sx={{ mb: 1 }}
+            slotProps={{ htmlInput: { inputMode: 'numeric' as const, maxLength: 6, 'data-testid': 'forgot-code' } }}
+          />
 
-          {step === 'phone' ? (
-            <>
-              <TextField
-                fullWidth
-                required
-                label={t('auth.phoneNumber')}
-                type="tel"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && phoneValid && !loading && requestCode()}
-                error={phoneInvalid}
-                helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
-                placeholder="599 12 34 56"
-                autoFocus
-                slotProps={{ htmlInput: { inputMode: 'tel' as const, maxLength: FIELD_LIMITS.phone, 'data-testid': 'forgot-phone' } }}
-              />
-              <Button
-                fullWidth
-                variant="contained"
-                size="large"
-                onClick={requestCode}
-                disabled={loading || !phoneValid}
-                sx={{ mt: 1 }}
-                data-testid="forgot-send"
-              >
-                {loading ? <CircularProgress size={20} color="inherit" /> : 'კოდის გაგზავნა'}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                თუ ამ ნომერზე ანგარიში არსებობს, კოდი გამოგზავნილია.
-              </Alert>
+          <TextField
+            fullWidth
+            required
+            label="ახალი პაროლი"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            error={passwordTooShort}
+            helperText={passwordTooShort ? t('validation.passwordTooShortReset') : ' '}
+            sx={{ mb: 1 }}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'forgot-password' } }}
+          />
 
-              <TextField
-                fullWidth
-                required
-                label="კოდი"
-                value={code}
-                onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="123456"
-                autoFocus
-                sx={{ mb: 1 }}
-                slotProps={{ htmlInput: { inputMode: 'numeric' as const, maxLength: 6, 'data-testid': 'forgot-code' } }}
-              />
+          <TextField
+            fullWidth
+            required
+            label="პაროლის დადასტურება"
+            type="password"
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && canReset && !loading && submitReset()}
+            error={passwordMismatch}
+            helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
+            sx={{ mb: 2 }}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'forgot-confirm-password' } }}
+          />
 
-              <TextField
-                fullWidth
-                required
-                label="ახალი პაროლი"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                error={passwordTooShort}
-                helperText={passwordTooShort ? t('validation.passwordTooShortReset') : ' '}
-                sx={{ mb: 1 }}
-                slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'forgot-password' } }}
-              />
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            onClick={submitReset}
+            disabled={loading || !canReset}
+            data-testid="forgot-submit"
+          >
+            {loading ? <CircularProgress size={20} color="inherit" /> : 'პაროლის შეცვლა'}
+          </Button>
 
-              <TextField
-                fullWidth
-                required
-                label="პაროლის დადასტურება"
-                type="password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && canReset && !loading && submitReset()}
-                error={passwordMismatch}
-                helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
-                sx={{ mb: 2 }}
-                slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'forgot-confirm-password' } }}
-              />
-
-              <Button
-                fullWidth
-                variant="contained"
-                size="large"
-                onClick={submitReset}
-                disabled={loading || !canReset}
-                data-testid="forgot-submit"
-              >
-                {loading ? <CircularProgress size={20} color="inherit" /> : 'პაროლის შეცვლა'}
-              </Button>
-
-              <Box sx={{ mt: 1.5, textAlign: 'center' }}>
-                <MuiLink
-                  component="button"
-                  type="button"
-                  underline="hover"
-                  disabled={cooldown > 0 || loading}
-                  onClick={requestCode}
-                  sx={{ fontSize: '0.875rem', color: cooldown > 0 ? 'text.disabled' : 'primary.main' }}
-                >
-                  {cooldown > 0 ? `ხელახლა გაგზავნა (${cooldown})` : 'კოდის ხელახლა გაგზავნა'}
-                </MuiLink>
-              </Box>
-            </>
-          )}
-
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
+          <Box sx={{ mt: 1.5 }}>
             <MuiLink
               component="button"
               type="button"
               underline="hover"
-              onClick={() => navigate('/login')}
-              sx={{ fontSize: '0.875rem', color: 'text.secondary' }}
+              disabled={cooldown > 0 || loading}
+              onClick={requestCode}
+              sx={{ fontSize: '0.875rem', color: cooldown > 0 ? 'text.disabled' : 'primary.main' }}
             >
-              ← შესვლაზე დაბრუნება
+              {cooldown > 0 ? `ხელახლა გაგზავნა (${cooldown})` : 'კოდის ხელახლა გაგზავნა'}
             </MuiLink>
           </Box>
-        </CardContent>
-      </Card>
-    </Box>
+        </>
+      )}
+
+      <Box sx={{ mt: 3, pt: 2.5, borderTop: '1px solid', borderColor: 'divider' }}>
+        <MuiLink
+          component="button"
+          type="button"
+          underline="hover"
+          onClick={() => navigate('/login')}
+          sx={{ fontSize: '0.875rem', color: 'text.secondary' }}
+        >
+          ← შესვლაზე დაბრუნება
+        </MuiLink>
+      </Box>
+    </AuthShell>
   )
 }

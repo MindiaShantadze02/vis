@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
-  Box, Card, CardContent, TextField, Button,
-  Typography, CircularProgress, Alert, Link as MuiLink, Stack,
+  Box, TextField, Button,
+  CircularProgress, Alert, Link as MuiLink, Stack,
   IconButton, InputAdornment,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
@@ -11,9 +11,7 @@ import { VisibilityOffOutlined as VisibilityOffIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
-import { anim } from '@/theme/animations'
-import { LAYOUT } from '@/theme/theme'
-import { LanguageSwitcher } from '@/components/ui'
+import AuthShell from './AuthShell'
 
 // Sign-in only. Registration lives on /register (see RegisterPage).
 export default function LoginPage() {
@@ -38,134 +36,89 @@ export default function LoginPage() {
   const canSignIn = phoneValid && password.length >= 6
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#1E2433',
-        p: 2,
-        position: 'relative',
-      }}
-    >
-      {/* Auth pages had no language switcher — Russian/English-speaking owners
-          hit a Georgian-only wall before ever reaching the dashboard. */}
-      <Box sx={{ position: 'absolute', top: 12, right: 16, '& .MuiButton-root': { color: 'rgba(255,255,255,0.85)' } }}>
-        <LanguageSwitcher />
-      </Box>
-      <Card
-        sx={{
-          width: '100%',
-          maxWidth: LAYOUT.narrowCard,
-          borderRadius: 4,
-          animation: anim.scaleIn,
-          background: 'rgba(255,255,255,0.97)',
-          backdropFilter: 'blur(20px)',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.20), 0 0 0 1px rgba(255,255,255,0.10)',
-          border: 'none',
-          '&:hover': { transform: 'none', boxShadow: '0 24px 64px rgba(0,0,0,0.20), 0 0 0 1px rgba(255,255,255,0.10)' },
+    <AuthShell title={t('auth.login')}>
+      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="login-error">{error}</Alert>}
+
+      <TextField
+        fullWidth
+        required
+        label={t('auth.phoneNumber')}
+        type="tel"
+        value={phone}
+        onChange={e => setPhone(e.target.value)}
+        error={phoneInvalid}
+        helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
+        placeholder="599 12 34 56"
+        sx={{ mb: 1 }}
+        autoFocus
+        slotProps={{ htmlInput: { inputMode: 'tel' as const, maxLength: FIELD_LIMITS.phone, 'data-testid': 'login-phone' } }}
+      />
+
+      <TextField
+        fullWidth
+        required
+        label={t('auth.password')}
+        type={showPassword ? 'text' : 'password'}
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && canSignIn && handleSignIn()}
+        sx={{ mb: 2 }}
+        slotProps={{
+          htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' },
+          input: {
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  aria-label={t('auth.togglePassword')}
+                  onClick={() => setShowPassword(s => !s)}
+                  edge="end"
+                  size="small"
+                >
+                  {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          },
         }}
+      />
+
+      <Button
+        fullWidth
+        variant="contained"
+        size="large"
+        onClick={handleSignIn}
+        disabled={loading || !canSignIn}
+        data-testid="login-submit"
       >
-        <CardContent sx={{ p: 4 }}>
-          {/* Wordmark */}
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 800,
-              color: 'primary.main',
-              letterSpacing: '-1px',
-              mb: 3,
-              textAlign: 'center',
-            }}
+        {loading ? <CircularProgress size={20} color="inherit" /> : t('auth.login')}
+      </Button>
+
+      <Stack spacing={1.25} sx={{ mt: 3, pt: 2.5, borderTop: '1px solid', borderColor: 'divider' }}>
+        <Box>
+          <MuiLink
+            component="button"
+            type="button"
+            underline="hover"
+            onClick={() => navigate('/forgot-password')}
+            sx={{ fontSize: '0.875rem', color: 'text.secondary' }}
+            data-testid="login-forgot-password"
           >
-            Vis
-          </Typography>
-
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, textAlign: 'center' }}>
-            {t('auth.login')}
-          </Typography>
-
-          {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="login-error">{error}</Alert>}
-
-          <TextField
-            fullWidth
-            required
-            label={t('auth.phoneNumber')}
-            type="tel"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            error={phoneInvalid}
-            helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
-            placeholder="599 12 34 56"
-            sx={{ mb: 1 }}
-            autoFocus
-            slotProps={{ htmlInput: { inputMode: 'tel' as const, maxLength: FIELD_LIMITS.phone, 'data-testid': 'login-phone' } }}
-          />
-
-          <TextField
-            fullWidth
-            required
-            label={t('auth.password')}
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && canSignIn && handleSignIn()}
-            sx={{ mb: 2 }}
-            slotProps={{
-              htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' },
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label={t('auth.togglePassword')}
-                      onClick={() => setShowPassword(s => !s)}
-                      edge="end"
-                      size="small"
-                    >
-                      {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-
-          <Button
-            fullWidth
-            variant="contained"
-            size="large"
-            onClick={handleSignIn}
-            disabled={loading || !canSignIn}
-            data-testid="login-submit"
+            {t('auth.forgotPassword')}
+          </MuiLink>
+        </Box>
+        <Box>
+          <MuiLink
+            component="button"
+            type="button"
+            underline="hover"
+            onClick={() => navigate('/register')}
+            sx={{ fontSize: '0.875rem', color: 'primary.main', fontWeight: 600 }}
+            data-testid="login-to-register"
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : t('auth.login')}
-          </Button>
-
-          <Stack spacing={1.25} sx={{ mt: 2, textAlign: 'center' }}>
-            <MuiLink
-              component="button"
-              type="button"
-              underline="hover"
-              onClick={() => navigate('/forgot-password')}
-              sx={{ fontSize: '0.875rem', color: 'text.secondary' }}
-              data-testid="login-forgot-password"
-            >
-              {t('auth.forgotPassword')}
-            </MuiLink>
-            <MuiLink
-              component="button"
-              type="button"
-              underline="hover"
-              onClick={() => navigate('/register')}
-              sx={{ fontSize: '0.875rem', color: 'primary.main', fontWeight: 600 }}
-              data-testid="login-to-register"
-            >
-              {t('auth.noAccount')}
-            </MuiLink>
-          </Stack>
-        </CardContent>
-      </Card>
-    </Box>
+            {t('auth.noAccount')}
+          </MuiLink>
+        </Box>
+      </Stack>
+    </AuthShell>
   )
 }

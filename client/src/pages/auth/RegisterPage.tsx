@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  Box, Card, CardContent, TextField, Button,
+  Box, TextField, Button,
   Typography, CircularProgress, Alert, Link as MuiLink,
   Checkbox, FormControlLabel, IconButton, InputAdornment,
 } from '@mui/material'
@@ -12,46 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
-import { LAYOUT } from '@/theme/theme'
-import { LanguageSwitcher } from '@/components/ui'
-
-// Shared dark-hero shell so /register matches /login.
-function AuthShell({ children }: { children: React.ReactNode }) {
-  return (
-    <Box
-      sx={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', background: '#1E2433', p: 2,
-        position: 'relative',
-      }}
-    >
-      {/* Same escape hatch as /login — don't gate non-Georgian speakers. */}
-      <Box sx={{ position: 'absolute', top: 12, right: 16, '& .MuiButton-root': { color: 'rgba(255,255,255,0.85)' } }}>
-        <LanguageSwitcher />
-      </Box>
-      <Card
-        sx={{
-          width: '100%', maxWidth: LAYOUT.narrowCard, borderRadius: 4,
-          animation: anim.scaleIn, background: 'rgba(255,255,255,0.97)',
-          backdropFilter: 'blur(20px)',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.20), 0 0 0 1px rgba(255,255,255,0.10)',
-          border: 'none',
-          '&:hover': { transform: 'none', boxShadow: '0 24px 64px rgba(0,0,0,0.20), 0 0 0 1px rgba(255,255,255,0.10)' },
-        }}
-      >
-        <CardContent sx={{ p: 4 }}>
-          <Typography
-            variant="h4"
-            sx={{ fontWeight: 800, color: 'primary.main', letterSpacing: '-1px', mb: 3, textAlign: 'center' }}
-          >
-            Vis
-          </Typography>
-          {children}
-        </CardContent>
-      </Card>
-    </Box>
-  )
-}
+import AuthShell from './AuthShell'
 
 export default function RegisterPage() {
   const { t } = useTranslation()
@@ -112,14 +73,7 @@ export default function RegisterPage() {
   const credsValid = phoneValid && password.length >= 10 && confirmPassword.length >= 10 && !passwordMismatch
 
   return (
-    <AuthShell>
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, textAlign: 'center' }}>
-        {t('auth.registerTitle')}
-      </Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, textAlign: 'center' }}>
-        {t('auth.registerSubtitle')}
-      </Typography>
-
+    <AuthShell title={t('auth.registerTitle')} subtitle={t('auth.registerSubtitle')}>
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="login-error">{error}</Alert>}
 
       <TextField
@@ -231,7 +185,7 @@ export default function RegisterPage() {
         {loading ? <CircularProgress size={20} color="inherit" /> : t('auth.createAccount')}
       </Button>
 
-      <Box sx={{ mt: 2, textAlign: 'center' }}>
+      <Box sx={{ mt: 3, pt: 2.5, borderTop: '1px solid', borderColor: 'divider' }}>
         <MuiLink
           component="button" type="button" underline="hover"
           onClick={() => navigate('/login')}
