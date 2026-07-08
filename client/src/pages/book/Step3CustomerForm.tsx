@@ -109,7 +109,9 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     })
     setLoading(false)
     if (fnErr || !data?.ok) {
-      setError(data?.error === 'too_soon' ? t('booking.otpTooSoon') : t('booking.otpSendFailed'))
+      setError(data?.error === 'too_soon' ? t('booking.otpTooSoon')
+        : data?.error === 'too_many_requests' ? t('booking.otpTooMany')
+        : t('booking.otpSendFailed'))
       return
     }
     setPhase('otp')

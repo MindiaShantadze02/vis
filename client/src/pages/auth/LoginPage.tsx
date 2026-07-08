@@ -61,7 +61,7 @@ export default function LoginPage() {
     setLoading(false)
     // 'too_soon' = a still-valid code was just sent; proceed to entry anyway.
     if (fnErr || (!data?.ok && data?.error !== 'too_soon')) {
-      setError(t('auth.otpSendFailed'))
+      setError(t(data?.error === 'too_many_requests' ? 'auth.otpTooMany' : 'auth.otpSendFailed'))
       return
     }
     setPhase('otp')
@@ -89,7 +89,7 @@ export default function LoginPage() {
     const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
       body: { phone },
     })
-    if (fnErr || (!data?.ok && data?.error !== 'too_soon')) setError(t('auth.otpSendFailed'))
+    if (fnErr || (!data?.ok && data?.error !== 'too_soon')) setError(t(data?.error === 'too_many_requests' ? 'auth.otpTooMany' : 'auth.otpSendFailed'))
   }
 
   if (phase === 'otp') {

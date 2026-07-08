@@ -60,7 +60,7 @@ const EMPTY: ServiceForm = {
 }
 
 // An appointment may last at most 24 hours. Mirrors the DB constraint
-// services_duration_max (migration 009) and the book-appointment guard.
+// services_duration_max (migration 009).
 const MAX_DURATION_MINUTES = 1440
 
 // Turn a raw Supabase/Postgres error into a human-readable, translated

@@ -84,6 +84,7 @@
     "otpWrong": "Wrong code. {{remaining}} attempts left.",
     "otpExpired": "The code expired. Please request a new one.",
     "otpSendFailed": "We couldn't send the code — please try again.",
+    "otpTooMany": "Too many code requests — please try again later.",
     "otpChangePhone": "← Change number"
   },
   "onboarding": {
@@ -176,6 +177,7 @@
     "otpExpired": "The code expired. Please request a new one.",
     "otpTooSoon": "Please wait a moment before requesting another code.",
     "otpSendFailed": "We couldn't send your code — please try again.",
+    "otpTooMany": "Too many code requests — please try again later.",
     "bookFailed": "We couldn't finish your booking — please try again.",
     "paymentStartFailed": "We couldn't start the payment — please try again.",
     "notesSensitiveWarning": "Please do not enter health or other sensitive personal data.",
