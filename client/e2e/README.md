@@ -37,6 +37,7 @@ Happy paths + edge cases (validation gating, route guards, error states):
 | `booking-settings.spec.ts` | Booking-page settings — share link/embed + preview link | custom booking colour, reviews toggle switchable (non-persisting) |
 | `account-settings.spec.ts` | Account settings — | delete-account confirm-word guard (never confirmed) |
 | `superadmin.spec.ts` | — | role **ECP**: a normal owner is redirected off `/superadmin` and its sub-routes |
+| `api.spec.ts` | public REST API: mint key in Settings → API keys, call organisation/services/slots, book, see it in the dashboard, revoke | 401 for missing/malformed/unknown/revoked keys, 422 date & phone rejects, capacity decrement after booking — booking self-cleans (reject), the revoked key row persists |
 
 ### Design techniques applied
 
@@ -74,6 +75,10 @@ its active service + Mon–Fri hours intact, or the booking/dashboard specs will
 - **`booking.spec.ts`** creates a real pending appointment + customer on the seeded
   org each successful run (a guest can't self-delete). Reject/prune them from the
   dashboard periodically.
+- **`api.spec.ts`** leaves one *revoked* API key row on the seeded org per run
+  (revoked keys stay listed by design; `delete from api_keys where revoked_at is
+  not null and org_id = <seed org>` to prune). Its booking is rejected in-test;
+  the customer row persists like booking.spec's.
 - Register-based tests (`auth` signup, `onboarding` "next"-gating and skip) each
   leave a throwaway auth user with **no org**. Only the full `onboarding` happy
   path self-deletes its account. Prune the rest with:

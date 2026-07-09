@@ -56,6 +56,7 @@ const SETTINGS_GROUPS = [
     headerKey: 'settings.groupBookingPage',
     items: [
       { labelKey: 'settings.bookingPage',  path: '/dashboard/settings/booking' },
+      { labelKey: 'settings.apiKeys',      path: '/dashboard/settings/api' },
     ],
   },
   {

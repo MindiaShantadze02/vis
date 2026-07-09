@@ -72,3 +72,8 @@ verify_jwt = false
 # Settles a payment. Called by the gateway callback (x-payment-secret) or, for
 # the mock provider, by the /pay/mock checkout screen.
 verify_jwt = false
+
+[functions.api]
+# Public REST API for business integrations. Auth is a per-org API key
+# (x-api-key, checked in-function against api_keys) — not a Supabase JWT.
+verify_jwt = false

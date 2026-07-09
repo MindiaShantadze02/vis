@@ -27,6 +27,7 @@ import WorkingHoursSettings from '@/pages/dashboard/settings/WorkingHoursSetting
 import TeamSettings from '@/pages/dashboard/settings/TeamSettings'
 import PaymentSettings from '@/pages/dashboard/settings/PaymentSettings'
 import SubscriptionPage from '@/pages/dashboard/settings/SubscriptionPage'
+import ApiKeysSettings from '@/pages/dashboard/settings/ApiKeysSettings'
 
 // Public booking
 import BookingLayout from '@/pages/book/BookingLayout'
@@ -128,6 +129,7 @@ export default function App() {
           <Route path="settings/hours" element={<WorkingHoursSettings />} />
           <Route path="settings/team" element={<TeamSettings />} />
           <Route path="settings/payment" element={<PaymentSettings />} />
+          <Route path="settings/api" element={<ApiKeysSettings />} />
           <Route path="settings/subscription" element={<SubscriptionPage />} />
           <Route path="settings/account" element={<AccountSettings />} />
         </Route>
