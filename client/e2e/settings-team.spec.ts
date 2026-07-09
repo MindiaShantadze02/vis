@@ -40,4 +40,30 @@ test.describe('Settings — Team', () => {
 
   // Invite-phone and professional-name gating are data-driven now — see
   // e2e/data/team.json + e2e/data-driven/team.spec.ts.
+
+  test('the starter seat limit blocks a second bookable professional', async ({ page }) => {
+    // The seed org is on starter (1 bookable seat, enforce_staff_limit trigger).
+    const first = tag('E2E Seat One')
+    const second = tag('E2E Seat Two')
+
+    async function addProfessional(name: string) {
+      await page.getByTestId('add-professional-btn').click()
+      await page.getByTestId('professional-name').fill(name)
+      await page.getByTestId('professional-save').click()
+    }
+
+    // First bookable professional fits the seat.
+    await addProfessional(first)
+    const row = page.getByTestId('professional-row').filter({ hasText: first })
+    await expect(row).toBeVisible()
+
+    // Second is rejected by the DB trigger → friendly upgrade prompt, no row.
+    await addProfessional(second)
+    await expect(page.getByTestId('team-error')).toBeVisible()
+    await expect(page.getByText(second)).toHaveCount(0)
+
+    // Self-clean
+    await row.getByTestId('professional-delete').click()
+    await expect(page.getByText(first)).toHaveCount(0)
+  })
 })

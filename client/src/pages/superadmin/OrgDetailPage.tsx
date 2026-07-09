@@ -8,7 +8,7 @@ import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, LoadingState, ConfirmDialog, EmptyState, useToast } from '@/components/ui'
-import { TIERS, TIER_KEYS, tierInfo, tierColor, type Tier } from '@/lib/tiers'
+import { TIERS, TIER_KEYS, tierInfo, tierColor, subscriptionState, type Tier } from '@/lib/tiers'
 
 interface Org {
   id: string
@@ -16,8 +16,17 @@ interface Org {
   slug: string
   subscription_tier: string
   subscription_expires_at: string | null
+  trial_ends_at: string
   created_at: string
   contact_phone: string | null
+}
+
+// Derived state → Georgian label + chip colour (matches the DB's
+// org_subscription_state).
+const STATE_LABELS: Record<string, { label: string; color: 'warning' | 'success' | 'error' }> = {
+  trial: { label: 'საცდელი', color: 'warning' },
+  active: { label: 'აქტიური', color: 'success' },
+  expired: { label: 'ვადაგასული', color: 'error' },
 }
 
 interface Usage { used: number; appt_limit: number | null; period_end: string | null }
@@ -42,7 +51,7 @@ export default function OrgDetailPage() {
   async function load() {
     setLoading(true)
     const [orgRes, usageRes] = await Promise.all([
-      supabase.from('organisations').select('id, name, slug, subscription_tier, subscription_expires_at, created_at, contact_phone').eq('id', id).maybeSingle(),
+      supabase.from('organisations').select('id, name, slug, subscription_tier, subscription_expires_at, trial_ends_at, created_at, contact_phone').eq('id', id).maybeSingle(),
       supabase.rpc('org_usage_info', { p_org_id: id }).maybeSingle(),
     ])
     setOrg((orgRes.data ?? null) as Org | null)
@@ -54,9 +63,15 @@ export default function OrgDetailPage() {
   async function changeTier() {
     if (!org || !pendingTier) return
     setSaving(true)
+    // Manual assignment = one paid month: "active" means subscription_expires_at
+    // is in the future (org_subscription_state), so the expiry must be set here
+    // too — a bare tier change would leave the org in its trial/expired state.
     const { error } = await supabase
       .from('organisations')
-      .update({ subscription_tier: pendingTier })
+      .update({
+        subscription_tier: pendingTier,
+        subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      })
       .eq('id', org.id)
     setSaving(false)
     if (error) { toast.error(error.message); return }
@@ -95,7 +110,13 @@ export default function OrgDetailPage() {
         <CardContent sx={{ p: 3 }}>
           <Stack spacing={1.5}>
             <Row label="გეგმა" value={
-              <Chip label={info.label} size="small" sx={{ bgcolor: tierColor(theme, info.colorKey), color: 'white', fontWeight: 700 }} />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Chip label={info.label} size="small" sx={{ bgcolor: tierColor(theme, info.colorKey), color: 'white', fontWeight: 700 }} />
+                {(() => {
+                  const s = STATE_LABELS[subscriptionState(org.trial_ends_at, org.subscription_expires_at)]
+                  return <Chip label={s.label} size="small" color={s.color} variant="outlined" sx={{ fontWeight: 600 }} />
+                })()}
+              </Box>
             } />
             <Row label="ჯავშნები ამ პერიოდში" value={
               <Typography variant="body2">{usage?.used ?? 0} / {usage?.appt_limit ?? '∞'}</Typography>
@@ -116,6 +137,11 @@ export default function OrgDetailPage() {
                 <Typography variant="body2">{new Date(org.subscription_expires_at).toLocaleDateString('ka-GE')}</Typography>
               } />
             )}
+            {!org.subscription_expires_at && (
+              <Row label="საცდელი პერიოდის ვადა" value={
+                <Typography variant="body2">{new Date(org.trial_ends_at).toLocaleDateString('ka-GE')}</Typography>
+              } />
+            )}
           </Stack>
         </CardContent>
       </Card>
@@ -125,7 +151,8 @@ export default function OrgDetailPage() {
         <CardContent sx={{ p: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>გეგმის შეცვლა</Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            გეგმის შეცვლა გადათვლის ბილინგის პერიოდს (გამოყენება იწყება ნულიდან).
+            გეგმის შეცვლა გადათვლის ბილინგის პერიოდს (გამოყენება იწყება ნულიდან)
+            და გეგმას 1 თვით ააქტიურებს.
           </Typography>
           <Divider sx={{ mb: 2 }} />
           <FormControl size="small" sx={{ minWidth: 220 }}>

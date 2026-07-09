@@ -215,6 +215,31 @@ export default function BookingShell({
             </Box>
           </AnimatePresence>
         </Box>
+
+        {/* "Powered by Vis" — the built-in growth loop: every booking page (all
+            themes, standalone and embedded) carries one quiet link back to the
+            marketing site. Deliberately low-contrast so it never competes with
+            the business's own branding. */}
+        <Box
+          component="footer"
+          sx={{ textAlign: 'center', py: 1.5, px: 2 }}
+          data-testid="powered-by-vis"
+        >
+          <Typography
+            component="a"
+            href="https://vis.ge"
+            target="_blank"
+            rel="noopener"
+            variant="caption"
+            sx={{
+              color: 'text.disabled',
+              textDecoration: 'none',
+              '&:hover': { color: 'text.secondary', textDecoration: 'underline' },
+            }}
+          >
+            {t('booking.poweredBy')}
+          </Typography>
+        </Box>
       </Box>
 
       {/* Hosts cap the iframe height, which clips tall steps — cue the visitor

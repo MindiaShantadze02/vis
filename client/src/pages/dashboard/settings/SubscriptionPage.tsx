@@ -15,7 +15,7 @@ import { TIERS, type Tier } from '@/lib/tiers'
 
 export default function SubscriptionPage() {
   const { t } = useTranslation()
-  const { org } = useOrg()
+  const { org, subscription } = useOrg()
 
   const [used, setUsed] = useState<number | null>(null)
   const [limit, setLimit] = useState<number | null>(null)
@@ -23,8 +23,8 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true)
   const [upgrading, setUpgrading] = useState<Tier | null>(null)
 
-  const currentTier = (org as unknown as Record<string, string>)?.subscription_tier as Tier ?? 'free'
-  const expires = (org as unknown as Record<string, string>)?.subscription_expires_at
+  const currentTier: Tier = org?.subscription_tier ?? 'starter'
+  const expires = org?.subscription_expires_at
 
   useEffect(() => {
     if (org) loadUsage()
@@ -82,13 +82,28 @@ export default function SubscriptionPage() {
                   size="small"
                   sx={{ bgcolor: 'text.primary', color: 'background.paper', fontWeight: 600 }}
                 />
+                {subscription === 'trial' && (
+                  <Chip
+                    label={t('subscription.trialChip')}
+                    size="small"
+                    color="warning"
+                    variant="outlined"
+                    data-testid="trial-chip"
+                    sx={{ fontWeight: 600 }}
+                  />
+                )}
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   {t(`tiers.${currentTier}.price`)}
                 </Typography>
               </Box>
-              {expires && (
+              {/* Spelled-out month — "05/08/2026" is ambiguous (DD/MM vs MM/DD). */}
+              {subscription === 'trial' && org && (
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  {/* Spelled-out month — "05/08/2026" is ambiguous (DD/MM vs MM/DD). */}
+                  {t('subscription.trialEndsOn', { date: format(new Date(org.trial_ends_at), 'd MMMM yyyy', { locale: dateLocale() }) })}
+                </Typography>
+              )}
+              {subscription !== 'trial' && expires && (
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
                   {t('subscription.expiresOn', { date: format(new Date(expires), 'd MMMM yyyy', { locale: dateLocale() }) })}
                 </Typography>
               )}
@@ -148,13 +163,20 @@ export default function SubscriptionPage() {
         {t('subscription.comparePlans')}
       </Typography>
       <Stack spacing={2}>
-        {TIERS.map(tier => {
+        {/* Business isn't a self-serve card (superadmin-assigned only) — it
+            appears only when it IS the current plan; everyone else gets the
+            quiet contact line below instead. */}
+        {TIERS.filter(tier => tier.key !== 'business' || tier.key === currentTier).map(tier => {
           const isCurrent = tier.key === currentTier
+          // A trial/expired org hasn't bought anything yet, so its "current"
+          // tier is still purchasable (that's the whole conversion path).
+          const canBuy = tier.key !== 'business' && (!isCurrent || subscription !== 'active')
           return (
             <Card
               key={tier.key}
-              // Current plan gets a single accent hairline; the rest stay neutral.
-              sx={{ borderColor: isCurrent ? 'primary.main' : 'divider' }}
+              // Current plan gets a single accent hairline; the recommended
+              // plan keeps a subtle accent too; the rest stay neutral.
+              sx={{ borderColor: isCurrent || tier.recommended ? 'primary.main' : 'divider' }}
             >
               <CardContent sx={{ p: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
@@ -163,6 +185,9 @@ export default function SubscriptionPage() {
                       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                         {t(`tiers.${tier.key}.label`)}
                       </Typography>
+                      {tier.recommended && !isCurrent && (
+                        <Chip label={t('subscription.recommended')} size="small" color="primary" sx={{ fontWeight: 600 }} />
+                      )}
                       {isCurrent && (
                         <Chip label={t('subscription.current')} size="small" sx={{ bgcolor: 'text.primary', color: 'background.paper', fontWeight: 600 }} />
                       )}
@@ -180,17 +205,18 @@ export default function SubscriptionPage() {
                     </Stack>
                   </Box>
 
-                  {!isCurrent && tier.key !== 'free' && (
+                  {canBuy && (
                     <Button
-                      variant="outlined"
+                      variant={tier.recommended ? 'contained' : 'outlined'}
                       size="small"
                       onClick={() => handleUpgrade(tier.key)}
                       disabled={upgrading !== null}
+                      data-testid={`buy-${tier.key}`}
                       sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
                       {upgrading === tier.key
                         ? <CircularProgress size={16} />
-                        : t('subscription.upgrade')}
+                        : subscription === 'active' ? t('subscription.upgrade') : t('subscription.choosePlan')}
                     </Button>
                   )}
                 </Box>
@@ -199,6 +225,11 @@ export default function SubscriptionPage() {
           )
         })}
       </Stack>
+
+      {/* The quiet Business line: „დიდი გუნდისთვის — მოგვწერეთ" */}
+      <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2, textAlign: 'center' }}>
+        {t('subscription.businessContact')}
+      </Typography>
 
       <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 3, textAlign: 'center' }}>
         {t('subscription.footer')}

@@ -7,6 +7,9 @@ test.describe('Public booking', () => {
   test('a guest books an in-person appointment end to end', async ({ page }) => {
     expect(await bookToDetails(page), 'expected an open day with a free slot this week').toBeTruthy()
 
+    // The quiet "Powered by Vis" growth-loop footer is on every booking page.
+    await expect(page.getByTestId('powered-by-vis')).toBeVisible()
+
     // Step 3 — customer details (seeded org is in-person only, so no pay selector).
     // Name must be letters only (isValidPersonName rejects digits).
     await fillStable(page.getByTestId('book-first-name'), 'Nino')

@@ -172,7 +172,8 @@ export default function WorkingHoursStep() {
         slug,
         contact_phone: data.contact_phone.trim() ? formatGeorgianPhone(data.contact_phone) : null,
         owner_id: user.id,
-        subscription_tier: 'free',
+        // Tier and trial_ends_at come from the column defaults: every new org
+        // starts a 30-day Starter-level trial (no free tier since 072).
       }
 
       let attempt = await supabase.from('organisations').insert(orgRow).select('id').single()

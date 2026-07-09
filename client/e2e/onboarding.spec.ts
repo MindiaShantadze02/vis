@@ -42,6 +42,16 @@ test.describe('Business onboarding', () => {
     await expect(page.getByText(bizName)).toBeVisible()
     await expect(page.getByText(/vis\.ge\/book\//)).toBeVisible()
 
+    // The new-org onboarding checklist is up (nothing dismissed yet).
+    await expect(page.getByTestId('onboarding-checklist')).toBeVisible()
+
+    // A brand-new org starts on the 30-day Starter trial (no free tier): the
+    // subscription page shows the trial chip and no trial-countdown banner yet
+    // (that appears only in the last 7 days).
+    await page.goto('/dashboard/settings/subscription')
+    await expect(page.getByTestId('trial-chip')).toBeVisible()
+    await expect(page.getByTestId('trial-countdown-banner')).toHaveCount(0)
+
     // --- self-clean: delete the throwaway account + org (Account settings) ---
     await page.goto('/dashboard/settings/account')
     await page.getByTestId('delete-account-btn').click()

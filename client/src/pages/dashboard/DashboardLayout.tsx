@@ -29,6 +29,7 @@ import { useOrg } from '@/contexts/OrgContext'
 import { useSuperadmin } from '@/hooks/useSuperadmin'
 import { useNotifications } from '@/hooks/useNotifications'
 import { LanguageSwitcher, AnimatedOutlet } from '@/components/ui'
+import SubscriptionBanner from '@/components/SubscriptionBanner'
 import { dateLocale } from '@/lib/dateLocale'
 import { anim } from '@/theme/animations'
 import { gradient, elevation, tint } from '@/theme/theme'
@@ -421,6 +422,7 @@ export default function DashboardLayout() {
 
         {/* Page content — AnimatedOutlet fades/slides between routes. */}
         <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 } }}>
+          <SubscriptionBanner />
           <AnimatedOutlet context={{ refreshSignal } satisfies DashboardOutletContext} />
         </Box>
       </Box>

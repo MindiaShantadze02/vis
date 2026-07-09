@@ -26,6 +26,8 @@ import type { AppointmentStatus } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import AddAppointmentDialog from './AddAppointmentDialog'
 import PendingInvites from './PendingInvites'
+import OnboardingChecklist from '@/components/OnboardingChecklist'
+import UsageMeter from '@/components/UsageMeter'
 import type { DashboardOutletContext } from './DashboardLayout'
 
 // ── Types ─────────────────────────────────────────────────────
@@ -294,6 +296,11 @@ export default function OverviewPage() {
   return (
     <Box>
       <PageHeader title={t('dashboard.overview')} />
+
+      {/* New-org checklist (self-hides once dismissed) + always-visible usage
+          meter against the enforced monthly cap. */}
+      <OnboardingChecklist />
+      <UsageMeter />
 
       {/* Booking link + website embed code — copy & share / paste into a site.
           Available on every plan. */}

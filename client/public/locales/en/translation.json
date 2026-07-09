@@ -191,7 +191,8 @@
     "confirmApprovedSub": "They'll be expecting you",
     "statusLabel": "Status",
     "callToChange": "To cancel or change your booking, call us",
-    "bookAnother": "Book another appointment"
+    "bookAnother": "Book another appointment",
+    "poweredBy": "Powered by Vis"
   },
   "payment": {
     "sandbox": "Sandbox",
@@ -373,7 +374,8 @@
     "changePassword": "Change password",
     "newPassword": "New password",
     "passwordChanged": "Password changed",
-    "passwordChangeFailed": "Couldn't change the password — please try again."
+    "passwordChangeFailed": "Couldn't change the password — please try again.",
+    "staffLimitReached": "Your plan allows {{limit}} bookable staff — upgrade to add more"
   },
   "days": {
     "monday": "Monday",
@@ -407,46 +409,36 @@
     "addAppointment": "Add appointment"
   },
   "tiers": {
-    "free": {
-      "label": "Free",
-      "price": "₾0 / mo",
-      "features": [
-        "30 bookings/mo",
-        "Online booking page",
-        "SMS notifications"
-      ]
-    },
     "starter": {
       "label": "Starter",
-      "price": "₾15 / mo",
+      "price": "₾29 / mo",
       "features": [
-        "200 bookings/mo",
-        "All Free features",
-        "Priority support"
+        "150 bookings/mo",
+        "Day-before SMS reminders",
+        "Online booking page",
+        "All themes"
       ]
     },
     "pro": {
       "label": "Pro",
-      "price": "₾40 / mo",
+      "price": "₾59 / mo",
       "features": [
-        "600 bookings/mo",
-        "All Starter features",
-        "BOG / TBC online payment",
-        "Team management"
+        "400 bookings/mo",
+        "Up to 3 bookable staff",
+        "All Starter features"
       ]
     },
     "business": {
       "label": "Business",
-      "price": "₾80 / mo",
+      "price": "₾99 / mo",
       "features": [
-        "Unlimited bookings",
-        "All Pro features",
+        "800 bookings/mo",
+        "Unlimited staff",
         "VIP support"
       ]
     }
   },
   "subscription": {
-    "free": "Free",
     "starter": "Starter",
     "pro": "Pro",
     "business": "Business",
@@ -461,7 +453,17 @@
     "bookingsBlocked": "new bookings are blocked",
     "comparePlans": "Compare plans",
     "current": "Current",
-    "footer": "Billed monthly · Cancel anytime · Contact us if you need help"
+    "footer": "Billed monthly · Cancel anytime · Contact us if you need help",
+    "recommended": "Recommended",
+    "trialChip": "Trial",
+    "trialEndsOn": "Starter trial — ends {{date}}",
+    "trialBanner_one": "Starter trial ends in {{count}} day — choose a plan to keep reminders on",
+    "trialBanner_other": "Starter trial ends in {{count}} days — choose a plan to keep reminders on",
+    "expiredTitle": "Your plan has ended",
+    "expiredBody": "Your booking page is still live and your data is safe, but new bookings are paused and day-before reminders are off. Choose a plan to continue.",
+    "expiredStrip": "New bookings are paused — choose a plan",
+    "choosePlan": "Choose a plan",
+    "businessContact": "For bigger teams — contact us"
   },
   "superadmin": {
     "platform": "Platform",
@@ -499,5 +501,15 @@
     "rating3": "Good",
     "rating4": "Very good",
     "rating5": "Excellent"
+  },
+  "checklist": {
+    "title": "Getting started",
+    "addService": "Add a service",
+    "setHours": "Set your working hours",
+    "addStaff": "Add a staff photo or profile",
+    "shareLink": "Put your booking link in your Instagram bio",
+    "copyLink": "Copy link",
+    "copied": "Copied!",
+    "dismiss": "Hide"
   }
 }

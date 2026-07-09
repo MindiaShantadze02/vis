@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { subscriptionState, type SubscriptionState, type Tier } from '@/lib/tiers'
 
 export interface Organisation {
   id: string
@@ -10,7 +11,12 @@ export interface Organisation {
   slug: string
   contact_phone: string | null
   logo_url: string | null
-  subscription_tier: 'free' | 'starter' | 'pro' | 'business'
+  subscription_tier: Tier
+  subscription_expires_at: string | null
+  trial_ends_at: string
+  trial_expiry_ack_at: string | null
+  link_share_done_at: string | null
+  checklist_dismissed_at: string | null
   booking_theme: string | null
   reviews_enabled: boolean
 }
@@ -18,6 +24,8 @@ export interface Organisation {
 interface OrgContextValue {
   org: Organisation | null
   role: 'owner' | 'admin' | null
+  /** trial | active | expired, derived the same way as the DB's org_subscription_state. */
+  subscription: SubscriptionState | null
   loading: boolean
   refresh: () => Promise<void>
 }
@@ -25,6 +33,7 @@ interface OrgContextValue {
 const OrgContext = createContext<OrgContextValue>({
   org: null,
   role: null,
+  subscription: null,
   loading: true,
   refresh: async () => {},
 })
@@ -73,8 +82,13 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     if (!authLoading) loadOrg()
   }, [user, authLoading])
 
+  // Derived once here so banners / gates all agree on the state.
+  const subscription = org
+    ? subscriptionState(org.trial_ends_at, org.subscription_expires_at)
+    : null
+
   return (
-    <OrgContext.Provider value={{ org, role, loading, refresh: loadOrg }}>
+    <OrgContext.Provider value={{ org, role, subscription, loading, refresh: loadOrg }}>
       {children}
     </OrgContext.Provider>
   )

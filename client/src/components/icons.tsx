@@ -20,7 +20,7 @@ import {
   MagnifyingGlassIcon as MagnifyingGlass, GearSixIcon as GearSix, ChatCircleTextIcon as ChatCircleText,
   StarIcon as Star, StorefrontIcon as Storefront, ForkKnifeIcon as ForkKnife,
   SealCheckIcon as SealCheck, TrendUpIcon as TrendUp, EyeSlashIcon as EyeSlash,
-  EyeIcon as Eye, BriefcaseIcon as Briefcase,
+  EyeIcon as Eye, BriefcaseIcon as Briefcase, CircleIcon as Circle,
 } from '@phosphor-icons/react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -134,6 +134,7 @@ export const Search = adapt(MagnifyingGlass)
 export const SearchOffOutlined = adapt(MagnifyingGlass)
 export const SettingsOutlined = adapt(GearSix)
 export const SmsOutlined = adapt(ChatCircleText)
+export const RadioButtonUnchecked = adapt(Circle)
 export const StarRounded = adapt(Star)
 export const StorefrontOutlined = adapt(Storefront)
 export const TableRestaurantOutlined = adapt(ForkKnife)
