@@ -44,12 +44,27 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+// Length caps mirror the client's FIELD_LIMITS + the DB varchar widths
+// (customers.first_name/last_name are varchar(100)). Enforced here so oversized
+// input returns a clean 422 instead of a raw DB error, and so an authenticated
+// caller can't write unbounded free text (notes) to abuse storage.
+const NAME_MAX = 100
+const NOTES_MAX = 500
+
 function json(body: unknown, status = 200, extra: Record<string, string> = {}): Response {
   return Response.json(body, { status, headers: { ...corsHeaders, ...extra } })
 }
 
 function apiError(status: number, error: string, message: string): Response {
   return json({ error, message }, status)
+}
+
+// Never leak internal/DB error strings to API clients (they can reveal schema
+// and query internals). Log the real cause to the edge-function logs, return a
+// generic 500 to the caller.
+function serverError(context: string, err: unknown): Response {
+  console.error(`[api] ${context}:`, err)
+  return apiError(500, 'internal', 'Something went wrong on our end. Please try again.')
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -156,7 +171,7 @@ Deno.serve(async (req) => {
     const { data: auth, error: authErr } = await admin.rpc('authenticate_api_key', {
       p_key_hash: await sha256Hex(rawKey),
     })
-    if (authErr) return apiError(500, 'internal', authErr.message)
+    if (authErr) return serverError('authenticate_api_key', authErr)
     const session = Array.isArray(auth) ? auth[0] : auth
     if (!session) return apiError(401, 'invalid_key', 'Unknown or revoked API key.')
     if (session.rate_limited) {
@@ -182,7 +197,7 @@ Deno.serve(async (req) => {
         .select('id, name, slug, description, contact_phone, logo_url')
         .eq('id', orgId)
         .single()
-      if (error) return apiError(500, 'internal', error.message)
+      if (error) return serverError('GET /v1/organisation', error)
       return json({ organisation: data })
     }
 
@@ -194,7 +209,7 @@ Deno.serve(async (req) => {
         .eq('org_id', orgId)
         .eq('is_active', true)
         .order('sort_order')
-      if (error) return apiError(500, 'internal', error.message)
+      if (error) return serverError('GET /v1/services', error)
       // PostgREST returns numeric columns as strings; present price as a number.
       const services = (data ?? []).map((s) => ({ ...s, price: Number(s.price) }))
       return json({ services })
@@ -241,6 +256,12 @@ Deno.serve(async (req) => {
         return apiError(422, 'invalid_status', "status must be 'pending' or 'approved'.")
       }
       if (!firstName) return apiError(422, 'invalid_name', 'customer.first_name is required.')
+      if (firstName.length > NAME_MAX || lastName.length > NAME_MAX) {
+        return apiError(422, 'invalid_name', `Names must be ${NAME_MAX} characters or fewer.`)
+      }
+      if (notes != null && String(notes).length > NOTES_MAX) {
+        return apiError(422, 'invalid_notes', `notes must be ${NOTES_MAX} characters or fewer.`)
+      }
 
       const phone = normalizeGeorgianPhone(customer.phone)
       if (!phone) return apiError(422, 'invalid_phone', 'customer.phone must be a Georgian number (5XXXXXXXX).')
@@ -303,7 +324,7 @@ Deno.serve(async (req) => {
           return apiError(422, 'invalid_name', 'Customer names may only contain letters.')
         }
         if (msg.includes('phone_format')) return apiError(422, 'invalid_phone', 'Invalid phone number.')
-        return apiError(500, 'internal', msg)
+        return serverError('api_create_booking', rpcErr)
       }
 
       const row = Array.isArray(created) ? created[0] : created
@@ -312,6 +333,6 @@ Deno.serve(async (req) => {
 
     return apiError(404, 'not_found', `No route for ${req.method} ${path || '/'}.`)
   } catch (err) {
-    return apiError(500, 'internal', String(err))
+    return serverError('unhandled', err)
   }
 })

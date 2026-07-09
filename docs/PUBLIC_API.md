@@ -114,7 +114,8 @@ Uniform shape: `{ "error": "<code>", "message": "<human readable>" }`
 | 404 | `not_found` | unknown route |
 | 409 | `slot_unavailable` | requested time not free (race or stale slot list) |
 | 403 | `quota_exceeded` | monthly appointment limit reached |
-| 422 | `invalid_date` / `invalid_time` / `invalid_phone` / `invalid_name` / `invalid_status` / `invalid_service_id` / `invalid_staff_id` / `staff_not_available` / `too_far_in_advance` | validation failures |
+| 422 | `invalid_date` / `invalid_time` / `invalid_phone` / `invalid_name` / `invalid_notes` / `invalid_status` / `invalid_service_id` / `invalid_staff_id` / `staff_not_available` / `too_far_in_advance` | validation failures |
+| 500 | `internal` | unexpected server error (details are logged server-side, never returned) |
 
 **Race window:** like the booking page, availability is checked immediately
 before insert but not locked — two bookings for the same last slot within the

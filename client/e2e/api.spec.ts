@@ -112,13 +112,28 @@ test.describe('Public REST API', () => {
     const slotAfter = after.body.slots.find((s: { time: string }) => s.time === slot.time)
     if (slotAfter) expect(slotAfter.remaining).toBe(slot.remaining - 1)
 
-    // validation failures surface as 422s
+    // validation failures surface as clean 422s (never 500s that leak internals)
     const badPhone = await request.post(`${API}/v1/bookings`, {
       headers: { 'x-api-key': key },
       data: { service_id: service.id, date, time: slot.time, customer: { first_name: 'Test', phone: '123' } },
     })
     expect(badPhone.status()).toBe(422)
     expect((await badPhone.json()).error).toBe('invalid_phone')
+
+    // oversized inputs are rejected before the DB (length caps, storage-abuse guard)
+    const longName = await request.post(`${API}/v1/bookings`, {
+      headers: { 'x-api-key': key },
+      data: { service_id: service.id, date, time: slot.time, customer: { first_name: 'A'.repeat(150), phone: '555111222' } },
+    })
+    expect(longName.status()).toBe(422)
+    expect((await longName.json()).error).toBe('invalid_name')
+
+    const longNotes = await request.post(`${API}/v1/bookings`, {
+      headers: { 'x-api-key': key },
+      data: { service_id: service.id, date, time: slot.time, notes: 'x'.repeat(600), customer: { first_name: 'Test', phone: '555111222' } },
+    })
+    expect(longNotes.status()).toBe(422)
+    expect((await longNotes.json()).error).toBe('invalid_notes')
 
     // --- the booking is a real appointment in the dashboard ---------------
     await cancelAppt(page, customer) // asserts visibility, then cleans up
