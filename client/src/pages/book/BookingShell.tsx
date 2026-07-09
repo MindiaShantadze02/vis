@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box, Typography, Avatar, Divider, useMediaQuery, useTheme,
@@ -11,6 +12,7 @@ import { displayGeorgianPhone } from '@/lib/validation'
 import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
 import BookingReviews from './BookingReviews'
+import EmbedScrollHint from './EmbedScrollHint'
 
 interface Props {
   org: BookingOrg
@@ -47,6 +49,13 @@ export default function BookingShell({
   const { t } = useTranslation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+
+  // Each step opens at the top. Without this, picking a time at the bottom of a
+  // long slot list leaves the next step scrolled to the same offset (worst in a
+  // height-capped embed, where the step content scrolls inside the iframe).
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [step])
 
   // Light vs. dark sidebar content (the white "minimal" theme uses a light panel,
   // so its text/overlays must flip to dark to stay legible).
@@ -207,6 +216,10 @@ export default function BookingShell({
           </AnimatePresence>
         </Box>
       </Box>
+
+      {/* Hosts cap the iframe height, which clips tall steps — cue the visitor
+          that more content (e.g. afternoon slots) is below the fold. */}
+      {embed && <EmbedScrollHint />}
     </Box>
   )
 }
