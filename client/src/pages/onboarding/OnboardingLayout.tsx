@@ -21,15 +21,30 @@ export interface OnboardingService {
   meeting_link: string | null
 }
 
+// An account-less staff profile (org_members role='staff'). The photo is staged
+// as a File until finish — the storage path needs the member row's id.
+export interface OnboardingSpecialist {
+  name: string
+  title: string
+  is_bookable: boolean
+  photoFile: File | null
+  photoPreview: string | null
+}
+
 export interface OnboardingData {
   // Step 1
   name: string
   description: string
   slug: string
   contact_phone: string
+  // Logo is staged as a File until finish — the storage path needs the org id.
+  logoFile: File | null
+  logoPreview: string | null
   // Step 2 — services offered by the business.
   services: OnboardingService[]
-  // Step 3 — stored in the editable schedule shape so edits survive navigating
+  // Step 3 (optional) — bookable specialists shown on the booking page.
+  specialists: OnboardingSpecialist[]
+  // Step 4 — stored in the editable schedule shape so edits survive navigating
   // between steps without a lossy ranges↔schedule round-trip.
   workingHours: Record<string, DaySchedule>
 }
@@ -57,7 +72,9 @@ interface OnboardingContextValue {
 const OnboardingContext = createContext<OnboardingContextValue>({
   data: {
     name: '', description: '', slug: '', contact_phone: '',
+    logoFile: null, logoPreview: null,
     services: [],
+    specialists: [],
     workingHours: defaultWorkingHours,
   },
   update: () => {},
@@ -72,9 +89,10 @@ export function useOnboarding() {
 type Step = { path: string; labelKey: string }
 
 const STEPS: Step[] = [
-  { path: '/onboarding/business', labelKey: 'onboarding.step1' },
-  { path: '/onboarding/services', labelKey: 'onboarding.step2' },
-  { path: '/onboarding/hours',    labelKey: 'onboarding.step3' },
+  { path: '/onboarding/business',    labelKey: 'onboarding.step1' },
+  { path: '/onboarding/services',    labelKey: 'onboarding.step2' },
+  { path: '/onboarding/specialists', labelKey: 'onboarding.stepSpecialists' },
+  { path: '/onboarding/hours',       labelKey: 'onboarding.step3' },
 ]
 
 // ── Layout ────────────────────────────────────────────────────
@@ -97,7 +115,9 @@ export default function OnboardingLayout() {
     // Pre-fill the business contact phone from the account they registered
     // with seconds ago (editable — it's just the overwhelmingly common case).
     contact_phone: user?.phone ? formatGeorgianPhone(user.phone) : '',
+    logoFile: null, logoPreview: null,
     services: [],
+    specialists: [],
     workingHours: defaultWorkingHours,
   }))
 

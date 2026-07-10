@@ -203,6 +203,43 @@ export default function WorkingHoursStep() {
         if (svcErr) throw new Error(svcErr.message)
       }
 
+      // Specialists (account-less staff profiles). Photos are uploaded after the
+      // insert — the storage path is keyed by the member row's id. RETURNING
+      // preserves insert order, so created[i] pairs with specialists[i].
+      if (data.specialists.length > 0) {
+        const { data: created, error: staffErr } = await supabase
+          .from('org_members')
+          .insert(data.specialists.map((sp, i) => ({
+            org_id: orgId, user_id: null, role: 'staff', is_bookable: sp.is_bookable,
+            display_name: sp.name, title: sp.title || null, sort_order: i,
+          })))
+          .select('id')
+        if (staffErr) throw new Error(staffErr.message)
+        // Best-effort: a failed photo upload shouldn't block finishing — the
+        // photo can be re-added any time in Team settings.
+        await Promise.all((created ?? []).map(async (row, i) => {
+          const file = data.specialists[i]?.photoFile
+          if (!file) return
+          const ext = file.name.split('.').pop()
+          const path = `${orgId}/${row.id}.${ext}`
+          const { error: upErr } = await supabase.storage.from('member-photos').upload(path, file, { upsert: true })
+          if (upErr) return
+          const { data: pub } = supabase.storage.from('member-photos').getPublicUrl(path)
+          await supabase.from('org_members').update({ avatar_url: `${pub.publicUrl}?v=${Date.now()}` }).eq('id', row.id)
+        }))
+      }
+
+      // Logo — staged on step 1; best-effort for the same reason as photos.
+      if (data.logoFile) {
+        const ext = data.logoFile.name.split('.').pop()
+        const path = `${orgId}/logo.${ext}`
+        const { error: logoErr } = await supabase.storage.from('logos').upload(path, data.logoFile, { upsert: true })
+        if (!logoErr) {
+          const { data: pub } = supabase.storage.from('logos').getPublicUrl(path)
+          await supabase.from('organisations').update({ logo_url: `${pub.publicUrl}?v=${Date.now()}` }).eq('id', orgId)
+        }
+      }
+
       const templateRow: Record<string, unknown> = { org_id: orgId }
       for (const day of DAYS) {
         const s = hours[day]
@@ -242,8 +279,8 @@ export default function WorkingHoursStep() {
           return (
             <Box key={day}>
               {di > 0 && <Divider />}
-              <Box sx={{ px: { xs: 1.5, sm: 2 }, py: 1.5 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <FormControlLabel
                   control={<Switch checked={cfg.open} onChange={() => toggleDay(day)} color="primary" data-testid={`hours-toggle-${day}`} />}
                   label={
@@ -251,7 +288,9 @@ export default function WorkingHoursStep() {
                       {DAY_LABELS[day]}
                     </Typography>
                   }
-                  sx={{ mr: 0, flex: 1 }}
+                  // Kill the label's default -11px left margin so the row
+                  // respects the card padding instead of hugging the border.
+                  sx={{ ml: 0, mr: 0 }}
                 />
                 {!cfg.open && (
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -261,7 +300,7 @@ export default function WorkingHoursStep() {
               </Box>
 
               {cfg.open && (
-                <Box sx={{ mt: 1.5, pl: 1 }}>
+                <Box sx={{ mt: 1.5, pl: 1.5 }}>
                   {/* Working window */}
                   <Box
                     sx={{

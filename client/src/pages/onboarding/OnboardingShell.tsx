@@ -5,6 +5,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
 import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/components/icons'
+import { GroupOutlined as GroupOutlinedIcon } from '@/components/icons'
 import { WorkOutlineOutlined as WorkOutlineOutlinedIcon } from '@/components/icons'
 import { Check as CheckIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
@@ -27,10 +28,16 @@ interface Props {
 }
 
 const STEP_META = [
-  { labelKey: 'onboarding.step1', Icon: StorefrontOutlinedIcon },
-  { labelKey: 'onboarding.step2', Icon: DesignServicesOutlinedIcon },
-  { labelKey: 'onboarding.step3', Icon: WorkOutlineOutlinedIcon },
+  { labelKey: 'onboarding.step1',           Icon: StorefrontOutlinedIcon },
+  { labelKey: 'onboarding.step2',           Icon: DesignServicesOutlinedIcon },
+  { labelKey: 'onboarding.stepSpecialists', Icon: GroupOutlinedIcon },
+  { labelKey: 'onboarding.step3',           Icon: WorkOutlineOutlinedIcon },
 ]
+
+// Content column — scales with the viewport instead of a fixed cap (was 620,
+// which left most of a large screen empty), while never exceeding a width
+// where form fields stop reading as a column.
+const STEP_MAX_WIDTH = { xs: '100%', md: 720, lg: 900, xl: 1120 }
 
 /**
  * The branded frame for the business onboarding: a dark ink sidebar (welcome +
@@ -161,7 +168,7 @@ export default function OnboardingShell({ step, direction, data, onSkip, banner,
         </Box>
 
         {banner && (
-          <Box sx={{ px: { xs: 2, md: 5 }, pt: 2, maxWidth: 620, mx: 'auto', width: '100%' }}>
+          <Box sx={{ px: { xs: 2, md: 5 }, pt: 2, maxWidth: STEP_MAX_WIDTH, mx: 'auto', width: '100%' }}>
             {banner}
           </Box>
         )}
@@ -177,7 +184,7 @@ export default function OnboardingShell({ step, direction, data, onSkip, banner,
               initial="enter"
               animate="center"
               exit="exit"
-              sx={{ px: { xs: 2, md: 5 }, py: { xs: 3, md: 4 }, maxWidth: 620, mx: 'auto', width: '100%' }}
+              sx={{ px: { xs: 2, md: 5 }, py: { xs: 3, md: 4 }, maxWidth: STEP_MAX_WIDTH, mx: 'auto', width: '100%' }}
             >
               {children}
             </Box>

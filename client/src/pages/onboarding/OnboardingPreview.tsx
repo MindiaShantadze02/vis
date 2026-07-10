@@ -1,6 +1,7 @@
-import { Box, Typography, Avatar } from '@mui/material'
+import { Box, Typography, Avatar, AvatarGroup } from '@mui/material'
 import { AnimatePresence, motion } from 'framer-motion'
 import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/components/icons'
+import { GroupOutlined as GroupOutlinedIcon } from '@/components/icons'
 import { WorkOutlineOutlined as WorkOutlineOutlinedIcon } from '@/components/icons'
 import { OpenInNewOutlined as OpenInNewOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
@@ -74,9 +75,9 @@ export default function OnboardingPreview({ data }: { data: OnboardingData }) {
       </Typography>
 
       <Box sx={{ bgcolor: '#FFFFFF', color: 'text.primary', borderRadius: 2.5, p: 2, boxShadow: '0 12px 30px rgba(0,0,0,0.28)' }}>
-        {/* Header — logo initial + business name */}
+        {/* Header — logo (uploaded image or initial) + business name */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-          <Avatar sx={{ width: 38, height: 38, bgcolor: name ? 'primary.main' : 'rgba(30,36,51,0.10)', color: name ? '#fff' : 'text.disabled', fontWeight: 700, fontSize: 16 }}>
+          <Avatar src={data.logoPreview ?? undefined} sx={{ width: 38, height: 38, bgcolor: name ? 'primary.main' : 'rgba(30,36,51,0.10)', color: name ? '#fff' : 'text.disabled', fontWeight: 700, fontSize: 16 }}>
             {name ? name.charAt(0).toUpperCase() : '?'}
           </Avatar>
           <Typography variant="body2" sx={{ fontWeight: 700, color: name ? 'text.primary' : 'text.disabled' }} noWrap>
@@ -119,6 +120,31 @@ export default function OnboardingPreview({ data }: { data: OnboardingData }) {
               </AnimatePresence>
             )}
         </Section>
+
+        {/* Specialists — optional, so the section only appears once one exists */}
+        {data.specialists.length > 0 && (
+          <Section>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
+              <GroupOutlinedIcon sx={{ fontSize: 15, color: 'primary.main' }} />
+              <Typography variant="overline" sx={{ fontWeight: 700, letterSpacing: 0.5, color: 'text.secondary', lineHeight: 1 }}>
+                {t('onboarding.stepSpecialists')}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 24, height: 24, fontSize: 11 } }}>
+                {data.specialists.map((sp, i) => (
+                  <Avatar key={i} src={sp.photoPreview ?? undefined} sx={{ bgcolor: 'primary.main' }}>
+                    {sp.name.charAt(0).toUpperCase()}
+                  </Avatar>
+                ))}
+              </AvatarGroup>
+              <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 0 }} noWrap>
+                {data.specialists.map(sp => sp.name).slice(0, 2).join(', ')}
+                {data.specialists.length > 2 ? ` +${data.specialists.length - 2}` : ''}
+              </Typography>
+            </Box>
+          </Section>
+        )}
 
         {/* Working hours */}
         <Section>

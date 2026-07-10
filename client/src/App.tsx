@@ -13,6 +13,7 @@ import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
 import OnboardingLayout from '@/pages/onboarding/OnboardingLayout'
 import BusinessProfileStep from '@/pages/onboarding/BusinessProfileStep'
 import ServicesStep from '@/pages/onboarding/ServicesStep'
+import SpecialistsStep from '@/pages/onboarding/SpecialistsStep'
 import WorkingHoursStep from '@/pages/onboarding/WorkingHoursStep'
 
 // Dashboard
@@ -115,6 +116,7 @@ export default function App() {
         <Route index element={<Navigate to="/onboarding/business" replace />} />
         <Route path="business" element={<BusinessProfileStep />} />
         <Route path="services" element={<ServicesStep />} />
+        <Route path="specialists" element={<SpecialistsStep />} />
         <Route path="hours" element={<WorkingHoursStep />} />
       </Route>
 

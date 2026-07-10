@@ -110,13 +110,18 @@
     "finish": "Завершить",
     "skip": "Пропустить",
     "welcomeTitle": "Настроим вашу страницу записи",
-    "welcomeSubtitle": "Три простых шага — и вы готовы принимать записи.",
+    "welcomeSubtitle": "Четыре простых шага — и вы готовы принимать записи.",
     "previewLabel": "Ваша страница записи",
     "previewBusinessPlaceholder": "Ваш бизнес",
     "previewNoServices": "Услуги появятся здесь",
     "previewNoHours": "Рабочие часы ещё не заданы",
     "finishServiceFirst": "Сначала добавьте или очистите заполняемую услугу.",
-    "applyToAllDays": "Применить ко всем дням"
+    "applyToAllDays": "Применить ко всем дням",
+    "stepSpecialists": "Специалисты",
+    "stepSpecialistsSubtitle": "Добавьте специалистов, которых будут выбирать клиенты — этот шаг необязателен",
+    "noSpecialistsTitle": "Специалисты пока не добавлены",
+    "noSpecialistsCaption": "Добавьте ниже или перейдите к следующему шагу",
+    "finishSpecialistFirst": "Сначала добавьте или очистите заполняемого специалиста."
   },
   "booking": {
     "title": "Онлайн запись",

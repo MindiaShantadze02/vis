@@ -5,7 +5,7 @@ import { register, uniquePhone, tag, fillStable } from './helpers'
 const DELETE_CONFIRM_WORD = 'წაშლა'
 
 test.describe('Business onboarding', () => {
-  test('a new owner completes all three steps and gets an org', async ({ page }) => {
+  test('a new owner completes all four steps and gets an org', async ({ page }) => {
     await register(page, uniquePhone())
 
     // Step 1 — business profile
@@ -32,9 +32,22 @@ test.describe('Business onboarding', () => {
     }).toPass({ timeout: 20_000 })
 
     await page.getByTestId('onb-services-next').click()
+    await expect(page).toHaveURL(/\/onboarding\/specialists/)
+
+    // Step 3 — specialists (optional): add one bookable specialist, with the
+    // same entrance-animation retry as the service form.
+    await expect(async () => {
+      await page.getByTestId('onb-specialist-name').fill('Etest Specialist')
+      const save = page.getByTestId('onb-specialist-save')
+      await expect(save).toBeEnabled({ timeout: 2_000 })
+      await save.click()
+      await expect(page.getByTestId('onb-specialist-row')).toHaveCount(1, { timeout: 2_000 })
+    }).toPass({ timeout: 20_000 })
+
+    await page.getByTestId('onb-specialists-next').click()
     await expect(page).toHaveURL(/\/onboarding\/hours/)
 
-    // Step 3 — accept the default Mon–Fri hours and finish
+    // Step 4 — accept the default Mon–Fri hours and finish
     await page.getByTestId('hours-finish').click()
 
     // Org created → dashboard, with the shareable booking link.
@@ -102,13 +115,34 @@ test.describe('Business onboarding — edge cases', () => {
       await page.getByTestId('onb-service-price').fill('40')
       await expect(next).toBeEnabled({ timeout: 1_500 })
       await next.click({ timeout: 2_500 })
-      await expect(page).toHaveURL(/\/onboarding\/hours/, { timeout: 2_500 })
+      await expect(page).toHaveURL(/\/onboarding\/specialists/, { timeout: 2_500 })
     }).toPass({ timeout: 25_000 })
 
     // Going back shows the service was saved (one row present).
-    await page.getByTestId('hours-back').click()
+    await page.getByTestId('onb-specialists-back').click()
     await expect(page).toHaveURL(/\/onboarding\/services/)
     await expect(page.getByTestId('onb-service-row')).toHaveCount(1)
+
+    // Same guarantee on the specialists step: a name typed but not "added" is
+    // auto-added by Next instead of silently dropped. specialists-next is
+    // ALWAYS enabled (the step is skippable), which defeats the suite's usual
+    // enabled-gating workaround for the dev-only StrictMode+AnimatePresence
+    // remount ~220ms after step arrival: anything typed before it is wiped and
+    // Next then legitimately skips the step. Let the step settle past that
+    // remount before typing, then verify the add through the sidebar preview
+    // (it reads the shared onboarding state).
+    await page.getByTestId('onb-services-next').click()
+    await expect(page).toHaveURL(/\/onboarding\/specialists/)
+    await page.waitForTimeout(800)
+    await expect(async () => {
+      await page.getByTestId('onb-specialist-name').fill('Etest Draftkeeper')
+      await expect(page.getByTestId('onb-specialist-save')).toBeEnabled({ timeout: 1_500 })
+    }).toPass({ timeout: 20_000 })
+    await page.getByTestId('onb-specialists-next').click()
+    await expect(page).toHaveURL(/\/onboarding\/hours/)
+    // .first(): during the step transition the name shows both in the sidebar
+    // preview and in the exiting step's list row.
+    await expect(page.getByText('Etest Draftkeeper').first()).toBeVisible()
     // Leaves a throwaway account with no org (never reached hours-finish).
   })
 
