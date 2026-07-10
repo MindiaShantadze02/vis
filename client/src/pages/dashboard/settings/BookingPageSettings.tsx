@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, CopyableText, useToast } from '@/components/ui'
-import { LAYOUT, surface } from '@/theme/theme'
+import { surface } from '@/theme/theme'
 import {
   BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, getBookingTheme, isCustomBookingColor,
 } from '@/theme/bookingThemes'
@@ -53,7 +53,7 @@ export default function BookingPageSettings() {
   }
 
   return (
-    <Box sx={{ maxWidth: LAYOUT.formPage }}>
+    <Box>
       <PageHeader title={t('settings.bookingPage')} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="booking-error">{error}</Alert>}

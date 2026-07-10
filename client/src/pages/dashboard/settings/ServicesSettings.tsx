@@ -14,7 +14,6 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
-import { LAYOUT } from '@/theme/theme'
 
 type LocationType = 'in_person' | 'online'
 
@@ -251,7 +250,7 @@ export default function ServicesSettings() {
   }
 
   return (
-    <Box sx={{ maxWidth: LAYOUT.formPage }}>
+    <Box>
       <PageHeader
         title={t('settings.services')}
         action={

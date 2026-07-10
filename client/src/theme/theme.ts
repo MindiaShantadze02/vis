@@ -76,8 +76,8 @@ export const surface = {
 export const displayFont = '"Noto Serif Georgian", "Noto Serif", Georgia, serif'
 
 // ── Layout width tokens ───────────────────────────────────────
+// Settings pages are uncapped — they fill the content area like the calendar.
 export const LAYOUT = {
-  formPage:   720, // settings + content-form pages
   narrowCard: 460, // centered single-purpose cards (auth, confirmation)
   bookingStep: 560, // booking step column
 }

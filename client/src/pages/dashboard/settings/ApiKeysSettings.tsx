@@ -8,7 +8,6 @@ import { ContentCopyOutlined as ContentCopyOutlinedIcon } from '@/components/ico
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, LoadingState, useToast } from '@/components/ui'
-import { LAYOUT } from '@/theme/theme'
 
 interface ApiKeyRow {
   id: string
@@ -100,7 +99,7 @@ export default function ApiKeysSettings() {
   if (loading) return <LoadingState />
 
   return (
-    <Box sx={{ maxWidth: LAYOUT.formPage }}>
+    <Box>
       <PageHeader
         title={t('settings.apiKeys')}
         subtitle={t('settings.apiKeysSubtitle')}

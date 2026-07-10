@@ -11,7 +11,6 @@ import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { displayGeorgianPhone } from '@/lib/validation'
 import { PageHeader, useToast } from '@/components/ui'
-import { LAYOUT } from '@/theme/theme'
 
 /**
  * Account settings — who you're signed in as, password change, and the danger
@@ -85,7 +84,7 @@ export default function AccountSettings() {
   }
 
   return (
-    <Box sx={{ maxWidth: LAYOUT.formPage }}>
+    <Box>
       <PageHeader title={t('settings.account')} />
 
       {/* Who you're signed in as — the page previously held only the danger

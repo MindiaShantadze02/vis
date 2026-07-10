@@ -13,7 +13,6 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, useToast } from '@/components/ui'
 import { FIELD_LIMITS } from '@/lib/validation'
-import { LAYOUT } from '@/theme/theme'
 
 interface PaymentConfig {
   bog?: { merchantId?: string; apiKey?: string; enabled?: boolean }
@@ -101,7 +100,7 @@ export default function PaymentSettings() {
   }
 
   return (
-    <Box sx={{ maxWidth: LAYOUT.formPage }}>
+    <Box>
       <PageHeader title={t('settings.payment')} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

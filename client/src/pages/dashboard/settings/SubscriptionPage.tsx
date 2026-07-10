@@ -10,7 +10,6 @@ import { dateLocale } from '@/lib/dateLocale'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader } from '@/components/ui'
-import { LAYOUT } from '@/theme/theme'
 import { TIERS, type Tier } from '@/lib/tiers'
 
 export default function SubscriptionPage() {
@@ -65,7 +64,7 @@ export default function SubscriptionPage() {
   const nearLimit = limit && used !== null && used >= limit * 0.8
 
   return (
-    <Box sx={{ maxWidth: LAYOUT.formPage }}>
+    <Box>
       <PageHeader title={t('settings.subscription')} />
 
       {/* Current plan */}

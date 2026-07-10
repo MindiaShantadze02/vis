@@ -17,7 +17,7 @@ import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageHeader, LoadingState, ActionIconButton, useToast } from '@/components/ui'
-import { LAYOUT, surface } from '@/theme/theme'
+import { surface } from '@/theme/theme'
 
 interface Member {
   id: string
@@ -328,7 +328,7 @@ export default function TeamSettings() {
   const invitePhoneInvalid = invitePhone.trim().length > 0 && !isValidGeorgianPhone(invitePhone)
 
   return (
-    <Box sx={{ maxWidth: LAYOUT.formPage }}>
+    <Box>
       <PageHeader
         title={t('settings.team')}
         action={role === 'owner' && (

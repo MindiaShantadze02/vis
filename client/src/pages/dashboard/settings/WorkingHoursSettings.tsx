@@ -21,7 +21,6 @@ import {
 } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
-import { LAYOUT } from '@/theme/theme'
 import { dateLocale } from '@/lib/dateLocale'
 
 type WeekTemplate = {
@@ -249,7 +248,7 @@ export default function WorkingHoursSettings() {
   if (loading) return <LoadingState />
 
   return (
-    <Box sx={{ maxWidth: LAYOUT.formPage }}>
+    <Box>
       <PageHeader title={t('settings.workingHours')} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="wh-error">{error}</Alert>}

@@ -29,13 +29,15 @@ test.describe('Settings — Team', () => {
     await page.getByTestId('invite-phone').fill(invitePhone)
     await page.getByTestId('invite-send').click()
 
-    // The pending invitation appears with that phone.
-    const inviteRow = page.getByText(invitePhone)
+    // The pending invitation appears with that phone. exact:true — the send
+    // snackbar ("მოწვევა შექმნილია ნომრისთვის <phone>") also contains the
+    // phone and would trip strict mode.
+    const inviteRow = page.getByText(invitePhone, { exact: true })
     await expect(inviteRow).toBeVisible()
 
     // Self-clean — cancel it.
     await page.getByTestId('invite-cancel').first().click()
-    await expect(page.getByText(invitePhone)).toHaveCount(0)
+    await expect(page.getByText(invitePhone, { exact: true })).toHaveCount(0)
   })
 
   // Invite-phone and professional-name gating are data-driven now — see

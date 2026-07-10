@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
 import { PageHeader, useToast } from '@/components/ui'
-import { LAYOUT, surface } from '@/theme/theme'
+import { surface } from '@/theme/theme'
 
 /**
  * Business identity settings: logo, name, description, contact phone. Anything
@@ -107,7 +107,7 @@ export default function ProfileSettings() {
   }
 
   return (
-    <Box sx={{ maxWidth: LAYOUT.formPage }}>
+    <Box>
       <PageHeader title={t('settings.business')} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="profile-error">{error}</Alert>}
