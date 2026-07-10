@@ -10,9 +10,11 @@ import { EditOutlined as EditOutlinedIcon } from '@/components/icons'
 import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/components/icons'
 import { Add as AddIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
-import { ActionIconButton, EmptyState } from '@/components/ui'
+import { ActionIconButton, EmptyState, useToast } from '@/components/ui'
 import { HONEY } from '@/theme/theme'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
+import ServiceImagesEditor from '@/components/ServiceImagesEditor'
+import { serviceImageFileError, MAX_IMAGES_PER_SERVICE, MAX_SERVICE_IMAGE_MB } from '@/lib/serviceImages'
 import StepHeader from './StepHeader'
 import type { OnboardingData, ServiceLocationType } from './OnboardingLayout'
 
@@ -25,17 +27,24 @@ interface OutletCtx {
 
 // Numeric fields are held as strings while editing so the inputs can be
 // cleared/partially typed; they're coerced to numbers in saveService().
+interface DraftImage {
+  key: string
+  file: File
+  url: string  // local blob: preview
+}
+
 interface DraftService {
   name: string
   duration_minutes: string
   price: string
   location_type: ServiceLocationType
   meeting_link: string
+  images: DraftImage[]
 }
 
 const empty: DraftService = {
   name: '', duration_minutes: '30', price: '0',
-  location_type: 'in_person', meeting_link: '',
+  location_type: 'in_person', meeting_link: '', images: [],
 }
 
 // An appointment may last at most 24 hours. Mirrors the DB constraint
@@ -47,6 +56,7 @@ const onlyDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g
 
 export default function ServicesStep() {
   const { t } = useTranslation()
+  const toast = useToast()
   const { goNext, goBack, data, update } = useOutletContext<OutletCtx>()
   const [draft, setDraft] = useState<DraftService>({ ...empty })
   // null = the form is adding a new service; a number = editing that index.
@@ -73,8 +83,28 @@ export default function ServicesStep() {
   const isEditing = editingIndex !== null
 
   function resetForm() {
-    setDraft({ ...empty })
+    setDraft({ ...empty, images: [] })
     setEditingIndex(null)
+  }
+
+  function addImages(files: File[]) {
+    const room = MAX_IMAGES_PER_SERVICE - draft.images.length
+    if (files.length > room) toast.error(t('settings.serviceImagesMax', { max: MAX_IMAGES_PER_SERVICE }))
+    const next: DraftImage[] = []
+    for (const file of files.slice(0, Math.max(0, room))) {
+      const err = serviceImageFileError(file)
+      if (err) { toast.error(err === 'fileTooLarge' ? t('validation.fileTooLarge', { max: MAX_SERVICE_IMAGE_MB }) : t('validation.invalidImage')); continue }
+      next.push({ key: crypto.randomUUID(), file, url: URL.createObjectURL(file) })
+    }
+    if (next.length) setDraft(d => ({ ...d, images: [...d.images, ...next] }))
+  }
+
+  function removeImage(key: string) {
+    setDraft(d => {
+      const gone = d.images.find(i => i.key === key)
+      if (gone) URL.revokeObjectURL(gone.url)
+      return { ...d, images: d.images.filter(i => i.key !== key) }
+    })
   }
 
   function saveService() {
@@ -86,6 +116,8 @@ export default function ServicesStep() {
       location_type: draft.location_type,
       // A meeting link only applies to online services (DB enforces this too).
       meeting_link: draft.location_type === 'online' ? (draft.meeting_link.trim() || null) : null,
+      imageFiles: draft.images.map(i => i.file),
+      imagePreviews: draft.images.map(i => i.url),
     }
     if (isEditing) {
       update({ services: data.services.map((s, i) => (i === editingIndex ? svc : s)) })
@@ -103,6 +135,9 @@ export default function ServicesStep() {
       price: String(svc.price),
       location_type: svc.location_type,
       meeting_link: svc.meeting_link ?? '',
+      // Re-hydrate staged images so editing a row keeps its gallery. Files and
+      // their existing preview URLs are reused (no re-encode).
+      images: svc.imageFiles.map((file, i) => ({ key: `${index}-${i}`, file, url: svc.imagePreviews[i] })),
     })
     setEditingIndex(index)
   }
@@ -164,6 +199,15 @@ export default function ServicesStep() {
                   bgcolor: editingIndex === i ? 'action.selected' : 'transparent',
                 }}
               >
+                {svc.imagePreviews.length > 0 && (
+                  <Box
+                    component="img"
+                    src={svc.imagePreviews[0]}
+                    alt=""
+                    data-testid="onb-service-thumb"
+                    sx={{ width: 40, height: 40, borderRadius: 1.5, objectFit: 'cover', flexShrink: 0, border: '1px solid', borderColor: 'divider' }}
+                  />
+                )}
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
                     <Typography variant="body1" sx={{ fontWeight: 600 }} noWrap>{svc.name}</Typography>
@@ -259,6 +303,14 @@ export default function ServicesStep() {
               sx={{ mb: 2 }}
             />
           )}
+          <Box sx={{ mb: 2 }}>
+            <ServiceImagesEditor
+              images={draft.images.map(i => ({ key: i.key, url: i.url }))}
+              onAdd={addImages}
+              onRemove={removeImage}
+              data-testid="onb-service-images"
+            />
+          </Box>
           <Stack direction="row" spacing={1}>
             <Button
               variant="contained"

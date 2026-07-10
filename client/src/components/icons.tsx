@@ -22,6 +22,7 @@ import {
   SealCheckIcon as SealCheck, TrendUpIcon as TrendUp, EyeSlashIcon as EyeSlash,
   EyeIcon as Eye, BriefcaseIcon as Briefcase, CircleIcon as Circle,
   CodeIcon as Code, GlobeIcon as Globe,
+  ImageIcon as ImageGlyph, ImagesIcon as Images,
 } from '@phosphor-icons/react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -116,6 +117,8 @@ export const EventNoteOutlined = adapt(CalendarDots)
 export const EventSeatOutlined = adapt(Armchair)
 export const ExpandMore = adapt(CaretDown)
 export const GroupOutlined = adapt(UsersThree)
+export const ImageOutlined = adapt(ImageGlyph)
+export const CollectionsOutlined = adapt(Images)
 export const HotelOutlined = adapt(Bed)
 export const InsightsOutlined = adapt(ChartLineUp)
 export const KeyboardArrowDown = adapt(CaretDown)

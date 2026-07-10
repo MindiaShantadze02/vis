@@ -20,6 +20,7 @@ import { useOrg } from '@/contexts/OrgContext'
 import { ActionIconButton } from '@/components/ui'
 import { supabase } from '@/lib/supabase'
 import { slugify } from '@/lib/slug'
+import { uploadServiceImage } from '@/lib/serviceImages'
 import StepHeader from './StepHeader'
 import type { OnboardingData } from './OnboardingLayout'
 
@@ -194,13 +195,25 @@ export default function WorkingHoursStep() {
       if (memberErr) throw new Error(memberErr.message)
 
       if (data.services.length > 0) {
-        const { error: svcErr } = await supabase.from('services').insert(
+        // RETURNING preserves insert order, so created[i] pairs with services[i]
+        // — used to attach each service's staged gallery images below.
+        const { data: createdSvcs, error: svcErr } = await supabase.from('services').insert(
           data.services.map((s, i) => ({
             org_id: orgId, name: s.name, duration_minutes: s.duration_minutes, price: s.price, sort_order: i,
             location_type: s.location_type, meeting_link: s.meeting_link,
           })),
-        )
+        ).select('id')
         if (svcErr) throw new Error(svcErr.message)
+
+        // Service gallery images — uploaded after the insert (the storage path
+        // needs each service's id). Best-effort: a failed image upload shouldn't
+        // block finishing; images can be re-added in Services settings.
+        await Promise.all((createdSvcs ?? []).flatMap((row, i) =>
+          (data.services[i]?.imageFiles ?? []).map(async (file, j) => {
+            const url = await uploadServiceImage(orgId, row.id, file)
+            if (url) await supabase.from('service_images').insert({ org_id: orgId, service_id: row.id, url, sort_order: j })
+          }),
+        ))
       }
 
       // Specialists (account-less staff profiles). Photos are uploaded after the

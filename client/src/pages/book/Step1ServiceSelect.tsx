@@ -22,16 +22,31 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase
-      .from('services')
-      .select('id, name, duration_minutes, price, max_per_slot')
-      .eq('org_id', orgId)
-      .eq('is_active', true)
-      .order('sort_order')
-      .then(({ data }) => {
-        setServices((data ?? []) as BookingService[])
-        setLoading(false)
-      })
+    async function loadServices() {
+      // Gallery images ride along on each service so the sidebar can show the
+      // selected service's photos on the following steps (see ServiceGallery).
+      const [svcRes, imgRes] = await Promise.all([
+        supabase
+          .from('services')
+          .select('id, name, duration_minutes, price, max_per_slot')
+          .eq('org_id', orgId)
+          .eq('is_active', true)
+          .order('sort_order'),
+        supabase
+          .from('service_images')
+          .select('service_id, url, sort_order')
+          .eq('org_id', orgId)
+          .order('sort_order'),
+      ])
+      const byService: Record<string, string[]> = {}
+      for (const row of (imgRes.data ?? []) as { service_id: string; url: string }[]) {
+        (byService[row.service_id] ??= []).push(row.url)
+      }
+      const rows = (svcRes.data ?? []) as Omit<BookingService, 'images'>[]
+      setServices(rows.map(s => ({ ...s, images: byService[s.id] ?? [] })))
+      setLoading(false)
+    }
+    loadServices()
   }, [orgId])
 
   const theme = useTheme()

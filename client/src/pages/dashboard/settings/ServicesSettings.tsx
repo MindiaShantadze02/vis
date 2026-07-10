@@ -14,6 +14,11 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
+import ServiceImagesEditor, { type EditorImage } from '@/components/ServiceImagesEditor'
+import {
+  uploadServiceImage, removeServiceImageFile, serviceImageFileError,
+  MAX_IMAGES_PER_SERVICE, MAX_SERVICE_IMAGE_MB, type ServiceImage,
+} from '@/lib/serviceImages'
 
 type LocationType = 'in_person' | 'online'
 
@@ -58,6 +63,15 @@ const EMPTY: ServiceForm = {
   meeting_link: '',
 }
 
+// A dialog gallery item. `id` present = a persisted service_images row (edit
+// mode, already uploaded). `file` present = a staged upload waiting for the new
+// service's id (create mode). `url` is what the thumbnail shows (a stored URL or
+// a local blob: preview).
+interface GalleryItem extends EditorImage {
+  id?: string
+  file?: File
+}
+
 // An appointment may last at most 24 hours. Mirrors the DB constraint
 // services_duration_max (migration 009).
 const MAX_DURATION_MINUTES = 1440
@@ -84,6 +98,7 @@ export default function ServicesSettings() {
 
   const [services, setServices] = useState<Service[]>([])
   const [bookableMembers, setBookableMembers] = useState<BookableMember[]>([])
+  const [imagesByService, setImagesByService] = useState<Record<string, ServiceImage[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -92,6 +107,8 @@ export default function ServicesSettings() {
   const [editing, setEditing] = useState<Service | null>(null)
   const [form, setForm] = useState(EMPTY)
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
+  const [gallery, setGallery] = useState<GalleryItem[]>([])
+  const [galleryUploading, setGalleryUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Service | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -103,7 +120,7 @@ export default function ServicesSettings() {
   async function load() {
     if (!org) return
     setLoading(true)
-    const [svcRes, memRes] = await Promise.all([
+    const [svcRes, memRes, imgRes] = await Promise.all([
       supabase.from('services').select('*').eq('org_id', org.id).order('sort_order'),
       supabase
         .from('org_members')
@@ -111,9 +128,19 @@ export default function ServicesSettings() {
         .eq('org_id', org.id)
         .eq('is_bookable', true)
         .order('sort_order'),
+      supabase
+        .from('service_images')
+        .select('id, service_id, url, sort_order')
+        .eq('org_id', org.id)
+        .order('sort_order'),
     ])
     setServices((svcRes.data ?? []) as Service[])
     setBookableMembers((memRes.data ?? []) as BookableMember[])
+    const grouped: Record<string, ServiceImage[]> = {}
+    for (const row of (imgRes.data ?? []) as ServiceImage[]) {
+      (grouped[row.service_id] ??= []).push(row)
+    }
+    setImagesByService(grouped)
     setLoading(false)
   }
 
@@ -121,6 +148,7 @@ export default function ServicesSettings() {
     setEditing(null)
     setForm(EMPTY)
     setSelectedMemberIds([])
+    setGallery([])
     setOpen(true)
   }
 
@@ -135,9 +163,63 @@ export default function ServicesSettings() {
       location_type: s.location_type,
       meeting_link: s.meeting_link ?? '',
     })
+    setGallery((imagesByService[s.id] ?? []).map(img => ({ key: img.id, id: img.id, url: img.url })))
     const { data } = await supabase.from('service_staff').select('member_id').eq('service_id', s.id)
     setSelectedMemberIds((data ?? []).map(r => (r as { member_id: string }).member_id))
     setOpen(true)
+  }
+
+  // Add images from the dialog picker. In edit mode the service row exists, so
+  // upload + persist immediately; in create mode stage the files (with a local
+  // preview) until the new service's id exists on save.
+  async function handleAddImages(files: File[]) {
+    if (!org) return
+    const room = MAX_IMAGES_PER_SERVICE - gallery.length
+    const picked = files.slice(0, Math.max(0, room))
+    const valid: File[] = []
+    for (const f of picked) {
+      const err = serviceImageFileError(f)
+      if (err) { toast.error(err === 'fileTooLarge' ? t('validation.fileTooLarge', { max: MAX_SERVICE_IMAGE_MB }) : t('validation.invalidImage')); continue }
+      valid.push(f)
+    }
+    if (files.length > room) toast.error(t('settings.serviceImagesMax', { max: MAX_IMAGES_PER_SERVICE }))
+    if (!valid.length) return
+
+    if (editing) {
+      setGalleryUploading(true)
+      let order = gallery.length
+      for (const file of valid) {
+        const url = await uploadServiceImage(org.id, editing.id, file)
+        if (!url) { toast.error(t('validation.saveFailed')); continue }
+        const { data, error: err } = await supabase
+          .from('service_images')
+          .insert({ org_id: org.id, service_id: editing.id, url, sort_order: order++ })
+          .select('id, service_id, url, sort_order')
+          .single()
+        if (err || !data) { await removeServiceImageFile(url); toast.error(t('validation.saveFailed')); continue }
+        const row = data as ServiceImage
+        setGallery(prev => [...prev, { key: row.id, id: row.id, url: row.url }])
+        setImagesByService(prev => ({ ...prev, [editing.id]: [...(prev[editing.id] ?? []), row] }))
+      }
+      setGalleryUploading(false)
+    } else {
+      setGallery(prev => [...prev, ...valid.map(file => ({ key: crypto.randomUUID(), url: URL.createObjectURL(file), file }))])
+    }
+  }
+
+  // Remove an image. Persisted rows (edit mode) delete the row + storage file;
+  // staged items (create mode) just drop and revoke their preview.
+  async function handleRemoveImage(key: string) {
+    const item = gallery.find(g => g.key === key)
+    if (!item) return
+    setGallery(prev => prev.filter(g => g.key !== key))
+    if (item.id && editing) {
+      await supabase.from('service_images').delete().eq('id', item.id)
+      await removeServiceImageFile(item.url)
+      setImagesByService(prev => ({ ...prev, [editing.id]: (prev[editing.id] ?? []).filter(r => r.id !== item.id) }))
+    } else if (item.file) {
+      URL.revokeObjectURL(item.url)
+    }
   }
 
   function toggleMember(id: string) {
@@ -229,6 +311,20 @@ export default function ServicesSettings() {
 
     await syncStaff(serviceId)
 
+    // Persist images staged during create (edit-mode images are already saved
+    // as they're added). Best-effort: a failed image upload shouldn't undo the
+    // saved service — it can be re-added by editing.
+    if (!editing) {
+      const staged = gallery.filter(g => g.file)
+      let order = 0
+      for (const item of staged) {
+        const url = await uploadServiceImage(org.id, serviceId, item.file!)
+        if (!url) continue
+        await supabase.from('service_images').insert({ org_id: org.id, service_id: serviceId, url, sort_order: order++ })
+        URL.revokeObjectURL(item.url)
+      }
+    }
+
     setSaving(false)
     setOpen(false)
     toast.success(t('common.saved'))
@@ -237,6 +333,9 @@ export default function ServicesSettings() {
 
   async function handleDelete(s: Service) {
     setDeleting(true)
+    // Best-effort: remove the underlying storage files before the row cascade
+    // drops their metadata (otherwise the objects would be orphaned).
+    await Promise.all((imagesByService[s.id] ?? []).map(img => removeServiceImageFile(img.url)))
     await supabase.from('services').delete().eq('id', s.id)
     setDeleting(false)
     setConfirmDelete(null)
@@ -284,6 +383,24 @@ export default function ServicesSettings() {
                   opacity: s.is_active ? 1 : 0.55,
                 }}
               >
+                {(imagesByService[s.id]?.length ?? 0) > 0 && (
+                  <Box sx={{ position: 'relative', flexShrink: 0 }}>
+                    <Box
+                      component="img"
+                      src={imagesByService[s.id][0].url}
+                      alt=""
+                      data-testid="service-row-thumb"
+                      sx={{ width: 44, height: 44, borderRadius: 1.5, objectFit: 'cover', display: 'block', border: '1px solid', borderColor: 'divider' }}
+                    />
+                    {imagesByService[s.id].length > 1 && (
+                      <Chip
+                        label={`+${imagesByService[s.id].length - 1}`}
+                        size="small"
+                        sx={{ position: 'absolute', bottom: -6, right: -6, height: 18, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
+                      />
+                    )}
+                  </Box>
+                )}
                 <Box sx={{ flex: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{s.name}</Typography>
@@ -416,6 +533,13 @@ export default function ServicesSettings() {
                 </Box>
               </Box>
             )}
+            <ServiceImagesEditor
+              images={gallery.map(g => ({ key: g.key, url: g.url } as EditorImage))}
+              uploading={galleryUploading}
+              onAdd={handleAddImages}
+              onRemove={handleRemoveImage}
+              data-testid="service-images-editor"
+            />
             <FormControlLabel
               control={
                 <Switch

@@ -16,6 +16,7 @@ import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { LoadingState, EmptyState } from '@/components/ui'
 import BookingShell from './BookingShell'
 import BookingSummaryCard from './BookingSummaryCard'
+import ServiceGallery from './ServiceGallery'
 import Step1ServiceSelect from './Step1ServiceSelect'
 import Step2DateTimeSelect from './Step2DateTimeSelect'
 import Step3CustomerForm from './Step3CustomerForm'
@@ -55,6 +56,8 @@ export interface BookingService {
   duration_minutes: number
   price: number
   max_per_slot: number
+  // Gallery image URLs in display order; shown in the sidebar once selected.
+  images: string[]
 }
 
 export interface BookingStaff {
@@ -240,9 +243,13 @@ export default function BookingLayout() {
     : null
 
   // Live "your booking" summary — a white ticket filled in as the customer
-  // progresses, echoing the confirmation-page stub.
+  // progresses, echoing the confirmation-page stub. The selected service's
+  // photo gallery renders beneath it (same overlay tokens as BookingShell).
   const sideFg = bookingTheme.sidebarText === 'dark' ? '#1F2937' : '#FFFFFF'
+  const sideOverlay = (a: number) =>
+    `rgba(${bookingTheme.sidebarText === 'dark' ? '0,0,0' : '255,255,255'},${a})`
   const summary = booking.service ? (
+    <>
     <BookingSummaryCard
       label={t('booking.yourBooking')}
       labelColor={sideFg}
@@ -264,6 +271,14 @@ export default function BookingLayout() {
         }] : []),
       ]}
     />
+    <ServiceGallery
+      // `?? []` guards drafts persisted before services carried images.
+      images={booking.service.images ?? []}
+      serviceName={booking.service.name}
+      fg={sideFg}
+      overlay={sideOverlay}
+    />
+    </>
   ) : undefined
 
   const mobileAside = booking.service
