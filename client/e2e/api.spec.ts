@@ -51,7 +51,7 @@ test.describe('Public REST API', () => {
     const noKey = await request.get(`${API}/v1/services`)
     expect(noKey.status()).toBe(401)
 
-    const malformed = await getJson(request, `${API}/v1/services`, 'not-a-grafiki-key')
+    const malformed = await getJson(request, `${API}/v1/services`, 'not-a-vis-key')
     expect(malformed.status).toBe(401)
 
     const unknown = await getJson(request, `${API}/v1/services`, `grf_${'0'.repeat(48)}`)

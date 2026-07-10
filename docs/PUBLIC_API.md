@@ -1,6 +1,6 @@
-# Grafiki Public REST API (v1)
+# Vis Public REST API (v1)
 
-Integrate Grafiki booking into your own website, app, or backend. The API
+Integrate Vis booking into your own website, app, or backend. The API
 exposes the same availability and booking rules as your public booking page.
 
 - **Base URL:** `https://dnmecnpugjxkjonqsfxx.supabase.co/functions/v1/api`
@@ -96,7 +96,7 @@ Response `201`:
 Notes:
 - **No customer OTP** is required on this path — your API key is the trusted
   credential. By calling this endpoint you confirm the customer consented to
-  the booking and to Grafiki's privacy terms (the consent timestamp/version is
+  the booking and to Vis's privacy terms (the consent timestamp/version is
   recorded on the customer record).
 - SMS behaviour matches the booking page: a `pending` booking texts the
   customer when you approve it; an `approved` booking texts immediately.

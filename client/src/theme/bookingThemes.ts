@@ -41,7 +41,7 @@ export interface BookingTheme {
 }
 
 export const BOOKING_THEMES: Record<BookingThemeKey, BookingTheme> = {
-  // Ink & Citrus — the Grafiki signature: a confident ink sidebar with a warm
+  // Ink & Citrus — the Vis signature: a confident ink sidebar with a warm
   // citrus accent and a honey-gold price. Welcoming and energetic. The default.
   citrus: {
     key: 'citrus',

@@ -28,7 +28,7 @@ interface BookingTicketProps {
 }
 
 /**
- * The Grafiki signature: a booking rendered as a tear-off ticket stub.
+ * The Vis signature: a booking rendered as a tear-off ticket stub.
  * A solid body of detail rows, a perforated divider with punched-out
  * notches, and a stub carrying the status and price. Used at the booking
  * confirmation — the moment a customer most wants something to keep.

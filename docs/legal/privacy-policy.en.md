@@ -1,4 +1,4 @@
-# Privacy Policy — [COMPANY NAME] ("Grafiki" / "Vis")
+# Privacy Policy — [COMPANY NAME] ("Vis")
 
 **Last updated:** [DATE]
 
@@ -10,7 +10,7 @@
 ## 1. Who we are
 
 [COMPANY NAME], identification number [ID NUMBER], registered at [ADDRESS], email [EMAIL]
-("we", "us", "Grafiki") operates the "Vis" appointment-booking platform at [DOMAIN]. We are
+("we", "us", "Vis") operates the Vis appointment-booking platform at [DOMAIN]. We are
 the data controller for account and platform data as described in this policy. For any
 data-protection question, contact us at [EMAIL].
 
@@ -48,6 +48,9 @@ Our legal bases (Article 5) are: performance of the booking and account service;
 time); our legitimate interest in operating and securing the service; and compliance with a
 legal obligation. We do **not** process your data for direct marketing without your separate,
 freely given consent (Article 12).
+
+Providing a name and phone number is necessary to create an account or a booking — without
+them the service cannot be provided. All other fields are optional.
 
 ## 5. Please do not enter sensitive data
 

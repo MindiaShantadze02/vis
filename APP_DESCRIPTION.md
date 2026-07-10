@@ -1,4 +1,4 @@
-# Grafiki (brand: "Vis") — Appointment Booking SaaS
+# Vis — Appointment Booking SaaS
 
 ## What it is
 A multi-tenant SaaS platform for the **Georgian market** that lets small service businesses (salons, spas, clinics, trainers, etc.) accept online appointment bookings. Each business gets a public booking page at a slug-based URL (`vis.ge/book/{slug}`), and a private dashboard to manage appointments, services, staff, working hours, payments, and team. There's also a platform-level superadmin area.

@@ -1,6 +1,6 @@
 # Vis — Appointment Booking SaaS
 
-> Product name **Vis** (codename *Grafiki*). Hosted Supabase project ref `dnmecnpugjxkjonqsfxx`.
+> Product name **Vis**. Hosted Supabase project ref `dnmecnpugjxkjonqsfxx`.
 
 ## What it is
 A multi-tenant SaaS platform for the **Georgian market** that lets small service businesses
@@ -121,9 +121,10 @@ gate on `is_superadmin()`.
   `pending_bookings` for online-pay intents, payment columns on `appointments`
 - SMS: event-driven — a DB trigger enqueues, the `send-sms` edge function dispatches through a
   pluggable `SmsProvider` (`_shared/sms/`); currently a **mock** provider
-- **Subscription tiers:** Free (30/mo), Starter ₾15 (200/mo), Pro ₾40 (600/mo), Business ₾80
-  (unlimited). Limits in `platform_config.tier_limits` JSON (superadmin-editable, no deploy);
-  enforced via `org_can_accept_appointment` / `enforce_appointment_limit`.
+- **Subscription tiers:** no free tier — every new org gets a 30-day Starter-level trial, then
+  Starter ₾29 (150/mo), Pro ₾59 (400/mo), Business ₾99 (800/mo). Limits in
+  `platform_config.tier_limits` JSON (superadmin-editable, no deploy); enforced via
+  `org_can_accept_appointment` / `enforce_appointment_limit`.
 - `pg_cron`: auto-complete past appointments; booking notifications & reminders; retention purge
 - Account deletion cascades all org data (+ best-effort storage cleanup)
 

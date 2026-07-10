@@ -88,7 +88,7 @@ const DEFAULT_BOOKING: BookingState = {
 // In-progress booking is kept in sessionStorage (per tab, per business) so an
 // accidental refresh — or returning from the payment gateway redirect — restores
 // the customer's place instead of dumping them back at step 1.
-const storageKey = (slug: string) => `grafiki_booking_${slug}`
+const storageKey = (slug: string) => `vis_booking_${slug}`
 
 interface PersistedBooking { booking: BookingState; step: number }
 

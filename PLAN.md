@@ -1,16 +1,16 @@
-# Grafiki Multi-Vertical Implementation Plan (Appointments · Restaurants · Hotels)
+# Vis Multi-Vertical Implementation Plan (Appointments · Restaurants · Hotels)
 
 > **No feature code is written yet** — this is the reviewable plan.
 
 ## Context
 
-Grafiki (brand "Vis") is a live, multi-tenant appointment-booking SaaS for the
+Vis is a live, multi-tenant appointment-booking SaaS for the
 Georgian market. The goal is to extend it to three booking **verticals** under one
 codebase — **appointments** (current product), **restaurant table reservations**,
 and **hotel room bookings** — under two non-negotiable constraints:
 
 - **Constraint A — Vertical isolation:** a business picks one vertical and from then
-  on sees *only* that vertical's terminology, settings, and screens. Grafiki must
+  on sees *only* that vertical's terminology, settings, and screens. Vis must
   *feel* purpose-built per vertical.
 - **Constraint B — Protect the working product:** the live appointment flow must keep
   working. Every change is additive, behind a vertical/feature flag, and the existing
@@ -133,7 +133,7 @@ hotel_inventory_calendar(room_type_id, date, rooms_available)  -- per-night avai
 Reuse the `PaymentProvider` abstraction and webhook unchanged. Note vertical implications for a **later** phase (flagged in §7):
 - Restaurant **deposits** for no-show-prone slots → extend `CreateCheckoutParams` with an amount-type (full vs deposit); add deposit/refund columns on `restaurant_reservations`.
 - Hotel **multi-night prepay / card hold** → `hotel_stays.total_amount` drives a single prepay; cancellation-window refund policy per room_type.
-- Per-purpose mirrors the existing `pending_bookings` "intent → webhook promotes to real row" pattern: add `pending_reservations` / `pending_stays` analogues only when online payment is enabled for that vertical. Grafiki's own subscription revenue path is untouched and stays separate.
+- Per-purpose mirrors the existing `pending_bookings` "intent → webhook promotes to real row" pattern: add `pending_reservations` / `pending_stays` analogues only when online payment is enabled for that vertical. Vis's own subscription revenue path is untouched and stays separate.
 
 ---
 

@@ -1,4 +1,4 @@
-# Terms of Service — [COMPANY NAME] ("Grafiki" / "Vis")
+# Terms of Service — [COMPANY NAME] ("Vis")
 
 **Last updated:** [DATE]
 
@@ -12,8 +12,8 @@ Terms and to our Privacy Policy. If you do not agree, do not use the service.
 
 ## 2. The service
 
-Grafiki provides software that lets businesses publish booking pages and manage appointments,
-and lets clients book with those businesses. Grafiki is **not** a party to the appointment
+Vis provides software that lets businesses publish booking pages and manage appointments,
+and lets clients book with those businesses. Vis is **not** a party to the appointment
 between a client and a business, and is not responsible for the services a business provides.
 
 ## 3. Accounts
@@ -28,12 +28,17 @@ Booking requires a valid phone number and one-time SMS verification. A booking m
 *pending* until the business approves it. Cancellations and changes are handled by the
 business directly, whose contact details are shown on the booking confirmation.
 
-## 5. Payments
+## 5. Payments and subscriptions
 
 Where online payment is enabled, payment is processed by a third-party provider (e.g. BOG /
 TBC), whose terms apply to the transaction. In-person payments are settled directly between the
-client and the business. Subscription fees for business accounts, if any, are described at
-[PRICING URL].
+client and the business.
+
+Business accounts start with a 30-day free trial; no card is required. After the trial,
+accepting new bookings requires a paid monthly plan. Current plans and prices are shown on our
+website and in the app under Settings → Subscription. If a subscription lapses, the account and
+its data are retained, but the booking page stops accepting new bookings until the plan is
+renewed. We announce price changes in advance in the app.
 
 ## 6. Acceptable use
 
@@ -46,7 +51,7 @@ uploading of another person's personal data without a lawful basis.
 Businesses using the platform are the data controllers of their clients' personal data and
 must comply with the Law of Georgia on Personal Data Protection — including having a lawful
 basis for processing, honoring client rights, and not entering special-category (sensitive)
-data without proper grounds. Grafiki processes such data only as described in Section 2 of the
+data without proper grounds. Vis processes such data only as described in Section 2 of the
 Privacy Policy.
 
 ## 8. Intellectual property
@@ -70,8 +75,9 @@ these Terms limits liability that cannot be limited under Georgian law.
 ## 11. Termination
 
 You may stop using the service and delete your account at any time; deletion removes your data
-in accordance with the Privacy Policy retention terms. We may suspend or terminate accounts
-that violate these Terms.
+in accordance with the Privacy Policy retention terms. An expired subscription does not delete
+your account or data (see Section 5). We may suspend or terminate accounts that violate these
+Terms.
 
 ## 12. Governing law and disputes
 

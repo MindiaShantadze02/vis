@@ -11,6 +11,13 @@ export const SUPPORTED_LANGUAGES = [
 
 export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]['code']
 
+// One-time migration: the language key predates the Grafiki → Vis rename.
+try {
+  const legacy = localStorage.getItem('grafiki-lang')
+  if (legacy && !localStorage.getItem('vis-lang')) localStorage.setItem('vis-lang', legacy)
+  localStorage.removeItem('grafiki-lang')
+} catch { /* storage unavailable (SSR/private mode) — detector falls back to ka */ }
+
 i18n
   .use(HttpBackend)
   .use(LanguageDetector)
@@ -23,7 +30,7 @@ i18n
       // Remember the admin's choice across reloads; fall back to Georgian.
       order: ['localStorage'],
       caches: ['localStorage'],
-      lookupLocalStorage: 'grafiki-lang',
+      lookupLocalStorage: 'vis-lang',
     },
     backend: {
       loadPath: '/locales/{{lng}}/{{ns}}.json',

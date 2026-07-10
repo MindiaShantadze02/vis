@@ -9,7 +9,7 @@ import {
 } from '../_shared/slots.ts'
 
 /**
- * Public REST API v1 — lets a business integrate Grafiki booking into its own
+ * Public REST API v1 — lets a business integrate Vis booking into its own
  * app. Auth: per-organisation API key (x-api-key header or Bearer token),
  * minted in dashboard Settings → API keys, checked against api_keys via the
  * authenticate_api_key RPC (which also rate-limits per key; migration 071).

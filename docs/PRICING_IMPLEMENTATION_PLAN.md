@@ -1,7 +1,7 @@
 # Pricing, Trial & Growth — Phased Implementation Plan
 
 **Date:** 2026-07-09
-**Input:** "Vis (Grafiki) — Pricing, Trial & Growth: Decision Record" (2026-07-09) **plus Mindia's amendment: the Free tier is removed entirely** (no 5-appointments plan). Every new organisation gets a 30-day Starter-level trial, no card required; after that they must be on a paid plan.
+**Input:** "Vis — Pricing, Trial & Growth: Decision Record" (2026-07-09) **plus Mindia's amendment: the Free tier is removed entirely** (no 5-appointments plan). Every new organisation gets a 30-day Starter-level trial, no card required; after that they must be on a paid plan.
 **Status:** Plan only — nothing here is built or migrated yet.
 
 ---

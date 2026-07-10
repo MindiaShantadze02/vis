@@ -8,7 +8,7 @@
 // Placeholders in [BRACKETS] are filled once the legal entity is registered.
 
 /** Version tag stored with each consent (customers.consent_version). Bump on change. */
-export const CONSENT_VERSION = '2026-07-03.2'
+export const CONSENT_VERSION = '2026-07-10.1'
 
 export type LegalDocType = 'privacy' | 'terms'
 
@@ -31,13 +31,13 @@ type Lang = 'ka' | 'en'
 
 const PRIVACY: Record<Lang, LegalDoc> = {
   en: {
-    title: 'Privacy Policy — [COMPANY NAME] ("Grafiki" / "Vis")',
+    title: 'Privacy Policy — [COMPANY NAME] ("Vis")',
     updated: '[DATE]',
     note: 'Drafted to satisfy the Law of Georgia on Personal Data Protection (No. 3144, in force 1 March 2024). The Georgian version is the legally authoritative text.',
     sections: [
       {
         heading: '1. Who we are',
-        body: ['[COMPANY NAME], identification number [ID NUMBER], registered at [ADDRESS], email [EMAIL] ("we", "us", "Grafiki") operates the "Vis" appointment-booking platform at [DOMAIN]. We are the data controller for account and platform data as described in this policy. For any data-protection question, contact us at [EMAIL].'],
+        body: ['[COMPANY NAME], identification number [ID NUMBER], registered at [ADDRESS], email [EMAIL] ("we", "us", "Vis") operates the Vis appointment-booking platform at [DOMAIN]. We are the data controller for account and platform data as described in this policy. For any data-protection question, contact us at [EMAIL].'],
       },
       {
         heading: '2. Whose data we process and our role',
@@ -59,6 +59,7 @@ const PRIVACY: Record<Lang, LegalDoc> = {
         body: [
           'We process personal data to create and manage bookings; verify phone numbers; send booking-related SMS; operate business accounts; process payments; secure the platform and prevent abuse; and comply with the law.',
           'Our legal bases (Article 5) are: performance of the booking and account service; your consent (given via the checkbox at booking and registration, and withdrawable at any time); our legitimate interest in operating and securing the service; and compliance with a legal obligation. We do not process your data for direct marketing without your separate, freely given consent (Article 12).',
+          'Providing a name and phone number is necessary to create an account or a booking — without them the service cannot be provided. All other fields are optional.',
         ],
       },
       {
@@ -109,13 +110,13 @@ const PRIVACY: Record<Lang, LegalDoc> = {
     ],
   },
   ka: {
-    title: 'კონფიდენციალურობის პოლიტიკა — [კომპანიის სახელი] ("Grafiki" / "Vis")',
+    title: 'კონფიდენციალურობის პოლიტიკა — [კომპანიის სახელი] ("Vis")',
     updated: '[თარიღი]',
     note: 'შედგენილია საქართველოს კანონის „პერსონალურ მონაცემთა დაცვის შესახებ" (№3144, ძალაშია 2024 წლის 1 მარტიდან) მოთხოვნათა შესაბამისად.',
     sections: [
       {
         heading: '1. ვინ ვართ ჩვენ',
-        body: ['[კომპანიის სახელი], საიდენტიფიკაციო ნომერი [ID ნომერი], რეგისტრირებული მისამართზე [მისამართი], ელფოსტა [ელფოსტა] („ჩვენ", „Grafiki") უზრუნველყოფს ჯავშნის პლატფორმა „Vis"-ის ფუნქციონირებას მისამართზე [დომენი]. ჩვენ ვართ ანგარიშისა და პლატფორმის მონაცემთა დამუშავებაზე პასუხისმგებელი პირი (მაკონტროლებელი). ნებისმიერი კითხვისთვის მოგვმართეთ: [ელფოსტა].'],
+        body: ['[კომპანიის სახელი], საიდენტიფიკაციო ნომერი [ID ნომერი], რეგისტრირებული მისამართზე [მისამართი], ელფოსტა [ელფოსტა] („ჩვენ", „Vis") მართავს ჯავშნის პლატფორმას „Vis" მისამართზე [დომენი]. ჩვენ ვართ ანგარიშისა და პლატფორმის მონაცემთა დამუშავებაზე პასუხისმგებელი პირი (მაკონტროლებელი). ნებისმიერი კითხვისთვის მოგვმართეთ: [ელფოსტა].'],
       },
       {
         heading: '2. ვისი მონაცემები მუშავდება და ჩვენი როლი',
@@ -127,8 +128,8 @@ const PRIVACY: Record<Lang, LegalDoc> = {
       {
         heading: '3. რა მონაცემებს ვაგროვებთ',
         body: [[
-          'ბიზნეს-მომხმარებლებისგან: ტელეფონის ნომერი (ავტორიზაცია), პაროლი (ინახება მხოლოდ დაცული ჰეშის სახით), ბიზნესის სახელი, აღწერა, საკონტაქტო ტელეფონი და ლოგო, თანამშრომელთა სახელები და ფოტოები, შეყვანილი შენიშვნები, ხელმოწერისა და გადახდის ჩანაწერები.',
-          'მჯავშნავი კლიენტებისგან: სახელი, გვარი (არასავალდებულო), ტელეფონის ნომერი, შეყვანილი შენიშვნები, არჩეული სერვისი, თანამშრომელი, თარიღი და დრო. ნომრის დასადასტურებლად ვგზავნით ერთჯერად კოდს SMS-ით.',
+          'ბიზნეს-მომხმარებლებისგან: ტელეფონის ნომერი (ავტორიზაცია), პაროლი (ინახება მხოლოდ დაცული ჰეშის სახით), ბიზნესის სახელი, აღწერა, საკონტაქტო ტელეფონი და ლოგო, თანამშრომელთა სახელები და ფოტოები, შეყვანილი შენიშვნები, გამოწერისა (სააბონენტო გეგმის) და გადახდის ჩანაწერები.',
+          'დამჯავშნელი კლიენტებისგან: სახელი, გვარი (არასავალდებულო), ტელეფონის ნომერი, შეყვანილი შენიშვნები, არჩეული სერვისი, თანამშრომელი, თარიღი და დრო. ნომრის დასადასტურებლად ვგზავნით ერთჯერად კოდს SMS-ით.',
           'ავტომატურად: სერვისის ფუნქციონირებისა და უსაფრთხოებისთვის საჭირო მინიმალური ტექნიკური მონაცემები. ჩვენ არ ვიყენებთ მესამე მხარის სარეკლამო ან ანალიტიკურ ტრეკერებს.',
         ]],
       },
@@ -136,7 +137,8 @@ const PRIVACY: Record<Lang, LegalDoc> = {
         heading: '4. რატომ ვამუშავებთ და სამართლებრივი საფუძველი',
         body: [
           'მონაცემებს ვამუშავებთ ჯავშნების შესაქმნელად და სამართავად; ნომრების დასადასტურებლად; SMS-ების გასაგზავნად; ბიზნეს-ანგარიშების ფუნქციონირებისთვის; გადახდების დასამუშავებლად; უსაფრთხოებისთვის; და კანონის მოთხოვნათა შესასრულებლად.',
-          'სამართლებრივი საფუძვლებია (მუხლი 5): სერვისის შესრულება; თქვენი თანხმობა (გამოხატული ჯავშნისა და რეგისტრაციისას, გამოხმობადი ნებისმიერ დროს); ჩვენი ლეგიტიმური ინტერესი; და კანონისმიერი ვალდებულება. პირდაპირი მარკეტინგისთვის მონაცემებს არ ვამუშავებთ თქვენი ცალკე თანხმობის გარეშე (მუხლი 12).',
+          'სამართლებრივი საფუძვლებია (მუხლი 5): ჯავშნისა და ანგარიშის მომსახურების გაწევა; თქვენი თანხმობა (გამოხატული ჯავშნისა და რეგისტრაციისას, რომლის გამოხმობაც ნებისმიერ დროს შეგიძლიათ); ჩვენი ლეგიტიმური ინტერესი; და კანონისმიერი ვალდებულება. პირდაპირი მარკეტინგისთვის მონაცემებს არ ვამუშავებთ თქვენი ცალკე თანხმობის გარეშე (მუხლი 12).',
+          'სახელისა და ტელეფონის ნომრის მითითება აუცილებელია ანგარიშის შესაქმნელად ან ვიზიტის დასაჯავშნად — მათ გარეშე მომსახურების გაწევა შეუძლებელია. ყველა სხვა ველი არასავალდებულოა.',
         ],
       },
       {
@@ -148,7 +150,7 @@ const PRIVACY: Record<Lang, LegalDoc> = {
         body: [
           [
             'Supabase — ჰოსტინგის, ბაზის, ავტორიზაციისა და შენახვის მომწოდებელი.',
-            'SMS-გეითვეი — დამადასტურებელი და ჯავშნის შეტყობინებებისთვის; იღებს ნომერსა და შეტყობინების შინაარსს.',
+            'SMS-პროვაიდერი — დამადასტურებელი და ჯავშნის შეტყობინებების მისაწოდებლად; იღებს ნომერსა და შეტყობინების შინაარსს.',
             'გადახდის მომწოდებელი (მაგ. BOG / TBC) — იღებს გადახდის თანხასა და ნომერს; არ იღებს თქვენს შენიშვნებს.',
           ],
           'თითოეული მოქმედებს როგორც ჩვენი დამმუშავებელი ხელშეკრულების საფუძველზე. ჩვენ არ ვყიდით თქვენს მონაცემებს. თუ დამმუშავებელი საქართველოს გარეთაა, ვიყენებთ ტრანსსასაზღვრო გადაცემისთვის საჭირო გარანტიებს (მუხლი 34).',
@@ -190,40 +192,46 @@ const PRIVACY: Record<Lang, LegalDoc> = {
 
 const TERMS: Record<Lang, LegalDoc> = {
   en: {
-    title: 'Terms of Service — [COMPANY NAME] ("Grafiki" / "Vis")',
+    title: 'Terms of Service — [COMPANY NAME] ("Vis")',
     updated: '[DATE]',
     sections: [
       { heading: '1. Acceptance', body: ['By creating an account or booking an appointment through the platform, you agree to these Terms and to our Privacy Policy. If you do not agree, do not use the service.'] },
-      { heading: '2. The service', body: ['Grafiki provides software that lets businesses publish booking pages and manage appointments, and lets clients book with those businesses. Grafiki is not a party to the appointment between a client and a business, and is not responsible for the services a business provides.'] },
+      { heading: '2. The service', body: ['Vis provides software that lets businesses publish booking pages and manage appointments, and lets clients book with those businesses. Vis is not a party to the appointment between a client and a business, and is not responsible for the services a business provides.'] },
       { heading: '3. Accounts', body: ['Business users register with a phone number and password and are responsible for safeguarding their credentials and for all activity under their account. You must provide accurate information and keep it current.'] },
       { heading: '4. Client bookings', body: ['Booking requires a valid phone number and one-time SMS verification. A booking may be pending until the business approves it. Cancellations and changes are handled by the business directly, whose contact details are shown on the booking confirmation.'] },
-      { heading: '5. Payments', body: ['Where online payment is enabled, payment is processed by a third-party provider (e.g. BOG / TBC), whose terms apply to the transaction. In-person payments are settled directly between the client and the business. Subscription fees for business accounts, if any, are described at [PRICING URL].'] },
+      { heading: '5. Payments and subscriptions', body: [
+        'Where online payment is enabled, payment is processed by a third-party provider (e.g. BOG / TBC), whose terms apply to the transaction. In-person payments are settled directly between the client and the business.',
+        'Business accounts start with a 30-day free trial; no card is required. After the trial, accepting new bookings requires a paid monthly plan. Current plans and prices are shown on our website and in the app under Settings → Subscription. If a subscription lapses, the account and its data are retained, but the booking page stops accepting new bookings until the plan is renewed. We announce price changes in advance in the app.',
+      ] },
       { heading: '6. Acceptable use', body: ['Do not misuse the platform: no unlawful, fraudulent, infringing, or abusive content; no attempts to breach security, scrape data, or overload the service; and no uploading of another person’s personal data without a lawful basis.'] },
-      { heading: '7. Business obligations regarding client data', body: ['Businesses using the platform are the data controllers of their clients’ personal data and must comply with the Law of Georgia on Personal Data Protection — including having a lawful basis, honoring client rights, and not entering special-category data without proper grounds. Grafiki processes such data only as described in Section 2 of the Privacy Policy.'] },
+      { heading: '7. Business obligations regarding client data', body: ['Businesses using the platform are the data controllers of their clients’ personal data and must comply with the Law of Georgia on Personal Data Protection — including having a lawful basis, honoring client rights, and not entering special-category data without proper grounds. Vis processes such data only as described in Section 2 of the Privacy Policy.'] },
       { heading: '8. Intellectual property', body: ['The platform, its design and its software are owned by [COMPANY NAME]. You receive a limited, non-exclusive right to use the service. Content you upload remains yours, and you grant us the license needed to operate the service.'] },
       { heading: '9. Availability and disclaimers', body: ['The service is provided "as is". We aim for high availability but do not guarantee uninterrupted or error-free operation. To the extent permitted by Georgian law, we exclude implied warranties.'] },
       { heading: '10. Liability', body: ['To the maximum extent permitted by law, [COMPANY NAME] is not liable for indirect or consequential losses, or for the acts of businesses or clients using the platform. Nothing limits liability that cannot be limited under Georgian law.'] },
-      { heading: '11. Termination', body: ['You may stop using the service and delete your account at any time; deletion removes your data in accordance with the Privacy Policy retention terms. We may suspend or terminate accounts that violate these Terms.'] },
+      { heading: '11. Termination', body: ['You may stop using the service and delete your account at any time; deletion removes your data in accordance with the Privacy Policy retention terms. An expired subscription does not delete your account or data (see Section 5). We may suspend or terminate accounts that violate these Terms.'] },
       { heading: '12. Governing law and disputes', body: ['These Terms are governed by the law of Georgia, and disputes are subject to the courts of Georgia, without prejudice to any mandatory consumer-protection rights.'] },
       { heading: '13. Contact', body: ['[EMAIL] — [ADDRESS].'] },
     ],
   },
   ka: {
-    title: 'მომსახურების პირობები — [კომპანიის სახელი] ("Grafiki" / "Vis")',
+    title: 'მომსახურების პირობები — [კომპანიის სახელი] ("Vis")',
     updated: '[თარიღი]',
     sections: [
-      { heading: '1. აქცეპტი', body: ['ანგარიშის შექმნით ან ვიზიტის დაჯავშნით თქვენ ეთანხმებით ამ პირობებსა და კონფიდენციალურობის პოლიტიკას. თუ არ ეთანხმებით, ნუ გამოიყენებთ სერვისს.'] },
-      { heading: '2. სერვისი', body: ['Grafiki გთავაზობთ პროგრამულ უზრუნველყოფას, რომელიც ბიზნესებს აძლევს ჯავშნის გვერდების გამოქვეყნებისა და ვიზიტების მართვის, ხოლო კლიენტებს — დაჯავშნის საშუალებას. Grafiki არ არის მხარე კლიენტსა და ბიზნესს შორის ვიზიტში და არ არის პასუხისმგებელი ბიზნესის მომსახურებაზე.'] },
-      { heading: '3. ანგარიშები', body: ['ბიზნეს-მომხმარებლები რეგისტრირდებიან ტელეფონითა და პაროლით და პასუხისმგებელი არიან საკუთარი მონაცემების დაცვასა და ანგარიშზე ყველა ქმედებაზე. უნდა მიუთითოთ ზუსტი ინფორმაცია და განაახლოთ იგი.'] },
+      { heading: '1. პირობებზე თანხმობა', body: ['ანგარიშის შექმნით ან ვიზიტის დაჯავშნით თქვენ ეთანხმებით ამ პირობებსა და კონფიდენციალურობის პოლიტიკას. თუ არ ეთანხმებით, ნუ გამოიყენებთ სერვისს.'] },
+      { heading: '2. სერვისი', body: ['Vis გთავაზობთ პროგრამულ უზრუნველყოფას, რომელიც ბიზნესებს აძლევს ჯავშნის გვერდების გამოქვეყნებისა და ვიზიტების მართვის, ხოლო კლიენტებს — დაჯავშნის საშუალებას. Vis არ არის მხარე კლიენტსა და ბიზნესს შორის შემდგარ ვიზიტში და არ არის პასუხისმგებელი ბიზნესის მიერ გაწეულ მომსახურებაზე.'] },
+      { heading: '3. ანგარიშები', body: ['ბიზნეს-მომხმარებლები რეგისტრირდებიან ტელეფონის ნომრითა და პაროლით და პასუხისმგებელნი არიან ავტორიზაციის მონაცემების (პაროლის) დაცვაზე და ანგარიშით განხორციელებულ ყველა ქმედებაზე. უნდა მიუთითოთ ზუსტი ინფორმაცია და საჭიროებისამებრ განაახლოთ იგი.'] },
       { heading: '4. კლიენტის ჯავშნები', body: ['დაჯავშნისთვის საჭიროა მოქმედი ნომერი და ერთჯერადი SMS-დადასტურება. ჯავშანი შესაძლოა დარჩეს მოლოდინის რეჟიმში დადასტურებამდე. გაუქმებასა და ცვლილებებს ბიზნესი უშუალოდ წარმართავს, რომლის კონტაქტიც მითითებულია დადასტურების გვერდზე.'] },
-      { heading: '5. გადახდები', body: ['ონლაინ გადახდისას გადახდას ამუშავებს მესამე მხარის მომწოდებელი (მაგ. BOG / TBC), რომლის პირობებიც ვრცელდება. ადგილზე გადახდა წარიმართება უშუალოდ კლიენტსა და ბიზნესს შორის. სააბონენტო საფასური აღწერილია: [ფასების URL].'] },
-      { heading: '6. მიღებული გამოყენება', body: ['ნუ გამოიყენებთ პლატფორმას ბოროტად: აკრძალულია უკანონო, თაღლითური, უფლების დამრღვევი ან შეურაცხმყოფელი შინაარსი; უსაფრთხოების დარღვევის, მონაცემთა ამოღების ან სერვისის გადატვირთვის მცდელობა; სხვისი მონაცემების ატვირთვა სამართლებრივი საფუძვლის გარეშე.'] },
-      { heading: '7. ბიზნესის ვალდებულებები კლიენტის მონაცემებზე', body: ['პლატფორმის მომხმარებელი ბიზნესები არიან თავიანთი კლიენტების მონაცემთა მაკონტროლებლები და ვალდებულნი არიან დაიცვან კანონი „პერსონალურ მონაცემთა დაცვის შესახებ" — მათ შორის, ჰქონდეთ სამართლებრივი საფუძველი, პატივი სცენ კლიენტის უფლებებს და არ შეიყვანონ განსაკუთრებული კატეგორიის მონაცემები საფუძვლის გარეშე. Grafiki ამ მონაცემებს ამუშავებს მხოლოდ პოლიტიკის მე-2 ნაწილის შესაბამისად.'] },
+      { heading: '5. გადახდები და გამოწერა', body: [
+        'ონლაინ გადახდისას გადახდას ამუშავებს მესამე მხარის მომწოდებელი (მაგ. BOG / TBC), რომლის პირობებიც ვრცელდება. ადგილზე გადახდა წარიმართება უშუალოდ კლიენტსა და ბიზნესს შორის.',
+        'ბიზნეს-ანგარიში იწყება 30-დღიანი უფასო საცდელი პერიოდით — ბარათი საჭირო არ არის. საცდელი პერიოდის შემდეგ ახალი ჯავშნების მისაღებად საჭიროა ფასიანი ყოველთვიური გეგმა. მოქმედი გეგმები და ფასები მოცემულია ჩვენს ვებგვერდზე და აპლიკაციაში (პარამეტრები → გამოწერა). თუ გამოწერის ვადა ამოიწურა, ანგარიში და მონაცემები შენარჩუნდება, თუმცა ჯავშნის გვერდი ახალ ჯავშნებს ვეღარ მიიღებს გეგმის განახლებამდე. ფასების ცვლილებას წინასწარ ვაცნობებთ აპლიკაციაში.',
+      ] },
+      { heading: '6. დასაშვები გამოყენება', body: ['ნუ გამოიყენებთ პლატფორმას ბოროტად: აკრძალულია უკანონო, თაღლითური, უფლების დამრღვევი ან შეურაცხმყოფელი შინაარსი; უსაფრთხოების დარღვევის, მონაცემთა მასობრივი ამოღების ან სერვისის გადატვირთვის მცდელობა; სხვისი პერსონალური მონაცემების ატვირთვა სამართლებრივი საფუძვლის გარეშე.'] },
+      { heading: '7. ბიზნესის ვალდებულებები კლიენტის მონაცემებზე', body: ['პლატფორმის მომხმარებელი ბიზნესები არიან თავიანთი კლიენტების მონაცემთა მაკონტროლებლები და ვალდებულნი არიან დაიცვან კანონი „პერსონალურ მონაცემთა დაცვის შესახებ" — მათ შორის, ჰქონდეთ სამართლებრივი საფუძველი, პატივი სცენ კლიენტის უფლებებს და არ შეიყვანონ განსაკუთრებული კატეგორიის მონაცემები საფუძვლის გარეშე. Vis ამ მონაცემებს ამუშავებს მხოლოდ პოლიტიკის მე-2 ნაწილის შესაბამისად.'] },
       { heading: '8. ინტელექტუალური საკუთრება', body: ['პლატფორმა, მისი დიზაინი და პროგრამული უზრუნველყოფა ეკუთვნის [კომპანიის სახელი]-ს. თქვენ იღებთ სერვისის გამოყენების შეზღუდულ, არაექსკლუზიურ უფლებას. ატვირთული შინაარსი რჩება თქვენს საკუთრებაში, და გვანიჭებთ ფუნქციონირებისთვის საჭირო ლიცენზიას.'] },
-      { heading: '9. ხელმისაწვდომობა და პასუხისმგებლობის შეზღუდვა', body: ['სერვისი მოწოდებულია „როგორც არის" პრინციპით. არ ვიძლევით უწყვეტი ან უშეცდომო მუშაობის გარანტიას. საქართველოს კანონმდებლობით დაშვებულ ფარგლებში ვგამორიცხავთ ნაგულისხმევ გარანტიებს.'] },
+      { heading: '9. ხელმისაწვდომობა და პასუხისმგებლობის შეზღუდვა', body: ['სერვისი მოწოდებულია „როგორც არის" პრინციპით. არ ვიძლევით უწყვეტი ან უშეცდომო მუშაობის გარანტიას. საქართველოს კანონმდებლობით დაშვებულ ფარგლებში გამოვრიცხავთ ნაგულისხმევ გარანტიებს.'] },
       { heading: '10. პასუხისმგებლობა', body: ['კანონით დაშვებულ მაქსიმალურ ფარგლებში, [კომპანიის სახელი] არ არის პასუხისმგებელი არაპირდაპირ ან თანმდევ ზიანზე, ან მომხმარებელ ბიზნესთა/კლიენტთა ქმედებებზე. ვერცერთი დებულება ვერ შეზღუდავს პასუხისმგებლობას, რომლის შეზღუდვაც კანონით დაუშვებელია.'] },
-      { heading: '11. შეწყვეტა', body: ['ნებისმიერ დროს შეგიძლიათ შეწყვიტოთ სერვისის გამოყენება და წაშალოთ ანგარიში; წაშლა შლის თქვენს მონაცემებს პოლიტიკის შენახვის ვადების შესაბამისად. ჩვენ შესაძლოა შევაჩეროთ ან შევწყვიტოთ პირობების დამრღვევი ანგარიშები.'] },
-      { heading: '12. მოქმედი სამართალი და დავები', body: ['პირობები რეგულირდება საქართველოს კანონმდებლობით, დავები განიხილება საქართველოს სასამართლოების მიერ, სავალდებულო მომხმარებელთა უფლებების შეულახავად.'] },
+      { heading: '11. შეწყვეტა', body: ['ნებისმიერ დროს შეგიძლიათ შეწყვიტოთ სერვისის გამოყენება და წაშალოთ ანგარიში; წაშლა შლის თქვენს მონაცემებს პოლიტიკის შენახვის ვადების შესაბამისად. გამოწერის ვადის ამოწურვა არ შლის თქვენს ანგარიშსა და მონაცემებს (იხ. ნაწილი 5). ჩვენ შესაძლოა შევაჩეროთ ან შევწყვიტოთ პირობების დამრღვევი ანგარიშები.'] },
+      { heading: '12. მოქმედი სამართალი და დავები', body: ['პირობები რეგულირდება საქართველოს კანონმდებლობით, დავები განიხილება საქართველოს სასამართლოების მიერ, მომხმარებელთა კანონით დადგენილი უფლებების შეზღუდვის გარეშე.'] },
       { heading: '13. კონტაქტი', body: ['[ელფოსტა] — [მისამართი].'] },
     ],
   },
