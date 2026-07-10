@@ -13,10 +13,10 @@ test.describe('Authentication', () => {
     await page.getByTestId('login-phone').fill(SEED.phone)
     await page.getByTestId('login-password').fill('definitely-wrong')
     await page.getByTestId('login-submit').click()
-    // Pass the OTP gate; the bad password is only rejected at sign-in, which
-    // sends us back to the form with an error.
-    await passAuthOtp(page)
+    // The credential pre-check rejects the bad password on the form itself —
+    // the OTP step is never shown.
     await expect(page.getByTestId('login-error')).toBeVisible()
+    await expect(page.getByTestId('auth-otp-code')).toHaveCount(0)
     await expect(page).toHaveURL(/\/login/)
   })
 
@@ -40,10 +40,10 @@ test.describe('Authentication — edge cases', () => {
     await page.getByTestId('login-phone').fill('500000000')
     await page.getByTestId('login-password').fill('password123')
     await page.getByTestId('login-submit').click()
-    // OTP verifies (any phone can request a code); the unknown account is only
-    // rejected at sign-in.
-    await passAuthOtp(page)
+    // The credential pre-check rejects the unknown account on the form itself —
+    // no OTP is requested for a phone that can't sign in.
     await expect(page.getByTestId('login-error')).toBeVisible()
+    await expect(page.getByTestId('auth-otp-code')).toHaveCount(0)
   })
 
   test('registering an already-used phone is rejected', async ({ page }) => {

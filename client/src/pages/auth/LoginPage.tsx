@@ -8,15 +8,17 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { VisibilityOutlined as VisibilityIcon } from '@/components/icons'
 import { VisibilityOffOutlined as VisibilityOffIcon } from '@/components/icons'
-import { supabase } from '@/lib/supabase'
+import { supabase, checkCredentials } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
 import AuthShell from './AuthShell'
 import OtpStep from './OtpStep'
 
 // Sign-in only. Registration lives on /register (see RegisterPage).
-// Flow: credentials → phone OTP (request-booking-otp / verify-booking-otp) →
-// signInWithPassword. The OTP proves phone ownership before the session is issued.
+// Flow: credentials (pre-checked via a throwaway client) → phone OTP
+// (request-booking-otp / verify-booking-otp) → signInWithPassword. The OTP
+// proves phone ownership before the real session is issued, and the pre-check
+// keeps invalid credentials from ever reaching the OTP step.
 export default function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -55,6 +57,14 @@ export default function LoginPage() {
     // go straight to sign-in without another code.
     if (otpVerifiedFor.current === toE164Georgian(phone)) { await signIn(); return }
     setLoading(true)
+    // Reject bad credentials before the OTP step: no code is sent (and no SMS
+    // spent) for a phone/password pair that couldn't sign in anyway.
+    const credErr = await checkCredentials(toE164Georgian(phone), password)
+    if (credErr) {
+      setLoading(false)
+      setError(t(mapAuthError(credErr)))
+      return
+    }
     const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
       body: { phone },
     })
