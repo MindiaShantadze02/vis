@@ -51,6 +51,9 @@ import NotFoundPage from '@/pages/NotFoundPage'
 // Legal
 import LegalPage from '@/pages/legal/LegalPage'
 
+// Developer docs
+import DevDocsPage from '@/pages/docs/DevDocsPage'
+
 import { EmbedBridge } from '@/pages/book/useEmbedBridge'
 
 function LoadingScreen() {
@@ -148,6 +151,10 @@ export default function App() {
       {/* Public legal pages (data-protection compliance). */}
       <Route path="/privacy" element={<LegalPage type="privacy" />} />
       <Route path="/terms" element={<LegalPage type="terms" />} />
+
+      {/* Public developer docs (linked from the homepage). */}
+      <Route path="/docs/api" element={<DevDocsPage type="api" />} />
+      <Route path="/docs/widget" element={<DevDocsPage type="widget" />} />
 
       <Route path="/superadmin" element={<AuthGuard><SuperAdminGuard><SuperAdminLayout /></SuperAdminGuard></AuthGuard>}>
         <Route index element={<PlatformOverviewPage />} />

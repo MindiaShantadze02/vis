@@ -553,6 +553,8 @@
     "devTitle": "Build on the Vis API",
     "devDesc": "Integrate booking into your own website or app with our REST API and per-business keys.",
     "devCta": "Get an API key",
+    "apiDocs": "API docs",
+    "widgetDocs": "Widget docs",
     "footerRights": "All rights reserved."
   }
 }

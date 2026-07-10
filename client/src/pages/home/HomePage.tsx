@@ -221,11 +221,18 @@ export default function HomePage() {
                 {t('home.devDesc')}
               </Typography>
             </Box>
-            {/* Sign-up mints keys under Settings → API. A dedicated public API
-                docs link belongs here once the docs route ships. */}
-            <Button component={RouterLink} to="/register" variant="outlined">
-              {t('home.devCta')}
-            </Button>
+            {/* Sign-up mints keys under Settings → API. */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+              <Button component={RouterLink} to="/docs/api" variant="outlined">
+                {t('home.apiDocs')}
+              </Button>
+              <Button component={RouterLink} to="/docs/widget" variant="outlined">
+                {t('home.widgetDocs')}
+              </Button>
+              <Button component={RouterLink} to="/register" variant="contained">
+                {t('home.devCta')}
+              </Button>
+            </Stack>
           </Stack>
         </Panel>
       </Container>
@@ -246,6 +253,12 @@ export default function HomePage() {
             © {year} Vis. {t('home.footerRights')}
           </Typography>
           <Box sx={{ flex: 1 }} />
+          <Button component={RouterLink} to="/docs/api" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
+            {t('home.apiDocs')}
+          </Button>
+          <Button component={RouterLink} to="/docs/widget" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
+            {t('home.widgetDocs')}
+          </Button>
           <Button component={RouterLink} to="/privacy" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
             {t('common.privacyPolicy')}
           </Button>
