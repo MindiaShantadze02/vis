@@ -511,5 +511,43 @@
     "copyLink": "Copy link",
     "copied": "Copied!",
     "dismiss": "Hide"
+  },
+  "home": {
+    "getStarted": "Get started",
+    "heroTitle": "Online booking for service businesses",
+    "heroSubtitle": "Vis gives salons, clinics, studios and trainers a booking page, a shared calendar, and everything needed to manage appointments — built for Georgia.",
+    "featuresTitle": "Everything you need to take bookings",
+    "features": {
+      "booking": {
+        "title": "Your booking page",
+        "desc": "A booking page clients can use around the clock, from a link you share in your Instagram bio."
+      },
+      "staff": {
+        "title": "Staff & calendar",
+        "desc": "Assign services to staff, manage a shared calendar, and approve, reschedule or cancel bookings."
+      },
+      "hours": {
+        "title": "Working hours",
+        "desc": "Weekly hours, per-day overrides and breaks — available slots stay accurate on their own."
+      },
+      "reviews": {
+        "title": "Verified reviews",
+        "desc": "Collect a review after each completed appointment and show your rating on your booking page."
+      },
+      "widget": {
+        "title": "Embeddable widget",
+        "desc": "Drop your booking form straight into your existing website with a single snippet."
+      },
+      "api": {
+        "title": "Public REST API",
+        "desc": "Connect Vis to your own site or tools with a REST API and per-business keys."
+      }
+    },
+    "pricingTitle": "Simple, honest pricing",
+    "pricingNote": "Start with a 30-day free trial — no card required.",
+    "devTitle": "Build on the Vis API",
+    "devDesc": "Integrate booking into your own website or app with our REST API and per-business keys.",
+    "devCta": "Get an API key",
+    "footerRights": "All rights reserved."
   }
 }

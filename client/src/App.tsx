@@ -44,6 +44,7 @@ import OrgsListPage from '@/pages/superadmin/OrgsListPage'
 import OrgDetailPage from '@/pages/superadmin/OrgDetailPage'
 import SuperadminsPage from '@/pages/superadmin/SuperadminsPage'
 
+import HomePage from '@/pages/home/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
 // Legal
@@ -104,7 +105,7 @@ export default function App() {
     <>
     <EmbedBridge />
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<HomePage />} />
 
       <Route path="/login" element={<PublicOnlyGuard><LoginPage /></PublicOnlyGuard>} />
       <Route path="/register" element={<PublicOnlyGuard><RegisterPage /></PublicOnlyGuard>} />

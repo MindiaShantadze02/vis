@@ -21,6 +21,7 @@ import {
   StarIcon as Star, StorefrontIcon as Storefront, ForkKnifeIcon as ForkKnife,
   SealCheckIcon as SealCheck, TrendUpIcon as TrendUp, EyeSlashIcon as EyeSlash,
   EyeIcon as Eye, BriefcaseIcon as Briefcase, CircleIcon as Circle,
+  CodeIcon as Code, GlobeIcon as Globe,
 } from '@phosphor-icons/react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -144,3 +145,5 @@ export const TrendingUp = adapt(TrendUp)
 export const VisibilityOffOutlined = adapt(EyeSlash)
 export const VisibilityOutlined = adapt(Eye)
 export const WorkOutlineOutlined = adapt(Briefcase)
+export const CodeOutlined = adapt(Code)
+export const LanguageOutlined = adapt(Globe)
