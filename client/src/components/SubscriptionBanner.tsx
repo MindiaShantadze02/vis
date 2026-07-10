@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Alert, AlertTitle, Button } from '@mui/material'
+import { Alert, AlertTitle, Button, Box, IconButton } from '@mui/material'
+import { Close as CloseIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
@@ -55,8 +56,29 @@ export default function SubscriptionBanner() {
         .eq('id', org!.id)
       if (!error) await refresh()
     }
+    // MUI's Alert renders EITHER `action` OR the `onClose` close icon, never
+    // both — so the dismiss control has to live inside `action` alongside the
+    // CTA, otherwise the notice can never be acknowledged into the slim strip.
     return (
-      <Alert severity="error" onClose={acknowledge} action={choosePlan} data-testid="expired-notice" sx={{ mb: 2 }}>
+      <Alert
+        severity="error"
+        action={(
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {choosePlan}
+            <IconButton
+              size="small"
+              color="inherit"
+              onClick={acknowledge}
+              data-testid="expired-dismiss"
+              aria-label={t('checklist.dismiss')}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        )}
+        data-testid="expired-notice"
+        sx={{ mb: 2 }}
+      >
         <AlertTitle sx={{ fontWeight: 700 }}>{t('subscription.expiredTitle')}</AlertTitle>
         {t('subscription.expiredBody')}
       </Alert>
