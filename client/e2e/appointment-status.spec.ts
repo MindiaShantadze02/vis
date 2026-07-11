@@ -79,7 +79,16 @@ test.describe('Appointment status transitions', () => {
     await expect(dialog(page).getByTestId('appt-reject')).toHaveCount(0)
     await expect(dialog(page).getByTestId('appt-cancel')).toHaveCount(0)
 
-    // Left cancelled (terminal) — excluded from the monthly usage count.
+    // Erase the client's data (Art. 16, erase_customer_data RPC) — two-step
+    // confirm, then the dialog closes on success. Anonymization blanks the
+    // customer's name/phone, so the name search no longer matches anything —
+    // which doubles as cleanup of this run's PII.
+    await dialog(page).getByTestId('appt-erase').click()
+    await dialog(page).getByTestId('appt-confirm-erase').click()
+    await expect(dialog(page)).toBeHidden({ timeout: 20_000 })
+    await expect(page.getByTestId('appt-row').filter({ hasText: name })).toHaveCount(0)
+
+    // Left cancelled (terminal, PII erased) — excluded from the monthly usage count.
   })
 
   test('pending → rejected is terminal', async ({ page }) => {
