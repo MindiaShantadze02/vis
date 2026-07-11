@@ -3,6 +3,7 @@ import { Box, Typography, CircularProgress } from '@mui/material'
 import { Add as AddIcon, Close as CloseIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { MAX_IMAGES_PER_SERVICE } from '@/lib/serviceImages'
+import { SkeletonImage } from '@/components/ui'
 
 // Presentational gallery editor shared by the admin Services dialog and the
 // onboarding services step. It owns no persistence — the parent supplies the
@@ -52,12 +53,7 @@ export default function ServiceImagesEditor({
               border: '1px solid', borderColor: 'divider',
             }}
           >
-            <Box
-              component="img"
-              src={img.url}
-              alt=""
-              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
+            <SkeletonImage src={img.url} alt="" sx={{ width: '100%', height: '100%' }} />
             <Box
               onClick={() => onRemove(img.key)}
               role="button"

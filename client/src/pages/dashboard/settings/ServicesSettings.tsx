@@ -12,7 +12,7 @@ import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/componen
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
+import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, SkeletonImage, useToast } from '@/components/ui'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import ServiceImagesEditor, { type EditorImage } from '@/components/ServiceImagesEditor'
 import {
@@ -385,12 +385,11 @@ export default function ServicesSettings() {
               >
                 {(imagesByService[s.id]?.length ?? 0) > 0 && (
                   <Box sx={{ position: 'relative', flexShrink: 0 }}>
-                    <Box
-                      component="img"
+                    <SkeletonImage
                       src={imagesByService[s.id][0].url}
                       alt=""
                       data-testid="service-row-thumb"
-                      sx={{ width: 44, height: 44, borderRadius: 1.5, objectFit: 'cover', display: 'block', border: '1px solid', borderColor: 'divider' }}
+                      sx={{ width: 44, height: 44, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}
                     />
                     {imagesByService[s.id].length > 1 && (
                       <Chip

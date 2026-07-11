@@ -5,6 +5,7 @@ import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { ArrowForwardIos as ArrowForwardIosIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { anim } from '@/theme/animations'
+import { SkeletonImage } from '@/components/ui'
 
 interface Props {
   /** The selected service's gallery, in display order. Renders nothing when empty. */
@@ -46,9 +47,8 @@ export default function ServiceGallery({ images, serviceName, fg, overlay }: Pro
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0.75 }}>
         {images.map((url, i) => (
-          <Box
+          <SkeletonImage
             key={url}
-            component="img"
             src={url}
             alt={serviceName}
             role="button"
@@ -56,12 +56,15 @@ export default function ServiceGallery({ images, serviceName, fg, overlay }: Pro
             data-testid="gallery-thumb"
             onClick={() => setOpen(i)}
             sx={{
-              width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block',
+              width: '100%', aspectRatio: '1',
               borderRadius: 1.5, cursor: 'pointer',
               border: `1px solid ${overlay(0.25)}`,
               transition: 'transform 0.15s ease, border-color 0.15s ease',
               '&:hover': { transform: 'scale(1.04)', borderColor: overlay(0.5) },
             }}
+            // Sidebar surface may be dark or light — the overlay helper keys
+            // the pulse to the sidebar's own foreground, like the borders.
+            skeletonSx={{ bgcolor: overlay(0.15) }}
           />
         ))}
       </Box>
@@ -77,11 +80,15 @@ export default function ServiceGallery({ images, serviceName, fg, overlay }: Pro
             >
               <CloseIcon />
             </IconButton>
-            <Box
-              component="img"
+            <SkeletonImage
               src={images[open]}
               alt={serviceName}
-              sx={{ width: '100%', maxHeight: '80vh', objectFit: 'contain', display: 'block' }}
+              // minHeight gives the pulse an area before the image's natural
+              // size is known; once loaded the frame keeps its original
+              // "natural height, capped at 80vh" behaviour.
+              sx={{ width: '100%', minHeight: '40vh', display: 'flex', alignItems: 'center' }}
+              imgSx={{ height: 'auto', maxHeight: '80vh', objectFit: 'contain' }}
+              skeletonSx={{ bgcolor: 'rgba(255,255,255,0.08)' }}
             />
             {images.length > 1 && (
               <>

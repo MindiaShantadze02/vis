@@ -10,7 +10,7 @@ import { EditOutlined as EditOutlinedIcon } from '@/components/icons'
 import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/components/icons'
 import { Add as AddIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
-import { ActionIconButton, EmptyState, useToast } from '@/components/ui'
+import { ActionIconButton, EmptyState, SkeletonImage, useToast } from '@/components/ui'
 import { HONEY } from '@/theme/theme'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import ServiceImagesEditor from '@/components/ServiceImagesEditor'
@@ -200,12 +200,11 @@ export default function ServicesStep() {
                 }}
               >
                 {svc.imagePreviews.length > 0 && (
-                  <Box
-                    component="img"
+                  <SkeletonImage
                     src={svc.imagePreviews[0]}
                     alt=""
                     data-testid="onb-service-thumb"
-                    sx={{ width: 40, height: 40, borderRadius: 1.5, objectFit: 'cover', flexShrink: 0, border: '1px solid', borderColor: 'divider' }}
+                    sx={{ width: 40, height: 40, borderRadius: 1.5, flexShrink: 0, border: '1px solid', borderColor: 'divider' }}
                   />
                 )}
                 <Box sx={{ flex: 1, minWidth: 0 }}>
