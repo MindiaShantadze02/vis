@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Box, Button, Chip, Container, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 import { LanguageSwitcher } from '@/components/ui'
+import VisLogo from '@/components/VisLogo'
 import { displayFont, radii } from '@/theme/theme'
 import { anim } from '@/theme/animations'
 import { TIERS } from '@/lib/tiers'
@@ -28,23 +29,9 @@ const FEATURES: { key: string; Icon: typeof StorefrontOutlined }[] = [
   { key: 'api', Icon: CodeOutlined },
 ]
 
-/** The app's tile + wordmark, ink on light — copied from AuthShell. */
+/** The brand wordmark (shared VisLogo SVG). */
 function BrandLockup() {
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-      <Box
-        sx={{
-          width: 34, height: 34, borderRadius: '10px', bgcolor: 'primary.main',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}
-      >
-        <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: 17, lineHeight: 1 }}>V</Typography>
-      </Box>
-      <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.3px', color: 'text.primary' }}>
-        Vis
-      </Typography>
-    </Box>
-  )
+  return <VisLogo height={26} />
 }
 
 /** A flat hairline panel — the app's Card look, used directly for full control. */

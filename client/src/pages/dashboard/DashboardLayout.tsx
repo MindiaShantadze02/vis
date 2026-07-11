@@ -32,7 +32,8 @@ import { LanguageSwitcher, AnimatedOutlet } from '@/components/ui'
 import SubscriptionBanner from '@/components/SubscriptionBanner'
 import { dateLocale } from '@/lib/dateLocale'
 import { anim } from '@/theme/animations'
-import { gradient, elevation, tint } from '@/theme/theme'
+import { gradient, tint } from '@/theme/theme'
+import VisLogo from '@/components/VisLogo'
 
 const DRAWER_WIDTH = 240
 
@@ -119,24 +120,11 @@ export default function DashboardLayout() {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Brand */}
       <Box sx={{ px: 2.5, py: 2.5 }}>
-        <Box onClick={() => navigate('/dashboard')} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}>
-          <Box
-            sx={{
-              width: 32, height: 32, borderRadius: '10px',
-              background: gradient.brand,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: elevation.glowSoft,
-              flexShrink: 0,
-            }}
-          >
-            <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>V</Typography>
-          </Box>
-          <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.3px' }}>
-            Vis
-          </Typography>
+        <Box onClick={() => navigate('/dashboard')} sx={{ display: 'inline-flex', cursor: 'pointer' }}>
+          <VisLogo height={22} />
         </Box>
         {org && (
-          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, pl: '44px' }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.75 }}>
             {org.name}
           </Typography>
         )}

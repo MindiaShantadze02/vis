@@ -14,7 +14,7 @@ import { Menu as MenuIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { useBreakpoints } from '@/hooks/useBreakpoints'
 import { AnimatedOutlet } from '@/components/ui'
-import { gradient, elevation } from '@/theme/theme'
+import VisLogo from '@/components/VisLogo'
 
 const DRAWER_WIDTH = 240
 
@@ -53,22 +53,12 @@ export default function SuperAdminLayout() {
         px: 1.5, py: 2.5,
       }}
     >
-      {/* Brand */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1, mb: 3 }}>
-        <Box
-          sx={{
-            width: 32, height: 32, borderRadius: '10px',
-            background: gradient.brand,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: elevation.glowSoft, flexShrink: 0,
-          }}
-        >
-          <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>V</Typography>
-        </Box>
-        <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1.1 }}>Vis</Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>სუპერ-ადმინი</Typography>
-        </Box>
+      {/* Brand — white wordmark on the ink sidebar. */}
+      <Box sx={{ px: 1, mb: 3 }}>
+        <VisLogo height={20} color="#fff" />
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block', mt: 0.75 }}>
+          სუპერ-ადმინი
+        </Typography>
       </Box>
 
       {/* Nav */}

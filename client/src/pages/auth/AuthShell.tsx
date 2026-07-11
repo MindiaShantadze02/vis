@@ -3,6 +3,7 @@ import { Box, Typography } from '@mui/material'
 import { LAYOUT, displayFont, radii } from '@/theme/theme'
 import { anim } from '@/theme/animations'
 import { LanguageSwitcher } from '@/components/ui'
+import VisLogo from '@/components/VisLogo'
 
 interface Props {
   /** Serif page heading shown above the form (e.g. "Sign in"). */
@@ -41,19 +42,9 @@ export default function AuthShell({ title, subtitle, children }: Props) {
           '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
         }}
       >
-        {/* Brand lockup — the app's tile + wordmark, ink on light. */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 3, px: 0.5 }}>
-          <Box
-            sx={{
-              width: 34, height: 34, borderRadius: '10px', bgcolor: 'primary.main',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}
-          >
-            <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: 17, lineHeight: 1 }}>V</Typography>
-          </Box>
-          <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.3px', color: 'text.primary' }}>
-            Vis
-          </Typography>
+        {/* Brand wordmark (shared VisLogo SVG). */}
+        <Box sx={{ mb: 3, px: 0.5 }}>
+          <VisLogo height={26} />
         </Box>
 
         <Box

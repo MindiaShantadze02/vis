@@ -12,6 +12,7 @@ import { Check as CheckIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { stepVariants } from '@/theme/motion'
 import { INK, displayFont } from '@/theme/theme'
+import VisLogo from '@/components/VisLogo'
 import type { OnboardingData } from './OnboardingLayout'
 import OnboardingPreview from './OnboardingPreview'
 
@@ -52,19 +53,8 @@ export default function OnboardingShell({ step, direction, data, onSkip, banner,
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 
-  const logo = (size: number, radius: number) => (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-      <Box
-        sx={{
-          width: size, height: size, borderRadius: `${radius}px`, bgcolor: 'primary.main',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}
-      >
-        <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: size * 0.5, lineHeight: 1 }}>V</Typography>
-      </Box>
-      <Typography variant="h6" sx={{ color: '#fff', fontWeight: 800, letterSpacing: '-0.3px' }}>Vis</Typography>
-    </Box>
-  )
+  // White wordmark on the ink sidebar / mobile header.
+  const logo = (height: number) => <VisLogo height={height} color="#fff" />
 
   const rail = (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -114,7 +104,7 @@ export default function OnboardingShell({ step, direction, data, onSkip, banner,
         borderRight: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      {logo(30, 9)}
+      {logo(22)}
       <Box>
         <Typography sx={{ fontFamily: displayFont, fontWeight: 700, fontSize: 26, lineHeight: 1.2, letterSpacing: '-0.3px' }}>
           {t('onboarding.welcomeTitle')}
@@ -138,7 +128,7 @@ export default function OnboardingShell({ step, direction, data, onSkip, banner,
         {/* Mobile ink header — replaces the sidebar below md. */}
         {isMobile && (
           <Box sx={{ bgcolor: INK[800], color: '#fff', px: 2, py: 1.5, display: 'flex', alignItems: 'center' }}>
-            {logo(28, 8)}
+            {logo(18)}
             <Box sx={{ flex: 1 }} />
             <Typography variant="caption" sx={{ opacity: 0.7, fontWeight: 700, letterSpacing: '0.5px' }}>
               {t('booking.stepCounter', { n: step + 1 })}

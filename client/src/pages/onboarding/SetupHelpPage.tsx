@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { displayGeorgianPhone } from '@/lib/validation'
 import { FIELD_LIMITS } from '@/lib/validation'
-import { INK } from '@/theme/theme'
+import VisLogo from '@/components/VisLogo'
 
 type ViewState = 'loading' | 'form' | 'pending' | 'submitted'
 
@@ -101,12 +101,9 @@ export default function SetupHelpPage() {
 
   const frame = (content: React.ReactNode) => (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', flexDirection: 'column', alignItems: 'center', px: 2, py: { xs: 4, md: 8 } }}>
-      {/* Brand mark — same as the onboarding sidebar logo. */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 4 }}>
-        <Box sx={{ width: 30, height: 30, borderRadius: '9px', bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: 15, lineHeight: 1 }}>V</Typography>
-        </Box>
-        <Typography variant="h6" sx={{ color: INK[800], fontWeight: 800, letterSpacing: '-0.3px' }}>Vis</Typography>
+      {/* Brand wordmark (shared VisLogo SVG). */}
+      <Box sx={{ mb: 4 }}>
+        <VisLogo height={24} />
       </Box>
       <Card sx={{ width: '100%', maxWidth: 560 }}>
         <CardContent sx={{ p: { xs: 3, md: 4 } }}>{content}</CardContent>
