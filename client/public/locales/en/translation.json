@@ -325,6 +325,8 @@
     "contactPhone": "Contact phone",
     "bookingPageColor": "Booking page color",
     "bookingPageColorHelp": "The color customers see when booking",
+    "requireApprovalTitle": "Require booking approval",
+    "requireApprovalHelp": "When on, new bookings wait for your approval. When off, bookings are confirmed automatically",
     "yourBookingLink": "Your booking link",
     "noServices": "No services",
     "noServicesCaption": "Add your first service",

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { login, bookPending, cancelAppt, letterName } from './helpers'
+import { login, bookPending, cancelAppt, letterName, setRequireApproval } from './helpers'
 
 /**
  * Calendar page — the pending→approved transition driven from the calendar
@@ -8,6 +8,11 @@ import { login, bookPending, cancelAppt, letterName } from './helpers'
  * overview, then self-cleans (cancel + erase).
  */
 test.describe('Calendar', () => {
+  // Bookings auto-approve by default (075); the drawer's approve path needs a
+  // real pending row, so require approval for this spec and restore after.
+  test.beforeAll(async () => { await setRequireApproval(true) })
+  test.afterAll(async () => { await setRequireApproval(false) })
+
   // Locate the appointment's pill in the current calendar week and open its
   // drawer. Handles both a standalone pill and one merged into a same-service
   // group.

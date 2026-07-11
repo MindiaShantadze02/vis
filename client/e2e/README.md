@@ -25,19 +25,19 @@ Happy paths + edge cases (validation gating, route guards, error states):
 |------|-------|-----------|
 | `auth.spec.ts` | login, logout, phone signup → onboarding | bad password, unknown phone, duplicate-phone signup, mismatch/invalid-phone gating, protected-route redirect, logged-in `/login` redirect, forgot-password gating |
 | `onboarding.spec.ts` | full 3-step onboarding → org (self-cleans) | step-1 "next" gating, a typed-but-not-added service is kept on Next, skip → dashboard, org-guard bounce |
-| `booking.spec.ts` | public in-person booking + OTP → confirmation | unknown slug, invalid name/phone gating, **wrong OTP rejected** |
+| `booking.spec.ts` | public in-person booking + OTP → auto-approved confirmation (075 default) | unknown slug, invalid name/phone gating, **wrong OTP rejected** |
 | `dashboard.spec.ts` | overview stats + link, add-appt dialog, calendar nav | add-appt save gating |
 | `settings-services.spec.ts` | service create → edit → delete (self-cleans) | save gating (empty name / out-of-range price / bad duration); **BVA** on duration/capacity/price + **pairwise** online × meeting-link |
 | `settings-team.spec.ts` | add/delete professional; invite by phone + cancel (self-clean) | invite-send gating, add-professional name gating |
-| `appointment-status.spec.ts` | **state-transition** of the status machine (pending→approved→cancelled, pending→rejected) | terminal-state & illegal-transition guardrails, status-filter **ECP** — self-cleans (cancel + erase) |
-| `calendar.spec.ts` | approve a pending booking from the calendar drawer | resilient pill/group locate — self-cleans |
+| `appointment-status.spec.ts` | **state-transition** of the status machine (pending→approved→cancelled, pending→rejected); flips the org to require-approval for the spec (restored after) | terminal-state & illegal-transition guardrails, status-filter **ECP** — self-cleans (cancel + erase) |
+| `calendar.spec.ts` | approve a pending booking from the calendar drawer (flips the org to require-approval, restored after) | resilient pill/group locate — self-cleans |
 | `forgot-password.spec.ts` | phase transition (`phone`→`reset`), neutral messaging | wrong-code rejected, resend cooldown, submit-gating **BVA** (throwaway phone — never touches the seed password) |
 | `working-hours.spec.ts` | override add → delete (self-clean state cycle) | **decision** (endBeforeStart) + **BVA** (advance days 0/731) rejects — non-persisting |
 | `profile-settings.spec.ts` | Business settings — | name/phone save-gating, logo image **BVA** (>2 MB / non-image) |
-| `booking-settings.spec.ts` | Booking-page settings — share link/embed + preview link | custom booking colour, reviews toggle switchable (non-persisting) |
+| `booking-settings.spec.ts` | Booking-page settings — share link/embed + preview link | custom booking colour, reviews + require-approval toggles switchable (non-persisting) |
 | `account-settings.spec.ts` | Account settings — | delete-account confirm-word guard (never confirmed) |
 | `superadmin.spec.ts` | — | role **ECP**: a normal owner is redirected off `/superadmin` and its sub-routes |
-| `api.spec.ts` | public REST API: mint key in Settings → API keys, call organisation/services/slots, book, see it in the dashboard, revoke | 401 for missing/malformed/unknown/revoked keys, 422 date & phone rejects, capacity decrement after booking — booking self-cleans (reject), the revoked key row persists |
+| `api.spec.ts` | public REST API: mint key in Settings → API keys, call organisation/services/slots, book (default → approved, explicit `pending` honored), see both in the dashboard, revoke | 401 for missing/malformed/unknown/revoked keys, 422 date & phone rejects, capacity decrement after booking — bookings self-clean (cancel/reject), the revoked key row persists |
 
 ### Design techniques applied
 
@@ -72,9 +72,13 @@ its active service + Mon–Fri hours intact, or the booking/dashboard specs will
 
 ## What persists (not self-cleaned)
 
-- **`booking.spec.ts`** creates a real pending appointment + customer on the seeded
-  org each successful run (a guest can't self-delete). Reject/prune them from the
-  dashboard periodically.
+- **`booking.spec.ts`** creates a real appointment (auto-approved since 075) +
+  customer on the seeded org each successful run (a guest can't self-delete).
+  Cancel/prune them from the dashboard periodically.
+- The seed org's **resting state is auto-approve** (`require_approval = false`).
+  `appointment-status.spec.ts` / `calendar.spec.ts` flip it on via
+  `setRequireApproval` and restore it in `afterAll`; if a run dies mid-spec, flip
+  it back off in Settings → Booking page or later booking/api assertions fail.
 - **`api.spec.ts`** leaves one *revoked* API key row on the seeded org per run
   (revoked keys stay listed by design; `delete from api_keys where revoked_at is
   not null and org_id = <seed org>` to prune). Its booking is rejected in-test;

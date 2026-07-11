@@ -28,6 +28,9 @@ export default function BookingPageSettings() {
   const [bookingTheme, setBookingTheme] = useState<string>(DEFAULT_BOOKING_THEME)
   // Whole-feature on/off for customer reviews (badge on the booking page).
   const [reviewsEnabled, setReviewsEnabled] = useState(true)
+  // When on, new bookings arrive as 'pending' and need manual approval;
+  // off (default) means bookings auto-approve on creation.
+  const [requireApproval, setRequireApproval] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,6 +38,7 @@ export default function BookingPageSettings() {
     if (org) {
       setBookingTheme(getBookingTheme(org.booking_theme).key)
       setReviewsEnabled(org.reviews_enabled)
+      setRequireApproval(org.require_approval)
     }
   }, [org])
 
@@ -44,7 +48,7 @@ export default function BookingPageSettings() {
     setError(null)
     const { error: err } = await supabase
       .from('organisations')
-      .update({ booking_theme: bookingTheme, reviews_enabled: reviewsEnabled })
+      .update({ booking_theme: bookingTheme, reviews_enabled: reviewsEnabled, require_approval: requireApproval })
       .eq('id', org.id)
     setSaving(false)
     if (err) { setError(err.message); return }
@@ -207,6 +211,29 @@ export default function BookingPageSettings() {
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('reviews.settingTitle')}</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {t('reviews.settingHelp')}
+                </Typography>
+              </Box>
+            }
+          />
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Manual approval — when off (default), guest bookings auto-approve
+              on creation; when on, they arrive 'pending' until approved. */}
+          <FormControlLabel
+            sx={{ ml: 0 }}
+            control={
+              <Switch
+                checked={requireApproval}
+                onChange={e => setRequireApproval(e.target.checked)}
+                data-testid="require-approval-toggle"
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.requireApprovalTitle')}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {t('settings.requireApprovalHelp')}
                 </Typography>
               </Box>
             }

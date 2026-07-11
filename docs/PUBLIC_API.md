@@ -81,8 +81,10 @@ curl -X POST -H "x-api-key: grf_..." -H "content-type: application/json" \
 - `phone` — Georgian number (`5XXXXXXXX`, `+995` prefix accepted).
 - `staff_id` — optional; omitted/null means "any available" (the API pins a
   concrete free member, like the booking page).
-- `status` — `pending` (default; appears in your approval queue) or
-  `approved` (skips approval — you are booking on your own behalf).
+- `status` — optional. When omitted, it follows your organisation's
+  "Require booking approval" setting (off by default, so bookings are created
+  `approved`). Pass `pending` to force the approval queue, or `approved` to
+  skip approval explicitly.
 - The requested time is re-validated server-side against live availability
   just before insert; a taken slot returns **409**.
 

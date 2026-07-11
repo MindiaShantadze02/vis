@@ -19,6 +19,7 @@ export interface Organisation {
   checklist_dismissed_at: string | null
   booking_theme: string | null
   reviews_enabled: boolean
+  require_approval: boolean
 }
 
 interface OrgContextValue {

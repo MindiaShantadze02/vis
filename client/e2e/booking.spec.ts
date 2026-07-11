@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test'
 import { passBookingOtp, fillStable, bookToDetails } from './helpers'
 
 test.describe('Public booking', () => {
-  // NOTE: a successful run creates a real pending appointment + customer on the
+  // NOTE: a successful run creates a real appointment + customer on the
   // seeded org (guests can't self-delete). See e2e/README.md.
-  test('a guest books an in-person appointment end to end', async ({ page }) => {
+  test('a guest books an in-person appointment end to end and it auto-approves', async ({ page }) => {
     expect(await bookToDetails(page), 'expected an open day with a free slot this week').toBeTruthy()
 
     // The quiet "Powered by Vis" growth-loop footer is on every booking page.
@@ -20,9 +20,10 @@ test.describe('Public booking', () => {
     // Phone verification with the master OTP
     await passBookingOtp(page)
 
-    // Confirmation page
+    // Confirmation page — the seed org keeps the auto-approve default (075),
+    // so an unpaid guest booking lands already confirmed, not pending.
     await expect(page).toHaveURL(/\/booking-confirmation\//, { timeout: 20_000 })
-    await expect(page.getByRole('heading', { name: /ჯავშანი (მიღებულია|დადასტურებულია)/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /ჯავშანი დადასტურებულია/ })).toBeVisible()
     await expect(page.getByTestId('confirm-book-another')).toBeVisible()
   })
 

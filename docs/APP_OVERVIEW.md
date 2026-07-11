@@ -45,7 +45,9 @@ Owners manage everything through an admin dashboard.
    trigger (`enforce_booking_verification`) only lets the booking insert through once the phone is
    verified.
 3. **Finish:**
-   - *Pay in person:* row inserted directly with status `pending` (awaits owner approval).
+   - *Pay in person:* row inserted directly; status follows the org's "require approval" setting
+     (migration 075) — `approved` by default (auto-confirm), `pending` when the org opted into
+     manual approval.
    - *Pay online:* nothing is written yet — `create-payment` parks the intent in `pending_bookings`
      and redirects to the gateway; `payment-webhook` creates the paid row only after the charge
      clears (so abandoned payments leave no orphan booking).
@@ -135,7 +137,8 @@ gate on `is_superadmin()`.
   `appointments` removed in favor of the org-scoped RPCs above.
 - Second audit pass shipped in migration `069_appointment_insert_hardening.sql` (2026-07-08): a
   BEFORE INSERT trigger (`normalize_guest_appointment`) pins untrusted guest inserts to
-  `status=pending` / `payment_status=unpaid` / `payment_method=in_person` and nulls
+  `payment_status=unpaid` / `payment_method=in_person` (status derived server-side from the org's
+  `require_approval` flag since migration 075) and nulls
   provider/reference/admin_notes — blocking self-approve, self-mark-paid, and review-bombing via
   fabricated `completed` rows. Service role (payment-webhook), superadmins and members of the
   target org are exempt. Same pass fixed `reset-password` (v6: OTP attempt budget summed across

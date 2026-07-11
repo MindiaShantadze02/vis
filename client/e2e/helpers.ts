@@ -1,4 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 /**
  * Fill a field and confirm the value stuck, retrying if it didn't. Onboarding and
@@ -106,6 +109,47 @@ export async function bookToDetails(page: Page, slug = SEED.slug): Promise<boole
   return false
 }
 
+/**
+ * Flip the seeded org's "require booking approval" setting (migration 075) by
+ * talking straight to the hosted GoTrue + PostgREST endpoints (client/.env) as
+ * the seeded owner — supabase-js won't construct on Node 20 (realtime needs a
+ * native WebSocket), and the UI route would cost a full login+settings journey.
+ * The app's login OTP gate is UI-only; phone+password sign-in works directly.
+ * Off (auto-approve) is the seed's resting default — a spec that turns it on
+ * to get pending bookings MUST turn it back off in afterAll, or later specs
+ * (and the next run) see the wrong booking behavior.
+ */
+export async function setRequireApproval(on: boolean): Promise<void> {
+  const env = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '.env'), 'utf8')
+  const url = /VITE_SUPABASE_URL=(\S+)/.exec(env)![1]
+  const anonKey = /VITE_SUPABASE_ANON_KEY=(\S+)/.exec(env)![1]
+
+  const signIn = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: anonKey, 'content-type': 'application/json' },
+    body: JSON.stringify({ phone: `+995${SEED.phone}`, password: SEED.password }),
+  })
+  if (!signIn.ok) throw new Error(`seed owner sign-in failed: ${signIn.status} ${await signIn.text()}`)
+  const { access_token } = (await signIn.json()) as { access_token: string }
+
+  const update = await fetch(
+    `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: anonKey,
+        authorization: `Bearer ${access_token}`,
+        'content-type': 'application/json',
+        prefer: 'return=representation',
+      },
+      body: JSON.stringify({ require_approval: on }),
+    },
+  )
+  if (!update.ok) throw new Error(`require_approval update failed: ${update.status} ${await update.text()}`)
+  const rows = (await update.json()) as { id: string }[]
+  if (!rows.length) throw new Error('require_approval update matched no org')
+}
+
 /** A short, unique label so created rows are easy to spot and clean up. */
 export function tag(prefix: string): string {
   return `${prefix} ${Date.now().toString().slice(-6)}`
@@ -127,6 +171,8 @@ export function letterName(): string {
  * Book a public in-person appointment end to end, leaving a real *pending*
  * appointment on the seeded org under `firstName`. Callers identify/clean it up
  * later via openApptByName. Asserts a bookable slot exists this week.
+ * NOTE: since auto-approval (075) the booking is only pending if the caller
+ * turned the org's approval requirement on first — see setRequireApproval.
  */
 export async function bookPending(page: Page, firstName: string): Promise<void> {
   const found = await bookToDetails(page)

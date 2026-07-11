@@ -307,7 +307,7 @@ Deno.serve(async (req) => {
         p_scheduled_at: scheduledAt,
         p_staff_id: staffToBook,
         p_notes: notes == null ? null : String(notes),
-        p_status: status ?? 'pending',
+        p_status: status ?? null,
         p_consent_version: CONSENT_VERSION,
       })
       if (rpcErr) {

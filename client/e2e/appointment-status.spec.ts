@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { login, bookPending, openApptByName, letterName } from './helpers'
+import { login, bookPending, openApptByName, letterName, setRequireApproval } from './helpers'
 
 /**
  * State-Transition testing for the appointment status machine, exercised through
@@ -19,6 +19,12 @@ import { login, bookPending, openApptByName, letterName } from './helpers'
  * scoped to the open detail dialog to avoid matching the list.
  */
 test.describe('Appointment status transitions', () => {
+  // Bookings auto-approve by default (075); these tests need real *pending*
+  // rows, so switch the seed org to manual approval and restore the default
+  // after — later specs (booking.spec, api.spec) assert auto-approval.
+  test.beforeAll(async () => { await setRequireApproval(true) })
+  test.afterAll(async () => { await setRequireApproval(false) })
+
   // Status filter labels (ka) — the MUI Select renders these as options.
   const LABEL = { pending: 'მოლოდინში', approved: 'დამტკიცებული' } as const
 
@@ -32,6 +38,9 @@ test.describe('Appointment status transitions', () => {
   test('pending → approved → cancelled, with filter partitioning and guardrails', async ({ page }) => {
     const name = letterName()
     await bookPending(page, name)
+    // With approval required, the guest sees the "received, awaiting
+    // confirmation" copy instead of the auto-approve "confirmed" one.
+    await expect(page.getByRole('heading', { name: /ჯავშანი მიღებულია/ })).toBeVisible()
     await login(page)
 
     // Open the freshly-created appointment — it starts pending.
