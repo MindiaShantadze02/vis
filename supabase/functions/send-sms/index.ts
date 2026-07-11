@@ -3,6 +3,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   bookingConfirmationBody,
   appointmentReminderBody,
+  setupCompleteBody,
   sendSms,
   type SmsMessageType,
 } from '../_shared/sms/index.ts'
@@ -22,6 +23,9 @@ const corsHeaders = {
 
 interface Payload {
   appointment_id?: string
+  // Concierge onboarding: sent by the setup_requests completion trigger
+  // instead of appointment_id (message_type 'setup_complete').
+  setup_request_id?: string
   message_type?: SmsMessageType
 }
 
@@ -46,6 +50,19 @@ const fmtDateTime = (iso: string) =>
 // Supabase types embedded relations as arrays; normalise to a single row.
 function one<T>(v: T | T[] | null): T | null {
   return Array.isArray(v) ? (v[0] ?? null) : v
+}
+
+// Drop duplicate/replayed sends of the same message to the same recipient.
+async function inCooldown(supabase: SupabaseClient, to: string, messageType: SmsMessageType): Promise<boolean> {
+  const since = new Date(Date.now() - RESEND_COOLDOWN_SECONDS * 1000).toISOString()
+  const { count } = await supabase
+    .from('sms_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('recipient_phone', to)
+    .eq('message_type', messageType)
+    .in('status', ['queued', 'sent'])
+    .gte('created_at', since)
+  return (count ?? 0) > 0
 }
 
 async function resolveAppointment(supabase: SupabaseClient, id: string): Promise<Resolved | null> {
@@ -79,13 +96,41 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'unauthorized' }, { status: 401, headers: corsHeaders })
     }
 
-    const { appointment_id, message_type = 'booking_confirmation' } =
+    const { appointment_id, setup_request_id, message_type = 'booking_confirmation' } =
       (await req.json().catch(() => ({}))) as Payload
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
+
+    // Concierge onboarding: not tied to an appointment — resolve the request
+    // row, build the "you're all set" body, and send. Shares the cooldown and
+    // sendSms/sms_log path with the booking messages.
+    if (message_type === 'setup_complete') {
+      if (!setup_request_id) {
+        return Response.json({ error: 'missing setup request id' }, { status: 400, headers: corsHeaders })
+      }
+      const { data: reqRow } = await supabase
+        .from('setup_requests')
+        .select('id, org_id, phone, business_name, status')
+        .eq('id', setup_request_id)
+        .maybeSingle()
+      if (!reqRow || reqRow.status !== 'completed') {
+        return Response.json({ error: 'setup request not found or not completed' }, { status: 404, headers: corsHeaders })
+      }
+      if (await inCooldown(supabase, reqRow.phone, 'setup_complete')) {
+        return Response.json({ status: 'skipped', reason: 'cooldown' }, { headers: corsHeaders })
+      }
+      const result = await sendSms(supabase, {
+        orgId: reqRow.org_id,
+        appointmentId: null,
+        messageType: 'setup_complete',
+        to: reqRow.phone,
+        body: setupCompleteBody(reqRow.business_name),
+      })
+      return Response.json(result, { headers: corsHeaders })
+    }
 
     if (!appointment_id) {
       return Response.json({ error: 'missing booking id' }, { status: 400, headers: corsHeaders })
@@ -108,16 +153,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: `unsupported message_type: ${message_type}` }, { status: 400, headers: corsHeaders })
     }
 
-    // Drop duplicate/replayed sends of the same message to the same recipient.
-    const since = new Date(Date.now() - RESEND_COOLDOWN_SECONDS * 1000).toISOString()
-    const { count: recentCount } = await supabase
-      .from('sms_log')
-      .select('id', { count: 'exact', head: true })
-      .eq('recipient_phone', to)
-      .eq('message_type', message_type)
-      .in('status', ['queued', 'sent'])
-      .gte('created_at', since)
-    if ((recentCount ?? 0) > 0) {
+    if (await inCooldown(supabase, to, message_type)) {
       return Response.json({ status: 'skipped', reason: 'cooldown' }, { headers: corsHeaders })
     }
 

@@ -9,6 +9,7 @@ import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, LoadingState, ConfirmDialog, EmptyState, useToast } from '@/components/ui'
 import { TIERS, TIER_KEYS, tierInfo, tierColor, subscriptionState, type Tier } from '@/lib/tiers'
+import OrgSetupPanel from './OrgSetupPanel'
 
 interface Org {
   id: string
@@ -173,6 +174,9 @@ export default function OrgDetailPage() {
           </FormControl>
         </CardContent>
       </Card>
+
+      {/* Concierge onboarding: configure the account on the owner's behalf. */}
+      <OrgSetupPanel orgId={org.id} />
 
       <ConfirmDialog
         open={!!pendingTier}

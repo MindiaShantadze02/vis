@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import {
   Box, Typography, Button, useMediaQuery, useTheme,
 } from '@mui/material'
@@ -145,9 +146,20 @@ export default function OnboardingShell({ step, direction, data, onSkip, banner,
           </Box>
         )}
 
-        {/* Skip + mobile segmented progress */}
+        {/* Help + skip + mobile segmented progress */}
         <Box sx={{ px: { xs: 2, md: 5 }, pt: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+            {/* Concierge escape hatch: describe the business instead of doing
+                the wizard — a Vis admin sets everything up and texts back. */}
+            <Button
+              component={RouterLink}
+              to="/onboarding/help"
+              size="small"
+              sx={{ color: 'primary.main', fontWeight: 600 }}
+              data-testid="onboarding-help-link"
+            >
+              {t('onboarding.helpLinkLabel')}
+            </Button>
             <Button onClick={onSkip} size="small" sx={{ color: 'text.secondary', fontWeight: 600 }}>
               {t('onboarding.skip')}
             </Button>

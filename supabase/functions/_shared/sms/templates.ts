@@ -77,6 +77,20 @@ export function appointmentReminderBody(
   }
 }
 
+// Sent when a superadmin finishes configuring an account on the business's
+// behalf (concierge onboarding, setup_requests.status → completed).
+export function setupCompleteBody(businessName: string, lang: SmsLang = 'ka'): string {
+  switch (lang) {
+    case 'en':
+      return `Vis: your business "${businessName}" is set up and ready — log in at vis.ge to see your booking page.`
+    case 'ru':
+      return `Vis: ваш бизнес «${businessName}» настроен и готов — войдите на vis.ge, чтобы увидеть страницу бронирования.`
+    case 'ka':
+    default:
+      return `Vis: თქვენი ბიზნესი „${businessName}" გამართულია და მზადაა — შედით vis.ge-ზე თქვენი ჯავშნის გვერდის სანახავად.`
+  }
+}
+
 // One-time phone-verification code sent before a guest booking is created.
 export function verificationCodeBody(code: string, lang: SmsLang = 'ka'): string {
   switch (lang) {
@@ -110,4 +124,5 @@ export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
   'approval_update',
   'verification_code',
   'appointment_reminder',
+  'setup_complete',
 ]

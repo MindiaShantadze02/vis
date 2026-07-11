@@ -8,6 +8,10 @@ test.describe('Business onboarding', () => {
   test('a new owner completes all four steps and gets an org', async ({ page }) => {
     await register(page, uniquePhone())
 
+    // The concierge escape hatch ("we'll set it up for you") is offered on the
+    // wizard; the flow itself is covered in setup-help.spec.ts.
+    await expect(page.getByTestId('onboarding-help-link')).toBeVisible()
+
     // Step 1 — business profile
     const bizName = tag('E2E Studio')
     await fillStable(page.getByTestId('biz-name'), bizName)

@@ -44,6 +44,8 @@ import PlatformOverviewPage from '@/pages/superadmin/PlatformOverviewPage'
 import OrgsListPage from '@/pages/superadmin/OrgsListPage'
 import OrgDetailPage from '@/pages/superadmin/OrgDetailPage'
 import SuperadminsPage from '@/pages/superadmin/SuperadminsPage'
+import SetupRequestsPage from '@/pages/superadmin/SetupRequestsPage'
+import SetupHelpPage from '@/pages/onboarding/SetupHelpPage'
 
 import HomePage from '@/pages/home/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -122,6 +124,9 @@ export default function App() {
         <Route path="specialists" element={<SpecialistsStep />} />
         <Route path="hours" element={<WorkingHoursStep />} />
       </Route>
+      {/* Concierge onboarding: "describe your business, we set it up for you".
+          Outside the step layout — it replaces the wizard, not a step of it. */}
+      <Route path="/onboarding/help" element={<AuthGuard><SetupHelpPage /></AuthGuard>} />
 
       <Route path="/dashboard" element={<AuthGuard><DashboardLayout /></AuthGuard>}>
         {/* Index renders for everyone — shows an empty state when the user has no org. */}
@@ -160,6 +165,7 @@ export default function App() {
         <Route index element={<PlatformOverviewPage />} />
         <Route path="orgs" element={<OrgsListPage />} />
         <Route path="orgs/:id" element={<OrgDetailPage />} />
+        <Route path="requests" element={<SetupRequestsPage />} />
         <Route path="admins" element={<SuperadminsPage />} />
       </Route>
 

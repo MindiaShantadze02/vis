@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { login, fillStable } from './helpers'
+import { login, fillStable, SEED } from './helpers'
 
 /**
  * Business-info settings — persisting cases. Validation-only partitions (save
@@ -25,7 +25,14 @@ test.describe('Settings — Business info', () => {
     await page.reload()
     await expect(page.getByTestId('profile-address')).toHaveValue(address)
 
+    // The public booking page shows the saved address in the branded sidebar,
+    // under the contact phone (get_public_org carries it since 078).
+    await page.goto(`/book/${SEED.slug}`)
+    await expect(page.getByTestId('booking-address')).toContainText(address)
+
     // Clear it back to the seed state (empty ⇒ stored as NULL).
+    await page.goto('/dashboard/settings/profile')
+    await expect(page.getByTestId('profile-save')).toBeVisible()
     await fillStable(page.getByTestId('profile-address'), '')
     await page.getByTestId('profile-save').click()
     await expect(page.getByTestId('toast')).toBeVisible()

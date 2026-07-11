@@ -5,6 +5,7 @@ import {
 } from '@mui/material'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
+import { PlaceOutlined as PlaceOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { stepVariants } from '@/theme/motion'
 import { LanguageSwitcher } from '@/components/ui'
@@ -103,6 +104,12 @@ export default function BookingShell({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
               <PhoneOutlinedIcon sx={{ fontSize: 14, opacity: 0.8 }} />
               <Typography variant="caption" sx={{ opacity: 0.8 }}>{displayGeorgianPhone(org.contact_phone)}</Typography>
+            </Box>
+          )}
+          {org.address && (
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mt: 0.25 }} data-testid="booking-address">
+              <PlaceOutlinedIcon sx={{ fontSize: 14, opacity: 0.8, mt: '2px' }} />
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>{org.address}</Typography>
             </Box>
           )}
         </Box>

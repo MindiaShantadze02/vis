@@ -26,6 +26,7 @@ export interface BookingOrg {
   name: string
   description: string | null
   contact_phone: string | null
+  address: string | null
   logo_url: string | null
   slug: string
   payment_config: Record<string, { enabled?: boolean }> | null
@@ -41,6 +42,7 @@ interface PublicOrg {
   name: string
   description: string | null
   contact_phone: string | null
+  address: string | null
   logo_url: string | null
   slug: string
   booking_theme: string | null
@@ -180,6 +182,7 @@ export default function BookingLayout() {
         name: pub.name,
         description: pub.description,
         contact_phone: pub.contact_phone,
+        address: pub.address,
         logo_url: pub.logo_url,
         slug: pub.slug,
         booking_theme: pub.booking_theme,

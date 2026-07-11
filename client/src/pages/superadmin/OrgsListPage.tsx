@@ -17,6 +17,8 @@ interface OrgRow {
   subscription_tier: string
   created_at: string
   owner_email: string | null
+  owner_phone: string | null
+  contact_phone: string | null
   member_count: number
   usage: number
 }
@@ -42,10 +44,17 @@ export default function OrgsListPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return orgs
+    // Phone search ignores separators/+995 on both sides, so "599 12-34-56",
+    // "+995599123456" and the stored bare digits all match each other.
+    const qDigits = q.replace(/\D/g, '').replace(/^995/, '')
+    const phoneMatch = (p: string | null) =>
+      qDigits.length >= 3 && (p ?? '').replace(/\D/g, '').replace(/^995/, '').includes(qDigits)
     return orgs.filter(o =>
       o.name.toLowerCase().includes(q)
       || o.slug.toLowerCase().includes(q)
       || (o.owner_email ?? '').toLowerCase().includes(q)
+      || phoneMatch(o.owner_phone)
+      || phoneMatch(o.contact_phone)
     )
   }, [orgs, search])
 
@@ -57,7 +66,7 @@ export default function OrgsListPage() {
         <TextField
           fullWidth
           size="small"
-          placeholder="ძებნა (სახელი, slug, მფლობელი)..."
+          placeholder="ძებნა (სახელი, slug, ტელეფონი)..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           slotProps={{ input: { startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 20 }} /> } }}
@@ -107,7 +116,7 @@ export default function OrgsListPage() {
                     <Box sx={{ minWidth: 0 }}>
                       <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>{o.name}</Typography>
                       <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block' }}>
-                        {o.owner_email ?? '—'} · {o.member_count} წევრი · {o.usage} ჯავშანი
+                        {o.owner_phone ?? o.owner_email ?? '—'} · {o.member_count} წევრი · {o.usage} ჯავშანი
                       </Typography>
                     </Box>
                     {tierChip}
@@ -128,7 +137,10 @@ export default function OrgsListPage() {
                     /{o.slug} · {format(new Date(o.created_at), 'dd MMM yyyy')}
                   </Typography>
                 </Box>
-                <Typography variant="body2" noWrap sx={{ color: 'text.secondary', pr: 1 }}>{o.owner_email ?? '—'}</Typography>
+                <Typography variant="body2" noWrap sx={{ color: 'text.secondary', pr: 1 }}>
+                  {/* Login is phone-based, so the phone is the useful identifier. */}
+                  {o.owner_phone ?? o.owner_email ?? '—'}
+                </Typography>
                 {tierChip}
                 <Typography variant="body2">{o.member_count}</Typography>
                 <Typography variant="body2">{o.usage}</Typography>

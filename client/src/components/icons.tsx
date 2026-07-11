@@ -23,6 +23,7 @@ import {
   EyeIcon as Eye, BriefcaseIcon as Briefcase, CircleIcon as Circle,
   CodeIcon as Code, GlobeIcon as Globe,
   ImageIcon as ImageGlyph, ImagesIcon as Images,
+  MapPinIcon as MapPin, LifebuoyIcon as Lifebuoy,
 } from '@phosphor-icons/react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -150,3 +151,5 @@ export const VisibilityOutlined = adapt(Eye)
 export const WorkOutlineOutlined = adapt(Briefcase)
 export const CodeOutlined = adapt(Code)
 export const LanguageOutlined = adapt(Globe)
+export const PlaceOutlined = adapt(MapPin)
+export const SupportOutlined = adapt(Lifebuoy)
