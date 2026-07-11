@@ -323,6 +323,8 @@
     "businessName": "Business name",
     "description": "Description",
     "contactPhone": "Contact phone",
+    "address": "Address",
+    "addressHint": "Included in the booking confirmation SMS so customers know where to come",
     "bookingPageColor": "Booking page color",
     "bookingPageColorHelp": "The color customers see when booking",
     "requireApprovalTitle": "Require booking approval",

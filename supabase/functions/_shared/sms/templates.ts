@@ -10,6 +10,9 @@ export interface BookingConfirmationData {
   when: string
   // Whether the booking still needs admin approval (pending) or is confirmed.
   pending: boolean
+  // Business street address; when set, appended so the customer knows where
+  // to come. Optional — not every business has filled it in.
+  address?: string | null
 }
 
 // Centralised SMS copy. Keep bodies short — SMS segments are 160 chars (70 for
@@ -22,21 +25,36 @@ export function bookingConfirmationBody(
   lang: SmsLang = 'ka',
 ): string {
   const { businessName, serviceName, when, pending } = data
+  const at = addressSuffix(data.address, lang)
 
   switch (lang) {
     case 'en':
       return pending
-        ? `${businessName}: your booking for ${serviceName} on ${when} has been received and is awaiting confirmation.`
-        : `${businessName}: your booking for ${serviceName} on ${when} is confirmed. See you soon!`
+        ? `${businessName}: your booking for ${serviceName} on ${when} has been received and is awaiting confirmation.${at}`
+        : `${businessName}: your booking for ${serviceName} on ${when} is confirmed.${at} See you soon!`
     case 'ru':
       return pending
-        ? `${businessName}: ваша запись на ${serviceName} (${when}) принята и ожидает подтверждения.`
-        : `${businessName}: ваша запись на ${serviceName} (${when}) подтверждена. До встречи!`
+        ? `${businessName}: ваша запись на ${serviceName} (${when}) принята и ожидает подтверждения.${at}`
+        : `${businessName}: ваша запись на ${serviceName} (${when}) подтверждена.${at} До встречи!`
     case 'ka':
     default:
       return pending
-        ? `${businessName}: თქვენი ჯავშანი — ${serviceName}, ${when}. მიღებულია და ელოდება დადასტურებას.`
-        : `${businessName}: თქვენი ჯავშანი — ${serviceName}, ${when} დადასტურდა. გელით!`
+        ? `${businessName}: თქვენი ჯავშანი — ${serviceName}, ${when}. მიღებულია და ელოდება დადასტურებას.${at}`
+        : `${businessName}: თქვენი ჯავშანი — ${serviceName}, ${when} დადასტურდა.${at} გელით!`
+  }
+}
+
+// " Address: <x>." line for confirmation/reminder bodies; empty when the
+// business hasn't set an address. Each localised label costs one short
+// sentence, so a set address typically adds one SMS segment at most.
+function addressSuffix(address: string | null | undefined, lang: SmsLang): string {
+  const a = address?.trim()
+  if (!a) return ''
+  switch (lang) {
+    case 'en': return ` Address: ${a}.`
+    case 'ru': return ` Адрес: ${a}.`
+    case 'ka':
+    default: return ` მისამართი: ${a}.`
   }
 }
 

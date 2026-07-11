@@ -99,6 +99,7 @@ export function isValidUrl(raw: string): boolean {
  */
 export const FIELD_LIMITS = {
   orgName: 255,
+  address: 255,
   serviceName: 255,
   personName: 100,
   description: 1000,

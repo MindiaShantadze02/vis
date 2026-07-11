@@ -32,6 +32,7 @@ interface Resolved {
   appointmentId: string | null
   to: string | null
   businessName: string
+  address: string | null
   label: string
   when: string
   pending: boolean
@@ -50,18 +51,19 @@ function one<T>(v: T | T[] | null): T | null {
 async function resolveAppointment(supabase: SupabaseClient, id: string): Promise<Resolved | null> {
   const { data, error } = await supabase
     .from('appointments')
-    .select('id, org_id, status, scheduled_at, service:services ( name ), customer:customers ( first_name, phone_number ), org:organisations ( name )')
+    .select('id, org_id, status, scheduled_at, service:services ( name ), customer:customers ( first_name, phone_number ), org:organisations ( name, address )')
     .eq('id', id)
     .single()
   if (error || !data) return null
   const service = one(data.service as { name: string } | { name: string }[] | null)
   const customer = one(data.customer as { phone_number: string } | { phone_number: string }[] | null)
-  const org = one(data.org as { name: string } | { name: string }[] | null)
+  const org = one(data.org as { name: string; address: string | null } | { name: string; address: string | null }[] | null)
   return {
     orgId: data.org_id,
     appointmentId: data.id,
     to: customer?.phone_number ?? null,
     businessName: org?.name ?? 'vis',
+    address: org?.address ?? null,
     label: service?.name ?? '',
     when: fmtDateTime(data.scheduled_at),
     pending: data.status === 'pending',
@@ -124,6 +126,7 @@ Deno.serve(async (req) => {
       serviceName: resolved.label,
       when: resolved.when,
       pending: resolved.pending,
+      address: resolved.address,
     }
     const body = message_type === 'appointment_reminder'
       ? appointmentReminderBody(details)

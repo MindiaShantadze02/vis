@@ -326,6 +326,8 @@
     "businessName": "ბიზნესის სახელი",
     "description": "აღწერა",
     "contactPhone": "საკონტაქტო ტელეფონი",
+    "address": "მისამართი",
+    "addressHint": "ჩაემატება ჯავშნის დადასტურების SMS-ში, რომ კლიენტმა იცოდეს სად მოვიდეს",
     "bookingPageColor": "ჯავშნის გვერდის ფერი",
     "bookingPageColorHelp": "ფერი, რომელსაც კლიენტები ხედავენ ჯავშნისას",
     "requireApprovalTitle": "ჯავშნის დადასტურება საჭიროა",

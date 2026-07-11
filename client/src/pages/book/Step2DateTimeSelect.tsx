@@ -385,6 +385,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         onClick={onBack}
         size="small"
         sx={{ mb: 2, color: 'text.secondary' }}
+        data-testid="book-back"
       >
         {t('common.back')}
       </Button>

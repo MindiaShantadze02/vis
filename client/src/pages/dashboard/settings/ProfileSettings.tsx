@@ -24,6 +24,7 @@ export default function ProfileSettings() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [contactPhone, setContactPhone] = useState('')
+  const [address, setAddress] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   const [saving, setSaving] = useState(false)
@@ -36,6 +37,7 @@ export default function ProfileSettings() {
       setName(org.name ?? '')
       setDescription((org as unknown as Record<string, string>).description ?? '')
       setContactPhone((org as unknown as Record<string, string>).contact_phone ?? '')
+      setAddress((org as unknown as Record<string, string>).address ?? '')
       setLogoUrl((org as unknown as Record<string, string>).logo_url ?? null)
     }
   }, [org])
@@ -97,6 +99,7 @@ export default function ProfileSettings() {
         name: name.trim(),
         description: description.trim() || null,
         contact_phone: formatGeorgianPhone(contactPhone),
+        address: address.trim() || null,
       })
       .eq('id', org.id)
 
@@ -189,6 +192,14 @@ export default function ProfileSettings() {
               error={phoneInvalid}
               helperText={phoneInvalid ? t('validation.invalidPhone') : undefined}
               slotProps={{ htmlInput: { inputMode: 'tel', maxLength: 20, 'data-testid': 'profile-phone' } }}
+            />
+            <TextField
+              label={t('settings.address')}
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              fullWidth
+              helperText={t('settings.addressHint')}
+              slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.address, 'data-testid': 'profile-address' } }}
             />
           </Stack>
 

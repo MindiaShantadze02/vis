@@ -50,6 +50,15 @@ test.describe('Service images', () => {
     await expect(page.getByTestId('gallery-close')).toBeVisible()
     await page.getByTestId('gallery-close').click()
 
+    // Going back to the service list hides the gallery — the previous choice's
+    // photos must not linger next to a fresh selection (regression).
+    await page.getByTestId('book-back').click()
+    await expect(page.getByTestId('book-service').first()).toBeVisible()
+    await expect(page.getByTestId('sidebar-gallery')).toHaveCount(0)
+    // Re-selecting brings it straight back on the date step.
+    await card.click()
+    await expect(page.getByTestId('sidebar-gallery')).toBeVisible()
+
     // Clean up: delete the service (cascades the image row; the component also
     // removes the storage object) so the seeded org isn't left with residue.
     await page.goto('/dashboard/settings/services')

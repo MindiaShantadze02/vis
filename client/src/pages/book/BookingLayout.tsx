@@ -271,13 +271,18 @@ export default function BookingLayout() {
         }] : []),
       ]}
     />
-    <ServiceGallery
-      // `?? []` guards drafts persisted before services carried images.
-      images={booking.service.images ?? []}
-      serviceName={booking.service.name}
-      fg={sideFg}
-      overlay={sideOverlay}
-    />
+    {/* Photos only accompany the steps *after* choosing a service — going back
+        to the service list keeps booking.service (so the ticket persists), but
+        the previous choice's photos next to a fresh list read as stale. */}
+    {step > 0 && (
+      <ServiceGallery
+        // `?? []` guards drafts persisted before services carried images.
+        images={booking.service.images ?? []}
+        serviceName={booking.service.name}
+        fg={sideFg}
+        overlay={sideOverlay}
+      />
+    )}
     </>
   ) : undefined
 

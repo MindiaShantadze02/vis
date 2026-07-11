@@ -323,6 +323,8 @@
     "businessName": "Название бизнеса",
     "description": "Описание",
     "contactPhone": "Контактный телефон",
+    "address": "Адрес",
+    "addressHint": "Добавляется в SMS-подтверждение брони, чтобы клиент знал, куда прийти",
     "bookingPageColor": "Цвет страницы бронирования",
     "bookingPageColorHelp": "Цвет, который клиенты видят при бронировании",
     "requireApprovalTitle": "Требовать подтверждение брони",
