@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS, PASSWORD_MIN } from '@/lib/validation'
+import { FormErrorAlert } from '@/components/ui'
 import AuthShell from './AuthShell'
 
 type Step = 'phone' | 'reset'
@@ -97,7 +98,7 @@ export default function ForgotPasswordPage() {
         ? 'შეიყვანეთ ტელეფონის ნომერი და გამოგიგზავნით კოდს.'
         : 'შეიყვანეთ მიღებული კოდი და ახალი პაროლი.'}
     >
-      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="forgot-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="forgot-error" />
 
       {step === 'phone' ? (
         <>

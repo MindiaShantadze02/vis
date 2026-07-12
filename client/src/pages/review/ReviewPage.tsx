@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
-  Box, Typography, Card, CardContent, Button, TextField, Rating, Alert, CircularProgress, Avatar, Divider,
+  Box, Typography, Card, CardContent, Button, TextField, Rating, CircularProgress, Avatar, Divider,
 } from '@mui/material'
 import { StarRounded as StarRoundedIcon } from '@/components/icons'
 import { CheckCircleOutlined as CheckCircleOutlinedIcon } from '@/components/icons'
@@ -11,7 +11,7 @@ import { format } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { ThemeProvider } from '@mui/material/styles'
 import { supabase } from '@/lib/supabase'
-import { LoadingState, EmptyState } from '@/components/ui'
+import { LoadingState, EmptyState, FormErrorAlert } from '@/components/ui'
 import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
 import { LAYOUT, elevation } from '@/theme/theme'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
@@ -195,7 +195,7 @@ export default function ReviewPage() {
 
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>{t('reviews.title')}</Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2.5 }} data-testid="review-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="review-error" sx={{ mb: 2.5 }} />
 
       {/* Rating — left-aligned like every other field, with the descriptor inline
           so there's no reserved empty gap. */}

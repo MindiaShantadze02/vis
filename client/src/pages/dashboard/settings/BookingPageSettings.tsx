@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import {
-  Box, Typography, Card, CardContent, Button, Divider, Alert, CircularProgress,
+  Box, Typography, Card, CardContent, Button, Divider, CircularProgress,
   Stack, Switch, FormControlLabel, Link as MuiLink,
 } from '@mui/material'
 import { OpenInNewOutlined as OpenInNewOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, CopyableText, useToast } from '@/components/ui'
+import { PageHeader, CopyableText, FormErrorAlert, useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import {
   BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, getBookingTheme, isCustomBookingColor,
@@ -60,7 +60,7 @@ export default function BookingPageSettings() {
     <Box>
       <PageHeader title={t('settings.bookingPage')} />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="booking-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="booking-error" />
 
       {/* Share / preview / embed */}
       {org?.slug && (

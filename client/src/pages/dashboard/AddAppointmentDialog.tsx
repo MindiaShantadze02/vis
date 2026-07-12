@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
 import { computeAvailableSlots, getDayKey, businessDayWindow, BUSINESS_UTC_OFFSET } from '@/lib/slots'
 import type { SlotApptRow, SlotOverride, WeekTemplate } from '@/lib/slots'
-import { useToast } from '@/components/ui'
+import { FormErrorAlert, useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
 
 interface ServiceOption {
@@ -292,7 +292,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
             {t('subscription.limitReached')} — {t('subscription.bookingsBlocked')}
           </Alert>
         )}
-        {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="add-appt-error">{error}</Alert>}
+        <FormErrorAlert message={error} data-testid="add-appt-error" />
 
         <Stack spacing={2} sx={{ mt: 1 }}>
           <FormControl fullWidth required size="small">

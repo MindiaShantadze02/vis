@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import {
   Box, TextField, Button,
-  CircularProgress, Alert, Link as MuiLink, Stack,
+  CircularProgress, Link as MuiLink, Stack,
   IconButton, InputAdornment,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
@@ -11,6 +11,7 @@ import { VisibilityOffOutlined as VisibilityOffIcon } from '@/components/icons'
 import { supabase, checkCredentials } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
+import { FormErrorAlert } from '@/components/ui'
 import AuthShell from './AuthShell'
 import OtpStep from './OtpStep'
 
@@ -119,7 +120,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell title={t('auth.login')}>
-      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="login-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="login-error" />
 
       <TextField
         fullWidth

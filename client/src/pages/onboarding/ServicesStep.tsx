@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { ActionIconButton, EmptyState, SkeletonImage, useToast } from '@/components/ui'
 import { HONEY } from '@/theme/theme'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidField } from '@/lib/focusFirstInvalidField'
 import ServiceImagesEditor from '@/components/ServiceImagesEditor'
 import { serviceImageFileError, MAX_IMAGES_PER_SERVICE, MAX_SERVICE_IMAGE_MB } from '@/lib/serviceImages'
 import StepHeader from './StepHeader'
@@ -108,13 +109,17 @@ export default function ServicesStep() {
   }
 
   function saveService() {
-    // Report the specific problem instead of a silently disabled Add button.
-    if (draft.name.trim().length < 2) { toast.error(t('validation.minLength', { min: 2 })); return }
-    if (!(Number(draft.duration_minutes) > 0)) { toast.error(t('validation.required')); return }
-    if (durationTooLong) { toast.error(t('validation.durationTooLong')); return }
-    if (priceInvalid) { toast.error(t('validation.numberTooLarge')); return }
-    if (meetingLinkMissing) { toast.error(t('validation.meetingLinkRequired')); return }
-    if (meetingLinkInvalid) { toast.error(t('validation.invalidUrl')); return }
+    // Report the specific problem (instead of a silently disabled Add button)
+    // and bring the offending field into view + focus it.
+    const err =
+      draft.name.trim().length < 2 ? t('validation.minLength', { min: 2 })
+        : !(Number(draft.duration_minutes) > 0) ? t('validation.required')
+          : durationTooLong ? t('validation.durationTooLong')
+            : priceInvalid ? t('validation.numberTooLarge')
+              : meetingLinkMissing ? t('validation.meetingLinkRequired')
+                : meetingLinkInvalid ? t('validation.invalidUrl')
+                  : null
+    if (err) { toast.error(err); focusFirstInvalidField(); return }
     if (!draftValid) return
     const svc = {
       name: draft.name.trim(),

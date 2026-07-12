@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Box, TextField, Button, CircularProgress, Alert, Link as MuiLink,
+  Box, TextField, Button, CircularProgress, Link as MuiLink,
 } from '@mui/material'
 import { useTranslation } from 'react-i18next'
+import { FormErrorAlert } from '@/components/ui'
 
 interface Props {
   /** Verify the entered code and complete the flow (sign in / sign up). */
@@ -58,7 +59,7 @@ export default function OtpStep({ onSubmit, onResend, onBack, loading, error }: 
 
   return (
     <>
-      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="login-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="login-error" />
 
       <TextField
         fullWidth

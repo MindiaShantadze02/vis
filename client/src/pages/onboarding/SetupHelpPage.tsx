@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  Box, Card, CardContent, Typography, TextField, Button, Stack, Alert,
+  Box, Card, CardContent, Typography, TextField, Button, Stack,
   CircularProgress, Link,
 } from '@mui/material'
 import { TaskAltOutlined as TaskAltOutlinedIcon } from '@/components/icons'
@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { displayGeorgianPhone } from '@/lib/validation'
 import { FIELD_LIMITS } from '@/lib/validation'
 import VisLogo from '@/components/VisLogo'
+import { FormErrorAlert } from '@/components/ui'
 
 type ViewState = 'loading' | 'form' | 'pending' | 'submitted'
 
@@ -149,7 +150,7 @@ export default function SetupHelpPage() {
         </Box>
       </Box>
 
-      {error && <Alert severity="error" data-testid="setup-help-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="setup-help-error" sx={{ mb: 0 }} />
 
       <TextField
         label={t('onboarding.helpBusinessName')}

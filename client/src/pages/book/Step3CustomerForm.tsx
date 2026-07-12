@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Box, Typography, Button, TextField, Stack,
-  Alert, CircularProgress, ToggleButtonGroup, ToggleButton,
+  CircularProgress, ToggleButtonGroup, ToggleButton,
   Checkbox, FormControlLabel, Link as MuiLink,
 } from '@mui/material'
 import { Trans } from 'react-i18next'
@@ -19,6 +19,7 @@ import { CONSENT_VERSION } from '@/pages/legal/legalContent'
 import { postToParent } from './useEmbedBridge'
 import { elevation } from '@/theme/theme'
 import type { BookingOrg, BookingState } from './BookingLayout'
+import { FormErrorAlert } from '@/components/ui'
 
 interface Props {
   org: BookingOrg
@@ -325,7 +326,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
         </Typography>
       )}
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="book-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="book-error" />
 
       <Stack spacing={2.25}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5 }}>
@@ -504,7 +505,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
 
       {phase === 'otp' && (
         <Box sx={{ maxWidth: 400 }}>
-          {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="book-error">{error}</Alert>}
+          <FormErrorAlert message={error} data-testid="book-error" />
           <Box
             sx={{
               width: 56, height: 56, borderRadius: 3, mb: 2,

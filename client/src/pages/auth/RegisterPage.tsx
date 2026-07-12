@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Box, TextField, Button,
-  Typography, CircularProgress, Alert, Link as MuiLink,
+  Typography, CircularProgress, Link as MuiLink,
   Checkbox, FormControlLabel, IconButton, InputAdornment,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS, PASSWORD_MIN } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
+import { FormErrorAlert } from '@/components/ui'
 import AuthShell from './AuthShell'
 import OtpStep from './OtpStep'
 
@@ -129,7 +130,7 @@ export default function RegisterPage() {
 
   return (
     <AuthShell title={t('auth.registerTitle')} subtitle={t('auth.registerSubtitle')}>
-      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="login-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="login-error" />
 
       <TextField
         fullWidth required

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import {
   Box, Button, Typography, Switch, FormControlLabel,
-  TextField, Stack, Alert, CircularProgress, Tooltip, Card, Divider,
+  TextField, Stack, CircularProgress, Tooltip, Card, Divider,
 } from '@mui/material'
 import { Add as AddIcon } from '@/components/icons'
 import { Close as CloseIcon } from '@/components/icons'
@@ -17,7 +17,7 @@ import {
 } from '@/lib/validation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
-import { ActionIconButton } from '@/components/ui'
+import { ActionIconButton, FormErrorAlert } from '@/components/ui'
 import { supabase } from '@/lib/supabase'
 import { slugify } from '@/lib/slug'
 import { uploadServiceImage } from '@/lib/serviceImages'
@@ -280,7 +280,7 @@ export default function WorkingHoursStep() {
         subtitle={t('onboarding.step3Subtitle')}
       />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="hours-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="hours-error" />
 
       {/* One calm container with the days separated by dividers (matches the
           dashboard Working Hours settings) rather than a stack of bordered

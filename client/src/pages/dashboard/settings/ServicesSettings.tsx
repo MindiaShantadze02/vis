@@ -12,7 +12,7 @@ import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/componen
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, SkeletonImage, useToast } from '@/components/ui'
+import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, SkeletonImage, FormErrorAlert, useToast } from '@/components/ui'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import ServiceImagesEditor, { type EditorImage } from '@/components/ServiceImagesEditor'
 import {
@@ -440,7 +440,7 @@ export default function ServicesSettings() {
           {editing ? t('settings.editService') : t('settings.newService')}
         </DialogTitle>
         <DialogContent>
-          {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="service-dialog-error">{error}</Alert>}
+          <FormErrorAlert message={error} data-testid="service-dialog-error" />
           <Stack spacing={2.5} sx={{ pt: 1 }}>
             <TextField
               label={t('onboarding.serviceName')}

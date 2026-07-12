@@ -1,14 +1,14 @@
 import { useEffect, useState, useRef } from 'react'
 import {
   Box, Typography, Card, CardContent, TextField, Button,
-  Avatar, CircularProgress, Alert, Stack, Divider,
+  Avatar, CircularProgress, Stack, Divider,
 } from '@mui/material'
 import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
-import { PageHeader, useToast } from '@/components/ui'
+import { PageHeader, FormErrorAlert, useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
 
 /**
@@ -113,7 +113,7 @@ export default function ProfileSettings() {
     <Box>
       <PageHeader title={t('settings.business')} />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="profile-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="profile-error" />
 
       <Card>
         <CardContent sx={{ p: 3 }}>

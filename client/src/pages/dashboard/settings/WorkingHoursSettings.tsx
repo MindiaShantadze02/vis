@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Box, Typography, Card, CardContent, Button, TextField,
-  Switch, Stack, Divider, Alert, CircularProgress,
+  Switch, Stack, Divider, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Chip,
 } from '@mui/material'
@@ -20,7 +20,7 @@ import {
   type TimeRange, type DaySchedule,
 } from '@/lib/validation'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, LoadingState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
+import { PageHeader, LoadingState, ConfirmDialog, ActionIconButton, FormErrorAlert, useToast } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
 
 type WeekTemplate = {
@@ -252,7 +252,7 @@ export default function WorkingHoursSettings() {
     <Box>
       <PageHeader title={t('settings.workingHours')} />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="wh-error">{error}</Alert>}
+      <FormErrorAlert message={error} data-testid="wh-error" />
 
       {/* Weekly template */}
       <Card sx={{ mb: 3 }}>

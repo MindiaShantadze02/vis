@@ -6,6 +6,7 @@ import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/ico
 import { useTranslation } from 'react-i18next'
 import { slugify } from '@/lib/slug'
 import { isValidGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidField } from '@/lib/focusFirstInvalidField'
 import { useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import StepHeader from './StepHeader'
@@ -47,10 +48,18 @@ export default function BusinessProfileStep() {
   const nameTooShort = data.name.trim().length > 0 && data.name.trim().length < 2
 
   // Validate on click with visible messages rather than a silently disabled
-  // Next button.
+  // Next button. On failure, bring the offending field into view + focus it.
   function handleNext() {
-    if (data.name.trim().length < 2) { toast.error(t('validation.minLength', { min: 2 })); return }
-    if (!isValidGeorgianPhone(data.contact_phone)) { toast.error(t('validation.invalidPhone')); return }
+    const err = data.name.trim().length < 2
+      ? t('validation.minLength', { min: 2 })
+      : !isValidGeorgianPhone(data.contact_phone)
+        ? t('validation.invalidPhone')
+        : null
+    if (err) {
+      toast.error(err)
+      focusFirstInvalidField()
+      return
+    }
     goNext()
   }
 
