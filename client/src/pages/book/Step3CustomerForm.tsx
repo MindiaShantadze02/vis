@@ -104,7 +104,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
   // code-entry view. The booking itself is only created after the code checks out.
   async function sendCode() {
     // Validate on click with a visible message rather than a disabled button.
-    if (booking.firstName.trim().length < 2) { setError(t('validation.minLength', { min: 2 })); return }
+    if (booking.firstName.trim().length < 2) { setError(t('validation.firstNameMinLength', { min: 2 })); return }
     if (!isValidPersonName(booking.firstName) || lastNameInvalid) { setError(t('validation.lettersOnly')); return }
     if (!isValidGeorgianPhone(booking.phone)) { setError(t('validation.invalidPhone')); return }
     if (!consent) { setError(t('validation.consentRequired')); return }

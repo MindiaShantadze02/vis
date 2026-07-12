@@ -199,7 +199,7 @@ export default function HomePage() {
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2.5}
-            sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
+            sx={{ alignItems: { sm: 'center' } }}
           >
             <CodeOutlined sx={{ fontSize: 34, color: 'primary.main' }} />
             <Box sx={{ flex: 1 }}>

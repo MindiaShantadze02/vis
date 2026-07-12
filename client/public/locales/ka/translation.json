@@ -48,6 +48,7 @@
     "invalidUrl": "შეიყვანეთ სწორი ბმული (https:// ფორმატით)",
     "meetingLinkRequired": "ონლაინ მომსახურებისთვის ბმული სავალდებულოა",
     "minLength": "მინიმუმ {{min}} სიმბოლო",
+    "firstNameMinLength": "სახელი უნდა შეიცავდეს მინიმუმ {{min}} სიმბოლოს",
     "lettersOnly": "მხოლოდ ასოები",
     "fileTooLarge": "ფაილი ძალიან დიდია (მაქს. {{max}} MB)",
     "invalidImage": "აირჩიეთ სურათის ფაილი (PNG, JPG, GIF)",
