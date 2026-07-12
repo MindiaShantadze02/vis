@@ -120,17 +120,7 @@ export async function bookToDetails(page: Page, slug = SEED.slug): Promise<boole
  * (and the next run) see the wrong booking behavior.
  */
 export async function setRequireApproval(on: boolean): Promise<void> {
-  const env = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '.env'), 'utf8')
-  const url = /VITE_SUPABASE_URL=(\S+)/.exec(env)![1]
-  const anonKey = /VITE_SUPABASE_ANON_KEY=(\S+)/.exec(env)![1]
-
-  const signIn = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: { apikey: anonKey, 'content-type': 'application/json' },
-    body: JSON.stringify({ phone: `+995${SEED.phone}`, password: SEED.password }),
-  })
-  if (!signIn.ok) throw new Error(`seed owner sign-in failed: ${signIn.status} ${await signIn.text()}`)
-  const { access_token } = (await signIn.json()) as { access_token: string }
+  const { url, anonKey, accessToken } = await signInSeed()
 
   const update = await fetch(
     `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`,
@@ -138,7 +128,7 @@ export async function setRequireApproval(on: boolean): Promise<void> {
       method: 'PATCH',
       headers: {
         apikey: anonKey,
-        authorization: `Bearer ${access_token}`,
+        authorization: `Bearer ${accessToken}`,
         'content-type': 'application/json',
         prefer: 'return=representation',
       },
@@ -148,6 +138,31 @@ export async function setRequireApproval(on: boolean): Promise<void> {
   if (!update.ok) throw new Error(`require_approval update failed: ${update.status} ${await update.text()}`)
   const rows = (await update.json()) as { id: string }[]
   if (!rows.length) throw new Error('require_approval update matched no org')
+}
+
+/**
+ * Read the hosted project's URL + anon key from client/.env — for Node-side
+ * specs that talk straight to the GoTrue / PostgREST / Edge-Function HTTP
+ * endpoints (supabase-js won't construct on Node 20; see setRequireApproval).
+ */
+export function readSupabaseEnv(): { url: string; anonKey: string } {
+  const env = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '.env'), 'utf8')
+  const url = /VITE_SUPABASE_URL=(\S+)/.exec(env)![1]
+  const anonKey = /VITE_SUPABASE_ANON_KEY=(\S+)/.exec(env)![1]
+  return { url, anonKey }
+}
+
+/** Password sign-in as the seeded owner; returns the URL, anon key + access token. */
+export async function signInSeed(): Promise<{ url: string; anonKey: string; accessToken: string }> {
+  const { url, anonKey } = readSupabaseEnv()
+  const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: anonKey, 'content-type': 'application/json' },
+    body: JSON.stringify({ phone: `+995${SEED.phone}`, password: SEED.password }),
+  })
+  if (!res.ok) throw new Error(`seed owner sign-in failed: ${res.status} ${await res.text()}`)
+  const { access_token } = (await res.json()) as { access_token: string }
+  return { url, anonKey, accessToken: access_token }
 }
 
 /** A short, unique label so created rows are easy to spot and clean up. */
