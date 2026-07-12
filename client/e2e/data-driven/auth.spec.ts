@@ -4,25 +4,35 @@ import loginData from '../data/auth-login.json' with { type: 'json' }
 import registerData from '../data/auth-register.json' with { type: 'json' }
 
 /**
- * Data-driven gating of the login/register forms. Every case lives in
- * e2e/data/auth-login.json / auth-register.json (BVA + ECP + error-guessing);
- * this spec only iterates them. Nothing here submits credentials or creates an
- * account — flows are covered by auth.spec.ts.
+ * Data-driven validation of the login/register forms (cases in
+ * e2e/data/auth-login.json / auth-register.json — BVA + ECP + error-guessing).
+ * Buttons are never disabled for validation, so invalid rows are submitted and
+ * must surface the login-error Alert while staying on the same page; valid rows
+ * are only asserted enabled (never clicked, so no real sign-in / account
+ * creation). Invalid submits all early-return synchronously before any network
+ * call, so nothing leaves the browser.
  */
 test.describe('Data-driven — Auth', () => {
-  test('login submit gating across phone/password partitions', async ({ page }) => {
+  test('login validation across phone/password partitions', async ({ page }) => {
     await page.goto('/login')
     const phone = page.getByTestId('login-phone')
     const password = page.getByTestId('login-password')
     const submit = page.getByTestId('login-submit')
+    const error = page.getByTestId('login-error')
     await expect(submit).toBeVisible()
 
     for (const c of loginData.cases) {
       await test.step(`[${c.technique}] ${c.id} — ${c.note}`, async () => {
         await fillStable(phone, c.fields.phone)
         await fillStable(password, c.fields.password)
-        if (c.valid) await expect(submit).toBeEnabled()
-        else await expect(submit).toBeDisabled()
+        // The button is always enabled now.
+        await expect(submit).toBeEnabled()
+        if (!c.valid) {
+          // Invalid input is reported on submit and never leaves /login.
+          await submit.click()
+          await expect(error).toBeVisible()
+          await expect(page).toHaveURL(/\/login/)
+        }
       })
     }
   })
@@ -47,19 +57,27 @@ test.describe('Data-driven — Auth', () => {
         await code.fill('')
         await code.fill(c.type)
         await expect(code).toHaveValue(c.expectValue)
-        if (c.verifyEnabled) await expect(verify).toBeEnabled()
-        else await expect(verify).toBeDisabled()
+        // Verify is always enabled; a short code is rejected on click with a
+        // field error rather than a disabled button. Only exercise the reject
+        // path — clicking a full (verifyEnabled) code would submit for real.
+        await expect(verify).toBeEnabled()
+        if (!c.verifyEnabled) {
+          await verify.click()
+          await expect(code).toHaveAttribute('aria-invalid', 'true')
+          await expect(code).toBeVisible() // still on the OTP step
+        }
       })
     }
-    // Never verified — no sign-in happens.
+    // Never verified with a full code — no sign-in happens.
   })
 
-  test('register submit gating across phone/password partitions', async ({ page }) => {
+  test('register validation across phone/password partitions', async ({ page }) => {
     await page.goto('/register')
     const phone = page.getByTestId('login-phone')
     const password = page.getByTestId('login-password')
     const confirm = page.getByTestId('login-confirm-password')
     const submit = page.getByTestId('login-submit')
+    const error = page.getByTestId('login-error')
     await expect(submit).toBeVisible()
 
     for (const c of registerData.cases) {
@@ -67,8 +85,14 @@ test.describe('Data-driven — Auth', () => {
         await fillStable(phone, c.fields.phone)
         await fillStable(password, c.fields.password)
         await fillStable(confirm, c.fields.confirm)
-        if (c.valid) await expect(submit).toBeEnabled()
-        else await expect(submit).toBeDisabled()
+        await expect(submit).toBeEnabled()
+        if (!c.valid) {
+          // Consent is left unchecked, but the phone/password error is reported
+          // first and blocks the submit before the consent check.
+          await submit.click()
+          await expect(error).toBeVisible()
+          await expect(page).toHaveURL(/\/register/)
+        }
       })
     }
   })

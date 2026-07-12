@@ -205,16 +205,16 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
   const firstNameTooShort = firstName.trim().length > 0 && firstName.trim().length < 2
   const firstNameInvalid = firstName.trim().length >= 2 && !isValidPersonName(firstName)
   const lastNameInvalid = lastName.trim().length > 0 && !isValidPersonName(lastName)
-  const canSave =
-    !!serviceId &&
-    firstName.trim().length >= 2 &&
-    isValidPersonName(firstName) &&
-    !lastNameInvalid &&
-    isValidGeorgianPhone(phone) &&
-    !!scheduledAt
-
   async function handleSave() {
-    if (!selectedService || !scheduledAt) return
+    // Report the first missing/invalid field instead of a disabled button.
+    // (atLimit already shows its own persistent warning above the form.)
+    if (atLimit) return
+    if (!serviceId) { setError(t('validation.required')); return }
+    if (firstName.trim().length < 2) { setError(t('validation.minLength', { min: 2 })); return }
+    if (!isValidPersonName(firstName) || lastNameInvalid) { setError(t('validation.lettersOnly')); return }
+    if (!isValidGeorgianPhone(phone)) { setError(t('validation.invalidPhone')); return }
+    if (!scheduledAt) { setError(t('validation.required')); return }
+    if (!selectedService) return
     setSaving(true)
     setError(null)
 
@@ -421,7 +421,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose} disabled={saving} data-testid="add-appt-cancel">{t('common.cancel')}</Button>
-        <Button variant="contained" onClick={handleSave} disabled={!canSave || saving || atLimit} data-testid="add-appt-save">
+        <Button variant="contained" onClick={handleSave} disabled={saving} data-testid="add-appt-save">
           {saving ? <CircularProgress size={22} color="inherit" /> : 'დამატება'}
         </Button>
       </DialogActions>

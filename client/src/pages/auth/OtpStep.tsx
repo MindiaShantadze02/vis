@@ -26,6 +26,9 @@ const RESEND_SECONDS = 60
 export default function OtpStep({ onSubmit, onResend, onBack, loading, error }: Props) {
   const { t } = useTranslation()
   const [code, setCode] = useState('')
+  // Click-time "enter the full code" message (the button is never disabled
+  // for validation reasons — clicking explains what's missing).
+  const [codeError, setCodeError] = useState(false)
   const [resendIn, setResendIn] = useState(RESEND_SECONDS)
   // Last code we auto-submitted, so a failed attempt isn't retried in a loop
   // while the same 6 digits sit in the field.
@@ -62,9 +65,11 @@ export default function OtpStep({ onSubmit, onResend, onBack, loading, error }: 
         required
         label={t('auth.otpLabel')}
         value={code}
-        onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+        onChange={e => { setCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setCodeError(false) }}
         placeholder="123456"
         autoFocus
+        error={codeError}
+        helperText={codeError ? t('auth.otpEnterCode') : ' '}
         sx={{ mb: 2 }}
         slotProps={{ htmlInput: { inputMode: 'numeric' as const, maxLength: 6, 'data-testid': 'auth-otp-code' } }}
       />
@@ -73,8 +78,12 @@ export default function OtpStep({ onSubmit, onResend, onBack, loading, error }: 
         fullWidth
         variant="contained"
         size="large"
-        onClick={() => { autoSubmitted.current = code; void onSubmit(code) }}
-        disabled={loading || code.length !== 6}
+        onClick={() => {
+          if (code.length !== 6) { setCodeError(true); return }
+          autoSubmitted.current = code
+          void onSubmit(code)
+        }}
+        disabled={loading}
         data-testid="auth-otp-verify"
       >
         {loading ? <CircularProgress size={20} color="inherit" /> : t('auth.verify')}

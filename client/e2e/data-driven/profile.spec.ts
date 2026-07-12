@@ -4,10 +4,11 @@ import data from '../data/profile.json' with { type: 'json' }
 
 /**
  * Data-driven business-profile validation (cases in e2e/data/profile.json).
- * Save is never clicked with changed values and invalid logos are rejected
- * before hitting storage, so the seeded org is left untouched. The exact-2MB
- * ACCEPTED logo boundary is asserted logically in consistency.spec.ts (an e2e
- * upload would really replace the seed logo).
+ * The save button is never disabled for validation, so invalid rows are
+ * submitted and must surface the profile-error Alert; handleSave validates
+ * before any DB write, so no invalid row ever persists (and the "error shown"
+ * assertion guards that). Valid rows are only asserted enabled — clicking one
+ * would really overwrite the seed org — so the seed stays untouched.
  */
 test.describe('Data-driven — Business profile', () => {
   test.beforeEach(async ({ page }) => {
@@ -16,8 +17,9 @@ test.describe('Data-driven — Business profile', () => {
     await expect(page.getByTestId('profile-save')).toBeVisible()
   })
 
-  test('save gating across name/phone partitions', async ({ page }) => {
+  test('save validation across name/phone partitions', async ({ page }) => {
     const save = page.getByTestId('profile-save')
+    const error = page.getByTestId('profile-error')
     // Seed loads valid → enabled.
     await expect(save).toBeEnabled()
 
@@ -26,11 +28,14 @@ test.describe('Data-driven — Business profile', () => {
         const f = c.fields as { name?: string; phone?: string }
         if (f.name !== undefined) await fillStable(page.getByTestId('profile-name'), f.name)
         if (f.phone !== undefined) await fillStable(page.getByTestId('profile-phone'), f.phone)
-        if (c.valid) await expect(save).toBeEnabled()
-        else await expect(save).toBeDisabled()
+        await expect(save).toBeEnabled()
+        if (!c.valid) {
+          await save.click()
+          await expect(error).toBeVisible()
+        }
       })
     }
-    // Never saved — seed profile unchanged.
+    // Valid rows are never clicked — seed profile unchanged.
   })
 
   test('logo upload rejection partitions', async ({ page }) => {

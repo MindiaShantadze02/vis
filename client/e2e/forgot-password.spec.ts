@@ -14,11 +14,11 @@ test.describe('Forgot password', () => {
   test('phone → reset transition with neutral messaging (no account leak)', async ({ page }) => {
     await page.goto('/forgot-password')
 
-    // Phase 1: send is gated on a valid phone.
+    // Phase 1: send is always enabled; an invalid phone is reported on click.
+    // A valid throwaway phone advances to the reset step.
     const send = page.getByTestId('forgot-send')
-    await expect(send).toBeDisabled()
-    await fillStable(page.getByTestId('forgot-phone'), uniquePhone())
     await expect(send).toBeEnabled()
+    await fillStable(page.getByTestId('forgot-phone'), uniquePhone())
     await send.click()
 
     // Phase 2: the reset step appears the same whether or not the phone exists

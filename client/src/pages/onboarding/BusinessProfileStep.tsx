@@ -45,9 +45,14 @@ export default function BusinessProfileStep() {
   const phoneInvalid =
     data.contact_phone.trim().length > 0 && !isValidGeorgianPhone(data.contact_phone)
   const nameTooShort = data.name.trim().length > 0 && data.name.trim().length < 2
-  const canProceed =
-    data.name.trim().length >= 2 &&
-    isValidGeorgianPhone(data.contact_phone)
+
+  // Validate on click with visible messages rather than a silently disabled
+  // Next button.
+  function handleNext() {
+    if (data.name.trim().length < 2) { toast.error(t('validation.minLength', { min: 2 })); return }
+    if (!isValidGeorgianPhone(data.contact_phone)) { toast.error(t('validation.invalidPhone')); return }
+    goNext()
+  }
 
   return (
     <Box>
@@ -133,8 +138,7 @@ export default function BusinessProfileStep() {
         fullWidth
         variant="contained"
         size="large"
-        disabled={!canProceed}
-        onClick={goNext}
+        onClick={handleNext}
         data-testid="biz-next"
       >
         {t('common.next')}

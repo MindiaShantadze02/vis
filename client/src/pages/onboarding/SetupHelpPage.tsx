@@ -187,7 +187,7 @@ export default function SetupHelpPage() {
         variant="contained"
         size="large"
         onClick={submit}
-        disabled={busy || businessName.trim().length < 2 || details.trim().length < 10}
+        disabled={busy}
         data-testid="setup-help-submit"
       >
         {busy ? <CircularProgress size={22} color="inherit" /> : t('onboarding.helpSubmit')}

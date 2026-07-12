@@ -220,7 +220,8 @@ export default function TeamSettings() {
   }
 
   async function handleAddProfessional() {
-    if (!org || addName.trim().length < 2) return
+    if (!org) return
+    if (addName.trim().length < 2) { toast.error(t('validation.minLength', { min: 2 })); return }
     setAdding(true)
     setError(null)
     const { data, error: err } = await supabase
@@ -253,7 +254,8 @@ export default function TeamSettings() {
   }
 
   async function handleInvite() {
-    if (!org || !isValidGeorgianPhone(invitePhone)) return
+    if (!org) return
+    if (!isValidGeorgianPhone(invitePhone)) { toast.error(t('validation.invalidPhone')); return }
     setInviting(true)
     setError(null)
 
@@ -518,7 +520,7 @@ export default function TeamSettings() {
           <Button
             variant="contained"
             onClick={handleInvite}
-            disabled={inviting || !isValidGeorgianPhone(invitePhone)}
+            disabled={inviting}
             data-testid="invite-send"
           >
             {inviting ? <CircularProgress size={20} color="inherit" /> : t('common.send')}
@@ -610,7 +612,7 @@ export default function TeamSettings() {
           <Button
             variant="contained"
             onClick={handleAddProfessional}
-            disabled={adding || addName.trim().length < 2}
+            disabled={adding}
             data-testid="professional-save"
           >
             {adding ? <CircularProgress size={20} color="inherit" /> : t('common.add')}

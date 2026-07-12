@@ -9,7 +9,7 @@ import { useTranslation, Trans } from 'react-i18next'
 import { VisibilityOutlined as VisibilityIcon } from '@/components/icons'
 import { VisibilityOffOutlined as VisibilityOffIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
-import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
+import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS, PASSWORD_MIN } from '@/lib/validation'
 import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
 import AuthShell from './AuthShell'
@@ -47,20 +47,18 @@ export default function RegisterPage() {
 
   const phoneValid = isValidGeorgianPhone(phone)
   const phoneInvalid = phone.trim().length > 0 && !phoneValid
-  const passwordTooShort = password.length > 0 && password.length < 10
+  const passwordTooShort = password.length > 0 && password.length < PASSWORD_MIN
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
-  // Enabled once the credentials are valid; consent is checked on submit (with a
-  // visible message) so the button never blocks for a hidden reason.
-  const credsValid = phoneValid && password.length >= 10 && confirmPassword.length >= 10 && !passwordMismatch
 
   // Step 1: validate creds + consent, then text a verification code and switch
   // to the code-entry view. The account is only created after the code checks out.
+  // Every rule is checked here with a visible message — the button never blocks
+  // for a hidden reason.
   async function startSignUp() {
-    // Consent is required — surface it explicitly rather than silently disabling
-    // the button, which leaves users stuck without knowing why.
-    if (!consent) { flagConsent(); return }
-    if (password.length < 10) { setError(t('validation.passwordTooShortReset')); return }
+    if (!phoneValid) { setError(t('validation.invalidPhone')); return }
+    if (password.length < PASSWORD_MIN) { setError(t('validation.passwordTooShortReset')); return }
     if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
+    if (!consent) { flagConsent(); return }
     setError(null)
     setLoading(true)
     const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
@@ -183,7 +181,7 @@ export default function RegisterPage() {
         type={showPassword ? 'text' : 'password'}
         value={confirmPassword}
         onChange={e => setConfirmPassword(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && credsValid && startSignUp()}
+        onKeyDown={e => e.key === 'Enter' && !loading && startSignUp()}
         error={passwordMismatch}
         helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
         sx={{ mb: 2 }}
@@ -236,7 +234,7 @@ export default function RegisterPage() {
       <Button
         fullWidth variant="contained" size="large"
         onClick={startSignUp}
-        disabled={loading || !credsValid}
+        disabled={loading}
         data-testid="login-submit"
       >
         {loading ? <CircularProgress size={20} color="inherit" /> : t('auth.createAccount')}

@@ -68,7 +68,9 @@ export default function ReviewPage() {
   }, [appointmentId])
 
   async function submit() {
-    if (!appointmentId || !rating) return
+    if (!appointmentId) return
+    // Rating required — shown as a message instead of a disabled button.
+    if (!rating) { setError(t('reviews.ratingRequired')); return }
     setSubmitting(true)
     setError(null)
     const { data, error: rpcErr } = await supabase.rpc('submit_review', {
@@ -237,7 +239,7 @@ export default function ReviewPage() {
         variant="contained"
         size="large"
         onClick={submit}
-        disabled={!rating || submitting}
+        disabled={submitting}
         data-testid="review-submit"
       >
         {submitting ? <CircularProgress size={22} color="inherit" /> : t('reviews.submit')}

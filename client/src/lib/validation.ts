@@ -113,6 +113,13 @@ export const FIELD_LIMITS = {
   paymentField: 255,
 } as const
 
+/**
+ * Minimum password length. Enforced on register / reset / change-password in
+ * the client and in the reset-password edge function (MIN_PASSWORD — keep in
+ * sync). Lowered 10 → 8 on 2026-07-12.
+ */
+export const PASSWORD_MIN = 8
+
 /** Largest value the numeric(10,2) price column can hold. */
 export const MAX_PRICE = 99999999.99
 

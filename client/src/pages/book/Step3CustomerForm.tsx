@@ -102,6 +102,11 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
   // Step 1: text a verification code to the customer's phone, then switch to the
   // code-entry view. The booking itself is only created after the code checks out.
   async function sendCode() {
+    // Validate on click with a visible message rather than a disabled button.
+    if (booking.firstName.trim().length < 2) { setError(t('validation.minLength', { min: 2 })); return }
+    if (!isValidPersonName(booking.firstName) || lastNameInvalid) { setError(t('validation.lettersOnly')); return }
+    if (!isValidGeorgianPhone(booking.phone)) { setError(t('validation.invalidPhone')); return }
+    if (!consent) { setError(t('validation.consentRequired')); return }
     setLoading(true)
     setError(null)
     const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
@@ -291,12 +296,6 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
   const firstNameTooShort = booking.firstName.trim().length > 0 && booking.firstName.trim().length < 2
   const firstNameInvalid = booking.firstName.trim().length >= 2 && !isValidPersonName(booking.firstName)
   const lastNameInvalid = booking.lastName.trim().length > 0 && !isValidPersonName(booking.lastName)
-  const canBook =
-    booking.firstName.trim().length >= 2 &&
-    isValidPersonName(booking.firstName) &&
-    !lastNameInvalid &&
-    isValidGeorgianPhone(booking.phone) &&
-    consent
 
   // Staff line for the summary card. Null when the service has no assignable
   // people (we then omit the row rather than show an empty value).
@@ -491,7 +490,7 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           variant="contained"
           size="large"
           onClick={sendCode}
-          disabled={loading || !canBook}
+          disabled={loading}
           data-testid="book-submit"
         >
           {loading

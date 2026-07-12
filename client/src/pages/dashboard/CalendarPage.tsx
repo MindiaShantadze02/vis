@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { useBreakpoints } from '@/hooks/useBreakpoints'
 import { anim } from '@/theme/animations'
-import { StatusChip, ConfirmDialog, LoadingState } from '@/components/ui'
+import { StatusChip, ConfirmDialog, LoadingState, useToast } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
 import AddAppointmentDialog from './AddAppointmentDialog'
 
@@ -225,6 +225,7 @@ function isHourRested(hour: number, rest: RestPeriod): boolean {
 
 export default function CalendarPage() {
   const { t } = useTranslation()
+  const toast = useToast()
   const { org } = useOrg()
   const theme = useTheme()
   const { isMobile } = useBreakpoints()
@@ -410,7 +411,9 @@ export default function CalendarPage() {
   }
 
   async function addRestPeriod() {
-    if (!org || !template || !restDate || restStart >= restEnd) return
+    if (!org || !template) return
+    if (!restDate) { toast.error(t('validation.required')); return }
+    if (restStart >= restEnd) { toast.error(t('validation.endBeforeStart')); return }
     setSavingRest(true)
 
     const dateObj = new Date(restDate + 'T12:00:00')
@@ -976,7 +979,7 @@ export default function CalendarPage() {
           <Button
             variant="contained"
             onClick={addRestPeriod}
-            disabled={savingRest || !restDate || restStart >= restEnd}
+            disabled={savingRest}
           >
             {savingRest ? <CircularProgress size={18} color="inherit" /> : t('common.add')}
           </Button>

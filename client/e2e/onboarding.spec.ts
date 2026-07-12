@@ -81,24 +81,32 @@ test.describe('Business onboarding', () => {
 test.describe('Business onboarding — edge cases', () => {
   // These leave a throwaway account with no org (like the auth signup test).
 
-  test('the first step gates "next" until name + valid phone are present', async ({ page }) => {
+  test('the first step reports a missing name / invalid phone on Next', async ({ page }) => {
     const phone = uniquePhone()
     await register(page, phone)
     const next = page.getByTestId('biz-next')
 
     // The contact phone arrives pre-filled from the login phone the user just
-    // registered with, so initially only the missing name gates "next".
+    // registered with. Next is always enabled; clicking with no name reports it
+    // (toast) and stays on step 1.
     await expect(page.getByTestId('biz-phone')).toHaveValue(phone)
-    await expect(next).toBeDisabled()                       // no name yet
-
-    await fillStable(page.getByTestId('biz-name'), 'AB')
-    await expect(next).toBeEnabled()                        // name + pre-filled phone
-
-    await fillStable(page.getByTestId('biz-phone'), '123')  // invalid phone
-    await expect(next).toBeDisabled()
-
-    await fillStable(page.getByTestId('biz-phone'), '599123456')
     await expect(next).toBeEnabled()
+    await next.click()
+    await expect(page.getByTestId('toast')).toBeVisible()
+    await expect(page).toHaveURL(/\/onboarding\/business/)
+
+    // Name present but phone made invalid → reported on click, still on step 1.
+    await fillStable(page.getByTestId('biz-name'), 'AB')
+    await fillStable(page.getByTestId('biz-phone'), '123')
+    await next.click()
+    await expect(page.getByTestId('toast')).toBeVisible()
+    await expect(page).toHaveURL(/\/onboarding\/business/)
+
+    // Valid name + phone advances to the services step.
+    await fillStable(page.getByTestId('biz-phone'), '599123456')
+    await next.click()
+    await expect(page).toHaveURL(/\/onboarding\/services/)
+    // Leaves a throwaway account with no org (never reached hours-finish).
   })
 
   test('a service typed but not "added" is kept when clicking Next', async ({ page }) => {

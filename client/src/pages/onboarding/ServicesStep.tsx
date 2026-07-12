@@ -108,6 +108,13 @@ export default function ServicesStep() {
   }
 
   function saveService() {
+    // Report the specific problem instead of a silently disabled Add button.
+    if (draft.name.trim().length < 2) { toast.error(t('validation.minLength', { min: 2 })); return }
+    if (!(Number(draft.duration_minutes) > 0)) { toast.error(t('validation.required')); return }
+    if (durationTooLong) { toast.error(t('validation.durationTooLong')); return }
+    if (priceInvalid) { toast.error(t('validation.numberTooLarge')); return }
+    if (meetingLinkMissing) { toast.error(t('validation.meetingLinkRequired')); return }
+    if (meetingLinkInvalid) { toast.error(t('validation.invalidUrl')); return }
     if (!draftValid) return
     const svc = {
       name: draft.name.trim(),
@@ -151,10 +158,6 @@ export default function ServicesStep() {
 
   // A service the user has started entering (needs at least a name to matter).
   const hasPendingDraft = draft.name.trim().length > 0 || isEditing
-  // Can move on once there's a saved service, or a valid one still in the form
-  // (which Next will add for them).
-  const canProceed = data.services.length > 0 || draftValid
-
   // "Next" must not throw away a service the user typed but didn't add. If the
   // form holds a valid service, add it first; if it's half-finished, keep them
   // here and say why rather than silently dropping it.
@@ -162,6 +165,10 @@ export default function ServicesStep() {
     if (hasPendingDraft) {
       if (!draftValid) { setDraftError(true); return }
       saveService()
+    } else if (data.services.length === 0) {
+      // At least one service is required — say so rather than disable Next.
+      toast.error(t('onboarding.serviceRequired'))
+      return
     }
     goNext()
   }
@@ -315,7 +322,6 @@ export default function ServicesStep() {
               variant="contained"
               startIcon={isEditing ? undefined : <AddIcon />}
               onClick={saveService}
-              disabled={!draftValid}
               data-testid="onb-service-save"
             >
               {isEditing ? t('common.save') : t('onboarding.addService')}
@@ -343,7 +349,6 @@ export default function ServicesStep() {
           fullWidth
           variant="contained"
           size="large"
-          disabled={!canProceed}
           onClick={handleNext}
           data-testid="onb-services-next"
         >

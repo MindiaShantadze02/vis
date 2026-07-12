@@ -99,7 +99,8 @@ export default function SpecialistsStep() {
   }
 
   function addSpecialist() {
-    if (name.trim().length < 2) return
+    // Report the requirement instead of a silently disabled Add button.
+    if (name.trim().length < 2) { toast.error(t('validation.minLength', { min: 2 })); return }
     const specialist: OnboardingSpecialist = {
       name: name.trim(),
       title: title.trim(),
@@ -242,7 +243,6 @@ export default function SpecialistsStep() {
                   variant="contained"
                   startIcon={<PersonAddOutlinedIcon />}
                   onClick={addSpecialist}
-                  disabled={name.trim().length < 2}
                   data-testid="onb-specialist-save"
                 >
                   {t('common.add')}

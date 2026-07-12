@@ -10,19 +10,20 @@ const FIELD_TESTIDS: Record<string, string> = {
 }
 
 /**
- * Data-driven save gating of the service editor (cases in
- * e2e/data/services.json — BVA on name/duration/price/capacity + pairwise
- * online × meeting-link). The dialog is filled with a valid base, each case
- * applies its deltas, asserts the save state, and restores the base. Nothing
- * is ever saved — the create/edit/delete flow in settings-services.spec.ts is
- * the representative submit.
+ * Data-driven validation of the service editor (cases in e2e/data/services.json
+ * — BVA on name/duration/price/capacity + pairwise online × meeting-link). Save
+ * is never disabled for validation: invalid rows are submitted and must surface
+ * the service-dialog-error Alert (handleSave validates before any insert/update,
+ * so nothing persists). Valid rows are only asserted enabled — clicking one
+ * would really create a service — so the dialog is abandoned unsaved.
  */
 test.describe('Data-driven — Services', () => {
-  test('save gating across all field boundaries and partitions', async ({ page }) => {
+  test('save validation across all field boundaries and partitions', async ({ page }) => {
     await login(page)
     await page.goto('/dashboard/settings/services')
     await page.getByTestId('service-add').click()
     const save = page.getByTestId('service-save')
+    const error = page.getByTestId('service-dialog-error')
 
     // Valid base — sanity-check it enables save before iterating.
     for (const [field, value] of Object.entries(data.base)) {
@@ -53,8 +54,11 @@ test.describe('Data-driven — Services', () => {
           await fillStable(page.getByTestId(FIELD_TESTIDS[field]), String(value))
         }
 
-        if (c.valid) await expect(save).toBeEnabled()
-        else await expect(save).toBeDisabled()
+        await expect(save).toBeEnabled()
+        if (!c.valid) {
+          await save.click()
+          await expect(error).toBeVisible()
+        }
 
         // Restore the base for everything this case touched.
         if (f.online !== undefined || f.link !== undefined) await inPersonBtn.click()

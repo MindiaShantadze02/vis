@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { displayGeorgianPhone } from '@/lib/validation'
+import { displayGeorgianPhone, PASSWORD_MIN } from '@/lib/validation'
 import { PageHeader, useToast } from '@/components/ui'
 
 /**
@@ -29,12 +29,13 @@ export default function AccountSettings() {
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
 
-  const passwordTooShort = newPassword.length > 0 && newPassword.length < 10
+  const passwordTooShort = newPassword.length > 0 && newPassword.length < PASSWORD_MIN
   const passwordMismatch = confirmNewPassword.length > 0 && newPassword !== confirmNewPassword
-  const canChangePassword =
-    newPassword.length >= 10 && newPassword === confirmNewPassword && !changingPassword
 
   async function handleChangePassword() {
+    // Validated on click with visible messages — the button never blocks silently.
+    if (newPassword.length < PASSWORD_MIN) { toast.error(t('validation.passwordTooShortReset')); return }
+    if (newPassword !== confirmNewPassword) { toast.error(t('validation.passwordMismatch')); return }
     setChangingPassword(true)
     const { error: err } = await supabase.auth.updateUser({ password: newPassword })
     setChangingPassword(false)
@@ -48,6 +49,7 @@ export default function AccountSettings() {
   const [soleMember, setSoleMember] = useState(false)
   const [deleteOrgToo, setDeleteOrgToo] = useState(true)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteWordError, setDeleteWordError] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   // Open the delete dialog, first checking whether the user is the only login
@@ -68,6 +70,12 @@ export default function AccountSettings() {
 
   async function handleDeleteAccount() {
     if (!org) return
+    // The typed word is the friction step — checked on click with a visible
+    // message instead of silently disabling the destructive button.
+    if (deleteConfirmText.trim().toLowerCase() !== t('settings.deleteConfirmWord').toLowerCase()) {
+      setDeleteWordError(true)
+      return
+    }
     setDeleting(true)
     const { error: err } = await supabase.functions.invoke('delete-account', {
       body: { orgId: org.id, deleteOrg: soleMember && deleteOrgToo },
@@ -130,7 +138,7 @@ export default function AccountSettings() {
             variant="outlined"
             size="small"
             onClick={handleChangePassword}
-            disabled={!canChangePassword}
+            disabled={changingPassword}
             data-testid="account-change-password"
           >
             {changingPassword ? <CircularProgress size={18} color="inherit" /> : t('settings.changePassword')}
@@ -195,9 +203,11 @@ export default function AccountSettings() {
             autoComplete="off"
             sx={{ mt: 1 }}
             value={deleteConfirmText}
-            onChange={e => setDeleteConfirmText(e.target.value)}
+            onChange={e => { setDeleteConfirmText(e.target.value); setDeleteWordError(false) }}
             placeholder={t('settings.deleteConfirmWord')}
             disabled={deleting}
+            error={deleteWordError}
+            helperText={deleteWordError ? t('settings.deleteConfirmPrompt', { word: t('settings.deleteConfirmWord') }) : undefined}
             slotProps={{ htmlInput: { 'data-testid': 'delete-confirm-input' } }}
           />
         </DialogContent>
@@ -207,10 +217,7 @@ export default function AccountSettings() {
           </Button>
           <Button
             onClick={handleDeleteAccount}
-            disabled={
-              deleting ||
-              deleteConfirmText.trim().toLowerCase() !== t('settings.deleteConfirmWord').toLowerCase()
-            }
+            disabled={deleting}
             variant="contained"
             color="error"
             data-testid="delete-account-confirm"

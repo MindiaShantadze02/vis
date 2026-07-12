@@ -56,6 +56,7 @@ export default function ApiKeysSettings() {
   useEffect(() => { load() }, [load])
 
   async function createKey() {
+    if (!keyName.trim()) { toast.error(t('validation.required')); return }
     setCreating(true)
     const { data, error: err } = await supabase.rpc('create_api_key', { p_name: keyName.trim() })
     setCreating(false)
@@ -200,7 +201,7 @@ export default function ApiKeysSettings() {
           ) : (
             <>
               <Button onClick={closeCreate} disabled={creating}>{t('common.cancel')}</Button>
-              <Button variant="contained" onClick={createKey} disabled={creating || !keyName.trim()} data-testid="api-key-create-submit">
+              <Button variant="contained" onClick={createKey} disabled={creating} data-testid="api-key-create-submit">
                 {t('common.create')}
               </Button>
             </>

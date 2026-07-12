@@ -9,18 +9,17 @@ const FIELD_TESTIDS: Record<string, string> = {
 
 /**
  * Data-driven field validation of the add-appointment dialog (cases in
- * e2e/data/add-appointment.json). The dialog's date picker has no testid, so
- * instead of driving a full create this asserts the per-field error state
- * (aria-invalid) that AddAppointmentDialog derives from the shared validators;
- * save stays disabled throughout because no service/slot is picked. Real
- * appointment creation is covered by the public-booking flows.
+ * e2e/data/add-appointment.json). AddAppointmentDialog derives per-field error
+ * states (aria-invalid) from the shared validators; this spec asserts those
+ * directly without driving a full create (the date picker has no testid, and
+ * real appointment creation is covered by the public-booking flows). The save
+ * button is no longer validation-disabled, so it isn't asserted here.
  */
 test.describe('Data-driven — Add appointment dialog', () => {
   test('field-level validation across name/phone partitions', async ({ page }) => {
     await login(page)
     await page.getByTestId('appt-add-btn').click()
     await expect(page.getByTestId('add-appt-dialog')).toBeVisible()
-    const save = page.getByTestId('add-appt-save')
 
     for (const c of data.fieldCases) {
       await test.step(`[${c.technique}] ${c.id} — ${c.note}`, async () => {
@@ -28,8 +27,6 @@ test.describe('Data-driven — Add appointment dialog', () => {
         await fillStable(input, c.value)
         if (c.errorShown) await expect(input).toHaveAttribute('aria-invalid', 'true')
         else await expect(input).not.toHaveAttribute('aria-invalid', 'true')
-        // Guard: without a service/date/slot the save can never enable.
-        await expect(save).toBeDisabled()
       })
     }
 

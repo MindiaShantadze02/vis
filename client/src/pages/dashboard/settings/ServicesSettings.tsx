@@ -149,11 +149,13 @@ export default function ServicesSettings() {
     setForm(EMPTY)
     setSelectedMemberIds([])
     setGallery([])
+    setError(null)
     setOpen(true)
   }
 
   async function openEdit(s: Service) {
     setEditing(s)
+    setError(null)
     setForm({
       name: s.name,
       duration_minutes: String(s.duration_minutes),
@@ -258,9 +260,13 @@ export default function ServicesSettings() {
   const meetingLinkInvalid = isOnline && form.meeting_link.trim().length > 0 && !isValidUrl(form.meeting_link)
 
   async function handleSave() {
-    if (!org || form.name.trim().length < 2) return
+    if (!org) return
+    // Every rule reported with a visible message rather than a disabled button.
+    if (form.name.trim().length < 2) { setError(t('validation.minLength', { min: 2 })); return }
+    if (!(Number(form.duration_minutes) > 0)) { setError(t('validation.required')); return }
     if (durationTooLong) { setError(t('validation.durationTooLong')); return }
     if (priceInvalid) { setError(t('validation.numberTooLarge')); return }
+    if (maxPerSlotInvalid) { setError(t('validation.required')); return }
     if (meetingLinkMissing) { setError(t('validation.meetingLinkRequired')); return }
     if (meetingLinkInvalid) { setError(t('validation.invalidUrl')); return }
     setSaving(true)
@@ -434,6 +440,7 @@ export default function ServicesSettings() {
           {editing ? t('settings.editService') : t('settings.newService')}
         </DialogTitle>
         <DialogContent>
+          {error && <Alert severity="error" sx={{ mb: 2 }} data-testid="service-dialog-error">{error}</Alert>}
           <Stack spacing={2.5} sx={{ pt: 1 }}>
             <TextField
               label={t('onboarding.serviceName')}
@@ -556,16 +563,7 @@ export default function ServicesSettings() {
             variant="contained"
             onClick={handleSave}
             data-testid="service-save"
-            disabled={
-              saving ||
-              form.name.trim().length < 2 ||
-              !(Number(form.duration_minutes) > 0) ||
-              durationTooLong ||
-              priceInvalid ||
-              meetingLinkMissing ||
-              meetingLinkInvalid ||
-              maxPerSlotInvalid
-            }
+            disabled={saving}
           >
             {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
           </Button>

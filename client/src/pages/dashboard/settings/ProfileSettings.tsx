@@ -207,7 +207,7 @@ export default function ProfileSettings() {
             <Button
               variant="contained"
               onClick={handleSave}
-              disabled={saving || uploading || name.trim().length < 2 || phoneMissing || phoneInvalid}
+              disabled={saving || uploading}
               data-testid="profile-save"
             >
               {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}

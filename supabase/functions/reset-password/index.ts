@@ -12,7 +12,8 @@ const corsHeaders = {
 }
 
 const MAX_ATTEMPTS = 5
-const MIN_PASSWORD = 10
+// Keep in sync with PASSWORD_MIN in client/src/lib/validation.ts.
+const MIN_PASSWORD = 8
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })

@@ -6,7 +6,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
+import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS, PASSWORD_MIN } from '@/lib/validation'
 import AuthShell from './AuthShell'
 
 type Step = 'phone' | 'reset'
@@ -45,6 +45,7 @@ export default function ForgotPasswordPage() {
   }, [cooldown])
 
   async function requestCode() {
+    if (!phoneValid) { setError(t('validation.invalidPhone')); return }
     setError(null)
     setLoading(true)
     // Neutral: this always resolves ok regardless of whether the phone exists.
@@ -57,7 +58,8 @@ export default function ForgotPasswordPage() {
   }
 
   async function submitReset() {
-    if (password.length < 10) { setError(t('validation.passwordTooShortReset')); return }
+    if (!codeValid) { setError('შეიყვანეთ 6-ნიშნა კოდი.'); return }
+    if (password.length < PASSWORD_MIN) { setError(t('validation.passwordTooShortReset')); return }
     if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
     setError(null)
     setLoading(true)
@@ -84,10 +86,9 @@ export default function ForgotPasswordPage() {
 
   const phoneValid = isValidGeorgianPhone(phone)
   const phoneInvalid = phone.trim().length > 0 && !phoneValid
-  const passwordTooShort = password.length > 0 && password.length < 10
+  const passwordTooShort = password.length > 0 && password.length < PASSWORD_MIN
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
   const codeValid = /^\d{6}$/.test(code)
-  const canReset = codeValid && password.length >= 10 && confirmPassword.length >= 10 && !passwordMismatch
 
   return (
     <AuthShell
@@ -107,7 +108,7 @@ export default function ForgotPasswordPage() {
             type="tel"
             value={phone}
             onChange={e => setPhone(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && phoneValid && !loading && requestCode()}
+            onKeyDown={e => e.key === 'Enter' && !loading && requestCode()}
             error={phoneInvalid}
             helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
             placeholder="599 12 34 56"
@@ -119,7 +120,7 @@ export default function ForgotPasswordPage() {
             variant="contained"
             size="large"
             onClick={requestCode}
-            disabled={loading || !phoneValid}
+            disabled={loading}
             sx={{ mt: 1 }}
             data-testid="forgot-send"
           >
@@ -164,7 +165,7 @@ export default function ForgotPasswordPage() {
             type="password"
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && canReset && !loading && submitReset()}
+            onKeyDown={e => e.key === 'Enter' && !loading && submitReset()}
             error={passwordMismatch}
             helperText={passwordMismatch ? t('validation.passwordMismatch') : ' '}
             sx={{ mb: 2 }}
@@ -176,7 +177,7 @@ export default function ForgotPasswordPage() {
             variant="contained"
             size="large"
             onClick={submitReset}
-            disabled={loading || !canReset}
+            disabled={loading}
             data-testid="forgot-submit"
           >
             {loading ? <CircularProgress size={20} color="inherit" /> : 'პაროლის შეცვლა'}

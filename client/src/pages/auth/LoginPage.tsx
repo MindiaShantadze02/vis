@@ -34,7 +34,6 @@ export default function LoginPage() {
 
   const phoneValid = isValidGeorgianPhone(phone)
   const phoneInvalid = phone.trim().length > 0 && !phoneValid
-  const canSignIn = phoneValid && password.length >= 6
 
   async function signIn() {
     setLoading(true)
@@ -51,7 +50,9 @@ export default function LoginPage() {
   }
 
   async function startSignIn() {
-    if (!canSignIn) return
+    // Validate with visible messages instead of a silently disabled button.
+    if (!phoneValid) { setError(t('validation.invalidPhone')); return }
+    if (password.length === 0) { setError(t('validation.required')); return }
     setError(null)
     // Already verified this phone moments ago (e.g. a wrong-password retry) —
     // go straight to sign-in without another code.
@@ -142,7 +143,7 @@ export default function LoginPage() {
         type={showPassword ? 'text' : 'password'}
         value={password}
         onChange={e => setPassword(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && canSignIn && startSignIn()}
+        onKeyDown={e => e.key === 'Enter' && !loading && startSignIn()}
         sx={{ mb: 2 }}
         slotProps={{
           htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' },
@@ -168,7 +169,7 @@ export default function LoginPage() {
         variant="contained"
         size="large"
         onClick={startSignIn}
-        disabled={loading || !canSignIn}
+        disabled={loading}
         data-testid="login-submit"
       >
         {loading ? <CircularProgress size={20} color="inherit" /> : t('auth.login')}

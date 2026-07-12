@@ -90,7 +90,7 @@ export default function SuperadminsPage() {
               variant="contained"
               startIcon={adding ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
               onClick={add}
-              disabled={adding || !email.trim()}
+              disabled={adding}
               sx={{ whiteSpace: 'nowrap' }}
             >
               დამატება

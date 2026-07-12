@@ -15,15 +15,15 @@ test.describe('Onboarding — setup help request', () => {
     await login(page)
     await page.goto('/onboarding/help')
 
-    // Form loads (no open request on the seed account).
+    // Form loads (no open request on the seed account). Submit is always
+    // enabled; clicking with empty required fields reports it inline.
     await expect(page.getByTestId('setup-help-submit')).toBeVisible()
-    // Submit is gated until both required fields are meaningful.
-    await expect(page.getByTestId('setup-help-submit')).toBeDisabled()
+    await page.getByTestId('setup-help-submit').click()
+    await expect(page.getByTestId('setup-help-error')).toBeVisible()
 
     await page.getByTestId('setup-help-name').fill('E2E დახმარების ბიზნესი')
     await page.getByTestId('setup-help-address').fill('თბილისი, ტესტის 1')
     await page.getByTestId('setup-help-details').fill('სერვისები: თმის შეჭრა 40₾ 45წთ. სპეციალისტი: ნინო. საათები: ორშ–შაბ 10–19.')
-    await expect(page.getByTestId('setup-help-submit')).toBeEnabled()
     await page.getByTestId('setup-help-submit').click()
 
     // Success state, and it persists across a reload (one open request per user).

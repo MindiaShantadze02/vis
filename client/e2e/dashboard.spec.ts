@@ -30,16 +30,22 @@ test.describe('Dashboard', () => {
 
   // --- edge cases ---
 
-  test('add-appointment save stays disabled for an incomplete or invalid form', async ({ page }) => {
+  test('add-appointment reports missing fields on save instead of disabling it', async ({ page }) => {
     await page.getByTestId('appt-add-btn').click()
     const save = page.getByTestId('add-appt-save')
-    await expect(save).toBeDisabled()                              // nothing filled
+    // Enabled by design; clicking an incomplete form reports the first problem
+    // and keeps the dialog open (nothing is created).
+    await expect(save).toBeEnabled()
+    await save.click()
+    await expect(page.getByTestId('add-appt-error')).toBeVisible()
+    await expect(page.getByTestId('add-appt-dialog')).toBeVisible()
 
-    // A name with digits + a valid phone still isn't enough (no service/slot),
-    // and the name itself is invalid (isValidPersonName rejects digits).
+    // A name with digits is rejected too (isValidPersonName), still no create.
     await page.getByTestId('add-appt-first-name').fill('Ana2')
     await page.getByTestId('add-appt-phone').fill('599112233')
-    await expect(save).toBeDisabled()
+    await save.click()
+    await expect(page.getByTestId('add-appt-error')).toBeVisible()
+    await expect(page.getByTestId('add-appt-dialog')).toBeVisible()
     await page.getByTestId('add-appt-cancel').click()
   })
 })

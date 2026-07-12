@@ -222,7 +222,8 @@ export default function WorkingHoursSettings() {
   }
 
   async function addOverride() {
-    if (!org || !ovDate) return
+    if (!org) return
+    if (!ovDate) { toast.error(t('validation.required')); return }
     setOvSaving(true)
     await supabase.from('working_hours_overrides').upsert({
       org_id: org.id,
@@ -490,7 +491,7 @@ export default function WorkingHoursSettings() {
           <Button
             variant="contained"
             onClick={addOverride}
-            disabled={ovSaving || !ovDate}
+            disabled={ovSaving}
             data-testid="wh-ov-save"
           >
             {ovSaving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}

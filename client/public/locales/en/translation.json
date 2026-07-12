@@ -38,7 +38,7 @@
     "invalidEmail": "Invalid email address",
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 6 characters",
-    "passwordTooShortReset": "Password must be at least 10 characters",
+    "passwordTooShortReset": "Password must be at least 8 characters",
     "endBeforeStart": "End time cannot be before start time",
     "rangeOverlap": "Time ranges overlap",
     "breakOutsideHours": "Breaks must be within working hours",
@@ -54,7 +54,7 @@
     "requiredWhenEnabled": "Required when this method is enabled",
     "loadFailed": "Failed to load.",
     "consentRequired": "Please accept the Privacy Policy and Terms to continue.",
-    "passwordHint": "At least 10 characters"
+    "passwordHint": "At least 8 characters"
   },
   "authErrors": {
     "invalidCredentials": "Incorrect phone number or password",
@@ -89,7 +89,8 @@
     "otpExpired": "The code expired. Please request a new one.",
     "otpSendFailed": "We couldn't send the code — please try again.",
     "otpTooMany": "Too many code requests — please try again later.",
-    "otpChangePhone": "← Change number"
+    "otpChangePhone": "← Change number",
+    "otpEnterCode": "Enter the 6-digit code"
   },
   "onboarding": {
     "step1": "Business info",
@@ -137,7 +138,8 @@
     "stepSpecialistsSubtitle": "Add the specialists clients will choose from — this step is optional",
     "noSpecialistsTitle": "No specialists added yet",
     "noSpecialistsCaption": "Add one below, or continue to the next step",
-    "finishSpecialistFirst": "Add or clear the specialist you're filling in first."
+    "finishSpecialistFirst": "Add or clear the specialist you're filling in first.",
+    "serviceRequired": "Add at least one service to continue"
   },
   "booking": {
     "title": "Online Booking",
@@ -530,7 +532,8 @@
     "rating2": "Fair",
     "rating3": "Good",
     "rating4": "Very good",
-    "rating5": "Excellent"
+    "rating5": "Excellent",
+    "ratingRequired": "Please select a rating"
   },
   "checklist": {
     "title": "Getting started",

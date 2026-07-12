@@ -250,7 +250,7 @@ export default function PaymentSettings() {
       <Divider sx={{ my: 3 }} />
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button variant="contained" onClick={handleSave} disabled={saving || credentialsMissing}>
+        <Button variant="contained" onClick={handleSave} disabled={saving}>
           {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
         </Button>
       </Box>
