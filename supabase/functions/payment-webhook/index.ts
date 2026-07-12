@@ -163,7 +163,10 @@ Deno.serve(async (req) => {
         // was taken or the limit hit during checkout). Flag for follow-up/refund.
         await admin.from('pending_bookings').update({ status: 'failed' }).eq('id', id)
         await finalizePaymentLog(admin, ref, 'failed', fulfilErr ?? undefined)
-        return Response.json({ error: 'fulfilment_failed', detail: fulfilErr }, { status: 409, headers: corsHeaders })
+        // Detail is recorded in payment_log for refund reconciliation; not echoed
+        // to the caller so internal DB errors don't leak.
+        console.error('[payment-webhook] fulfilment_failed:', fulfilErr)
+        return Response.json({ error: 'fulfilment_failed' }, { status: 409, headers: corsHeaders })
       }
 
       await admin.from('pending_bookings').update({ status: 'consumed' }).eq('id', id)
@@ -211,6 +214,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ error: 'invalid_purpose' }, { status: 400, headers: corsHeaders })
   } catch (err) {
-    return Response.json({ error: String(err) }, { status: 500, headers: corsHeaders })
+    console.error('[payment-webhook] unhandled:', err)
+    return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
   }
 })

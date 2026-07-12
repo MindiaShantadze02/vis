@@ -73,7 +73,8 @@ Deno.serve(async (req) => {
       .select('id, user_id, role, joined_at')
       .eq('org_id', orgId)
     if (membersErr) {
-      return Response.json({ error: membersErr.message }, { status: 500, headers: corsHeaders })
+      console.error('[delete-account] load members:', membersErr)
+      return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
     }
     const members = (membersData ?? []) as Member[]
     const caller = members.find(m => m.user_id === callerId)
@@ -98,7 +99,8 @@ Deno.serve(async (req) => {
       // notifications, appointments, subscription_payments and service_staff.
       const { error: orgErr } = await admin.from('organisations').delete().eq('id', orgId)
       if (orgErr) {
-        return Response.json({ error: orgErr.message }, { status: 500, headers: corsHeaders })
+        console.error('[delete-account] delete org:', orgErr)
+        return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
       }
     } else {
       // Keep the org. If the caller is the owner and others remain, promote the
@@ -118,7 +120,8 @@ Deno.serve(async (req) => {
             .update({ role: 'owner' })
             .eq('id', successor.id)
           if (promoteErr) {
-            return Response.json({ error: promoteErr.message }, { status: 500, headers: corsHeaders })
+            console.error('[delete-account] promote successor:', promoteErr)
+            return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
           }
           await admin
             .from('organisations')
@@ -129,7 +132,8 @@ Deno.serve(async (req) => {
       // Remove the caller's membership in this org.
       const { error: memberErr } = await admin.from('org_members').delete().eq('id', caller.id)
       if (memberErr) {
-        return Response.json({ error: memberErr.message }, { status: 500, headers: corsHeaders })
+        console.error('[delete-account] remove membership:', memberErr)
+        return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
       }
     }
 
@@ -137,11 +141,13 @@ Deno.serve(async (req) => {
     // (other orgs), notifications and superadmins for this user.
     const { error: delErr } = await admin.auth.admin.deleteUser(callerId)
     if (delErr) {
-      return Response.json({ error: delErr.message }, { status: 500, headers: corsHeaders })
+      console.error('[delete-account] delete auth user:', delErr)
+      return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
     }
 
     return Response.json({ ok: true }, { headers: corsHeaders })
   } catch (err) {
-    return Response.json({ error: String(err) }, { status: 500, headers: corsHeaders })
+    console.error('[delete-account] unhandled:', err)
+    return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
   }
 })

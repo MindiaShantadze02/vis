@@ -124,7 +124,8 @@ Deno.serve(async (req) => {
         .select('id')
         .single()
       if (intentErr || !intent) {
-        return Response.json({ error: intentErr?.message ?? 'insert_failed' }, { status: 500, headers: corsHeaders })
+        console.error('[create-payment] pending_bookings insert:', intentErr)
+        return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
       }
 
       const checkout = await startCheckout(admin, {
@@ -212,7 +213,8 @@ Deno.serve(async (req) => {
         .select('id')
         .single()
       if (subErr || !subPay) {
-        return Response.json({ error: subErr?.message ?? 'insert_failed' }, { status: 500, headers: corsHeaders })
+        console.error('[create-payment] subscription_payments insert:', subErr)
+        return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
       }
 
       const checkout = await startCheckout(admin, {
@@ -236,6 +238,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ error: 'invalid_purpose' }, { status: 400, headers: corsHeaders })
   } catch (err) {
-    return Response.json({ error: String(err) }, { status: 500, headers: corsHeaders })
+    console.error('[create-payment] unhandled:', err)
+    return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
   }
 })

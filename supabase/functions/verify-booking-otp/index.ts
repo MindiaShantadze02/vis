@@ -109,6 +109,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ verified: true }, { headers: corsHeaders })
   } catch (err) {
-    return Response.json({ error: String(err) }, { status: 500, headers: corsHeaders })
+    console.error('[verify-booking-otp] unhandled:', err)
+    return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
   }
 })

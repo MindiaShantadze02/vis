@@ -55,7 +55,8 @@ Deno.serve(async (req) => {
     const { data: limited, error: rlErr } = await supabase
       .rpc('check_otp_rate_limit', { p_phone: local, p_ip: ip })
     if (rlErr) {
-      return Response.json({ error: rlErr.message }, { status: 500, headers: corsHeaders })
+      console.error('[request-booking-otp] rate_limit_check:', rlErr)
+      return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
     }
     if (limited) {
       return Response.json({ ok: false, error: 'too_many_requests' }, { headers: corsHeaders })
@@ -69,7 +70,8 @@ Deno.serve(async (req) => {
       .from('booking_verifications')
       .insert({ phone: local, code_hash, expires_at, request_ip: ip })
     if (insErr) {
-      return Response.json({ error: insErr.message }, { status: 500, headers: corsHeaders })
+      console.error('[request-booking-otp] insert:', insErr)
+      return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
     }
 
     // Logged in sms_log + delivered by the active provider (mock: console only).
@@ -82,6 +84,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ ok: true }, { headers: corsHeaders })
   } catch (err) {
-    return Response.json({ error: String(err) }, { status: 500, headers: corsHeaders })
+    console.error('[request-booking-otp] unhandled:', err)
+    return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
   }
 })

@@ -74,7 +74,8 @@ Deno.serve(async (req) => {
       .from('password_reset_verifications')
       .insert({ phone: local, code_hash, expires_at, request_ip: ip })
     if (insErr) {
-      return Response.json({ error: insErr.message }, { status: 500, headers: corsHeaders })
+      console.error('[request-password-reset] insert:', insErr)
+      return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
     }
 
     // Logged in sms_log + delivered by the active provider (mock: console only).
@@ -87,6 +88,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ ok: true }, { headers: corsHeaders })
   } catch (err) {
-    return Response.json({ error: String(err) }, { status: 500, headers: corsHeaders })
+    console.error('[request-password-reset] unhandled:', err)
+    return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
   }
 })

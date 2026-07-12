@@ -91,7 +91,8 @@ Deno.serve(async (req) => {
       password: newPassword,
     })
     if (updErr) {
-      return Response.json({ error: updErr.message }, { status: 500, headers: corsHeaders })
+      console.error('[reset-password] update_user:', updErr)
+      return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
     }
 
     // Mark the challenge verified + consumed so it can't be reused.
@@ -103,6 +104,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ ok: true }, { headers: corsHeaders })
   } catch (err) {
-    return Response.json({ error: String(err) }, { status: 500, headers: corsHeaders })
+    console.error('[reset-password] unhandled:', err)
+    return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
   }
 })
