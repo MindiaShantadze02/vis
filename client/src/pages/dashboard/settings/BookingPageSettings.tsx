@@ -28,9 +28,9 @@ export default function BookingPageSettings() {
   const [bookingTheme, setBookingTheme] = useState<string>(DEFAULT_BOOKING_THEME)
   // Whole-feature on/off for customer reviews (badge on the booking page).
   const [reviewsEnabled, setReviewsEnabled] = useState(true)
-  // When on, new bookings arrive as 'pending' and need manual approval;
-  // off (default) means bookings auto-approve on creation.
-  const [requireApproval, setRequireApproval] = useState(false)
+  // When on (default), new bookings arrive as 'pending' and need manual
+  // approval; off means bookings auto-approve on creation.
+  const [requireApproval, setRequireApproval] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

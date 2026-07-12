@@ -35,9 +35,10 @@ test.describe('Settings — Booking page', () => {
     // Not saved — the org's reviews flag is left unchanged.
   })
 
-  test('the require-approval toggle is present, off by default, and switchable', async ({ page }) => {
+  test('the require-approval toggle is present, off for the seed org, and switchable', async ({ page }) => {
     const toggle = page.getByTestId('require-approval-toggle').locator('input')
-    // Auto-approve is the default (075): the seed org rests with approval off.
+    // The seed org rests with auto-approve on (require_approval = false), even
+    // though approval-required is the column default for new orgs since 080.
     await expect(toggle).not.toBeChecked()
     await toggle.check()
     await expect(toggle).toBeChecked()

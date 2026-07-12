@@ -20,8 +20,9 @@ test.describe('Public booking', () => {
     // Phone verification with the master OTP
     await passBookingOtp(page)
 
-    // Confirmation page — the seed org keeps the auto-approve default (075),
-    // so an unpaid guest booking lands already confirmed, not pending.
+    // Confirmation page — the seed org rests with auto-approve on
+    // (require_approval = false), so an unpaid guest booking lands already
+    // confirmed, not pending. (Approval-required is the column default since 080.)
     await expect(page).toHaveURL(/\/booking-confirmation\//, { timeout: 20_000 })
     await expect(page.getByRole('heading', { name: /ჯავშანი დადასტურებულია/ })).toBeVisible()
     await expect(page.getByTestId('confirm-book-another')).toBeVisible()

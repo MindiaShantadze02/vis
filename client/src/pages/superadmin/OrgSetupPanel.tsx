@@ -48,7 +48,7 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
   // ── Booking-page settings ──────────────────────────────────
   const [bookingTheme, setBookingTheme] = useState<string>(DEFAULT_BOOKING_THEME)
   const [reviewsEnabled, setReviewsEnabled] = useState(true)
-  const [requireApproval, setRequireApproval] = useState(false)
+  const [requireApproval, setRequireApproval] = useState(true)
   const [savingBooking, setSavingBooking] = useState(false)
 
   // ── Services ───────────────────────────────────────────────
@@ -89,7 +89,7 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
       setAddress(org?.address ?? '')
       setBookingTheme(getBookingTheme(org?.booking_theme ?? null).key)
       setReviewsEnabled(org?.reviews_enabled ?? true)
-      setRequireApproval(org?.require_approval ?? false)
+      setRequireApproval(org?.require_approval ?? true)
       setServices((svcRes.data ?? []) as ServiceRow[])
       setStaff((staffRes.data ?? []) as StaffRow[])
 

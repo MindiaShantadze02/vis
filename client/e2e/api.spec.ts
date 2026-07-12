@@ -106,7 +106,7 @@ test.describe('Public REST API', () => {
     expect(create.status()).toBe(201)
     const booking = (await create.json()).booking
     // Omitted status follows the org's approval setting (075): the seed org
-    // keeps the auto-approve default, so the booking lands approved.
+    // rests with auto-approve on (require_approval = false), so it lands approved.
     expect(booking.status).toBe('approved')
 
     // capacity is consumed: the slot shrank or disappeared
