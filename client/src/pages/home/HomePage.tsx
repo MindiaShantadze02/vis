@@ -233,25 +233,31 @@ export default function HomePage() {
           maxWidth={false}
           sx={{
             maxWidth: MAX_W, py: 3,
-            display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: { xs: 1.5, sm: 3 },
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: { xs: 1.5, sm: 3 },
           }}
         >
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            © {year} Vis. {t('home.footerRights')}
-          </Typography>
-          <Box sx={{ flex: 1 }} />
-          <Button component={RouterLink} to="/docs/api" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
-            {t('home.apiDocs')}
-          </Button>
-          <Button component={RouterLink} to="/docs/widget" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
-            {t('home.widgetDocs')}
-          </Button>
-          <Button component={RouterLink} to="/privacy" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
-            {t('common.privacyPolicy')}
-          </Button>
-          <Button component={RouterLink} to="/terms" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
-            {t('common.termsOfService')}
-          </Button>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <Button component={RouterLink} to="/docs/api" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
+              {t('home.apiDocs')}
+            </Button>
+            <Button component={RouterLink} to="/docs/widget" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
+              {t('home.widgetDocs')}
+            </Button>
+            <Button component={RouterLink} to="/privacy" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
+              {t('common.privacyPolicy')}
+            </Button>
+            <Button component={RouterLink} to="/terms" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
+              {t('common.termsOfService')}
+            </Button>
+          </Stack>
+        </Container>
+        <Container sx={{
+              maxWidth: MAX_W, py: 3,
+              display: 'flex', justifyContent: "center", alignItems: 'center', gap: { xs: 1.5, sm: 3 },
+            }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              © {year} Vis. {t('home.footerRights')}
+            </Typography>
         </Container>
       </Box>
     </Box>
