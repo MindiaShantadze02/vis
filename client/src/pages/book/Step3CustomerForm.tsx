@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Box, Typography, Button, TextField, Stack,
   CircularProgress, ToggleButtonGroup, ToggleButton,
-  Checkbox, FormControlLabel, Link as MuiLink,
+  Link as MuiLink,
 } from '@mui/material'
 import { Trans } from 'react-i18next'
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
@@ -49,10 +49,6 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Consent to Privacy Policy + Terms — required before a booking can proceed
-  // (Law on Personal Data Protection, Art. 12 / 32(9)).
-  const [consent, setConsent] = useState(false)
 
   // Phone-verification (OTP) gate between the form and the actual booking insert.
   const [phase, setPhase] = useState<'form' | 'otp'>('form')
@@ -107,7 +103,9 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
     if (booking.firstName.trim().length < 2) { setError(t('validation.firstNameMinLength', { min: 2 })); return }
     if (!isValidPersonName(booking.firstName) || lastNameInvalid) { setError(t('validation.lettersOnly')); return }
     if (!isValidGeorgianPhone(booking.phone)) { setError(t('validation.invalidPhone')); return }
-    if (!consent) { setError(t('validation.consentRequired')); return }
+    // Consent is captured by the affirmative act of proceeding (the notice under
+    // the button states this); the timestamp + CONSENT_VERSION are stamped on the
+    // customer record in confirmBooking, so the audit trail is unchanged.
     setLoading(true)
     setError(null)
     const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
@@ -462,30 +460,6 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
           </Box>
         </Box>
 
-        <FormControlLabel
-          sx={{ alignItems: 'flex-start', mr: 0 }}
-          control={
-            <Checkbox
-              checked={consent}
-              onChange={e => setConsent(e.target.checked)}
-              size="small"
-              sx={{ pt: 0.25 }}
-              data-testid="book-consent"
-            />
-          }
-          label={
-            <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
-              <Trans
-                i18nKey="common.consent"
-                components={{
-                  priv: <MuiLink href="/privacy" target="_blank" rel="noopener" underline="hover" />,
-                  terms: <MuiLink href="/terms" target="_blank" rel="noopener" underline="hover" />,
-                }}
-              />
-            </Typography>
-          }
-        />
-
         <Button
           fullWidth
           variant="contained"
@@ -499,6 +473,23 @@ export default function Step3CustomerForm({ org, booking, onChange, onBack, onDo
             : booking.paymentMethod === 'online' ? t('booking.proceedToPayment') : t('booking.book')
           }
         </Button>
+
+        {/* Consent-by-action notice — the button click above is the affirmative
+            act (no separate checkbox). Terms are "agreed" (contract); the Privacy
+            Policy is "acknowledged" (a notice obligation, not something to accept). */}
+        <Typography
+          variant="caption"
+          sx={{ display: 'block', textAlign: 'center', color: 'text.secondary', lineHeight: 1.5, mt: -0.5 }}
+          data-testid="book-consent-notice"
+        >
+          <Trans
+            i18nKey="common.consentInline"
+            components={{
+              priv: <MuiLink href="/privacy" target="_blank" rel="noopener" underline="hover" />,
+              terms: <MuiLink href="/terms" target="_blank" rel="noopener" underline="hover" />,
+            }}
+          />
+        </Typography>
       </Stack>
       </>
       )}

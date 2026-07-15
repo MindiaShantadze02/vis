@@ -8,7 +8,7 @@
 // Placeholders in [BRACKETS] are filled once the legal entity is registered.
 
 /** Version tag stored with each consent (customers.consent_version). Bump on change. */
-export const CONSENT_VERSION = '2026-07-10.1'
+export const CONSENT_VERSION = '2026-07-15'
 
 export type LegalDocType = 'privacy' | 'terms'
 
@@ -58,7 +58,7 @@ const PRIVACY: Record<Lang, LegalDoc> = {
         heading: '4. Why we process it, and our legal basis',
         body: [
           'We process personal data to create and manage bookings; verify phone numbers; send booking-related SMS; operate business accounts; process payments; secure the platform and prevent abuse; and comply with the law.',
-          'Our legal bases (Article 5) are: performance of the booking and account service; your consent (given via the checkbox at booking and registration, and withdrawable at any time); our legitimate interest in operating and securing the service; and compliance with a legal obligation. We do not process your data for direct marketing without your separate, freely given consent (Article 12).',
+          'Our legal bases (Article 5) are: performance of the booking and account service; your consent (given when you make a booking or register an account, and withdrawable at any time); our legitimate interest in operating and securing the service; and compliance with a legal obligation. We do not process your data for direct marketing without your separate, freely given consent (Article 12).',
           'Providing a name and phone number is necessary to create an account or a booking — without them the service cannot be provided. All other fields are optional.',
         ],
       },

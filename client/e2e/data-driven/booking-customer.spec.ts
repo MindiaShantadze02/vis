@@ -5,7 +5,7 @@ import data from '../data/booking-customer.json' with { type: 'json' }
 /**
  * Data-driven validation of the public booking Step-3 form (cases in
  * e2e/data/booking-customer.json — pairwise field combos, BVA on the name
- * minimum, error-guessing, consent). book-submit is never disabled for
+ * minimum, error-guessing). book-submit is never disabled for
  * validation: invalid rows are submitted and must surface the book-error Alert
  * while staying on Step 3 (sendCode validates before requesting an OTP). Valid
  * rows are only asserted enabled — clicking one would request a real OTP — so
@@ -18,7 +18,6 @@ test.describe('Data-driven — Public booking details', () => {
     const firstName = page.getByTestId('book-first-name')
     const lastName = page.getByTestId('book-last-name')
     const phone = page.getByTestId('book-phone')
-    const consent = page.getByTestId('book-consent').locator('input')
     const submit = page.getByTestId('book-submit')
     const error = page.getByTestId('book-error')
 
@@ -28,7 +27,6 @@ test.describe('Data-driven — Public booking details', () => {
         await fillStable(firstName, f.firstName)
         await fillStable(lastName, f.lastName)
         await fillStable(phone, f.phone)
-        await (f.consent ? consent.check() : consent.uncheck())
 
         await expect(submit).toBeEnabled()
         if (!c.valid) {

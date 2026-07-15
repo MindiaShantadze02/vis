@@ -101,8 +101,8 @@ export async function bookToDetails(page: Page, slug = SEED.slug): Promise<boole
     const slot = page.getByTestId('book-slot').first()
     if (await slot.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
       await slot.click()
-      // Step 3 requires ticking the Privacy Policy + Terms consent before submit.
-      await page.getByTestId('book-consent').locator('input').check()
+      // Step 3 no longer has a consent checkbox — consent is given by proceeding
+      // (an inline notice under the Book button), so there's nothing to tick here.
       return true
     }
   }

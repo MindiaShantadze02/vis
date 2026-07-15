@@ -29,6 +29,7 @@
     "confirmDeleteTitle": "Confirm deletion",
     "confirmDeleteMessage": "Are you sure? This action cannot be undone.",
     "consent": "I have read and agree to the <priv>Privacy Policy</priv> and <terms>Terms of Service</terms>",
+    "consentInline": "By continuing, you agree to our <terms>Terms of Service</terms> and acknowledge our <priv>Privacy Policy</priv>.",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service"
   },

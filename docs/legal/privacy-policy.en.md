@@ -44,7 +44,7 @@ booking-related SMS messages; operate business accounts; process payments; secur
 and prevent abuse; and comply with the law.
 
 Our legal bases (Article 5) are: performance of the booking and account service; your
-**consent** (given via the checkbox at booking and registration, and withdrawable at any
+**consent** (given when you make a booking or register an account, and withdrawable at any
 time); our legitimate interest in operating and securing the service; and compliance with a
 legal obligation. We do **not** process your data for direct marketing without your separate,
 freely given consent (Article 12).
