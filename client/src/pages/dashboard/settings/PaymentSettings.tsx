@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, useToast } from '@/components/ui'
 import { FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 
 interface PaymentConfig {
   bog?: { merchantId?: string; apiKey?: string; enabled?: boolean }
@@ -85,7 +86,14 @@ export default function PaymentSettings() {
 
   async function handleSave() {
     if (!org) return
-    if (credentialsMissing) { setError(t('validation.requiredWhenEnabled')); return }
+    // The missing credential fields already carry inline errors — just pull
+    // the first one into view (it may be inside a collapsed panel, so expand).
+    if (credentialsMissing) {
+      if (bogMerchantMissing || bogKeyMissing) setBogExpanded(true)
+      if (tbcMerchantMissing || tbcKeyMissing) setTbcExpanded(true)
+      focusFirstInvalidFieldAfterRender()
+      return
+    }
     setSaving(true)
     setError(null)
 

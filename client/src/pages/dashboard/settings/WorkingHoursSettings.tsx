@@ -19,6 +19,7 @@ import {
   rangesToSchedule, scheduleToRanges, dayScheduleIssue, FIELD_LIMITS,
   type TimeRange, type DaySchedule,
 } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, ConfirmDialog, ActionIconButton, FormErrorAlert, useToast } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
@@ -66,6 +67,8 @@ export default function WorkingHoursSettings() {
   // Override dialog
   const [overrideOpen, setOverrideOpen] = useState(false)
   const [ovDate, setOvDate] = useState('')
+  // Flags the empty override date after an Add attempt; cleared on pick.
+  const [ovDateMissing, setOvDateMissing] = useState(false)
   const [ovClosed, setOvClosed] = useState(true)
   const [ovNote, setOvNote] = useState('')
   const [ovSaving, setOvSaving] = useState(false)
@@ -168,33 +171,32 @@ export default function WorkingHoursSettings() {
     }))
   }
 
-  function validateTemplate(): string | null {
-    for (const day of DAY_KEYS) {
+  // Blank = no limit; otherwise a positive whole number of days (capped at
+  // 730 — two years is well beyond any real use). Flags inline as typed.
+  const maxAdvanceInvalid = maxAdvanceDays.trim() !== '' && (
+    !Number.isInteger(Number(maxAdvanceDays.trim())) ||
+    Number(maxAdvanceDays.trim()) < 1 ||
+    Number(maxAdvanceDays.trim()) > 730
+  )
+
+  function templateValid(): boolean {
+    return DAY_KEYS.every(day => {
       const s = template[day]
-      if (!s.open) continue
-      const issue = dayScheduleIssue(s.openTime, s.closeTime, s.breaks)
-      if (issue) return t(`validation.${issue}`)
-    }
-    return null
+      return !s.open || dayScheduleIssue(s.openTime, s.closeTime, s.breaks) === null
+    })
   }
 
   async function handleSave() {
     if (!org) return
 
-    const validationError = validateTemplate()
-    if (validationError) { setError(validationError); return }
+    // The offending time fields already carry inline errors (derived live from
+    // the schedule) and maxAdvanceDays flags itself; just pull the first
+    // invalid field into view instead of raising a banner.
+    if (!templateValid() || maxAdvanceInvalid) { focusFirstInvalidFieldAfterRender(); return }
 
-    // Advance-booking window: blank = no limit, otherwise a positive whole
-    // number (capped at 730 — two years is well beyond any real use).
+    // Advance-booking window: blank = no limit (validated above).
     const trimmedMax = maxAdvanceDays.trim()
-    let maxAdvance: number | null = null
-    if (trimmedMax !== '') {
-      maxAdvance = Number(trimmedMax)
-      if (!Number.isInteger(maxAdvance) || maxAdvance < 1 || maxAdvance > 730) {
-        setError(t('settings.maxAdvanceDaysInvalid'))
-        return
-      }
-    }
+    const maxAdvance: number | null = trimmedMax === '' ? null : Number(trimmedMax)
 
     setSaving(true)
     setError(null)
@@ -223,7 +225,12 @@ export default function WorkingHoursSettings() {
 
   async function addOverride() {
     if (!org) return
-    if (!ovDate) { toast.error(t('validation.required')); return }
+    // Flag the empty date inline and pull it into view (scoped to the dialog).
+    if (!ovDate) {
+      setOvDateMissing(true)
+      focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
+      return
+    }
     setOvSaving(true)
     await supabase.from('working_hours_overrides').upsert({
       org_id: org.id,
@@ -319,8 +326,16 @@ export default function WorkingHoursSettings() {
                         const breakOutsideHours =
                           timeToMinutes(b.start) < timeToMinutes(cfg.openTime)
                           || timeToMinutes(b.end) > timeToMinutes(cfg.closeTime)
-                        const breakInvalid = breakEndsBeforeStart || breakOutsideHours
-                        const breakIssue = breakEndsBeforeStart ? 'endBeforeStart' : 'breakOutsideHours'
+                        // Two individually-valid breaks can still overlap each
+                        // other — flag both so the error is visible inline.
+                        const breakOverlaps = cfg.breaks.some((o, oi) =>
+                          oi !== bi
+                          && timeToMinutes(b.start) < timeToMinutes(o.end)
+                          && timeToMinutes(o.start) < timeToMinutes(b.end))
+                        const breakInvalid = breakEndsBeforeStart || breakOutsideHours || breakOverlaps
+                        const breakIssue = breakEndsBeforeStart ? 'endBeforeStart'
+                          : breakOutsideHours ? 'breakOutsideHours'
+                          : 'rangeOverlap'
                         return (
                           <Box
                             key={bi}
@@ -395,6 +410,8 @@ export default function WorkingHoursSettings() {
             value={maxAdvanceDays}
             onChange={e => setMaxAdvanceDays(e.target.value)}
             placeholder={t('settings.noLimit')}
+            error={maxAdvanceInvalid}
+            helperText={maxAdvanceInvalid ? t('settings.maxAdvanceDaysInvalid') : undefined}
             slotProps={{ htmlInput: { min: 1, max: 730, 'data-testid': 'wh-max-advance' } }}
             sx={{ width: 200 }}
           />
@@ -414,7 +431,7 @@ export default function WorkingHoursSettings() {
             <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
               {t('settings.overrides')}
             </Typography>
-            <Button size="small" startIcon={<AddIcon />} onClick={() => setOverrideOpen(true)} data-testid="wh-override-add">
+            <Button size="small" startIcon={<AddIcon />} onClick={() => { setOvDateMissing(false); setOverrideOpen(true) }} data-testid="wh-override-add">
               {t('common.add')}
             </Button>
           </Box>
@@ -467,8 +484,10 @@ export default function WorkingHoursSettings() {
               label={t('common.date')}
               type="date"
               value={ovDate}
-              onChange={e => setOvDate(e.target.value)}
+              onChange={e => { setOvDate(e.target.value); if (e.target.value) setOvDateMissing(false) }}
               fullWidth
+              error={ovDateMissing}
+              helperText={ovDateMissing ? t('validation.required') : undefined}
               slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: format(new Date(), 'yyyy-MM-dd'), 'data-testid': 'wh-ov-date' } }}
             />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

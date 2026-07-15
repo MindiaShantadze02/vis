@@ -38,7 +38,7 @@
     "invalidPhone": "ტელეფონის ნომერი არასწორია (მაგ. 5XX XXX XXX)",
     "invalidEmail": "ელ. ფოსტა არასწორია",
     "passwordMismatch": "პაროლები არ ემთხვევა",
-    "passwordTooShort": "პაროლი მინიმუმ 6 სიმბოლო უნდა იყოს",
+    "passwordTooShort": "პაროლი მინიმუმ 8 სიმბოლო უნდა იყოს",
     "passwordTooShortReset": "პაროლი მინიმუმ 8 სიმბოლო უნდა იყოს",
     "endBeforeStart": "დასრულების დრო დაწყების დროზე ადრე ვერ იქნება",
     "rangeOverlap": "დროის ინტერვალები ერთმანეთს ემთხვევა",
@@ -51,6 +51,9 @@
     "minLength": "მინიმუმ {{min}} სიმბოლო",
     "firstNameMinLength": "სახელი უნდა შეიცავდეს მინიმუმ {{min}} სიმბოლოს",
     "lettersOnly": "მხოლოდ ასოები",
+    "chooseService": "აირჩიეთ სერვისი",
+    "chooseTime": "აირჩიეთ თარიღი და დრო",
+    "priceTooLarge": "ფასი არ უნდა აღემატებოდეს {{max}} ₾-ს",
     "fileTooLarge": "ფაილი ძალიან დიდია (მაქს. {{max}} MB)",
     "invalidImage": "აირჩიეთ სურათის ფაილი (PNG, JPG, GIF)",
     "requiredWhenEnabled": "სავალდებულოა, როცა ეს მეთოდი ჩართულია",
@@ -92,7 +95,8 @@
     "otpSendFailed": "კოდის გაგზავნა ვერ მოხერხდა — სცადეთ თავიდან.",
     "otpTooMany": "ძალიან ბევრი კოდის მოთხოვნა — სცადეთ მოგვიანებით.",
     "otpChangePhone": "← ნომრის შეცვლა",
-    "otpEnterCode": "შეიყვანეთ 6-ნიშნა კოდი"
+    "otpEnterCode": "შეიყვანეთ 6-ნიშნა კოდი",
+    "resetCodeInvalid": "კოდი არასწორია ან ვადაგასულია."
   },
   "onboarding": {
     "step1": "ბიზნესის ინფო",

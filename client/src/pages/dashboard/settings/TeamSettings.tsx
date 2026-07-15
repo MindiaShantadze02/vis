@@ -14,6 +14,7 @@ import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/ico
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageHeader, LoadingState, ActionIconButton, useToast } from '@/components/ui'
@@ -108,6 +109,8 @@ export default function TeamSettings() {
   // Invite dialog
   const [inviteOpen, setInviteOpen] = useState(false)
   const [invitePhone, setInvitePhone] = useState('')
+  // Set on the first Invite attempt: flags the empty phone inline too.
+  const [inviteSubmitted, setInviteSubmitted] = useState(false)
   const [inviting, setInviting] = useState(false)
 
   // Edit member dialog
@@ -121,6 +124,8 @@ export default function TeamSettings() {
   // Add-professional dialog (account-less staff profile)
   const [addOpen, setAddOpen] = useState(false)
   const [addName, setAddName] = useState('')
+  // Set on the first Add attempt of the open dialog: flags the empty name inline.
+  const [addSubmitted, setAddSubmitted] = useState(false)
   const [addTitle, setAddTitle] = useState('')
   const [addBookable, setAddBookable] = useState(true)
   const [addPhotoFile, setAddPhotoFile] = useState<File | null>(null)
@@ -204,6 +209,7 @@ export default function TeamSettings() {
   function openAdd() {
     setAddName(''); setAddTitle(''); setAddBookable(true)
     setAddPhotoFile(null); setAddPhotoPreview(null); setError(null)
+    setAddSubmitted(false)
     setAddOpen(true)
   }
 
@@ -221,7 +227,12 @@ export default function TeamSettings() {
 
   async function handleAddProfessional() {
     if (!org) return
-    if (addName.trim().length < 2) { toast.error(t('validation.minLength', { min: 2 })); return }
+    // Flag the name inline and pull it into view instead of toasting.
+    setAddSubmitted(true)
+    if (addName.trim().length < 2) {
+      focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
+      return
+    }
     setAdding(true)
     setError(null)
     const { data, error: err } = await supabase
@@ -255,7 +266,12 @@ export default function TeamSettings() {
 
   async function handleInvite() {
     if (!org) return
-    if (!isValidGeorgianPhone(invitePhone)) { toast.error(t('validation.invalidPhone')); return }
+    // Flag the phone inline and pull it into view instead of toasting.
+    setInviteSubmitted(true)
+    if (!isValidGeorgianPhone(invitePhone)) {
+      focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
+      return
+    }
     setInviting(true)
     setError(null)
 
@@ -327,7 +343,8 @@ export default function TeamSettings() {
     toast.success(t('common.saved'))
   }
 
-  const invitePhoneInvalid = invitePhone.trim().length > 0 && !isValidGeorgianPhone(invitePhone)
+  const invitePhoneInvalid = (inviteSubmitted || invitePhone.trim().length > 0) && !isValidGeorgianPhone(invitePhone)
+  const addNameTooShort = (addSubmitted || addName.trim().length > 0) && addName.trim().length < 2
 
   return (
     <Box>
@@ -337,7 +354,7 @@ export default function TeamSettings() {
           <Button
             variant="contained"
             startIcon={<PersonAddOutlinedIcon />}
-            onClick={() => setInviteOpen(true)}
+            onClick={() => { setInviteSubmitted(false); setInviteOpen(true) }}
             data-testid="team-invite-btn"
           >
             {t('settings.inviteAdmin')}
@@ -592,6 +609,8 @@ export default function TeamSettings() {
               onChange={e => setAddName(e.target.value)}
               fullWidth
               autoFocus
+              error={addNameTooShort}
+              helperText={addNameTooShort ? t('validation.minLength', { min: 2 }) : undefined}
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'professional-name' } }}
             />
             <TextField

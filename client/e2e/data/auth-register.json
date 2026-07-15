@@ -1,5 +1,5 @@
 {
-  "_doc": "Register form validation (RegisterPage: valid phone + password >= 8 + matching confirm; consent enforced on submit). Buttons are never disabled for validation (2026-07-12); an invalid submit surfaces the login-error Alert (or consent-error) and stays on /register. 'valid' rows are asserted enabled but never clicked (no account created).",
+  "_doc": "Register form validation (RegisterPage: valid phone + password >= 8 + matching confirm; consent enforced on submit). Buttons are never disabled for validation (2026-07-12); an invalid submit flags the offending field inline (aria-invalid, or consent-error for the checkbox) and stays on /register; the login-error Alert is server-errors-only. 'valid' rows are asserted enabled but never clicked (no account created).",
   "meta": { "passwordMin": 8 },
   "cases": [
     { "id": "password-bva-7", "technique": "BVA", "target": "password", "fields": { "phone": "599123456", "password": "1234567", "confirm": "1234567" }, "valid": false, "note": "length 7 = register minimum 8 − 1" },

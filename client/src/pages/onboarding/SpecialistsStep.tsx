@@ -12,6 +12,7 @@ import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/ico
 import { useTranslation } from 'react-i18next'
 import { tierInfo } from '@/lib/tiers'
 import { imageFileError, FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { ActionIconButton, EmptyState, useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import StepHeader from './StepHeader'
@@ -74,6 +75,9 @@ export default function SpecialistsStep() {
   // Set when Next is hit with a half-filled specialist that isn't valid yet —
   // explain why we stayed instead of silently dropping it (mirrors ServicesStep).
   const [draftError, setDraftError] = useState(false)
+  // Set on the first Add/Next attempt for the current draft: flags the empty
+  // name inline. Reset with the draft.
+  const [submitted, setSubmitted] = useState(false)
 
   // A new org is on the Starter-level trial, so the enforce_staff_limit trigger
   // allows that tier's bookable count. Gate the toggle here instead of failing
@@ -96,11 +100,13 @@ export default function SpecialistsStep() {
   function resetForm() {
     setName(''); setTitle(''); setBookable(true)
     setPhotoFile(null); setPhotoPreview(null)
+    setSubmitted(false)
   }
 
   function addSpecialist() {
-    // Report the requirement instead of a silently disabled Add button.
-    if (name.trim().length < 2) { toast.error(t('validation.minLength', { min: 2 })); return }
+    // Flag the requirement inline instead of a silently disabled Add button.
+    setSubmitted(true)
+    if (name.trim().length < 2) { focusFirstInvalidFieldAfterRender(); return }
     const specialist: OnboardingSpecialist = {
       name: name.trim(),
       title: title.trim(),
@@ -118,6 +124,7 @@ export default function SpecialistsStep() {
   }
 
   const draftValid = name.trim().length >= 2
+  const nameTooShort = (submitted || name.trim().length > 0) && name.trim().length < 2
   // Anything typed or picked counts as an in-progress specialist.
   const hasPendingDraft = name.trim().length > 0 || title.trim().length > 0 || photoFile !== null
 
@@ -126,7 +133,13 @@ export default function SpecialistsStep() {
   // explanation rather than being silently dropped.
   function handleNext() {
     if (hasPendingDraft) {
-      if (!draftValid) { setDraftError(true); return }
+      if (!draftValid) {
+        setDraftError(true)
+        // Also flag the name field and pull it into view.
+        setSubmitted(true)
+        focusFirstInvalidFieldAfterRender()
+        return
+      }
       addSpecialist()
     }
     goNext()
@@ -205,6 +218,8 @@ export default function SpecialistsStep() {
                 label={t('settings.displayName')}
                 value={name}
                 onChange={e => setName(e.target.value)}
+                error={nameTooShort}
+                helperText={nameTooShort ? t('validation.minLength', { min: 2 }) : undefined}
                 sx={{ mb: 2 }}
                 slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'onb-specialist-name' } }}
               />

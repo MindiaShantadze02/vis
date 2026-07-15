@@ -87,19 +87,19 @@ test.describe('Business onboarding — edge cases', () => {
     const next = page.getByTestId('biz-next')
 
     // The contact phone arrives pre-filled from the login phone the user just
-    // registered with. Next is always enabled; clicking with no name reports it
-    // (toast) and stays on step 1.
+    // registered with. Next is always enabled; clicking with no name flags the
+    // field inline and stays on step 1.
     await expect(page.getByTestId('biz-phone')).toHaveValue(phone)
     await expect(next).toBeEnabled()
     await next.click()
-    await expect(page.getByTestId('toast')).toBeVisible()
+    await expect(page.getByTestId('biz-name')).toHaveAttribute('aria-invalid', 'true')
     await expect(page).toHaveURL(/\/onboarding\/business/)
 
-    // Name present but phone made invalid → reported on click, still on step 1.
+    // Name present but phone made invalid → flagged inline, still on step 1.
     await fillStable(page.getByTestId('biz-name'), 'AB')
     await fillStable(page.getByTestId('biz-phone'), '123')
     await next.click()
-    await expect(page.getByTestId('toast')).toBeVisible()
+    await expect(page.getByTestId('biz-phone')).toHaveAttribute('aria-invalid', 'true')
     await expect(page).toHaveURL(/\/onboarding\/business/)
 
     // Valid name + phone advances to the services step.

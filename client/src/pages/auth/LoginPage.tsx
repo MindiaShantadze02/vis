@@ -10,6 +10,7 @@ import { VisibilityOutlined as VisibilityIcon } from '@/components/icons'
 import { VisibilityOffOutlined as VisibilityOffIcon } from '@/components/icons'
 import { supabase, checkCredentials } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { mapAuthError } from '@/lib/authErrors'
 import { FormErrorAlert } from '@/components/ui'
 import AuthShell from './AuthShell'
@@ -29,12 +30,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [phase, setPhase] = useState<'form' | 'otp'>('form')
+  // Set on the first submit attempt: from then on empty required fields are
+  // flagged inline too (before that, only typed-but-invalid values are).
+  const [submitted, setSubmitted] = useState(false)
   // Phone whose OTP we already verified this session, so a wrong-password retry
   // doesn't re-request (and rate-limit) a fresh code.
   const otpVerifiedFor = useRef<string | null>(null)
 
   const phoneValid = isValidGeorgianPhone(phone)
-  const phoneInvalid = phone.trim().length > 0 && !phoneValid
+  const phoneInvalid = (submitted || phone.trim().length > 0) && !phoneValid
+  const passwordMissing = submitted && password.length === 0
 
   async function signIn() {
     setLoading(true)
@@ -51,9 +56,10 @@ export default function LoginPage() {
   }
 
   async function startSignIn() {
-    // Validate with visible messages instead of a silently disabled button.
-    if (!phoneValid) { setError(t('validation.invalidPhone')); return }
-    if (password.length === 0) { setError(t('validation.required')); return }
+    // Validate with inline field errors instead of a silently disabled button:
+    // flag every invalid field and pull the first one into view.
+    setSubmitted(true)
+    if (!phoneValid || password.length === 0) { focusFirstInvalidFieldAfterRender(); return }
     setError(null)
     // Already verified this phone moments ago (e.g. a wrong-password retry) —
     // go straight to sign-in without another code.
@@ -145,6 +151,8 @@ export default function LoginPage() {
         value={password}
         onChange={e => setPassword(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && !loading && startSignIn()}
+        error={passwordMissing}
+        helperText={passwordMissing ? t('validation.required') : ' '}
         sx={{ mb: 2 }}
         slotProps={{
           htmlInput: { maxLength: FIELD_LIMITS.password, 'data-testid': 'login-password' },

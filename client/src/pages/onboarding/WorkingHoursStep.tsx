@@ -15,6 +15,7 @@ import {
   dayScheduleIssue, scheduleToRanges, formatGeorgianPhone,
   type TimeRange, type DaySchedule,
 } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
 import { ActionIconButton, FormErrorAlert } from '@/components/ui'
@@ -129,21 +130,19 @@ export default function WorkingHoursStep() {
     })
   }
 
-  function validateHours(): string | null {
-    for (const day of DAYS) {
+  function hoursValid(): boolean {
+    return DAYS.every(day => {
       const s = hours[day]
-      if (!s.open) continue
-      const issue = dayScheduleIssue(s.openTime, s.closeTime, s.breaks)
-      if (issue) return t(`validation.${issue}`)
-    }
-    return null
+      return !s.open || dayScheduleIssue(s.openTime, s.closeTime, s.breaks) === null
+    })
   }
 
   async function handleFinish() {
     if (!user) return
 
-    const validationError = validateHours()
-    if (validationError) { setError(validationError); return }
+    // The offending time fields already carry inline errors (they're derived
+    // live from the schedule) — just pull the first one into view.
+    if (!hoursValid()) { focusFirstInvalidFieldAfterRender(); return }
 
     setLoading(true)
     setError(null)
@@ -348,8 +347,16 @@ export default function WorkingHoursStep() {
                     const breakOutsideHours =
                       timeToMinutes(b.start) < timeToMinutes(cfg.openTime)
                       || timeToMinutes(b.end) > timeToMinutes(cfg.closeTime)
-                    const breakInvalid = breakEndsBeforeStart || breakOutsideHours
-                    const breakIssue = breakEndsBeforeStart ? 'endBeforeStart' : 'breakOutsideHours'
+                    // Two individually-valid breaks can still overlap each
+                    // other — flag both so the error is visible inline.
+                    const breakOverlaps = cfg.breaks.some((o, oi) =>
+                      oi !== bi
+                      && timeToMinutes(b.start) < timeToMinutes(o.end)
+                      && timeToMinutes(o.start) < timeToMinutes(b.end))
+                    const breakInvalid = breakEndsBeforeStart || breakOutsideHours || breakOverlaps
+                    const breakIssue = breakEndsBeforeStart ? 'endBeforeStart'
+                      : breakOutsideHours ? 'breakOutsideHours'
+                      : 'rangeOverlap'
                     return (
                       <Box
                         key={bi}

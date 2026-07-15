@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { computeAvailableSlots, getDayKey, businessDayWindow, BUSINESS_UTC_OFFSET } from '@/lib/slots'
 import type { SlotApptRow, SlotOverride, WeekTemplate } from '@/lib/slots'
 import { FormErrorAlert, useToast } from '@/components/ui'
@@ -201,19 +202,37 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
     ? new Date(`${dateKey}T${timeStr}:00${BUSINESS_UTC_OFFSET}`)
     : null
 
-  const phoneInvalid = phone.trim().length > 0 && !isValidGeorgianPhone(phone)
-  const firstNameTooShort = firstName.trim().length > 0 && firstName.trim().length < 2
+  // Set on the first Save attempt: from then on empty required fields are
+  // flagged inline too. The dialog unmounts on close, so it resets per open.
+  const [submitted, setSubmitted] = useState(false)
+
+  const phoneInvalid = (submitted || phone.trim().length > 0) && !isValidGeorgianPhone(phone)
+  const firstNameTooShort = (submitted || firstName.trim().length > 0) && firstName.trim().length < 2
   const firstNameInvalid = firstName.trim().length >= 2 && !isValidPersonName(firstName)
   const lastNameInvalid = lastName.trim().length > 0 && !isValidPersonName(lastName)
+  const serviceMissing = submitted && !serviceId
+  const dateMissing = submitted && !date
+  const timeMissing = submitted && !!date && !scheduledAt
+
   async function handleSave() {
-    // Report the first missing/invalid field instead of a disabled button.
+    // Flag every missing/invalid field inline instead of a disabled button,
+    // and pull the first one into view (scoped to this dialog).
     // (atLimit already shows its own persistent warning above the form.)
     if (atLimit) return
-    if (!serviceId) { setError(t('validation.required')); return }
-    if (firstName.trim().length < 2) { setError(t('validation.minLength', { min: 2 })); return }
-    if (!isValidPersonName(firstName) || lastNameInvalid) { setError(t('validation.lettersOnly')); return }
-    if (!isValidGeorgianPhone(phone)) { setError(t('validation.invalidPhone')); return }
-    if (!scheduledAt) { setError(t('validation.required')); return }
+    setSubmitted(true)
+    const invalid =
+      !serviceId ||
+      firstName.trim().length < 2 ||
+      !isValidPersonName(firstName) ||
+      lastNameInvalid ||
+      !isValidGeorgianPhone(phone) ||
+      !scheduledAt
+    if (invalid) {
+      focusFirstInvalidFieldAfterRender(
+        document.querySelector('[data-testid="add-appt-dialog"]') ?? document,
+      )
+      return
+    }
     if (!selectedService) return
     setSaving(true)
     setError(null)
@@ -263,7 +282,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
         setAtLimit(true)
         setError(null)
       } else {
-        setError(msg || 'დამატება ვერ მოხერხდა')
+        setError(msg || t('validation.saveFailed'))
       }
     } finally {
       setSaving(false)
@@ -295,7 +314,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
         <FormErrorAlert message={error} data-testid="add-appt-error" />
 
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <FormControl fullWidth required size="small">
+          <FormControl fullWidth required size="small" error={serviceMissing}>
             <InputLabel>სერვისი</InputLabel>
             <Select
               value={serviceId}
@@ -309,6 +328,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
                 </MenuItem>
               ))}
             </Select>
+            {serviceMissing && <FormHelperText>{t('validation.chooseService')}</FormHelperText>}
           </FormControl>
 
           {staff.length > 0 && (
@@ -375,9 +395,19 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               onChange={v => { setDate(v); setTimeStr('') }}
               format="dd MMM yyyy"
               disablePast
-              slotProps={{ textField: { size: 'small', fullWidth: true, required: true } }}
+              slotProps={{
+                textField: {
+                  size: 'small', fullWidth: true, required: true,
+                  error: dateMissing,
+                  helperText: dateMissing ? t('validation.chooseTime') : undefined,
+                },
+              }}
             />
-            <FormControl fullWidth required size="small" disabled={!serviceId || !date || timeLoading} error={noSlots}>
+            <FormControl
+              fullWidth required size="small"
+              disabled={!serviceId || !date || timeLoading}
+              error={noSlots || timeMissing}
+            >
               <InputLabel>დრო</InputLabel>
               <Select
                 value={slots.includes(timeStr) ? timeStr : ''}
@@ -393,6 +423,8 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
                 ? <FormHelperText>იტვირთება…</FormHelperText>
                 : noSlots
                 ? <FormHelperText>ამ დღეს თავისუფალი დრო არ არის</FormHelperText>
+                : timeMissing
+                ? <FormHelperText>{t('validation.chooseTime')}</FormHelperText>
                 : usingFallback
                 ? <FormHelperText>ნაგულისხმევი სლოტები — სამუშაო საათები არ არის მითითებული</FormHelperText>
                 : null}

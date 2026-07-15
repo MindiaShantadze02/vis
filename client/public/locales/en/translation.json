@@ -38,7 +38,7 @@
     "invalidPhone": "Invalid phone number (e.g. 5XX XXX XXX)",
     "invalidEmail": "Invalid email address",
     "passwordMismatch": "Passwords do not match",
-    "passwordTooShort": "Password must be at least 6 characters",
+    "passwordTooShort": "Password must be at least 8 characters",
     "passwordTooShortReset": "Password must be at least 8 characters",
     "endBeforeStart": "End time cannot be before start time",
     "rangeOverlap": "Time ranges overlap",
@@ -49,7 +49,11 @@
     "invalidUrl": "Enter a valid link (starting with https://)",
     "meetingLinkRequired": "A meeting link is required for online services",
     "minLength": "Must be at least {{min}} characters",
+    "firstNameMinLength": "First name must be at least {{min}} characters",
     "lettersOnly": "Letters only, please",
+    "chooseService": "Please choose a service",
+    "chooseTime": "Please choose a date and time",
+    "priceTooLarge": "Price cannot exceed {{max}} ₾",
     "fileTooLarge": "File is too large (max {{max}} MB)",
     "invalidImage": "Please choose an image file (PNG, JPG, GIF)",
     "requiredWhenEnabled": "Required when this method is enabled",
@@ -91,7 +95,8 @@
     "otpSendFailed": "We couldn't send the code — please try again.",
     "otpTooMany": "Too many code requests — please try again later.",
     "otpChangePhone": "← Change number",
-    "otpEnterCode": "Enter the 6-digit code"
+    "otpEnterCode": "Enter the 6-digit code",
+    "resetCodeInvalid": "The code is wrong or has expired."
   },
   "onboarding": {
     "step1": "Business info",

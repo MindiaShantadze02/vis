@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { ActionIconButton, EmptyState, SkeletonImage, useToast } from '@/components/ui'
 import { HONEY } from '@/theme/theme'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
-import { focusFirstInvalidField } from '@/lib/focusFirstInvalidField'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import ServiceImagesEditor from '@/components/ServiceImagesEditor'
 import { serviceImageFileError, MAX_IMAGES_PER_SERVICE, MAX_SERVICE_IMAGE_MB } from '@/lib/serviceImages'
 import StepHeader from './StepHeader'
@@ -65,9 +65,13 @@ export default function ServicesStep() {
   // Set when the user hits "Next" with an in-progress service that isn't valid
   // yet — so we can explain why we didn't move on (instead of silently dropping it).
   const [draftError, setDraftError] = useState(false)
+  // Set on the first Add/Next attempt for the current draft: from then on empty
+  // required fields are flagged inline too. Reset with the draft.
+  const [submitted, setSubmitted] = useState(false)
 
   const durationTooLong = Number(draft.duration_minutes) > MAX_DURATION_MINUTES
-  const nameTooShort = draft.name.trim().length > 0 && draft.name.trim().length < 2
+  const durationMissing = submitted && !(Number(draft.duration_minutes) > 0)
+  const nameTooShort = (submitted || draft.name.trim().length > 0) && draft.name.trim().length < 2
   const priceInvalid = draft.price.trim().length > 0 &&
     (!isNonNegativeNumber(Number(draft.price)) || Number(draft.price) > MAX_PRICE)
   // Online services must carry a valid meeting link; in-person services ignore it.
@@ -86,6 +90,7 @@ export default function ServicesStep() {
   function resetForm() {
     setDraft({ ...empty, images: [] })
     setEditingIndex(null)
+    setSubmitted(false)
   }
 
   function addImages(files: File[]) {
@@ -109,18 +114,10 @@ export default function ServicesStep() {
   }
 
   function saveService() {
-    // Report the specific problem (instead of a silently disabled Add button)
-    // and bring the offending field into view + focus it.
-    const err =
-      draft.name.trim().length < 2 ? t('validation.minLength', { min: 2 })
-        : !(Number(draft.duration_minutes) > 0) ? t('validation.required')
-          : durationTooLong ? t('validation.durationTooLong')
-            : priceInvalid ? t('validation.numberTooLarge')
-              : meetingLinkMissing ? t('validation.meetingLinkRequired')
-                : meetingLinkInvalid ? t('validation.invalidUrl')
-                  : null
-    if (err) { toast.error(err); focusFirstInvalidField(); return }
-    if (!draftValid) return
+    // Flag the specific problems inline (instead of a silently disabled Add
+    // button) and bring the first offending field into view + focus it.
+    setSubmitted(true)
+    if (!draftValid) { focusFirstInvalidFieldAfterRender(); return }
     const svc = {
       name: draft.name.trim(),
       duration_minutes: Number(draft.duration_minutes),
@@ -168,7 +165,13 @@ export default function ServicesStep() {
   // here and say why rather than silently dropping it.
   function handleNext() {
     if (hasPendingDraft) {
-      if (!draftValid) { setDraftError(true); return }
+      if (!draftValid) {
+        setDraftError(true)
+        // Also flag the specific fields and pull the first one into view.
+        setSubmitted(true)
+        focusFirstInvalidFieldAfterRender()
+        return
+      }
       saveService()
     } else if (data.services.length === 0) {
       // At least one service is required — say so rather than disable Next.
@@ -267,8 +270,12 @@ export default function ServicesStep() {
               value={draft.duration_minutes}
               onChange={e => setDraft(d => ({ ...d, duration_minutes: onlyInt(e.target.value) }))}
               slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'onb-service-duration' } }}
-              error={durationTooLong}
-              helperText={durationTooLong ? t('validation.durationTooLong') : undefined}
+              error={durationTooLong || durationMissing}
+              helperText={
+                durationTooLong ? t('validation.durationTooLong')
+                : durationMissing ? t('validation.required')
+                : undefined
+              }
             />
             <TextField
               fullWidth
@@ -276,7 +283,7 @@ export default function ServicesStep() {
               value={draft.price}
               onChange={e => setDraft(d => ({ ...d, price: onlyDecimal(e.target.value) }))}
               error={priceInvalid}
-              helperText={priceInvalid ? t('validation.numberTooLarge') : undefined}
+              helperText={priceInvalid ? t('validation.priceTooLarge', { max: MAX_PRICE }) : undefined}
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'onb-service-price' } }}
             />
           </Stack>

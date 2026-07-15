@@ -7,10 +7,11 @@ import registerData from '../data/auth-register.json' with { type: 'json' }
  * Data-driven validation of the login/register forms (cases in
  * e2e/data/auth-login.json / auth-register.json — BVA + ECP + error-guessing).
  * Buttons are never disabled for validation, so invalid rows are submitted and
- * must surface the login-error Alert while staying on the same page; valid rows
- * are only asserted enabled (never clicked, so no real sign-in / account
- * creation). Invalid submits all early-return synchronously before any network
- * call, so nothing leaves the browser.
+ * must flag the offending field inline (aria-invalid + helperText) while
+ * staying on the same page; valid rows are only asserted enabled (never
+ * clicked, so no real sign-in / account creation). Invalid submits all
+ * early-return synchronously before any network call, so nothing leaves the
+ * browser. The login-error Alert is reserved for server/auth errors.
  */
 test.describe('Data-driven — Auth', () => {
   test('login validation across phone/password partitions', async ({ page }) => {
@@ -18,7 +19,6 @@ test.describe('Data-driven — Auth', () => {
     const phone = page.getByTestId('login-phone')
     const password = page.getByTestId('login-password')
     const submit = page.getByTestId('login-submit')
-    const error = page.getByTestId('login-error')
     await expect(submit).toBeVisible()
 
     for (const c of loginData.cases) {
@@ -28,9 +28,9 @@ test.describe('Data-driven — Auth', () => {
         // The button is always enabled now.
         await expect(submit).toBeEnabled()
         if (!c.valid) {
-          // Invalid input is reported on submit and never leaves /login.
+          // Invalid input is flagged inline on submit and never leaves /login.
           await submit.click()
-          await expect(error).toBeVisible()
+          await expect(page.locator('[aria-invalid="true"]').first()).toBeVisible()
           await expect(page).toHaveURL(/\/login/)
         }
       })
@@ -77,7 +77,6 @@ test.describe('Data-driven — Auth', () => {
     const password = page.getByTestId('login-password')
     const confirm = page.getByTestId('login-confirm-password')
     const submit = page.getByTestId('login-submit')
-    const error = page.getByTestId('login-error')
     await expect(submit).toBeVisible()
 
     for (const c of registerData.cases) {
@@ -87,10 +86,10 @@ test.describe('Data-driven — Auth', () => {
         await fillStable(confirm, c.fields.confirm)
         await expect(submit).toBeEnabled()
         if (!c.valid) {
-          // Consent is left unchecked, but the phone/password error is reported
-          // first and blocks the submit before the consent check.
+          // Consent is left unchecked, but the phone/password error is flagged
+          // inline first and blocks the submit before the consent check.
           await submit.click()
-          await expect(error).toBeVisible()
+          await expect(page.locator('[aria-invalid="true"]').first()).toBeVisible()
           await expect(page).toHaveURL(/\/register/)
         }
       })

@@ -1,5 +1,5 @@
 {
-  "_doc": "Login form validation (LoginPage). Buttons are never disabled for validation (2026-07-12); an invalid submit surfaces the login-error Alert and stays on /login. 'valid' = phone + non-empty password pass the on-click checks. Valid rows are asserted enabled but never clicked (no real sign-in). Login has NO password-length minimum — only non-empty is required.",
+  "_doc": "Login form validation (LoginPage). Buttons are never disabled for validation (2026-07-12); an invalid submit flags the offending field inline (aria-invalid) and stays on /login; the login-error Alert is server-errors-only. 'valid' = phone + non-empty password pass the on-click checks. Valid rows are asserted enabled but never clicked (no real sign-in). Login has NO password-length minimum — only non-empty is required.",
   "cases": [
     { "id": "phone-ecp-mobile", "technique": "ECP", "target": "phone", "fields": { "phone": "599123456", "password": "abcdef" }, "valid": true, "note": "bare 9-digit mobile (5XX)" },
     { "id": "phone-ecp-plus995", "technique": "ECP", "target": "phone", "fields": { "phone": "+995 599 12 34 56", "password": "abcdef" }, "valid": true, "note": "pasted +995 form with spaces is normalized" },

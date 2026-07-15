@@ -10,6 +10,7 @@ import { VisibilityOutlined as VisibilityIcon } from '@/components/icons'
 import { VisibilityOffOutlined as VisibilityOffIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS, PASSWORD_MIN } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { mapAuthError } from '@/lib/authErrors'
 import { anim } from '@/theme/animations'
 import { FormErrorAlert } from '@/components/ui'
@@ -46,20 +47,26 @@ export default function RegisterPage() {
     consentTimer.current = setTimeout(() => setConsentError(false), 4000)
   }
 
+  // Set on the first submit attempt: from then on empty required fields are
+  // flagged inline too (before that, only typed-but-invalid values are).
+  const [submitted, setSubmitted] = useState(false)
+
   const phoneValid = isValidGeorgianPhone(phone)
-  const phoneInvalid = phone.trim().length > 0 && !phoneValid
-  const passwordTooShort = password.length > 0 && password.length < PASSWORD_MIN
-  const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
+  const phoneInvalid = (submitted || phone.trim().length > 0) && !phoneValid
+  const passwordTooShort = (submitted || password.length > 0) && password.length < PASSWORD_MIN
+  const passwordMismatch = (submitted || confirmPassword.length > 0) && password !== confirmPassword
 
   // Step 1: validate creds + consent, then text a verification code and switch
   // to the code-entry view. The account is only created after the code checks out.
-  // Every rule is checked here with a visible message — the button never blocks
-  // for a hidden reason.
+  // Every rule is flagged inline on its field — the button never blocks for a
+  // hidden reason, and the first invalid field is pulled into view.
   async function startSignUp() {
-    if (!phoneValid) { setError(t('validation.invalidPhone')); return }
-    if (password.length < PASSWORD_MIN) { setError(t('validation.passwordTooShortReset')); return }
-    if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
-    if (!consent) { flagConsent(); return }
+    setSubmitted(true)
+    if (!phoneValid || password.length < PASSWORD_MIN || password !== confirmPassword) {
+      focusFirstInvalidFieldAfterRender()
+      return
+    }
+    if (!consent) { flagConsent(); focusFirstInvalidFieldAfterRender(); return }
     setError(null)
     setLoading(true)
     const { data, error: fnErr } = await supabase.functions.invoke('request-booking-otp', {
@@ -206,6 +213,8 @@ export default function RegisterPage() {
               color={consentError ? 'error' : 'primary'}
               sx={{ pt: 0.25 }}
               data-testid="register-consent"
+              // Lets focusFirstInvalidField target the checkbox like any field.
+              inputProps={{ 'aria-invalid': consentError }}
             />
           }
           label={

@@ -12,10 +12,11 @@ const FIELD_TESTIDS: Record<string, string> = {
 /**
  * Data-driven validation of the service editor (cases in e2e/data/services.json
  * — BVA on name/duration/price/capacity + pairwise online × meeting-link). Save
- * is never disabled for validation: invalid rows are submitted and must surface
- * the service-dialog-error Alert (handleSave validates before any insert/update,
- * so nothing persists). Valid rows are only asserted enabled — clicking one
- * would really create a service — so the dialog is abandoned unsaved.
+ * is never disabled for validation: invalid rows are submitted and must flag
+ * the offending field inline (aria-invalid; handleSave validates before any
+ * insert/update, so nothing persists). Valid rows are only asserted enabled —
+ * clicking one would really create a service — so the dialog is abandoned
+ * unsaved. The service-dialog-error Alert remains for server errors.
  */
 test.describe('Data-driven — Services', () => {
   test('save validation across all field boundaries and partitions', async ({ page }) => {
@@ -23,7 +24,7 @@ test.describe('Data-driven — Services', () => {
     await page.goto('/dashboard/settings/services')
     await page.getByTestId('service-add').click()
     const save = page.getByTestId('service-save')
-    const error = page.getByTestId('service-dialog-error')
+    const dialog = page.locator('.MuiDialog-root')
 
     // Valid base — sanity-check it enables save before iterating.
     for (const [field, value] of Object.entries(data.base)) {
@@ -57,7 +58,7 @@ test.describe('Data-driven — Services', () => {
         await expect(save).toBeEnabled()
         if (!c.valid) {
           await save.click()
-          await expect(error).toBeVisible()
+          await expect(dialog.locator('[aria-invalid="true"]').first()).toBeVisible()
         }
 
         // Restore the base for everything this case touched.

@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS, PASSWORD_MIN } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { FormErrorAlert } from '@/components/ui'
 import AuthShell from './AuthShell'
 
@@ -14,14 +15,14 @@ type Step = 'phone' | 'reset'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
-// Map the reset edge-function error codes to Georgian copy. Unknown/no_account
-// is folded into the generic "wrong or expired" message to stay neutral about
+// Map the reset edge-function error codes to i18n keys. Unknown/no_account is
+// folded into the generic "wrong or expired" message to stay neutral about
 // whether a phone is registered.
-function resetErrorText(code: string): string {
+function resetErrorKey(code: string): string {
   switch (code) {
-    case 'too_many_attempts': return 'ბევრი მცდელობა. სცადეთ მოგვიანებით.'
-    case 'expired':           return 'კოდს ვადა გაუვიდა. გაგზავნეთ ახალი.'
-    default:                  return 'კოდი არასწორია ან ვადაგასულია.'
+    case 'too_many_attempts': return 'auth.otpTooMany'
+    case 'expired':           return 'auth.otpExpired'
+    default:                  return 'auth.resetCodeInvalid'
   }
 }
 
@@ -37,6 +38,9 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cooldown, setCooldown] = useState(0)
+  // Set on the first submit attempt of the current step: from then on empty
+  // required fields are flagged inline too.
+  const [submitted, setSubmitted] = useState(false)
 
   // Tick down the resend cooldown.
   useEffect(() => {
@@ -46,7 +50,8 @@ export default function ForgotPasswordPage() {
   }, [cooldown])
 
   async function requestCode() {
-    if (!phoneValid) { setError(t('validation.invalidPhone')); return }
+    setSubmitted(true)
+    if (!phoneValid) { focusFirstInvalidFieldAfterRender(); return }
     setError(null)
     setLoading(true)
     // Neutral: this always resolves ok regardless of whether the phone exists.
@@ -55,13 +60,17 @@ export default function ForgotPasswordPage() {
     })
     setLoading(false)
     setCooldown(RESEND_COOLDOWN_SECONDS)
+    // Fresh step, fresh fields — don't pre-flag them as missing.
+    setSubmitted(false)
     setStep('reset')
   }
 
   async function submitReset() {
-    if (!codeValid) { setError('შეიყვანეთ 6-ნიშნა კოდი.'); return }
-    if (password.length < PASSWORD_MIN) { setError(t('validation.passwordTooShortReset')); return }
-    if (password !== confirmPassword) { setError(t('validation.passwordMismatch')); return }
+    setSubmitted(true)
+    if (!codeValid || password.length < PASSWORD_MIN || password !== confirmPassword) {
+      focusFirstInvalidFieldAfterRender()
+      return
+    }
     setError(null)
     setLoading(true)
     const { data, error: fnErr } = await supabase.functions.invoke('reset-password', {
@@ -69,7 +78,7 @@ export default function ForgotPasswordPage() {
     })
     if (fnErr || !data?.ok) {
       setLoading(false)
-      setError(resetErrorText(data?.error ?? ''))
+      setError(t(resetErrorKey(data?.error ?? '')))
       return
     }
     // Auto sign-in with the new password, then land on the dashboard.
@@ -86,10 +95,11 @@ export default function ForgotPasswordPage() {
   }
 
   const phoneValid = isValidGeorgianPhone(phone)
-  const phoneInvalid = phone.trim().length > 0 && !phoneValid
-  const passwordTooShort = password.length > 0 && password.length < PASSWORD_MIN
-  const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
+  const phoneInvalid = (submitted || phone.trim().length > 0) && !phoneValid
+  const passwordTooShort = (submitted || password.length > 0) && password.length < PASSWORD_MIN
+  const passwordMismatch = (submitted || confirmPassword.length > 0) && password !== confirmPassword
   const codeValid = /^\d{6}$/.test(code)
+  const codeInvalid = submitted && !codeValid
 
   return (
     <AuthShell
@@ -142,6 +152,8 @@ export default function ForgotPasswordPage() {
             onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
             placeholder="123456"
             autoFocus
+            error={codeInvalid}
+            helperText={codeInvalid ? t('auth.otpEnterCode') : ' '}
             sx={{ mb: 1 }}
             slotProps={{ htmlInput: { inputMode: 'numeric' as const, maxLength: 6, 'data-testid': 'forgot-code' } }}
           />

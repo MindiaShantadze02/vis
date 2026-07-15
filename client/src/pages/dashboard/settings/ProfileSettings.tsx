@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { PageHeader, FormErrorAlert, useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
 
@@ -80,16 +81,23 @@ export default function ProfileSettings() {
     setUploading(false)
   }
 
+  // Set on the first Save attempt: from then on empty required fields are
+  // flagged inline too (before that, only typed-but-invalid values are).
+  const [submitted, setSubmitted] = useState(false)
+
   // Business name is required; contact phone is mandatory.
-  const nameTooShort = name.trim().length > 0 && name.trim().length < 2
+  const nameTooShort = (submitted || name.trim().length > 0) && name.trim().length < 2
   const phoneMissing = contactPhone.trim().length === 0
-  const phoneInvalid = !phoneMissing && !isValidGeorgianPhone(contactPhone)
+  const phoneInvalid = (submitted || !phoneMissing) && !isValidGeorgianPhone(contactPhone)
 
   async function handleSave() {
     if (!org) return
-    if (name.trim().length < 2) { setError(t('validation.minLength', { min: 2 })); return }
-    if (phoneMissing) { setError(t('validation.required')); return }
-    if (phoneInvalid) { setError(t('validation.invalidPhone')); return }
+    // Flag every invalid field inline and pull the first one into view.
+    setSubmitted(true)
+    if (name.trim().length < 2 || !isValidGeorgianPhone(contactPhone)) {
+      focusFirstInvalidFieldAfterRender()
+      return
+    }
     setSaving(true)
     setError(null)
 

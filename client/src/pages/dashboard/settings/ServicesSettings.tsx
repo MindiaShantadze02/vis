@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, SkeletonImage, FormErrorAlert, useToast } from '@/components/ui'
 import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import ServiceImagesEditor, { type EditorImage } from '@/components/ServiceImagesEditor'
 import {
   uploadServiceImage, removeServiceImageFile, serviceImageFileError,
@@ -101,6 +102,9 @@ export default function ServicesSettings() {
   const [imagesByService, setImagesByService] = useState<Record<string, ServiceImage[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Set on the first Save attempt of the open dialog: from then on empty
+  // required fields are flagged inline too. Reset when the dialog (re)opens.
+  const [submitted, setSubmitted] = useState(false)
 
   // Dialog state
   const [open, setOpen] = useState(false)
@@ -150,12 +154,14 @@ export default function ServicesSettings() {
     setSelectedMemberIds([])
     setGallery([])
     setError(null)
+    setSubmitted(false)
     setOpen(true)
   }
 
   async function openEdit(s: Service) {
     setEditing(s)
     setError(null)
+    setSubmitted(false)
     setForm({
       name: s.name,
       duration_minutes: String(s.duration_minutes),
@@ -250,7 +256,8 @@ export default function ServicesSettings() {
   }
 
   const durationTooLong = Number(form.duration_minutes) > MAX_DURATION_MINUTES
-  const nameTooShort = form.name.trim().length > 0 && form.name.trim().length < 2
+  const durationMissing = submitted && !(Number(form.duration_minutes) > 0)
+  const nameTooShort = (submitted || form.name.trim().length > 0) && form.name.trim().length < 2
   const priceInvalid = form.price.trim().length > 0 &&
     (!isNonNegativeNumber(Number(form.price)) || Number(form.price) > MAX_PRICE)
   const maxPerSlotInvalid = !(Number(form.max_per_slot) >= 1)
@@ -261,14 +268,21 @@ export default function ServicesSettings() {
 
   async function handleSave() {
     if (!org) return
-    // Every rule reported with a visible message rather than a disabled button.
-    if (form.name.trim().length < 2) { setError(t('validation.minLength', { min: 2 })); return }
-    if (!(Number(form.duration_minutes) > 0)) { setError(t('validation.required')); return }
-    if (durationTooLong) { setError(t('validation.durationTooLong')); return }
-    if (priceInvalid) { setError(t('validation.numberTooLarge')); return }
-    if (maxPerSlotInvalid) { setError(t('validation.required')); return }
-    if (meetingLinkMissing) { setError(t('validation.meetingLinkRequired')); return }
-    if (meetingLinkInvalid) { setError(t('validation.invalidUrl')); return }
+    // Every rule flagged inline on its field rather than a disabled button;
+    // the first invalid field is pulled into view (scoped to the dialog).
+    setSubmitted(true)
+    const invalid =
+      form.name.trim().length < 2 ||
+      !(Number(form.duration_minutes) > 0) ||
+      durationTooLong ||
+      priceInvalid ||
+      maxPerSlotInvalid ||
+      meetingLinkMissing ||
+      meetingLinkInvalid
+    if (invalid) {
+      focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
+      return
+    }
     setSaving(true)
     setError(null)
 
@@ -460,8 +474,12 @@ export default function ServicesSettings() {
               onChange={e => setForm(f => ({ ...f, duration_minutes: onlyInt(e.target.value) }))}
               fullWidth
               slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'service-duration' } }}
-              error={durationTooLong}
-              helperText={durationTooLong ? t('validation.durationTooLong') : undefined}
+              error={durationTooLong || durationMissing}
+              helperText={
+                durationTooLong ? t('validation.durationTooLong')
+                : durationMissing ? t('validation.required')
+                : undefined
+              }
             />
             <TextField
               label={t('onboarding.price')}
@@ -469,7 +487,7 @@ export default function ServicesSettings() {
               onChange={e => setForm(f => ({ ...f, price: onlyDecimal(e.target.value) }))}
               fullWidth
               error={priceInvalid}
-              helperText={priceInvalid ? t('validation.numberTooLarge') : undefined}
+              helperText={priceInvalid ? t('validation.priceTooLarge', { max: MAX_PRICE }) : undefined}
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-price' } }}
             />
             <TextField

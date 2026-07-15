@@ -16,10 +16,10 @@ test.describe('Onboarding — setup help request', () => {
     await page.goto('/onboarding/help')
 
     // Form loads (no open request on the seed account). Submit is always
-    // enabled; clicking with empty required fields reports it inline.
+    // enabled; clicking with empty required fields flags them inline.
     await expect(page.getByTestId('setup-help-submit')).toBeVisible()
     await page.getByTestId('setup-help-submit').click()
-    await expect(page.getByTestId('setup-help-error')).toBeVisible()
+    await expect(page.getByTestId('setup-help-name')).toHaveAttribute('aria-invalid', 'true')
 
     await page.getByTestId('setup-help-name').fill('E2E დახმარების ბიზნესი')
     await page.getByTestId('setup-help-address').fill('თბილისი, ტესტის 1')

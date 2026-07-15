@@ -5,17 +5,17 @@ import data from '../data/forgot-password.json' with { type: 'json' }
 /**
  * Data-driven validation of the forgot-password flow (cases in
  * e2e/data/forgot-password.json). Buttons are never disabled for validation:
- * invalid rows are submitted and must surface the forgot-error Alert while
- * staying on the step (the handlers validate before any OTP/reset network
- * call). Every run uses a throwaway phone, and valid rows are never clicked, so
- * no reset can ever succeed or touch the seeded owner.
+ * invalid rows are submitted and must flag the offending field inline
+ * (aria-invalid) while staying on the step (the handlers validate before any
+ * OTP/reset network call; the forgot-error Alert is reserved for server
+ * errors). Every run uses a throwaway phone, and valid rows are never
+ * clicked, so no reset can ever succeed or touch the seeded owner.
  */
 test.describe('Data-driven — Forgot password', () => {
   test('send validation across phone partitions', async ({ page }) => {
     await page.goto('/forgot-password')
     const phone = page.getByTestId('forgot-phone')
     const send = page.getByTestId('forgot-send')
-    const error = page.getByTestId('forgot-error')
     await expect(send).toBeVisible()
 
     for (const c of data.sendCases) {
@@ -24,9 +24,9 @@ test.describe('Data-driven — Forgot password', () => {
         await fillStable(phone, value)
         await expect(send).toBeEnabled()
         if (!c.valid) {
-          // Invalid phone is reported on click; no OTP request goes out.
+          // Invalid phone is flagged inline on click; no OTP request goes out.
           await send.click()
-          await expect(error).toBeVisible()
+          await expect(phone).toHaveAttribute('aria-invalid', 'true')
           await expect(page.getByTestId('forgot-code')).toHaveCount(0) // never advanced
         }
       })
@@ -44,7 +44,6 @@ test.describe('Data-driven — Forgot password', () => {
     const password = page.getByTestId('forgot-password')
     const confirm = page.getByTestId('forgot-confirm-password')
     const submit = page.getByTestId('forgot-submit')
-    const error = page.getByTestId('forgot-error')
 
     for (const c of data.resetCases) {
       await test.step(`[${c.technique}] ${c.id} — ${c.note}`, async () => {
@@ -53,9 +52,9 @@ test.describe('Data-driven — Forgot password', () => {
         await fillStable(confirm, c.fields.confirm)
         await expect(submit).toBeEnabled()
         if (!c.valid) {
-          // Invalid code/password is reported before the reset call runs.
+          // Invalid code/password is flagged inline before the reset call runs.
           await submit.click()
-          await expect(error).toBeVisible()
+          await expect(page.locator('[aria-invalid="true"]').first()).toBeVisible()
         }
       })
     }

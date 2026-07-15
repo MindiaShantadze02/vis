@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { CircularProgress, Box } from '@mui/material'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
@@ -106,9 +107,22 @@ function PublicOnlyGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+/**
+ * SPA navigations keep the previous window scroll position (react-router's
+ * <ScrollRestoration> needs a data router, which we don't use), so a footer
+ * link clicked at the bottom of a long page would open the next page
+ * mid-scroll. Reset to the top on every pathname change.
+ */
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
+
 export default function App() {
   return (
     <>
+    <ScrollToTop />
     <EmbedBridge />
     <Routes>
       <Route path="/" element={<HomePage />} />

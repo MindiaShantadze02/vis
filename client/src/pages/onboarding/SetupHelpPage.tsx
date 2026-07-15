@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { displayGeorgianPhone } from '@/lib/validation'
 import { FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import VisLogo from '@/components/VisLogo'
 import { FormErrorAlert } from '@/components/ui'
 
@@ -34,6 +35,12 @@ export default function SetupHelpPage() {
   const [details, setDetails] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // Set on the first submit attempt: from then on invalid/empty required
+  // fields are flagged inline.
+  const [submitted, setSubmitted] = useState(false)
+
+  const nameTooShort = submitted && businessName.trim().length < 2
+  const detailsTooShort = submitted && details.trim().length < 10
 
   // user.phone is stored without the leading + (see auth notes).
   const phoneLabel = user?.phone ? displayGeorgianPhone(user.phone.replace(/^995/, '')) : ''
@@ -56,8 +63,9 @@ export default function SetupHelpPage() {
   }, [user])
 
   async function submit() {
+    setSubmitted(true)
     if (businessName.trim().length < 2 || details.trim().length < 10) {
-      setError(t('onboarding.helpValidation'))
+      focusFirstInvalidFieldAfterRender()
       return
     }
     setBusy(true)
@@ -158,6 +166,8 @@ export default function SetupHelpPage() {
         onChange={e => setBusinessName(e.target.value)}
         required
         fullWidth
+        error={nameTooShort}
+        helperText={nameTooShort ? t('validation.minLength', { min: 2 }) : undefined}
         slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.orgName, 'data-testid': 'setup-help-name' } }}
       />
       <TextField
@@ -176,7 +186,8 @@ export default function SetupHelpPage() {
         multiline
         rows={7}
         placeholder={t('onboarding.helpDetailsPlaceholder')}
-        helperText={t('onboarding.helpDetailsHint')}
+        error={detailsTooShort}
+        helperText={detailsTooShort ? t('onboarding.helpValidation') : t('onboarding.helpDetailsHint')}
         slotProps={{ htmlInput: { maxLength: 4000, 'data-testid': 'setup-help-details' } }}
       />
 

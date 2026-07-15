@@ -38,7 +38,7 @@
     "invalidPhone": "Неверный номер телефона (напр. 5XX XXX XXX)",
     "invalidEmail": "Неверный адрес эл. почты",
     "passwordMismatch": "Пароли не совпадают",
-    "passwordTooShort": "Пароль должен быть не менее 6 символов",
+    "passwordTooShort": "Пароль должен быть не менее 8 символов",
     "passwordTooShortReset": "Пароль должен быть не менее 8 символов",
     "endBeforeStart": "Время окончания не может быть раньше времени начала",
     "rangeOverlap": "Интервалы времени пересекаются",
@@ -49,7 +49,11 @@
     "invalidUrl": "Введите корректную ссылку (начиная с https://)",
     "meetingLinkRequired": "Для онлайн-услуг требуется ссылка на встречу",
     "minLength": "Минимум {{min}} символов",
+    "firstNameMinLength": "Имя должно содержать минимум {{min}} символов",
     "lettersOnly": "Только буквы",
+    "chooseService": "Выберите услугу",
+    "chooseTime": "Выберите дату и время",
+    "priceTooLarge": "Цена не может превышать {{max}} ₾",
     "fileTooLarge": "Файл слишком большой (макс. {{max}} МБ)",
     "invalidImage": "Выберите файл изображения (PNG, JPG, GIF)",
     "requiredWhenEnabled": "Обязательно, когда этот метод включён",
@@ -91,7 +95,8 @@
     "otpSendFailed": "Не удалось отправить код — попробуйте снова.",
     "otpTooMany": "Слишком много запросов кода — попробуйте позже.",
     "otpChangePhone": "← Изменить номер",
-    "otpEnterCode": "Введите 6-значный код"
+    "otpEnterCode": "Введите 6-значный код",
+    "resetCodeInvalid": "Код неверен или истёк."
   },
   "onboarding": {
     "step1": "Информация о бизнесе",

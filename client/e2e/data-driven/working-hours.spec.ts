@@ -26,8 +26,9 @@ test.describe('Data-driven — Working hours', () => {
       await test.step(`[${c.technique}] ${c.id} — ${c.note}`, async () => {
         await fillStable(max, c.value)
         await save.click()
-        await expect(error).toBeVisible()
-        await expect(error).toContainText('1–730')
+        // The field flags itself inline (helperText carries the 1–730 rule).
+        await expect(max).toHaveAttribute('aria-invalid', 'true')
+        await expect(page.getByText('1–730')).toBeVisible()
       })
     }
 
@@ -80,8 +81,10 @@ test.describe('Data-driven — Working hours', () => {
         }
 
         await page.getByTestId('wh-save').click()
-        await expect(page.getByTestId('wh-error')).toBeVisible()
-        await expect(page.getByTestId('wh-error')).toContainText(c.errorText)
+        // The offending time fields flag themselves inline; the issue text
+        // appears as a field helperText instead of a banner.
+        await expect(page.locator('[aria-invalid="true"]').first()).toBeVisible()
+        await expect(page.getByText(c.errorText).first()).toBeVisible()
         // Save was blocked — nothing persisted.
       })
     }

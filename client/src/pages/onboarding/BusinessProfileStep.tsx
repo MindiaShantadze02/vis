@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Box, TextField, Button, Avatar, Typography } from '@mui/material'
 import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
@@ -6,7 +6,7 @@ import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/ico
 import { useTranslation } from 'react-i18next'
 import { slugify } from '@/lib/slug'
 import { isValidGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
-import { focusFirstInvalidField } from '@/lib/focusFirstInvalidField'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import StepHeader from './StepHeader'
@@ -43,21 +43,20 @@ export default function BusinessProfileStep() {
     update({ logoFile: file, logoPreview: URL.createObjectURL(file) })
   }
 
-  const phoneInvalid =
-    data.contact_phone.trim().length > 0 && !isValidGeorgianPhone(data.contact_phone)
-  const nameTooShort = data.name.trim().length > 0 && data.name.trim().length < 2
+  // Set on the first Next attempt: from then on empty required fields are
+  // flagged inline too (before that, only typed-but-invalid values are).
+  const [submitted, setSubmitted] = useState(false)
 
-  // Validate on click with visible messages rather than a silently disabled
-  // Next button. On failure, bring the offending field into view + focus it.
+  const phoneInvalid =
+    (submitted || data.contact_phone.trim().length > 0) && !isValidGeorgianPhone(data.contact_phone)
+  const nameTooShort = (submitted || data.name.trim().length > 0) && data.name.trim().length < 2
+
+  // Validate on click with inline field errors rather than a silently disabled
+  // Next button. On failure, bring the first offending field into view + focus it.
   function handleNext() {
-    const err = data.name.trim().length < 2
-      ? t('validation.minLength', { min: 2 })
-      : !isValidGeorgianPhone(data.contact_phone)
-        ? t('validation.invalidPhone')
-        : null
-    if (err) {
-      toast.error(err)
-      focusFirstInvalidField()
+    setSubmitted(true)
+    if (data.name.trim().length < 2 || !isValidGeorgianPhone(data.contact_phone)) {
+      focusFirstInvalidFieldAfterRender()
       return
     }
     goNext()

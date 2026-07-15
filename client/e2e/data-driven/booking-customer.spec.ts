@@ -6,10 +6,11 @@ import data from '../data/booking-customer.json' with { type: 'json' }
  * Data-driven validation of the public booking Step-3 form (cases in
  * e2e/data/booking-customer.json — pairwise field combos, BVA on the name
  * minimum, error-guessing). book-submit is never disabled for
- * validation: invalid rows are submitted and must surface the book-error Alert
- * while staying on Step 3 (sendCode validates before requesting an OTP). Valid
- * rows are only asserted enabled — clicking one would request a real OTP — so
- * nothing is submitted.
+ * validation: invalid rows are submitted and must flag the offending field
+ * inline (aria-invalid) while staying on Step 3 (sendCode validates before
+ * requesting an OTP; the book-error Alert is reserved for server/OTP errors).
+ * Valid rows are only asserted enabled — clicking one would request a real
+ * OTP — so nothing is submitted.
  */
 test.describe('Data-driven — Public booking details', () => {
   test('book-submit validation across field partitions', async ({ page }) => {
@@ -19,7 +20,6 @@ test.describe('Data-driven — Public booking details', () => {
     const lastName = page.getByTestId('book-last-name')
     const phone = page.getByTestId('book-phone')
     const submit = page.getByTestId('book-submit')
-    const error = page.getByTestId('book-error')
 
     for (const c of data.cases) {
       await test.step(`[${c.technique}] ${c.id} — ${c.note}`, async () => {
@@ -31,7 +31,8 @@ test.describe('Data-driven — Public booking details', () => {
         await expect(submit).toBeEnabled()
         if (!c.valid) {
           await submit.click()
-          await expect(error).toBeVisible()
+          // The offending field is flagged inline (no banner for validation).
+          await expect(page.locator('[aria-invalid="true"]').first()).toBeVisible()
           await expect(submit).toBeVisible() // still on Step 3 — no OTP requested
         }
       })

@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { displayGeorgianPhone, PASSWORD_MIN } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { PageHeader, useToast } from '@/components/ui'
 
 /**
@@ -29,19 +30,28 @@ export default function AccountSettings() {
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
 
-  const passwordTooShort = newPassword.length > 0 && newPassword.length < PASSWORD_MIN
-  const passwordMismatch = confirmNewPassword.length > 0 && newPassword !== confirmNewPassword
+  // Set on the first submit attempt: from then on empty fields are flagged
+  // inline too (before that, only typed-but-invalid values are).
+  const [submitted, setSubmitted] = useState(false)
+
+  const passwordTooShort = (submitted || newPassword.length > 0) && newPassword.length < PASSWORD_MIN
+  const passwordMismatch = (submitted || confirmNewPassword.length > 0) && newPassword !== confirmNewPassword
 
   async function handleChangePassword() {
-    // Validated on click with visible messages — the button never blocks silently.
-    if (newPassword.length < PASSWORD_MIN) { toast.error(t('validation.passwordTooShortReset')); return }
-    if (newPassword !== confirmNewPassword) { toast.error(t('validation.passwordMismatch')); return }
+    // Validated on click with inline field errors — the button never blocks
+    // silently; the first invalid field is pulled into view.
+    setSubmitted(true)
+    if (newPassword.length < PASSWORD_MIN || newPassword !== confirmNewPassword) {
+      focusFirstInvalidFieldAfterRender()
+      return
+    }
     setChangingPassword(true)
     const { error: err } = await supabase.auth.updateUser({ password: newPassword })
     setChangingPassword(false)
     if (err) { toast.error(t('settings.passwordChangeFailed')); return }
     setNewPassword('')
     setConfirmNewPassword('')
+    setSubmitted(false)
     toast.success(t('settings.passwordChanged'))
   }
 
@@ -74,6 +84,7 @@ export default function AccountSettings() {
     // message instead of silently disabling the destructive button.
     if (deleteConfirmText.trim().toLowerCase() !== t('settings.deleteConfirmWord').toLowerCase()) {
       setDeleteWordError(true)
+      focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
       return
     }
     setDeleting(true)

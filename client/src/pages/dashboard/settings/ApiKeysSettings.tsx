@@ -8,6 +8,7 @@ import { ContentCopyOutlined as ContentCopyOutlinedIcon } from '@/components/ico
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, LoadingState, useToast } from '@/components/ui'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 
 interface ApiKeyRow {
   id: string
@@ -36,6 +37,8 @@ export default function ApiKeysSettings() {
   // Create dialog: name entry → show-once key reveal.
   const [createOpen, setCreateOpen] = useState(false)
   const [keyName, setKeyName] = useState('')
+  // Set on the first Create attempt: flags the empty name inline.
+  const [createSubmitted, setCreateSubmitted] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newKey, setNewKey] = useState<string | null>(null)
 
@@ -56,7 +59,12 @@ export default function ApiKeysSettings() {
   useEffect(() => { load() }, [load])
 
   async function createKey() {
-    if (!keyName.trim()) { toast.error(t('validation.required')); return }
+    // Flag the empty name inline and pull it into view instead of toasting.
+    setCreateSubmitted(true)
+    if (!keyName.trim()) {
+      focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
+      return
+    }
     setCreating(true)
     const { data, error: err } = await supabase.rpc('create_api_key', { p_name: keyName.trim() })
     setCreating(false)
@@ -93,6 +101,7 @@ export default function ApiKeysSettings() {
     setCreateOpen(false)
     setKeyName('')
     setNewKey(null)
+    setCreateSubmitted(false)
   }
 
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(i18n.language)
@@ -190,6 +199,8 @@ export default function ApiKeysSettings() {
               placeholder={t('settings.apiKeyNamePlaceholder')}
               value={keyName}
               onChange={e => setKeyName(e.target.value)}
+              error={createSubmitted && !keyName.trim()}
+              helperText={createSubmitted && !keyName.trim() ? t('validation.required') : undefined}
               slotProps={{ htmlInput: { maxLength: 60, 'data-testid': 'api-key-name' } }}
               sx={{ mt: 1 }}
             />

@@ -20,3 +20,14 @@ export function focusFirstInvalidField(root: ParentNode = document): boolean {
   el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
   return true
 }
+
+/**
+ * The submit-handler form of the above: defers one frame so the `aria-invalid`
+ * attributes raised by the same submit (e.g. a `submitted` state flip) are in
+ * the DOM before the search runs. Call it right after an early-return
+ * validation failure; pass a dialog root to scope the search when the form
+ * lives in a MUI Dialog.
+ */
+export function focusFirstInvalidFieldAfterRender(root: ParentNode = document): void {
+  requestAnimationFrame(() => focusFirstInvalidField(root))
+}

@@ -5,7 +5,7 @@ import data from '../data/team.json' with { type: 'json' }
 /**
  * Data-driven validation of the team settings dialogs (cases in
  * e2e/data/team.json). The save/send buttons are never disabled for
- * validation: invalid rows are submitted and must surface an error toast while
+ * validation: invalid rows are submitted and must flag the field inline while
  * the dialog stays open (the handlers validate before any insert). Valid rows
  * are only asserted enabled — clicking one would really create a member /
  * invitation — so nothing is submitted.
@@ -29,7 +29,7 @@ test.describe('Data-driven — Team', () => {
         await expect(save).toBeEnabled()
         if (!c.valid) {
           await save.click()
-          await expect(page.getByTestId('toast')).toBeVisible()
+          await expect(name).toHaveAttribute('aria-invalid', 'true')
           await expect(save).toBeVisible() // dialog still open — nothing created
         }
       })
@@ -49,7 +49,7 @@ test.describe('Data-driven — Team', () => {
         await expect(send).toBeEnabled()
         if (!c.valid) {
           await send.click()
-          await expect(page.getByTestId('toast')).toBeVisible()
+          await expect(phone).toHaveAttribute('aria-invalid', 'true')
           await expect(send).toBeVisible() // dialog still open — no invitation created
         }
       })

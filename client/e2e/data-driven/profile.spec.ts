@@ -5,10 +5,12 @@ import data from '../data/profile.json' with { type: 'json' }
 /**
  * Data-driven business-profile validation (cases in e2e/data/profile.json).
  * The save button is never disabled for validation, so invalid rows are
- * submitted and must surface the profile-error Alert; handleSave validates
- * before any DB write, so no invalid row ever persists (and the "error shown"
- * assertion guards that). Valid rows are only asserted enabled — clicking one
- * would really overwrite the seed org — so the seed stays untouched.
+ * submitted and must flag the offending field inline (aria-invalid);
+ * handleSave validates before any DB write, so no invalid row ever persists
+ * (and the "field flagged" assertion guards that). Valid rows are only
+ * asserted enabled — clicking one would really overwrite the seed org — so
+ * the seed stays untouched. The profile-error Alert remains for server and
+ * logo-upload errors.
  */
 test.describe('Data-driven — Business profile', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,7 +21,6 @@ test.describe('Data-driven — Business profile', () => {
 
   test('save validation across name/phone partitions', async ({ page }) => {
     const save = page.getByTestId('profile-save')
-    const error = page.getByTestId('profile-error')
     // Seed loads valid → enabled.
     await expect(save).toBeEnabled()
 
@@ -31,7 +32,7 @@ test.describe('Data-driven — Business profile', () => {
         await expect(save).toBeEnabled()
         if (!c.valid) {
           await save.click()
-          await expect(error).toBeVisible()
+          await expect(page.locator('[aria-invalid="true"]').first()).toBeVisible()
         }
       })
     }

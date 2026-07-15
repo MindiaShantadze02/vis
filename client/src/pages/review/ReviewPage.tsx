@@ -17,6 +17,7 @@ import { LAYOUT, elevation } from '@/theme/theme'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { dateLocale } from '@/lib/dateLocale'
 import { FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { toBusinessWallClock } from '@/lib/slots'
 import { anim } from '@/theme/animations'
 
@@ -46,6 +47,8 @@ export default function ReviewPage() {
   const [view, setView] = useState<View>('loading')
 
   const [rating, setRating] = useState<number | null>(null)
+  // Flags the missing rating after a submit attempt; cleared on pick.
+  const [ratingMissing, setRatingMissing] = useState(false)
   const [hover, setHover] = useState(-1)
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -69,8 +72,13 @@ export default function ReviewPage() {
 
   async function submit() {
     if (!appointmentId) return
-    // Rating required — shown as a message instead of a disabled button.
-    if (!rating) { setError(t('reviews.ratingRequired')); return }
+    // Rating required — flagged inline under the stars (and scroll-targeted
+    // via aria-invalid on the wrapper) instead of a banner.
+    if (!rating) {
+      setRatingMissing(true)
+      focusFirstInvalidFieldAfterRender()
+      return
+    }
     setSubmitting(true)
     setError(null)
     const { data, error: rpcErr } = await supabase.rpc('submit_review', {
@@ -200,10 +208,14 @@ export default function ReviewPage() {
       {/* Rating — left-aligned like every other field, with the descriptor inline
           so there's no reserved empty gap. */}
       <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>{t('reviews.prompt')}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, minHeight: 40 }}>
+      <Box
+        // aria-invalid lets focusFirstInvalidField scroll-target the stars.
+        aria-invalid={ratingMissing || undefined}
+        sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: ratingMissing ? 0.5 : 3, minHeight: 40 }}
+      >
         <Rating
           value={rating}
-          onChange={(_, v) => setRating(v)}
+          onChange={(_, v) => { setRating(v); if (v) setRatingMissing(false) }}
           onChangeActive={(_, v) => setHover(v)}
           icon={<StarRoundedIcon weight="fill" fontSize="inherit" />}
           emptyIcon={<StarRoundedIcon weight="regular" fontSize="inherit" />}
@@ -221,6 +233,11 @@ export default function ReviewPage() {
           </Typography>
         ) : null}
       </Box>
+      {ratingMissing && (
+        <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mb: 2.5 }} data-testid="review-rating-error">
+          {t('reviews.ratingRequired')}
+        </Typography>
+      )}
 
       <TextField
         fullWidth
