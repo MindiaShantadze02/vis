@@ -62,11 +62,16 @@ export default function HomePage() {
         component="header"
         sx={{ borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}
       >
-        <Container maxWidth={false} sx={{ maxWidth: MAX_W, py: 1.5, display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Container maxWidth={false} sx={{ maxWidth: MAX_W, py: 1.5, display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
           <BrandLockup />
           <Box sx={{ flex: 1 }} />
-          <LanguageSwitcher />
-          <Button component={RouterLink} to="/login" color="inherit" sx={{ color: 'text.secondary' }}>
+          <LanguageSwitcher compact />
+          <Button
+            component={RouterLink}
+            to="/login"
+            color="inherit"
+            sx={{ color: 'text.secondary', display: { xs: 'none', sm: 'inline-flex' } }}
+          >
             {t('auth.login')}
           </Button>
           <Button component={RouterLink} to="/register" variant="contained">

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Button, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip,
+  Box, Button, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip,
 } from '@mui/material'
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@/components/icons'
 import { Check as CheckIcon } from '@/components/icons'
@@ -19,7 +19,7 @@ function Flag({ country, size = 18 }: { country: string; size?: number }) {
   return <Component style={{ width: size, height: (size * 2) / 3, borderRadius: 2, display: 'block' }} />
 }
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
   const { t, i18n } = useTranslation()
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
 
@@ -38,13 +38,16 @@ export default function LanguageSwitcher() {
         <Button
           onClick={e => setAnchorEl(e.currentTarget)}
           data-testid="language-switcher-btn"
+          aria-label={t('settings.language')}
           color="inherit"
           size="small"
           startIcon={<Flag country={currentLang.country} />}
           endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 16, color: 'text.secondary' }} />}
           sx={{ textTransform: 'none', color: 'text.primary', fontWeight: 500, px: 1 }}
         >
-          {currentLang.label}
+          <Box component="span" sx={{ display: compact ? { xs: 'none', sm: 'inline' } : 'inline' }}>
+            {currentLang.label}
+          </Box>
         </Button>
       </Tooltip>
       <Menu
