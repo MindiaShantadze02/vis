@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Box, Typography, Button, Avatar, IconButton,
+  Box, Typography, Button, Avatar, IconButton, useMediaQuery,
 } from '@mui/material'
+import { motion } from 'framer-motion'
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { ArrowForwardIos as ArrowForwardIosIcon } from '@/components/icons'
 import { EventAvailableOutlined as EventAvailableOutlinedIcon } from '@/components/icons'
@@ -351,6 +352,27 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   // No point advancing once the visible week already reaches the limit.
   const canGoNext = !maxDate || isBefore(addDays(weekStart, 6), maxDate)
 
+  // Week paging, shared by the arrows and the mobile swipe gesture. The
+  // direction feeds the slide-in animation of the incoming week.
+  const [weekDirection, setWeekDirection] = useState(0)
+  const goPrevWeek = () => {
+    if (!canGoPrev) return
+    setWeekDirection(-1)
+    setWeekStart(w => addDays(w, -7))
+  }
+  const goNextWeek = () => {
+    if (!canGoNext) return
+    setWeekDirection(1)
+    setWeekStart(w => addDays(w, 7))
+  }
+
+  // On phones the day strip is a carousel: horizontal swipe pages the week
+  // (framer drag sets touch-action: pan-y, so vertical page scroll survives).
+  // Desktop keeps arrows only — mouse-dragging a click target row is an
+  // unfamiliar affordance there and adds nothing over the arrows.
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const SWIPE_THRESHOLD = 50
+
   const weekEnd = addDays(weekStart, 6)
   const weekLabel = isSameMonth(weekStart, weekEnd)
     ? format(weekStart, 'LLLL yyyy', { locale })
@@ -448,21 +470,50 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         </Box>
       )}
 
-      {/* Week navigation */}
+      {/* Week navigation — arrows stay compact on mobile (swipe is the primary
+          gesture there) and grow on desktop where they are the only control. */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <IconButton size="small" onClick={() => setWeekStart(w => addDays(w, -7))} disabled={!canGoPrev} aria-label={t('common.back')}>
-          <ArrowBackIosNewIcon fontSize="small" />
+        <IconButton
+          onClick={goPrevWeek}
+          disabled={!canGoPrev}
+          aria-label={t('common.back')}
+          data-testid="book-week-prev"
+          sx={{ p: { xs: 0.5, sm: 1 } }}
+        >
+          <ArrowBackIosNewIcon sx={{ fontSize: { xs: 20, sm: 26 } }} />
         </IconButton>
-        <Typography variant="body2" sx={{ flex: 1, textAlign: 'center', fontWeight: 600, textTransform: 'capitalize' }}>
+        <Typography variant="body2" data-testid="book-week-label" sx={{ flex: 1, textAlign: 'center', fontWeight: 600, textTransform: 'capitalize' }}>
           {weekLabel}
         </Typography>
-        <IconButton size="small" onClick={() => setWeekStart(w => addDays(w, 7))} disabled={!canGoNext} aria-label={t('common.next')}>
-          <ArrowForwardIosIcon fontSize="small" />
+        <IconButton
+          onClick={goNextWeek}
+          disabled={!canGoNext}
+          aria-label={t('common.next')}
+          data-testid="book-week-next"
+          sx={{ p: { xs: 0.5, sm: 1 } }}
+        >
+          <ArrowForwardIosIcon sx={{ fontSize: { xs: 20, sm: 26 } }} />
         </IconButton>
       </Box>
 
-      {/* Day selector — scrollable swipe strip on mobile, 7-col grid on desktop */}
+      {/* Day selector — 7-col grid; on mobile the row is a swipeable carousel
+          (drag left/right pages the week). Keyed by weekStart so the incoming
+          week slides in from the direction of travel; the wrapper clips the
+          slide offset so nothing pokes outside the layout. */}
+      <Box sx={{ overflow: 'hidden', mb: 3 }} data-testid="book-week-strip">
       <Box
+        component={motion.div}
+        key={format(weekStart, 'yyyy-MM-dd')}
+        initial={weekDirection === 0 ? false : { x: weekDirection * 48, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        drag={isMobile ? 'x' : false}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.15}
+        onDragEnd={(_: unknown, info: { offset: { x: number } }) => {
+          if (info.offset.x <= -SWIPE_THRESHOLD) goNextWeek()
+          else if (info.offset.x >= SWIPE_THRESHOLD) goPrevWeek()
+        }}
         ref={dayStripRef}
         role="group"
         aria-label={t('booking.chooseDate')}
@@ -472,7 +523,6 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
           display: 'grid',
           gridTemplateColumns: 'repeat(7, 1fr)',
           gap: { xs: 0.5, sm: 0.75 },
-          mb: 3,
         }}
       >
         {days.map((day, i) => {
@@ -549,6 +599,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
             </Box>
           )
         })}
+      </Box>
       </Box>
 
       {/* Next-available shortcut when the visible week is fully booked / closed */}
