@@ -62,7 +62,7 @@ test.describe('Business onboarding', () => {
     // The new-org onboarding checklist is up (nothing dismissed yet).
     await expect(page.getByTestId('onboarding-checklist')).toBeVisible()
 
-    // A brand-new org starts on the 30-day Starter trial (no free tier): the
+    // A brand-new org starts on the 30-day Solo trial (no free tier): the
     // subscription page shows the trial chip and no trial-countdown banner yet
     // (that appears only in the last 7 days).
     await page.goto('/dashboard/settings/subscription')

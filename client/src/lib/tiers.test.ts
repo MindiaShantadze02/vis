@@ -10,58 +10,56 @@ import {
  * platform_config.tier_limits / tier_staff_limits.
  */
 describe('TIERS / TIER_KEYS', () => {
-  it('exposes the three paid tiers in display order (no free tier)', () => {
-    expect(TIER_KEYS).toEqual(['starter', 'pro', 'business'])
+  it('exposes the two paid tiers in display order (no free tier)', () => {
+    expect(TIER_KEYS).toEqual(['solo', 'team'])
   })
 
   it.each([
-    ['starter', 150, 1],
-    ['pro', 400, 3],
-    ['business', 800, null],
+    ['solo', 100, 1],
+    ['team', 300, null],
   ])('%s tier has the expected monthly and staff limits', (key, limit, staffLimit) => {
     const t = TIERS.find(t => t.key === key)
     expect(t?.limit).toBe(limit)
     expect(t?.staffLimit).toBe(staffLimit)
   })
 
-  it('pro is the single recommended plan', () => {
-    expect(TIERS.filter(t => t.recommended).map(t => t.key)).toEqual(['pro'])
+  it('team is the single recommended plan', () => {
+    expect(TIERS.filter(t => t.recommended).map(t => t.key)).toEqual(['team'])
   })
 })
 
 describe('tierInfo (fallback path)', () => {
   it('returns the matching tier for a known key', () => {
-    expect(tierInfo('pro').key).toBe('pro')
+    expect(tierInfo('team').key).toBe('team')
   })
-  // Decision coverage — the `?? TIERS[0]` fallback branch. 'free' is a
-  // realistic stale value (pre-072 orgs) and must resolve to starter.
-  it.each([['removed free tier', 'free'], ['unknown key', 'enterprise'], ['null', null], ['undefined', undefined]])(
-    'falls back to the starter tier for %s',
+  // Decision coverage — the `?? TIERS[0]` fallback branch. 'starter' is a
+  // realistic stale value (pre-083 orgs) and must resolve to solo.
+  it.each([['removed starter tier', 'starter'], ['removed business tier', 'business'], ['unknown key', 'enterprise'], ['null', null], ['undefined', undefined]])(
+    'falls back to the solo tier for %s',
     (_label, key) => {
-      expect(tierInfo(key as string | null | undefined).key).toBe('starter')
+      expect(tierInfo(key as string | null | undefined).key).toBe('solo')
     },
   )
 })
 
 describe('tierAtLeast (feature gating)', () => {
-  // BVA around the pro boundary.
+  // BVA around the team boundary.
   it.each([
-    ['starter', false],
-    ['pro', true],
-    ['business', true],
-  ])('%s vs pro → %s', (current, expected) => {
-    expect(tierAtLeast(current, 'pro')).toBe(expected)
+    ['solo', false],
+    ['team', true],
+  ])('%s vs team → %s', (current, expected) => {
+    expect(tierAtLeast(current, 'team')).toBe(expected)
   })
 
   it('an unknown / null / undefined tier never meets a target', () => {
-    expect(tierAtLeast('free', 'starter')).toBe(false)
-    expect(tierAtLeast('enterprise', 'pro')).toBe(false)
-    expect(tierAtLeast(null, 'starter')).toBe(false)
-    expect(tierAtLeast(undefined, 'starter')).toBe(false)
+    expect(tierAtLeast('free', 'solo')).toBe(false)
+    expect(tierAtLeast('business', 'team')).toBe(false)
+    expect(tierAtLeast(null, 'solo')).toBe(false)
+    expect(tierAtLeast(undefined, 'solo')).toBe(false)
   })
 
-  it('every tier meets the starter floor', () => {
-    for (const k of TIER_KEYS) expect(tierAtLeast(k, 'starter')).toBe(true)
+  it('every tier meets the solo floor', () => {
+    for (const k of TIER_KEYS) expect(tierAtLeast(k, 'solo')).toBe(true)
   })
 })
 

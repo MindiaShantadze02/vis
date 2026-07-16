@@ -22,7 +22,7 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true)
   const [upgrading, setUpgrading] = useState<Tier | null>(null)
 
-  const currentTier: Tier = org?.subscription_tier ?? 'starter'
+  const currentTier: Tier = org?.subscription_tier ?? 'solo'
   const expires = org?.subscription_expires_at
 
   useEffect(() => {
@@ -162,14 +162,11 @@ export default function SubscriptionPage() {
         {t('subscription.comparePlans')}
       </Typography>
       <Stack spacing={2}>
-        {/* Business isn't a self-serve card (superadmin-assigned only) — it
-            appears only when it IS the current plan; everyone else gets the
-            quiet contact line below instead. */}
-        {TIERS.filter(tier => tier.key !== 'business' || tier.key === currentTier).map(tier => {
+        {TIERS.map(tier => {
           const isCurrent = tier.key === currentTier
           // A trial/expired org hasn't bought anything yet, so its "current"
           // tier is still purchasable (that's the whole conversion path).
-          const canBuy = tier.key !== 'business' && (!isCurrent || subscription !== 'active')
+          const canBuy = !isCurrent || subscription !== 'active'
           return (
             <Card
               key={tier.key}
@@ -224,11 +221,6 @@ export default function SubscriptionPage() {
           )
         })}
       </Stack>
-
-      {/* The quiet Business line: „დიდი გუნდისთვის — მოგვწერეთ" */}
-      <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2, textAlign: 'center' }}>
-        {t('subscription.businessContact')}
-      </Typography>
 
       <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 3, textAlign: 'center' }}>
         {t('subscription.footer')}

@@ -79,10 +79,10 @@ export default function SpecialistsStep() {
   // name inline. Reset with the draft.
   const [submitted, setSubmitted] = useState(false)
 
-  // A new org is on the Starter-level trial, so the enforce_staff_limit trigger
+  // A new org is on the Solo-level trial, so the enforce_staff_limit trigger
   // allows that tier's bookable count. Gate the toggle here instead of failing
   // the whole finish insert later.
-  const staffLimit = tierInfo('starter').staffLimit
+  const staffLimit = tierInfo('solo').staffLimit
   const bookableCount = data.specialists.filter(s => s.is_bookable).length
   const bookableLimitHit = staffLimit !== null && bookableCount >= staffLimit
   const effectiveBookable = bookable && !bookableLimitHit

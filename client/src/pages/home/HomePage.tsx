@@ -156,8 +156,9 @@ export default function HomePage() {
           <Box
             sx={{
               display: 'grid', gap: 2,
-              gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
               alignItems: 'start',
+              maxWidth: 720,
             }}
           >
             {TIERS.map(tier => (

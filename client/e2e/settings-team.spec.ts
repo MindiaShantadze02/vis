@@ -43,8 +43,8 @@ test.describe('Settings — Team', () => {
   // Invite-phone and professional-name gating are data-driven now — see
   // e2e/data/team.json + e2e/data-driven/team.spec.ts.
 
-  test('the starter seat limit blocks a second bookable professional', async ({ page }) => {
-    // The seed org is on starter (1 bookable seat, enforce_staff_limit trigger).
+  test('the solo seat limit blocks a second bookable professional', async ({ page }) => {
+    // The seed org is on solo (1 bookable seat, enforce_staff_limit trigger).
     const first = tag('E2E Seat One')
     const second = tag('E2E Seat Two')
 

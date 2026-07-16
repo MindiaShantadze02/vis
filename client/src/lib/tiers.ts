@@ -5,11 +5,13 @@ import type { Theme } from '@mui/material'
  * the superadmin org views so labels, prices, limits, and accent colours have
  * one definition. Limits mirror platform_config.tier_limits / tier_staff_limits.
  *
- * There is no free tier: every new organisation starts on a 30-day
- * Starter-level trial and must pick a paid plan afterwards (see
+ * Two tiers only (decision 2026-07-16 — the product targets individuals and
+ * small businesses; the old Business tier is gone): Solo for one professional,
+ * Team for everyone else. There is no free tier: every new organisation starts
+ * on a 30-day Solo-level trial and must pick a paid plan afterwards (see
  * subscriptionState below).
  */
-export type Tier = 'starter' | 'pro' | 'business'
+export type Tier = 'solo' | 'team'
 export type TierColorKey = 'grey' | 'info' | 'primary' | 'success'
 
 export interface TierInfo {
@@ -27,26 +29,22 @@ export interface TierInfo {
 
 export const TIERS: TierInfo[] = [
   {
-    key: 'starter', label: 'სტარტერი', price: '₾29 / თვე', limit: 150, staffLimit: 1, colorKey: 'info',
-    features: ['150 ჯავშანი/თვე', 'SMS შეხსენება წინა დღეს', 'ონლაინ ბუქინგ გვერდი', 'ყველა თემა'],
+    key: 'solo', label: 'სოლო', price: '₾19 / თვე', limit: 100, staffLimit: 1, colorKey: 'info',
+    features: ['100 ჯავშანი/თვე', '1 თანამშრომელი', 'SMS შეხსენება წინა დღეს', 'ონლაინ ბუქინგ გვერდი', 'ყველა თემა'],
   },
   {
-    key: 'pro', label: 'პრო', price: '₾59 / თვე', limit: 400, staffLimit: 3, colorKey: 'primary', recommended: true,
-    features: ['400 ჯავშანი/თვე', '3 თანამშრომლამდე', 'ყველა სტარტერის ფუნქცია'],
-  },
-  {
-    key: 'business', label: 'ბიზნესი', price: '₾99 / თვე', limit: 800, staffLimit: null, colorKey: 'success',
-    features: ['800 ჯავშანი/თვე', 'შეუზღუდავი თანამშრომლები', 'VIP მხარდაჭერა'],
+    key: 'team', label: 'გუნდი', price: '₾39 / თვე', limit: 300, staffLimit: null, colorKey: 'primary', recommended: true,
+    features: ['300 ჯავშანი/თვე', 'შეუზღუდავი თანამშრომლები', 'ყველა სოლოს ფუნქცია'],
   },
 ]
 
-/** All tier keys, in display order (starter < pro < business). */
+/** All tier keys, in display order (solo < team). */
 export const TIER_KEYS: Tier[] = TIERS.map(t => t.key)
 
 /**
  * True when `current` is at least as high as `target` in the tier order.
  * Used to gate features by plan. An unknown current tier is treated as the
- * lowest, so it never unlocks anything above starter.
+ * lowest, so it never unlocks anything above solo.
  */
 export function tierAtLeast(current: string | null | undefined, target: Tier): boolean {
   const ci = TIER_KEYS.indexOf(current as Tier)
@@ -54,7 +52,7 @@ export function tierAtLeast(current: string | null | undefined, target: Tier): b
   return ci >= 0 && ci >= ti
 }
 
-/** Look up a tier's info, falling back to the starter tier. */
+/** Look up a tier's info, falling back to the solo tier. */
 export function tierInfo(key: string | null | undefined): TierInfo {
   return TIERS.find(t => t.key === key) ?? TIERS[0]
 }

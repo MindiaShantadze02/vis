@@ -451,39 +451,30 @@
     "addAppointment": "Add appointment"
   },
   "tiers": {
-    "starter": {
-      "label": "Starter",
-      "price": "₾29 / mo",
+    "solo": {
+      "label": "Solo",
+      "price": "₾19 / mo",
       "features": [
-        "150 bookings/mo",
+        "100 bookings/mo",
+        "1 bookable professional",
         "Day-before SMS reminders",
         "Online booking page",
         "All themes"
       ]
     },
-    "pro": {
-      "label": "Pro",
-      "price": "₾59 / mo",
+    "team": {
+      "label": "Team",
+      "price": "₾39 / mo",
       "features": [
-        "400 bookings/mo",
-        "Up to 3 bookable staff",
-        "All Starter features"
-      ]
-    },
-    "business": {
-      "label": "Business",
-      "price": "₾99 / mo",
-      "features": [
-        "800 bookings/mo",
+        "300 bookings/mo",
         "Unlimited staff",
-        "VIP support"
+        "All Solo features"
       ]
     }
   },
   "subscription": {
-    "starter": "Starter",
-    "pro": "Pro",
-    "business": "Business",
+    "solo": "Solo",
+    "team": "Team",
     "limitReached": "Appointment limit reached",
     "upgrade": "Upgrade",
     "appointmentsUsed": "{{used}} / {{limit}} appointments used",
@@ -498,14 +489,13 @@
     "footer": "Billed monthly · Cancel anytime · Contact us if you need help",
     "recommended": "Recommended",
     "trialChip": "Trial",
-    "trialEndsOn": "Starter trial — ends {{date}}",
-    "trialBanner_one": "Starter trial ends in {{count}} day — choose a plan to keep reminders on",
-    "trialBanner_other": "Starter trial ends in {{count}} days — choose a plan to keep reminders on",
+    "trialEndsOn": "Trial — ends {{date}}",
+    "trialBanner_one": "Your trial ends in {{count}} day — choose a plan to keep reminders on",
+    "trialBanner_other": "Your trial ends in {{count}} days — choose a plan to keep reminders on",
     "expiredTitle": "Your plan has ended",
     "expiredBody": "Your booking page is still live and your data is safe, but new bookings are paused and day-before reminders are off. Choose a plan to continue.",
     "expiredStrip": "New bookings are paused — choose a plan",
-    "choosePlan": "Choose a plan",
-    "businessContact": "For bigger teams — contact us"
+    "choosePlan": "Choose a plan"
   },
   "superadmin": {
     "platform": "Platform",

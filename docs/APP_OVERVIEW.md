@@ -1,7 +1,7 @@
 # Vis — Appointment Booking SaaS
 
 > Product name **Vis**. Hosted Supabase project ref `dnmecnpugjxkjonqsfxx`.
-> Migrations applied through `082_appointment_meeting_link.sql` (2026-07-16).
+> Migrations applied through `083_solo_team_tiers.sql` (2026-07-16).
 
 ## What it is
 A multi-tenant SaaS platform for the **Georgian market** that lets small service businesses
@@ -164,15 +164,35 @@ developer strip, footer links to docs and legal pages).
 - When a superadmin changes an org's tier they must also set `subscription_expires_at`
   (subscription state is derived — see below).
 
-## Pricing & subscription (migration 072 — free tier removed 2026-07-09)
-- **No free tier.** Every new org gets a **30-day Starter-level trial** (no card). Subscription
-  state (**trial / active / expired**) is **derived** from `subscription_expires_at` — no cron.
-- Tiers: **Starter ₾29** (150 appts/mo, 1 bookable professional), **Pro ₾59** (400/mo, up to 3
-  staff), **Business ₾99** (800/mo, unlimited staff, VIP support). Limits live in
-  `platform_config.tier_limits` JSON (superadmin-editable, no deploy); enforced via
-  `org_can_accept_appointment` / `enforce_appointment_limit`, plus **guard triggers** for staff
-  seats and direct billing-column writes.
-- Landing page shows the same three public price cards (`lib/tiers.ts` mirrors this).
+## Pricing & subscription (migrations 072 + 083)
+- **Two tiers only** (083, 2026-07-16 — the product targets individuals and small businesses; the
+  old Starter/Pro/Business ladder is gone, Business removed entirely):
+  - **Solo ₾19/mo** — 100 appointments/mo, **1 bookable professional**
+  - **Team ₾39/mo** — 300 appointments/mo, **unlimited staff** (the recommended plan)
+- **No free tier** (072). Every new org gets a **30-day Solo-level trial** (no card). Subscription
+  state (**trial / active / expired**) is **derived** from `trial_ends_at` /
+  `subscription_expires_at` — no cron. An expired org is never disabled: dashboard, data and the
+  booking page stay alive, but new bookings are blocked and day-before reminders stop.
+- Limits live in `platform_config.tier_limits` / `tier_prices` / `tier_staff_limits` JSON
+  (superadmin-editable, no deploy); enforced **in the database** via
+  `org_can_accept_appointment` / `enforce_appointment_limit` (appointments) and
+  `enforce_staff_limit` (bookable seats), plus a billing-column guard trigger that blocks owner
+  self-upgrades. `create-payment` recomputes the charge from `tier_prices` server-side.
+- Landing page shows the same two public price cards (`lib/tiers.ts` mirrors this config).
+
+### Limit / expiry UX (what the user actually sees)
+- **Owner, approaching the cap:** the dashboard `UsageMeter` and the Subscription page turn the
+  usage bar amber at 80% with a "consider upgrading" hint, red at 100% with "limit reached — new
+  bookings are blocked".
+- **Owner, trial ending:** a countdown banner on the dashboard for the last 7 trial days; after
+  expiry a one-time prominent notice (dismissal persisted in `trial_expiry_ack_at`), which
+  collapses into a permanent non-dismissible "choose a plan" strip. All in-app; never SMS.
+- **Owner, at the seat limit:** adding another bookable professional is rejected by the DB
+  (`staff_limit_reached`) and Team settings shows an upgrade-prompt error.
+- **Guest, org at cap / expired:** the public booking page pre-checks
+  `org_can_accept_appointment` and shows a friendly "unavailable" state instead of the form; a
+  race at insert time surfaces the trigger's `limit_reached` error gracefully. The public API
+  returns 403 `quota_exceeded`.
 
 ## Data protection & privacy (Georgian Law on Personal Data Protection, No. 3144)
 - **Privacy Policy + Terms** (canonical markdown in `docs/legal/`, in-app pages at `/privacy`,
@@ -252,7 +272,7 @@ developer strip, footer links to docs and legal pages).
 
 ## Build status
 
-**Built & live** (migrations through `082` on `dnmecnpugjxkjonqsfxx`):
+**Built & live** (migrations through `083` on `dnmecnpugjxkjonqsfxx`):
 - Appointments end-to-end: 4-step onboarding (or concierge setup) → settings → public booking with
   OTP → owner notification → dashboard approval (or auto-approve) → completion → verified review.
 - Phone auth with OTP second step; OTP password reset.
@@ -262,8 +282,8 @@ developer strip, footer links to docs and legal pages).
 - Embeddable widget (all tiers) with auto-height, `vis:booked` event, and language pinning.
 - Per-service photo galleries; staff profiles with photos; per-appointment meeting links with
   owner-sent SMS.
-- Online-payment plumbing via `create-payment`/`payment-webhook` (mock gateway); pricing tiers with
-  30-day trial, usage metering and seat/quota enforcement.
+- Online-payment plumbing via `create-payment`/`payment-webhook` (mock gateway); Solo/Team pricing
+  with 30-day trial, usage metering and seat/quota enforcement.
 - Themed booking pages incl. custom brand color; business-timezone (+04:00) slot logic; regrouped
   settings IA; Deep Harbor admin theme.
 - Data-protection compliance (privacy/terms/consent/retention/erasure); security hardening passes

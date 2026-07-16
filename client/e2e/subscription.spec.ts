@@ -3,7 +3,7 @@ import { login } from './helpers'
 
 /**
  * Subscription page + dashboard billing surface for the seeded org, which is
- * pinned to an ACTIVE starter plan (migration 072 / e2e stability). The
+ * pinned to an ACTIVE solo plan (migration 072/083 / e2e stability). The
  * trial-countdown, expired-notice and expired-strip states can't be produced
  * from the UI — the billing-column guard blocks it by design — so their state
  * derivation is covered by src/lib/tiers.test.ts and the onboarding spec
@@ -16,22 +16,21 @@ test.describe('Subscription', () => {
     await page.goto('/dashboard/settings/subscription')
   })
 
-  test('an active org sees its current plan, usage bar, both cards, and the Business contact line', async ({ page }) => {
-    // Current plan block: starter label + price, no trial chip (it's active).
+  test('an active org sees its current plan, usage bar, and both tier cards', async ({ page }) => {
+    // Current plan block: solo label + price, no trial chip (it's active).
     await expect(page.getByRole('heading', { name: 'მიმდინარე გეგმა' })).toBeVisible()
     await expect(page.getByTestId('trial-chip')).toHaveCount(0)
 
-    // Usage bar against the enforced monthly cap (150 for starter).
+    // Usage bar against the enforced monthly cap (100 for solo).
     await expect(page.getByText('ჯავშნები ამ თვეში')).toBeVisible()
-    await expect(page.getByText(/\/\s*150/)).toBeVisible()
+    await expect(page.getByText(/\/\s*100/)).toBeVisible()
 
-    // Both self-serve cards, Pro flagged recommended; Business is NOT a card
-    // (superadmin-assigned) but appears as the quiet contact line.
-    await expect(page.getByRole('heading', { name: 'სტარტერი' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'პრო' })).toBeVisible()
+    // Both self-serve cards, Team flagged recommended; the removed Business
+    // tier must not resurface anywhere.
+    await expect(page.getByRole('heading', { name: 'სოლო' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'გუნდი' })).toBeVisible()
     await expect(page.getByText('რეკომენდებული')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'ბიზნესი' })).toHaveCount(0)
-    await expect(page.getByText('დიდი გუნდისთვის — მოგვწერეთ')).toBeVisible()
   })
 
   test('an active org shows no trial/expired banner on the dashboard', async ({ page }) => {
