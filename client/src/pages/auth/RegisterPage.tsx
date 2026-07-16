@@ -214,7 +214,8 @@ export default function RegisterPage() {
               sx={{ pt: 0.25 }}
               data-testid="register-consent"
               // Lets focusFirstInvalidField target the checkbox like any field.
-              inputProps={{ 'aria-invalid': consentError }}
+              // (MUI v9: inputProps was replaced by slotProps.input.)
+              slotProps={{ input: { 'aria-invalid': consentError } }}
             />
           }
           label={

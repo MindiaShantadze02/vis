@@ -735,7 +735,8 @@ export default function OverviewPage() {
                     <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.75 }}>
                       {t('dashboard.meetingLinkTitle')}
                     </Typography>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
+                    {/* MUI v9 Stack no longer accepts alignItems as a prop — sx only. */}
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: 'flex-start' }}>
                       <TextField
                         fullWidth size="small"
                         label={t('settings.meetingLink')}
