@@ -222,74 +222,77 @@ export default function Step3CustomerForm({
     setError(null);
 
     try {
-      // Re-check availability right before inserting: the slot may have filled
-      // since it was computed in Step 2 (capacity and per-person freedom).
-      const { from: dayStart, to: dayEnd } = businessDayWindow(booking.date);
-      // Org-scoped busy slots via SECURITY DEFINER RPC — anon has no direct read
-      // on the appointments table (066 hardening).
-      const { data: existing } = (await supabase.rpc("get_org_busy_slots", {
-        p_org_id: org.id,
-        p_from: dayStart,
-        p_to: dayEnd,
-      })) as {
-        data: Array<{
-          scheduled_at: string;
-          duration_minutes: number;
-          service_id: string;
-          staff_id: string | null;
-        }> | null;
-      };
-
-      const slotStart = scheduledAt.getTime();
-      const slotEnd = slotStart + booking.service.duration_minutes * 60000;
-      const overlapping = (existing ?? []).filter((a) => {
-        const aStart = new Date(a.scheduled_at).getTime();
-        const aEnd = aStart + a.duration_minutes * 60000;
-        return slotStart < aEnd && slotEnd > aStart;
-      });
-
-      // Per-service capacity cap.
-      const serviceCount = overlapping.filter(
-        (a) => a.service_id === booking.service!.id
-      ).length;
-      if (serviceCount >= booking.service.max_per_slot) {
-        setError(t("booking.slotTaken"));
-        setLoading(false);
-        return;
-      }
-
-      // Resolve the assigned person. "Any available" auto-assigns a free member
-      // so per-person availability stays correct for subsequent bookings.
-      let staffId: string | null = null;
-      if (booking.assignedStaff.length > 0) {
-        const busyIds = new Set(
-          overlapping.map((a) => a.staff_id).filter((id): id is string => !!id)
-        );
-        if (booking.staffId) {
-          if (busyIds.has(booking.staffId)) {
-            setError(t("booking.slotTaken"));
-            setLoading(false);
-            return;
-          }
-          staffId = booking.staffId;
-        } else {
-          const free = booking.assignedStaff
-            .filter((m) => !busyIds.has(m.id))
-            .sort((a, b) => a.sort_order - b.sort_order);
-          if (free.length === 0) {
-            setError(t("booking.slotTaken"));
-            setLoading(false);
-            return;
-          }
-          staffId = free[0].id;
-        }
-      }
-
       // Online (pay now): create NOTHING yet. Hand the booking details to the
       // payment flow — the appointment is created by payment-webhook only once
       // the charge clears, so a failed or abandoned payment leaves nothing on
       // the business's dashboard.
       if (booking.paymentMethod === "online") {
+        // Best-effort availability re-check before sending the customer to the
+        // gateway (the webhook insert itself is exempt from the 084 capacity
+        // trigger — a cleared charge must not be dropped).
+        const { from: dayStart, to: dayEnd } = businessDayWindow(booking.date);
+        // Org-scoped busy slots via SECURITY DEFINER RPC — anon has no direct
+        // read on the appointments table (066 hardening).
+        const { data: existing } = (await supabase.rpc("get_org_busy_slots", {
+          p_org_id: org.id,
+          p_from: dayStart,
+          p_to: dayEnd,
+        })) as {
+          data: Array<{
+            scheduled_at: string;
+            duration_minutes: number;
+            service_id: string;
+            staff_id: string | null;
+          }> | null;
+        };
+
+        const slotStart = scheduledAt.getTime();
+        const slotEnd = slotStart + booking.service.duration_minutes * 60000;
+        const overlapping = (existing ?? []).filter((a) => {
+          const aStart = new Date(a.scheduled_at).getTime();
+          const aEnd = aStart + a.duration_minutes * 60000;
+          return slotStart < aEnd && slotEnd > aStart;
+        });
+
+        // Per-service capacity cap.
+        const serviceCount = overlapping.filter(
+          (a) => a.service_id === booking.service!.id
+        ).length;
+        if (serviceCount >= booking.service.max_per_slot) {
+          setError(t("booking.slotTaken"));
+          setLoading(false);
+          return;
+        }
+
+        // Resolve the assigned person. "Any available" auto-assigns a free
+        // member so per-person availability stays correct afterwards.
+        let staffId: string | null = null;
+        if (booking.assignedStaff.length > 0) {
+          const busyIds = new Set(
+            overlapping
+              .map((a) => a.staff_id)
+              .filter((id): id is string => !!id)
+          );
+          if (booking.staffId) {
+            if (busyIds.has(booking.staffId)) {
+              setError(t("booking.slotTaken"));
+              setLoading(false);
+              return;
+            }
+            staffId = booking.staffId;
+          } else {
+            const free = booking.assignedStaff
+              .filter((m) => !busyIds.has(m.id))
+              .sort((a, b) => a.sort_order - b.sort_order);
+            if (free.length === 0) {
+              setError(t("booking.slotTaken"));
+              setLoading(false);
+              return;
+            }
+            staffId = free[0].id;
+          }
+        }
+
         const { data: pay, error: payErr } = await supabase.functions.invoke(
           "create-payment",
           {
@@ -324,36 +327,33 @@ export default function Step3CustomerForm({
         return;
       }
 
-      // In-person: create the appointment now (it just needs admin approval).
-      const customerId = crypto.randomUUID();
-      const appointmentId = crypto.randomUUID();
+      // In-person: one atomic RPC (migration 084). Capacity, the staff pick
+      // ("any available" is resolved under the per-org lock) and the customer +
+      // appointment inserts all happen server-side in one transaction, closing
+      // the check-then-insert double-booking race the old client-side re-check
+      // could not.
+      const { data: created, error: rpcErr } = (await supabase.rpc(
+        "create_guest_booking",
+        {
+          p_org_id: org.id,
+          p_service_id: booking.service.id,
+          p_scheduled_at: scheduledAt.toISOString(),
+          p_first_name: booking.firstName.trim(),
+          p_last_name: booking.lastName.trim() || null,
+          p_phone: formatGeorgianPhone(booking.phone),
+          p_notes: booking.notes.trim() || null,
+          p_staff_id: booking.staffId || null,
+          p_auto_assign: !booking.staffId && booking.assignedStaff.length > 0,
+          p_consent_version: CONSENT_VERSION,
+        }
+      )) as {
+        data: Array<{ appointment_id: string; status: string }> | null;
+        error: { message: string } | null;
+      };
 
-      const { error: custErr } = await supabase.from("customers").insert({
-        id: customerId,
-        first_name: booking.firstName.trim(),
-        last_name: booking.lastName.trim() || null,
-        phone_number: formatGeorgianPhone(booking.phone),
-        consent_accepted_at: new Date().toISOString(),
-        consent_version: CONSENT_VERSION,
-      });
-
-      if (custErr) throw new Error(custErr.message);
-
-      const { error: apptErr } = await supabase.from("appointments").insert({
-        id: appointmentId,
-        org_id: org.id,
-        service_id: booking.service.id,
-        customer_id: customerId,
-        scheduled_at: scheduledAt.toISOString(),
-        duration_minutes: booking.service.duration_minutes,
-        staff_id: staffId,
-        status: "pending",
-        payment_method: "in_person",
-        payment_status: "unpaid",
-        notes: booking.notes.trim() || null,
-      });
-
-      if (apptErr) throw new Error(apptErr.message);
+      if (rpcErr) throw new Error(rpcErr.message);
+      const appointmentId = created?.[0]?.appointment_id;
+      if (!appointmentId) throw new Error(t("booking.bookFailed"));
 
       onDone(appointmentId);
     } catch (err) {
@@ -363,6 +363,10 @@ export default function Step3CustomerForm({
       // Show the same friendly unavailable copy; a guest can't upgrade.
       if (msg.includes("limit_reached")) {
         setError(t("booking.unavailable"));
+      } else if (msg.includes("slot_taken")) {
+        // Someone took the slot between Step 2 and now — the 084 capacity
+        // trigger rejected the insert.
+        setError(t("booking.slotTaken"));
       } else if (msg.includes("verification_required")) {
         // The verified code lapsed or was already used — send a fresh one.
         setError(t("booking.otpExpired"));

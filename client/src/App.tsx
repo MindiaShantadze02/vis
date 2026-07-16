@@ -1,61 +1,66 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { CircularProgress, Box } from '@mui/material'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrg } from '@/contexts/OrgContext'
 import { useSuperadmin } from '@/hooks/useSuperadmin'
 
+// Route-level code-splitting: every page is its own chunk so a visitor only
+// downloads what their route needs. This matters most for /book/:slug — it is
+// embedded in third-party sites and loaded by customers on mobile, and used to
+// ship the entire admin app (DataGrid, superadmin, docs…) in one 1.8 MB bundle.
+
 // Auth
-import LoginPage from '@/pages/auth/LoginPage'
-import RegisterPage from '@/pages/auth/RegisterPage'
-import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
+const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'))
+const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage'))
 
 // Onboarding
-import OnboardingLayout from '@/pages/onboarding/OnboardingLayout'
-import BusinessProfileStep from '@/pages/onboarding/BusinessProfileStep'
-import ServicesStep from '@/pages/onboarding/ServicesStep'
-import SpecialistsStep from '@/pages/onboarding/SpecialistsStep'
-import WorkingHoursStep from '@/pages/onboarding/WorkingHoursStep'
+const OnboardingLayout = lazy(() => import('@/pages/onboarding/OnboardingLayout'))
+const BusinessProfileStep = lazy(() => import('@/pages/onboarding/BusinessProfileStep'))
+const ServicesStep = lazy(() => import('@/pages/onboarding/ServicesStep'))
+const SpecialistsStep = lazy(() => import('@/pages/onboarding/SpecialistsStep'))
+const WorkingHoursStep = lazy(() => import('@/pages/onboarding/WorkingHoursStep'))
+const SetupHelpPage = lazy(() => import('@/pages/onboarding/SetupHelpPage'))
 
 // Dashboard
-import DashboardLayout from '@/pages/dashboard/DashboardLayout'
-import OverviewPage from '@/pages/dashboard/OverviewPage'
-import CalendarPage from '@/pages/dashboard/CalendarPage'
-import ProfileSettings from '@/pages/dashboard/settings/ProfileSettings'
-import BookingPageSettings from '@/pages/dashboard/settings/BookingPageSettings'
-import AccountSettings from '@/pages/dashboard/settings/AccountSettings'
-import ServicesSettings from '@/pages/dashboard/settings/ServicesSettings'
-import WorkingHoursSettings from '@/pages/dashboard/settings/WorkingHoursSettings'
-import TeamSettings from '@/pages/dashboard/settings/TeamSettings'
-import PaymentSettings from '@/pages/dashboard/settings/PaymentSettings'
-import SubscriptionPage from '@/pages/dashboard/settings/SubscriptionPage'
-import ApiKeysSettings from '@/pages/dashboard/settings/ApiKeysSettings'
+const DashboardLayout = lazy(() => import('@/pages/dashboard/DashboardLayout'))
+const OverviewPage = lazy(() => import('@/pages/dashboard/OverviewPage'))
+const CalendarPage = lazy(() => import('@/pages/dashboard/CalendarPage'))
+const ProfileSettings = lazy(() => import('@/pages/dashboard/settings/ProfileSettings'))
+const BookingPageSettings = lazy(() => import('@/pages/dashboard/settings/BookingPageSettings'))
+const AccountSettings = lazy(() => import('@/pages/dashboard/settings/AccountSettings'))
+const ServicesSettings = lazy(() => import('@/pages/dashboard/settings/ServicesSettings'))
+const WorkingHoursSettings = lazy(() => import('@/pages/dashboard/settings/WorkingHoursSettings'))
+const TeamSettings = lazy(() => import('@/pages/dashboard/settings/TeamSettings'))
+const PaymentSettings = lazy(() => import('@/pages/dashboard/settings/PaymentSettings'))
+const SubscriptionPage = lazy(() => import('@/pages/dashboard/settings/SubscriptionPage'))
+const ApiKeysSettings = lazy(() => import('@/pages/dashboard/settings/ApiKeysSettings'))
 
 // Public booking
-import BookingLayout from '@/pages/book/BookingLayout'
-import BookingConfirmationPage from '@/pages/book/BookingConfirmationPage'
-import ReviewPage from '@/pages/review/ReviewPage'
-import MockCheckoutPage from '@/pages/book/MockCheckoutPage'
-import PaymentReturnPage from '@/pages/book/PaymentReturnPage'
-import InvitationAcceptPage from '@/pages/book/InvitationAcceptPage'
+const BookingLayout = lazy(() => import('@/pages/book/BookingLayout'))
+const BookingConfirmationPage = lazy(() => import('@/pages/book/BookingConfirmationPage'))
+const ReviewPage = lazy(() => import('@/pages/review/ReviewPage'))
+const MockCheckoutPage = lazy(() => import('@/pages/book/MockCheckoutPage'))
+const PaymentReturnPage = lazy(() => import('@/pages/book/PaymentReturnPage'))
+const InvitationAcceptPage = lazy(() => import('@/pages/book/InvitationAcceptPage'))
 
 // Superadmin
-import SuperAdminLayout from '@/pages/superadmin/SuperAdminLayout'
-import PlatformOverviewPage from '@/pages/superadmin/PlatformOverviewPage'
-import OrgsListPage from '@/pages/superadmin/OrgsListPage'
-import OrgDetailPage from '@/pages/superadmin/OrgDetailPage'
-import SuperadminsPage from '@/pages/superadmin/SuperadminsPage'
-import SetupRequestsPage from '@/pages/superadmin/SetupRequestsPage'
-import SetupHelpPage from '@/pages/onboarding/SetupHelpPage'
+const SuperAdminLayout = lazy(() => import('@/pages/superadmin/SuperAdminLayout'))
+const PlatformOverviewPage = lazy(() => import('@/pages/superadmin/PlatformOverviewPage'))
+const OrgsListPage = lazy(() => import('@/pages/superadmin/OrgsListPage'))
+const OrgDetailPage = lazy(() => import('@/pages/superadmin/OrgDetailPage'))
+const SuperadminsPage = lazy(() => import('@/pages/superadmin/SuperadminsPage'))
+const SetupRequestsPage = lazy(() => import('@/pages/superadmin/SetupRequestsPage'))
 
-import HomePage from '@/pages/home/HomePage'
-import NotFoundPage from '@/pages/NotFoundPage'
+const HomePage = lazy(() => import('@/pages/home/HomePage'))
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
 // Legal
-import LegalPage from '@/pages/legal/LegalPage'
+const LegalPage = lazy(() => import('@/pages/legal/LegalPage'))
 
 // Developer docs
-import DevDocsPage from '@/pages/docs/DevDocsPage'
+const DevDocsPage = lazy(() => import('@/pages/docs/DevDocsPage'))
 
 import { EmbedBridge } from '@/pages/book/useEmbedBridge'
 
@@ -124,6 +129,9 @@ export default function App() {
     <>
     <ScrollToTop />
     <EmbedBridge />
+    {/* Lazy route chunks resolve inside this boundary; the fallback matches the
+        guards' loading screen so chunk loads and auth loads look identical. */}
+    <Suspense fallback={<LoadingScreen />}>
     <Routes>
       <Route path="/" element={<HomePage />} />
 
@@ -185,6 +193,7 @@ export default function App() {
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </Suspense>
     </>
   )
 }
