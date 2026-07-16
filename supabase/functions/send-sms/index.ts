@@ -3,6 +3,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   bookingConfirmationBody,
   appointmentReminderBody,
+  meetingLinkBody,
   setupCompleteBody,
   sendSms,
   type SmsMessageType,
@@ -40,6 +41,7 @@ interface Resolved {
   label: string
   when: string
   pending: boolean
+  meetingLink: string | null
 }
 
 const RESEND_COOLDOWN_SECONDS = 60
@@ -68,7 +70,7 @@ async function inCooldown(supabase: SupabaseClient, to: string, messageType: Sms
 async function resolveAppointment(supabase: SupabaseClient, id: string): Promise<Resolved | null> {
   const { data, error } = await supabase
     .from('appointments')
-    .select('id, org_id, status, scheduled_at, service:services ( name ), customer:customers ( first_name, phone_number ), org:organisations ( name, address )')
+    .select('id, org_id, status, scheduled_at, meeting_link, service:services ( name ), customer:customers ( first_name, phone_number ), org:organisations ( name, address )')
     .eq('id', id)
     .single()
   if (error || !data) return null
@@ -84,6 +86,7 @@ async function resolveAppointment(supabase: SupabaseClient, id: string): Promise
     label: service?.name ?? '',
     when: fmtDateTime(data.scheduled_at),
     pending: data.status === 'pending',
+    meetingLink: data.meeting_link ?? null,
   }
 }
 
@@ -146,11 +149,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'customer has no phone' }, { status: 422, headers: corsHeaders })
     }
 
-    // appointment_reminder only applies to appointments; everything else uses
-    // the shared booking-confirmation body (approval_update reuses it too).
-    const SUPPORTED: SmsMessageType[] = ['booking_confirmation', 'approval_update', 'appointment_reminder']
+    // appointment_reminder only applies to appointments; meeting_link carries
+    // the per-appointment join URL; everything else uses the shared booking-
+    // confirmation body (approval_update reuses it too).
+    const SUPPORTED: SmsMessageType[] = ['booking_confirmation', 'approval_update', 'appointment_reminder', 'meeting_link']
     if (!SUPPORTED.includes(message_type)) {
       return Response.json({ error: `unsupported message_type: ${message_type}` }, { status: 400, headers: corsHeaders })
+    }
+
+    // The meeting-link message exists only to deliver the URL — refuse if none
+    // is set (the owner hasn't attached one yet).
+    if (message_type === 'meeting_link' && !resolved.meetingLink) {
+      return Response.json({ error: 'no meeting link set' }, { status: 422, headers: corsHeaders })
     }
 
     if (await inCooldown(supabase, to, message_type)) {
@@ -164,7 +174,14 @@ Deno.serve(async (req) => {
       pending: resolved.pending,
       address: resolved.address,
     }
-    const body = message_type === 'appointment_reminder'
+    const body = message_type === 'meeting_link'
+      ? meetingLinkBody({
+          businessName: resolved.businessName,
+          serviceName: resolved.label,
+          when: resolved.when,
+          meetingLink: resolved.meetingLink!,
+        })
+      : message_type === 'appointment_reminder'
       ? appointmentReminderBody(details)
       : bookingConfirmationBody(details)
 

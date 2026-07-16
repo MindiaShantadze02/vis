@@ -41,6 +41,6 @@ test.describe('Settings — Services', () => {
     await expect(page.getByText(renamed)).toHaveCount(0)
   })
 
-  // Save-gating boundaries (name/duration/price/capacity/online-link) are
-  // data-driven now — see e2e/data/services.json + e2e/data-driven/services.spec.ts.
+  // Save-gating boundaries (name/duration/price/capacity) are data-driven now
+  // — see e2e/data/services.json + e2e/data-driven/services.spec.ts.
 })

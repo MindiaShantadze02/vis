@@ -17,8 +17,6 @@ export interface OnboardingService {
   duration_minutes: number
   price: number
   location_type: ServiceLocationType
-  // Only meaningful for online services; null otherwise.
-  meeting_link: string | null
   // Gallery images staged as Files until finish — the storage path needs the
   // service row's id, which only exists after the insert. Previews are local
   // blob: URLs shown while editing.

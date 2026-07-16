@@ -1,5 +1,5 @@
 {
-  "_doc": "Service editor save gating (ServicesSettings: name >= 2, duration in (0, 1440], price in [0, MAX_PRICE], capacity >= 1, online => valid http(s) meeting link). Driven by e2e/data-driven/services.spec.ts. The spec fills `base`, then per case applies `fields` (deltas), asserts service-save enabled === valid, and restores the touched base fields. Nothing is ever saved — the create/edit/delete flow test in settings-services.spec.ts is the representative submit.",
+  "_doc": "Service editor save gating (ServicesSettings: name >= 2, duration in (0, 1440], price in [0, MAX_PRICE], capacity >= 1). The online/in_person toggle no longer reveals a per-service meeting link — links are per-appointment now (see appointments.meeting_link / OverviewPage). Driven by e2e/data-driven/services.spec.ts. The spec fills `base`, then per case applies `fields` (deltas), asserts service-save enabled === valid, and restores the touched base fields. Nothing is ever saved — the create/edit/delete flow test in settings-services.spec.ts is the representative submit.",
   "meta": { "nameMin": 2, "durationMax": 1440, "maxPrice": 99999999.99, "capacityMin": 1 },
   "base": { "name": "Boundary Svc", "duration": "60", "price": "10", "capacity": "1" },
   "cases": [
@@ -13,17 +13,9 @@
     { "id": "capacity-bva-1", "technique": "BVA", "target": "capacity", "fields": { "capacity": "1" }, "valid": true, "note": "1 = minimum boundary" },
     { "id": "price-bva-0", "technique": "BVA", "target": "price", "fields": { "price": "0" }, "valid": true, "note": "0 = lower boundary (free service allowed). The negative partition can't be typed — the price input filters it — so it's covered logically via the isNonNegativeNumber invariant." },
     { "id": "price-bva-max", "technique": "BVA", "target": "price", "fields": { "price": "99999999.99" }, "valid": true, "note": "MAX_PRICE = numeric(10,2) ceiling" },
-    { "id": "price-bva-over-max", "technique": "BVA", "target": "price", "fields": { "price": "100000000" }, "valid": false, "note": "MAX_PRICE + 0.01 partition (next representable value up)" },
-    { "id": "online-pairwise-empty-link", "technique": "pairwise", "target": "link", "fields": { "online": true, "link": "" }, "valid": false, "note": "online × empty link" },
-    { "id": "online-pairwise-invalid-link", "technique": "pairwise", "target": "link", "fields": { "online": true, "link": "not-a-url" }, "valid": false, "note": "online × malformed link" },
-    { "id": "online-pairwise-ftp-link", "technique": "pairwise", "target": "link", "fields": { "online": true, "link": "ftp://meet.example.com/room" }, "valid": false, "note": "online × non-http(s) scheme (isValidUrl requires http/https)" },
-    { "id": "online-pairwise-valid-link", "technique": "pairwise", "target": "link", "fields": { "online": true, "link": "https://meet.example.com/room" }, "valid": true, "note": "online × valid https link" },
-    { "id": "inperson-pairwise-stale-link", "technique": "pairwise", "target": "link", "fields": { "online": false, "link": "not-a-url" }, "valid": true, "note": "in-person × leftover invalid link is ignored" }
+    { "id": "price-bva-over-max", "technique": "BVA", "target": "price", "fields": { "price": "100000000" }, "valid": false, "note": "MAX_PRICE + 0.01 partition (next representable value up)" }
   ],
   "invariants": [
-    { "fn": "isValidUrl", "input": "https://meet.example.com/room", "expect": true },
-    { "fn": "isValidUrl", "input": "not-a-url", "expect": false },
-    { "fn": "isValidUrl", "input": "ftp://meet.example.com/room", "expect": false },
     { "fn": "isNonNegativeNumber", "input": -1, "expect": false },
     { "fn": "isNonNegativeNumber", "input": 0, "expect": true }
   ]

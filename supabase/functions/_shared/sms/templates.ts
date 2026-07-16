@@ -117,6 +117,31 @@ export function passwordResetCodeBody(code: string, lang: SmsLang = 'ka'): strin
   }
 }
 
+export interface MeetingLinkData {
+  businessName: string
+  serviceName: string
+  // Already-formatted, human-readable local date/time string.
+  when: string
+  // The per-appointment join URL. Required — this message exists to deliver it.
+  meetingLink: string
+}
+
+// Sent when the owner attaches/updates the join link for an online appointment
+// and taps "Send to customer". The URL is the whole point, so it goes last and
+// unabbreviated even though it may push the message onto a second segment.
+export function meetingLinkBody(data: MeetingLinkData, lang: SmsLang = 'ka'): string {
+  const { businessName, serviceName, when, meetingLink } = data
+  switch (lang) {
+    case 'en':
+      return `${businessName}: join link for your ${serviceName} on ${when}: ${meetingLink}`
+    case 'ru':
+      return `${businessName}: ссылка для подключения — ${serviceName}, ${when}: ${meetingLink}`
+    case 'ka':
+    default:
+      return `${businessName}: შეხვედრის ბმული — ${serviceName}, ${when}: ${meetingLink}`
+  }
+}
+
 // Type-check helper so adding a SmsMessageType reminds you a template may be
 // needed. Not all types are wired yet (admin_*, invitation).
 export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
@@ -125,4 +150,5 @@ export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
   'verification_code',
   'appointment_reminder',
   'setup_complete',
+  'meeting_link',
 ]

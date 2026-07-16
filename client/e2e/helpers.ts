@@ -165,6 +165,30 @@ export async function signInSeed(): Promise<{ url: string; anonKey: string; acce
   return { url, anonKey, accessToken: access_token }
 }
 
+export type SeedCtx = Awaited<ReturnType<typeof signInSeed>>
+
+/**
+ * PostgREST call as the seeded owner (for specs that seed/clean rows the UI
+ * can't easily create). Do NOT pass `Prefer: return=representation` unless you
+ * need the row back AND it's visible under the table's SELECT policy — a
+ * freshly-inserted customer isn't (customers_select needs a linked appointment),
+ * so requesting it back raises 42501. Returns parsed JSON, or null on empty body.
+ */
+export async function restApi(ctx: SeedCtx, path: string, init: RequestInit = {}) {
+  const res = await fetch(`${ctx.url}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: ctx.anonKey,
+      authorization: `Bearer ${ctx.accessToken}`,
+      'content-type': 'application/json',
+      ...(init.headers ?? {}),
+    },
+  })
+  if (!res.ok) throw new Error(`${init.method ?? 'GET'} ${path} → ${res.status} ${await res.text()}`)
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
+}
+
 /** A short, unique label so created rows are easy to spot and clean up. */
 export function tag(prefix: string): string {
   return `${prefix} ${Date.now().toString().slice(-6)}`

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import {
-  Typography, Box, Skeleton, Button,
+  Typography, Box, Skeleton, Button, Chip,
   TextField, Select, MenuItem, FormControl, InputLabel, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TablePagination,
   useMediaQuery, useTheme,
@@ -24,6 +24,8 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth 
 import { PageHeader, StatStrip, StatusChip, EmptyState, CopyableText, LoadingState, useToast } from '@/components/ui'
 import type { AppointmentStatus } from '@/components/ui'
 import { surface } from '@/theme/theme'
+import { isValidUrl, FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import AddAppointmentDialog from './AddAppointmentDialog'
 import PendingInvites from './PendingInvites'
 import OnboardingChecklist from '@/components/OnboardingChecklist'
@@ -45,8 +47,9 @@ interface Appointment {
   payment_status: string
   notes: string | null
   admin_notes: string | null
+  meeting_link: string | null
   customers: { first_name: string; last_name: string | null; phone_number: string } | null
-  services: { name: string; price: number; duration_minutes: number } | null
+  services: { name: string; price: number; duration_minutes: number; location_type: string } | null
   staff: StaffRef | null
 }
 
@@ -59,6 +62,15 @@ interface Stats {
 
 const ALL_STATUSES: AppointmentStatus[] = ['pending', 'approved', 'rejected', 'cancelled', 'completed']
 const GRID_COLS = '140px 1fr 1fr 100px 90px 140px'
+
+// An online-service appointment that's still live (pending/approved) but has no
+// join link yet — the owner needs to attach and send one. Drives the list cue
+// and the dialog's meeting-link section.
+const needsMeetingLink = (a: Appointment) =>
+  a.services?.location_type === 'online' && !a.meeting_link &&
+  (a.status === 'pending' || a.status === 'approved')
+
+const isOnlineAppt = (a: Appointment) => a.services?.location_type === 'online'
 
 // ── Main Page ─────────────────────────────────────────────────
 
@@ -88,6 +100,10 @@ export default function OverviewPage() {
 
   const [selected, setSelected] = useState<Appointment | null>(null)
   const [adminNote, setAdminNote] = useState('')
+  // Per-appointment online meeting link, edited in the detail dialog.
+  const [meetingLink, setMeetingLink] = useState('')
+  const [meetingLinkSubmitted, setMeetingLinkSubmitted] = useState(false)
+  const [sendingLink, setSendingLink] = useState(false)
   // Inline two-step guard for cancelling an already-approved appointment.
   const [confirmingCancel, setConfirmingCancel] = useState(false)
   // Inline two-step guard for erasing a client's personal data (Art. 16).
@@ -242,6 +258,35 @@ export default function OverviewPage() {
       setConfirmingCancel(false)
     }
     setActionLoading(null)
+  }
+
+  // Save the per-appointment join link and text it to the customer in one
+  // action (the request_meeting_link_sms RPC POSTs to the send-sms edge fn).
+  // Kept separate from status changes so it works on already-approved
+  // appointments — including paid ones auto-approved before the owner sees them.
+  async function sendMeetingLink() {
+    if (!selected) return
+    const link = meetingLink.trim()
+    setMeetingLinkSubmitted(true)
+    if (!isValidUrl(link)) {
+      focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
+      return
+    }
+    setSendingLink(true)
+    const { error: upErr } = await supabase
+      .from('appointments')
+      .update({ meeting_link: link, updated_at: new Date().toISOString() })
+      .eq('id', selected.id)
+    if (upErr) { toast.error(upErr.message); setSendingLink(false); return }
+
+    const { error: rpcErr } = await supabase.rpc('request_meeting_link_sms', { p_appointment_id: selected.id })
+    setSendingLink(false)
+    if (rpcErr) { toast.error(rpcErr.message); return }
+
+    // Reflect the saved link locally so the "needs link" cue clears immediately.
+    setAppointments(prev => prev.map(a => a.id === selected.id ? { ...a, meeting_link: link } : a))
+    setSelected(s => (s ? { ...s, meeting_link: link } : s))
+    toast.success(t('dashboard.meetingLinkSent'))
   }
 
   // Honor a client's erasure request (Art. 16): anonymize their PII on this
@@ -434,15 +479,33 @@ export default function OverviewPage() {
               />
             : <EmptyState icon={<EventBusyOutlinedIcon />} title={t('dashboard.noBookingsFound')} />)
           : appointments.map((appt, i) => {
+            // Online appointments still missing a join link get a warm warning
+            // tint + a left accent stripe so they stand out in the list (matches
+            // the "Link needed" chip). The 3px stripe eats 3px of the left
+            // padding so the row content stays aligned with the others.
+            const needsLink = needsMeetingLink(appt)
             const rowProps = {
               'data-testid': 'appt-row',
-              onClick: () => { setSelected(appt); setAdminNote(appt.admin_notes ?? ''); setConfirmingCancel(false) },
+              onClick: () => {
+                setSelected(appt)
+                setAdminNote(appt.admin_notes ?? '')
+                setMeetingLink(appt.meeting_link ?? '')
+                setMeetingLinkSubmitted(false)
+                setConfirmingCancel(false)
+              },
               sx: {
                 px: 2, py: 2,
                 borderBottom: i < appointments.length - 1 ? '1px solid' : 'none',
                 borderColor: 'divider',
                 cursor: 'pointer',
-                '&:hover': { bgcolor: surface.hover },
+                // Warning tint (palette.warning.main #C8801F) for link-needed rows.
+                ...(needsLink && {
+                  bgcolor: 'rgba(200,128,31,0.09)',
+                  borderLeft: '3px solid',
+                  borderLeftColor: 'warning.main',
+                  pl: 'calc(16px - 3px)',
+                }),
+                '&:hover': { bgcolor: needsLink ? 'rgba(200,128,31,0.16)' : surface.hover },
               },
             }
 
@@ -463,7 +526,13 @@ export default function OverviewPage() {
                         {appt.services?.price} ₾
                       </Typography>
                     </Box>
-                    <StatusChip status={appt.status} />
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+                      <StatusChip status={appt.status} />
+                      {needsMeetingLink(appt) && (
+                        <Chip size="small" color="warning" variant="outlined"
+                          label={t('dashboard.meetingLinkNeeded')} data-testid="appt-needs-link" />
+                      )}
+                    </Box>
                   </Box>
                 </Box>
               )
@@ -507,8 +576,12 @@ export default function OverviewPage() {
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   {appt.services?.price} ₾
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
                   <StatusChip status={appt.status} />
+                  {needsMeetingLink(appt) && (
+                    <Chip size="small" color="warning" variant="outlined"
+                      label={t('dashboard.meetingLinkNeeded')} data-testid="appt-needs-link" />
+                  )}
                 </Box>
               </Box>
             )
@@ -616,6 +689,41 @@ export default function OverviewPage() {
                     multiline rows={2}
                     slotProps={{ htmlInput: { 'data-testid': 'appt-admin-note' } }}
                   />
+                )}
+                {/* Online services get a per-appointment join link the owner
+                    sends to the customer by SMS. Not on the confirmation SMS,
+                    so it works for paid bookings auto-approved before this. */}
+                {isOnlineAppt(selected) && (selected.status === 'pending' || selected.status === 'approved') && (
+                  <Box>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.75 }}>
+                      {t('dashboard.meetingLinkTitle')}
+                    </Typography>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
+                      <TextField
+                        fullWidth size="small"
+                        label={t('settings.meetingLink')}
+                        placeholder="https://"
+                        value={meetingLink}
+                        onChange={e => setMeetingLink(e.target.value)}
+                        error={meetingLinkSubmitted && !isValidUrl(meetingLink.trim())}
+                        helperText={
+                          meetingLinkSubmitted && !isValidUrl(meetingLink.trim())
+                            ? t('validation.invalidUrl')
+                            : t('dashboard.meetingLinkHelp')
+                        }
+                        slotProps={{ htmlInput: { inputMode: 'url', maxLength: FIELD_LIMITS.meetingLink, 'data-testid': 'appt-meeting-link' } }}
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={sendMeetingLink}
+                        disabled={sendingLink}
+                        data-testid="appt-send-meeting-link"
+                        sx={{ whiteSpace: 'nowrap', mt: { sm: 0.25 } }}
+                      >
+                        {t('dashboard.sendMeetingLink')}
+                      </Button>
+                    </Stack>
+                  </Box>
                 )}
               </Stack>
             </DialogContent>

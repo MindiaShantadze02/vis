@@ -11,12 +11,13 @@ const FIELD_TESTIDS: Record<string, string> = {
 
 /**
  * Data-driven validation of the service editor (cases in e2e/data/services.json
- * — BVA on name/duration/price/capacity + pairwise online × meeting-link). Save
- * is never disabled for validation: invalid rows are submitted and must flag
- * the offending field inline (aria-invalid; handleSave validates before any
- * insert/update, so nothing persists). Valid rows are only asserted enabled —
- * clicking one would really create a service — so the dialog is abandoned
- * unsaved. The service-dialog-error Alert remains for server errors.
+ * — BVA on name/duration/price/capacity). Save is never disabled for validation:
+ * invalid rows are submitted and must flag the offending field inline
+ * (aria-invalid; handleSave validates before any insert/update, so nothing
+ * persists). Valid rows are only asserted enabled — clicking one would really
+ * create a service — so the dialog is abandoned unsaved. The service-dialog-error
+ * Alert remains for server errors. (Meeting links are per-appointment now — see
+ * meeting-link.spec.ts — so there's no online × link pairwise here anymore.)
  */
 test.describe('Data-driven — Services', () => {
   test('save validation across all field boundaries and partitions', async ({ page }) => {
@@ -32,26 +33,9 @@ test.describe('Data-driven — Services', () => {
     }
     await expect(save).toBeEnabled()
 
-    const onlineBtn = page.getByRole('button', { name: 'ონლაინ', exact: true })
-    const inPersonBtn = page.getByRole('button', { name: 'ადგილზე', exact: true })
-    // The meeting-link field only exists while the service is online.
-    const meetingLink = page.locator('input[inputmode="url"]')
-
     for (const c of data.cases) {
       await test.step(`[${c.technique}] ${c.id} — ${c.note}`, async () => {
-        const f = c.fields as { online?: boolean; link?: string } & Record<string, unknown>
-
-        if (f.link !== undefined) {
-          // The link can only be typed while online; for in-person × stale-link
-          // we set it online first, then switch back.
-          await onlineBtn.click()
-          await fillStable(meetingLink, f.link)
-          if (f.online === false) await inPersonBtn.click()
-        } else if (f.online !== undefined) {
-          await (f.online ? onlineBtn : inPersonBtn).click()
-        }
         for (const [field, value] of Object.entries(c.fields)) {
-          if (field === 'online' || field === 'link') continue
           await fillStable(page.getByTestId(FIELD_TESTIDS[field]), String(value))
         }
 
@@ -62,9 +46,7 @@ test.describe('Data-driven — Services', () => {
         }
 
         // Restore the base for everything this case touched.
-        if (f.online !== undefined || f.link !== undefined) await inPersonBtn.click()
         for (const field of Object.keys(c.fields)) {
-          if (field === 'online' || field === 'link') continue
           await fillStable(
             page.getByTestId(FIELD_TESTIDS[field]),
             data.base[field as keyof typeof data.base],

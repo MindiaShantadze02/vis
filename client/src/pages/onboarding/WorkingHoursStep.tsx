@@ -199,7 +199,7 @@ export default function WorkingHoursStep() {
         const { data: createdSvcs, error: svcErr } = await supabase.from('services').insert(
           data.services.map((s, i) => ({
             org_id: orgId, name: s.name, duration_minutes: s.duration_minutes, price: s.price, sort_order: i,
-            location_type: s.location_type, meeting_link: s.meeting_link,
+            location_type: s.location_type,
           })),
         ).select('id')
         if (svcErr) throw new Error(svcErr.message)

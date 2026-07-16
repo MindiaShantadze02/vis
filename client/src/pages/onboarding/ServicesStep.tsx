@@ -12,7 +12,7 @@ import { Add as AddIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { ActionIconButton, EmptyState, SkeletonImage, useToast } from '@/components/ui'
 import { HONEY } from '@/theme/theme'
-import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
+import { isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import ServiceImagesEditor from '@/components/ServiceImagesEditor'
 import { serviceImageFileError, MAX_IMAGES_PER_SERVICE, MAX_SERVICE_IMAGE_MB } from '@/lib/serviceImages'
@@ -39,13 +39,12 @@ interface DraftService {
   duration_minutes: string
   price: string
   location_type: ServiceLocationType
-  meeting_link: string
   images: DraftImage[]
 }
 
 const empty: DraftService = {
   name: '', duration_minutes: '30', price: '0',
-  location_type: 'in_person', meeting_link: '', images: [],
+  location_type: 'in_person', images: [],
 }
 
 // An appointment may last at most 24 hours. Mirrors the DB constraint
@@ -74,17 +73,11 @@ export default function ServicesStep() {
   const nameTooShort = (submitted || draft.name.trim().length > 0) && draft.name.trim().length < 2
   const priceInvalid = draft.price.trim().length > 0 &&
     (!isNonNegativeNumber(Number(draft.price)) || Number(draft.price) > MAX_PRICE)
-  // Online services must carry a valid meeting link; in-person services ignore it.
-  const isOnline = draft.location_type === 'online'
-  const meetingLinkMissing = isOnline && draft.meeting_link.trim().length === 0
-  const meetingLinkInvalid = isOnline && draft.meeting_link.trim().length > 0 && !isValidUrl(draft.meeting_link)
   const draftValid =
     draft.name.trim().length >= 2 &&
     Number(draft.duration_minutes) > 0 &&
     !durationTooLong &&
-    !priceInvalid &&
-    !meetingLinkMissing &&
-    !meetingLinkInvalid
+    !priceInvalid
   const isEditing = editingIndex !== null
 
   function resetForm() {
@@ -123,8 +116,6 @@ export default function ServicesStep() {
       duration_minutes: Number(draft.duration_minutes),
       price: Number(draft.price) || 0,
       location_type: draft.location_type,
-      // A meeting link only applies to online services (DB enforces this too).
-      meeting_link: draft.location_type === 'online' ? (draft.meeting_link.trim() || null) : null,
       imageFiles: draft.images.map(i => i.file),
       imagePreviews: draft.images.map(i => i.url),
     }
@@ -143,7 +134,6 @@ export default function ServicesStep() {
       duration_minutes: String(svc.duration_minutes),
       price: String(svc.price),
       location_type: svc.location_type,
-      meeting_link: svc.meeting_link ?? '',
       // Re-hydrate staged images so editing a row keeps its gallery. Files and
       // their existing preview URLs are reused (no re-encode).
       images: svc.imageFiles.map((file, i) => ({ key: `${index}-${i}`, file, url: svc.imagePreviews[i] })),
@@ -303,24 +293,6 @@ export default function ServicesStep() {
               <ToggleButton value="online">{t('settings.locationOnline')}</ToggleButton>
             </ToggleButtonGroup>
           </Box>
-          {draft.location_type === 'online' && (
-            <TextField
-              fullWidth
-              label={t('settings.meetingLink')}
-              value={draft.meeting_link}
-              onChange={e => setDraft(d => ({ ...d, meeting_link: e.target.value }))}
-              placeholder="https://"
-              required
-              error={meetingLinkMissing || meetingLinkInvalid}
-              helperText={
-                meetingLinkMissing ? t('validation.meetingLinkRequired')
-                : meetingLinkInvalid ? t('validation.invalidUrl')
-                : t('settings.meetingLinkHelp')
-              }
-              slotProps={{ htmlInput: { inputMode: 'url', maxLength: FIELD_LIMITS.meetingLink } }}
-              sx={{ mb: 2 }}
-            />
-          )}
           <Box sx={{ mb: 2 }}>
             <ServiceImagesEditor
               images={draft.images.map(i => ({ key: i.key, url: i.url }))}

@@ -27,7 +27,8 @@ Happy paths + edge cases (validation gating, route guards, error states):
 | `onboarding.spec.ts` | full 3-step onboarding → org (self-cleans) | step-1 "next" gating, a typed-but-not-added service is kept on Next, skip → dashboard, org-guard bounce |
 | `booking.spec.ts` | public in-person booking + OTP → auto-approved confirmation (075 default) | unknown slug, invalid name/phone gating, **wrong OTP rejected** |
 | `dashboard.spec.ts` | overview stats + link, add-appt dialog, calendar nav | add-appt save gating |
-| `settings-services.spec.ts` | service create → edit → delete (self-cleans) | save gating (empty name / out-of-range price / bad duration); **BVA** on duration/capacity/price + **pairwise** online × meeting-link |
+| `settings-services.spec.ts` | service create → edit → delete (self-cleans) | save gating (empty name / out-of-range price / bad duration); **BVA** on duration/capacity/price |
+| `meeting-link.spec.ts` | per-appointment online link: owner pastes a link on an online-service appointment and sends it via SMS (seeds an approved online appt over PostgREST; cancels + deactivates in teardown) | invalid-link inline flag, "link needed" cue clears + link round-trips through `search_appointments` |
 | `settings-team.spec.ts` | add/delete professional; invite by phone + cancel (self-clean) | invite-send gating, add-professional name gating |
 | `appointment-status.spec.ts` | **state-transition** of the status machine (pending→approved→cancelled, pending→rejected); flips the org to require-approval for the spec (restored after) | terminal-state & illegal-transition guardrails, status-filter **ECP** — self-cleans (cancel + erase) |
 | `calendar.spec.ts` | approve a pending booking from the calendar drawer (flips the org to require-approval, restored after) | resilient pill/group locate — self-cleans |
@@ -47,7 +48,7 @@ Happy paths + edge cases (validation gating, route guards, error states):
   drive through the live UI (every phone length, price/duration/advance-day edge, the
   60-char slug cut, the 2 MB image edge) live there.
 - **State-transition** — appointment status machine, forgot-password phases.
-- **Pairwise** — booking Step-3 field combinations, service online × meeting-link.
+- **Pairwise** — booking Step-3 field combinations.
 - **Error-guessing** — catalogued below.
 
 ### Error-guessing catalogue

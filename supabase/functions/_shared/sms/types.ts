@@ -14,6 +14,7 @@ export type SmsMessageType =
   | 'verification_code'
   | 'appointment_reminder'
   | 'setup_complete'
+  | 'meeting_link'
 
 export interface SmsMessage {
   // Bare recipient phone. Providers normalise to whatever format they require

@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, SkeletonImage, FormErrorAlert, useToast } from '@/components/ui'
-import { isValidUrl, isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
+import { isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import ServiceImagesEditor, { type EditorImage } from '@/components/ServiceImagesEditor'
 import {
@@ -32,7 +32,6 @@ interface Service {
   sort_order: number
   max_per_slot: number
   location_type: LocationType
-  meeting_link: string | null
 }
 
 interface BookableMember {
@@ -51,7 +50,6 @@ interface ServiceForm {
   is_active: boolean
   max_per_slot: string
   location_type: LocationType
-  meeting_link: string
 }
 
 const EMPTY: ServiceForm = {
@@ -61,7 +59,6 @@ const EMPTY: ServiceForm = {
   is_active: true,
   max_per_slot: '1',
   location_type: 'in_person',
-  meeting_link: '',
 }
 
 // A dialog gallery item. `id` present = a persisted service_images row (edit
@@ -169,7 +166,6 @@ export default function ServicesSettings() {
       is_active: s.is_active,
       max_per_slot: String(s.max_per_slot),
       location_type: s.location_type,
-      meeting_link: s.meeting_link ?? '',
     })
     setGallery((imagesByService[s.id] ?? []).map(img => ({ key: img.id, id: img.id, url: img.url })))
     const { data } = await supabase.from('service_staff').select('member_id').eq('service_id', s.id)
@@ -261,10 +257,6 @@ export default function ServicesSettings() {
   const priceInvalid = form.price.trim().length > 0 &&
     (!isNonNegativeNumber(Number(form.price)) || Number(form.price) > MAX_PRICE)
   const maxPerSlotInvalid = !(Number(form.max_per_slot) >= 1)
-  // Online services must carry a valid meeting link; in-person services ignore it.
-  const isOnline = form.location_type === 'online'
-  const meetingLinkMissing = isOnline && form.meeting_link.trim().length === 0
-  const meetingLinkInvalid = isOnline && form.meeting_link.trim().length > 0 && !isValidUrl(form.meeting_link)
 
   async function handleSave() {
     if (!org) return
@@ -276,21 +268,13 @@ export default function ServicesSettings() {
       !(Number(form.duration_minutes) > 0) ||
       durationTooLong ||
       priceInvalid ||
-      maxPerSlotInvalid ||
-      meetingLinkMissing ||
-      meetingLinkInvalid
+      maxPerSlotInvalid
     if (invalid) {
       focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
       return
     }
     setSaving(true)
     setError(null)
-
-    // A meeting link only applies to online services. The DB enforces this
-    // too (services_meeting_link_online_only), so drop it for in_person.
-    const meetingLink = form.location_type === 'online'
-      ? (form.meeting_link.trim() || null)
-      : null
 
     let serviceId: string
     if (editing) {
@@ -303,7 +287,6 @@ export default function ServicesSettings() {
           is_active: form.is_active,
           max_per_slot: Number(form.max_per_slot),
           location_type: form.location_type,
-          meeting_link: meetingLink,
         })
         .eq('id', editing.id)
       if (err) { setError(friendlyError(err.message, t)); setSaving(false); return }
@@ -320,7 +303,6 @@ export default function ServicesSettings() {
           is_active: form.is_active,
           max_per_slot: Number(form.max_per_slot),
           location_type: form.location_type,
-          meeting_link: meetingLink,
           sort_order: maxOrder + 1,
         })
         .select('id')
@@ -516,24 +498,12 @@ export default function ServicesSettings() {
                 <ToggleButton value="in_person">{t('settings.locationInPerson')}</ToggleButton>
                 <ToggleButton value="online">{t('settings.locationOnline')}</ToggleButton>
               </ToggleButtonGroup>
+              {form.location_type === 'online' && (
+                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+                  {t('settings.locationOnlineHelp')}
+                </Typography>
+              )}
             </Box>
-            {form.location_type === 'online' && (
-              <TextField
-                label={t('settings.meetingLink')}
-                value={form.meeting_link}
-                onChange={e => setForm(f => ({ ...f, meeting_link: e.target.value }))}
-                fullWidth
-                required
-                placeholder="https://"
-                error={meetingLinkMissing || meetingLinkInvalid}
-                helperText={
-                  meetingLinkMissing ? t('validation.meetingLinkRequired')
-                  : meetingLinkInvalid ? t('validation.invalidUrl')
-                  : t('settings.meetingLinkHelp')
-                }
-                slotProps={{ htmlInput: { inputMode: 'url', maxLength: FIELD_LIMITS.meetingLink } }}
-              />
-            )}
             {bookableMembers.length > 0 && (
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
