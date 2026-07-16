@@ -85,9 +85,12 @@ test.describe('Public booking — mobile', () => {
       pointer events, so a mouse drag drives it the same as a touch swipe). */
   async function swipeStrip(page: import('@playwright/test').Page, direction: 'left' | 'right') {
     const strip = page.getByTestId('book-week-strip')
-    // Let the incoming week's slide-in animation settle before grabbing it —
-    // a drag started mid-entrance is swallowed by the remounting element.
-    await expect(strip.locator('[role="group"]')).toHaveCSS('opacity', '1')
+    // Let the carousel slide settle before grabbing it — during the transition
+    // AnimatePresence keeps BOTH weeks mounted (the outgoing one slides out),
+    // and a drag started mid-entrance is swallowed by the remounting element.
+    const group = strip.locator('[role="group"]')
+    await expect(group).toHaveCount(1)
+    await expect(group).toHaveCSS('transform', 'none')
     const box = (await strip.boundingBox())!
     const y = box.y + box.height / 2
     const fromX = direction === 'left' ? box.x + box.width - 24 : box.x + 24

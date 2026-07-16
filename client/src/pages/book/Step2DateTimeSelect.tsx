@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box, Typography, Button, Avatar, IconButton, useMediaQuery,
 } from '@mui/material'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { ArrowForwardIos as ArrowForwardIosIcon } from '@/components/icons'
 import { EventAvailableOutlined as EventAvailableOutlinedIcon } from '@/components/icons'
@@ -344,6 +344,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   }
 
   function jumpTo(date: Date) {
+    // The next-available shortcut always jumps forward — slide accordingly.
+    setWeekDirection(1)
     setWeekStart(startOfDay(date))
     setSelectedDate(startOfDay(date))
   }
@@ -497,16 +499,27 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
       </Box>
 
       {/* Day selector — 7-col grid; on mobile the row is a swipeable carousel
-          (drag left/right pages the week). Keyed by weekStart so the incoming
-          week slides in from the direction of travel; the wrapper clips the
-          slide offset so nothing pokes outside the layout. */}
-      <Box sx={{ overflow: 'hidden', mb: 3 }} data-testid="book-week-strip">
+          (drag left/right pages the week). A true carousel slide: the outgoing
+          week exits toward one edge WHILE the incoming week enters from the
+          other (AnimatePresence popLayout lets them overlap in the clipping
+          wrapper); `custom` carries the travel direction into both variants.
+          position:relative anchors the popped (absolutely-positioned) exiting
+          element to the wrapper, not the page. */}
+      <Box sx={{ overflow: 'hidden', position: 'relative', mb: 3 }} data-testid="book-week-strip">
+      <AnimatePresence initial={false} custom={weekDirection} mode="popLayout">
       <Box
         component={motion.div}
         key={format(weekStart, 'yyyy-MM-dd')}
-        initial={weekDirection === 0 ? false : { x: weekDirection * 48, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        custom={weekDirection}
+        variants={{
+          enter: (dir: number) => ({ x: dir === 0 ? 0 : `${dir * 100}%` }),
+          center: { x: 0 },
+          exit: (dir: number) => ({ x: dir === 0 ? 0 : `${dir * -100}%` }),
+        }}
+        initial="enter"
+        animate="center"
+        exit="exit"
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         drag={isMobile ? 'x' : false}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.15}
@@ -600,6 +613,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
           )
         })}
       </Box>
+      </AnimatePresence>
       </Box>
 
       {/* Next-available shortcut when the visible week is fully booked / closed */}
