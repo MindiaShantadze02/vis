@@ -32,6 +32,11 @@ export const HONEY = '#F6B042' // reserved accent — price/total on booking pag
 const ACCENT_RGB = '29,91,132'
 const INK_RGB = '22,35,58'
 
+// Error red (palette.error.main) — needed as constants for the focused+error
+// field overrides below.
+const ERROR_MAIN = '#DC3C45'
+const ERROR_RGB = '220,60,69'
+
 // ── Shared design tokens ──────────────────────────────────────
 
 // A single neutral hairline for every border/divider — kills the old boxy
@@ -113,7 +118,7 @@ const theme = createTheme({
       contrastText: '#FFFFFF',
     },
     error: {
-      main:         '#DC3C45',
+      main:         ERROR_MAIN,
       light:        '#FBE0E1',
       dark:         '#B82A33',
       contrastText: '#FFFFFF',
@@ -217,9 +222,20 @@ const theme = createTheme({
               borderColor: ACCENT.main,
               borderWidth: '1.5px',
             },
+            // An invalid field must stay red while focused (e.g. right after
+            // submit focuses it), not flip to the accent blue.
+            '&.Mui-error.Mui-focused': {
+              boxShadow: `0 0 0 3px rgba(${ERROR_RGB},0.14)`,
+            },
+            '&.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderColor: ERROR_MAIN,
+            },
           },
           '& .MuiInputLabel-root.Mui-focused': {
             color: ACCENT.dark,
+          },
+          '& .MuiInputLabel-root.Mui-focused.Mui-error': {
+            color: ERROR_MAIN,
           },
         },
       },

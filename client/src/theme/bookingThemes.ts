@@ -218,8 +218,13 @@ export function makeBookingTheme(bt: BookingTheme): Theme {
               '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: primary },
               '&.Mui-focused': { boxShadow: `0 0 0 3px rgba(${rgb},0.12)` },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: primary },
+              // An invalid field must stay red while focused (e.g. right after
+              // submit focuses it), not flip to the tenant accent colour.
+              '&.Mui-error.Mui-focused': { boxShadow: '0 0 0 3px rgba(211,47,47,0.12)' },
+              '&.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#d32f2f' },
             },
             '& .MuiInputLabel-root.Mui-focused': { color: primary },
+            '& .MuiInputLabel-root.Mui-focused.Mui-error': { color: '#d32f2f' },
           },
         },
       },
