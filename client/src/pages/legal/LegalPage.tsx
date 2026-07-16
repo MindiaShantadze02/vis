@@ -29,7 +29,11 @@ function LegalBlock({ block }: { block: string | string[] }) {
 export default function LegalPage({ type }: { type: LegalDocType }) {
   const navigate = useNavigate()
   const { i18n } = useTranslation()
-  const doc = getLegalDoc(type, i18n.resolvedLanguage ?? i18n.language)
+  const resolved = i18n.resolvedLanguage ?? i18n.language
+  const doc = getLegalDoc(type, resolved)
+  // Mirrors getLegalDoc's fallback: only Georgian gets Georgian chrome text,
+  // every other language (including Russian) gets English.
+  const isKa = resolved === 'ka'
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: { xs: 3, md: 6 } }}>
@@ -40,14 +44,14 @@ export default function LegalPage({ type }: { type: LegalDocType }) {
           size="small"
           sx={{ mb: 2, color: 'text.secondary' }}
         >
-          {i18n.resolvedLanguage === 'en' ? 'Back' : 'უკან'}
+          {isKa ? 'უკან' : 'Back'}
         </Button>
 
         <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.5px', mb: 0.5 }}>
           {doc.title}
         </Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-          {i18n.resolvedLanguage === 'en' ? 'Last updated:' : 'ბოლო განახლება:'} {doc.updated}
+          {isKa ? 'ბოლო განახლება:' : 'Last updated:'} {doc.updated}
         </Typography>
         {doc.note && (
           <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', mt: 1.5 }}>

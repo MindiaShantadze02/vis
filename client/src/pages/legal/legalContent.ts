@@ -239,7 +239,11 @@ const TERMS: Record<Lang, LegalDoc> = {
 
 /** Returns the doc for the given type, preferring the requested language and
  *  falling back to Georgian (the authoritative text, and the app's fallbackLng). */
+// Content only exists in Georgian (authoritative) and English. Languages
+// without a translation (e.g. Russian) fall back to English rather than
+// Georgian, since a Russian-speaking visitor is far more likely to read
+// English than Georgian.
 export function getLegalDoc(type: LegalDocType, lang: string): LegalDoc {
-  const l: Lang = lang === 'en' ? 'en' : 'ka'
+  const l: Lang = lang === 'ka' ? 'ka' : 'en'
   return type === 'privacy' ? PRIVACY[l] : TERMS[l]
 }
