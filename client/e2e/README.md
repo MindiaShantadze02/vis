@@ -98,9 +98,13 @@ its active service + Mon–Fri hours intact, or the booking/dashboard specs will
 - **Superadmin privileged flows** (tier change, add/remove superadmin) need a
   superadmin test account — not provisioned here. `superadmin.spec.ts` covers only
   the access guard.
-- **Online-payment booking path** and the mock checkout (`/pay/mock`) — the seeded
-  org is in-person only, so the payment selector never renders. Needs an org with a
-  BOG/TBC provider enabled to exercise `create-payment` → `payment-webhook`.
+- ~~Online-payment booking path~~ — now covered by `refund.spec.ts`, which
+  temporarily enables `payment_config.bog.enabled` on the seed org to drive
+  guest checkout → `/pay/mock` → `payment-webhook` → cancel-with-refund
+  (`refund-payment`). Still NOT covered: the webhook's auto-refund on
+  fulfilment failure (charge cleared but appointment creation failed) — forcing
+  it needs a mid-checkout slot conflict; verify that path manually via
+  payment_log (`status='refunded'` with the fulfilment error in `error`).
 - **Embed postMessage bridge** and **invitation-accept** — need extra harness setup.
 
 Because everything shares one hosted DB and one seeded account, the suite runs

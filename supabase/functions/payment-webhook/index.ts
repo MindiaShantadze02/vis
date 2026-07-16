@@ -1,9 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { finalizePaymentLog, getPaymentProvider } from '../_shared/payments/index.ts'
+import { executeRefund, finalizePaymentLog, getPaymentProvider } from '../_shared/payments/index.ts'
+import { sendSms, refundUpdateBody } from '../_shared/sms/index.ts'
 
+// v10: fulfilment failure after a cleared charge now AUTO-REFUNDS (see below).
+//
 // Settles a payment and applies its side effects:
 //   * appointment  paid  → payment_status='paid', status='approved'
 //                          (the pending→approved UPDATE fires the approval SMS)
+//   * appointment  paid but unfulfillable (slot conflict / tier limit during
+//     checkout) → automatic refund via the provider seam + customer SMS. This
+//     is a system fault, so no human decision is involved — money taken for a
+//     booking that never existed must go straight back.
 //   * subscription paid  → subscription_payments='paid' + org tier/expiry updated
 //                          (the tier change resets the usage anchor via trigger)
 //
@@ -160,12 +167,50 @@ Deno.serve(async (req) => {
 
       if (!apptId) {
         // Charge succeeded but the booking couldn't be created (e.g. the slot
-        // was taken or the limit hit during checkout). Flag for follow-up/refund.
+        // was taken or the limit hit during checkout) — auto-refund. A system
+        // fault took the money, so it goes straight back, no human in the loop.
         await admin.from('pending_bookings').update({ status: 'failed' }).eq('id', id)
-        await finalizePaymentLog(admin, ref, 'failed', fulfilErr ?? undefined)
-        // Detail is recorded in payment_log for refund reconciliation; not echoed
-        // to the caller so internal DB errors don't leak.
         console.error('[payment-webhook] fulfilment_failed:', fulfilErr)
+        try {
+          // On success payment_log flips 'refunded' with the fulfilment error
+          // preserved in `error` — the true story: collected, then returned.
+          await executeRefund(admin, {
+            providerReference: ref,
+            amount: Number(pb.amount),
+            currency: pb.currency ?? 'GEL',
+            note: fulfilErr ?? undefined,
+          })
+          // Tell the customer their money is coming back. No appointment row
+          // exists, so the details come from the parked booking itself.
+          const { data: orgRow } = await admin
+            .from('organisations').select('name').eq('id', pb.org_id).maybeSingle()
+          const { data: svcRow } = await admin
+            .from('services').select('name').eq('id', pb.service_id).maybeSingle()
+          await sendSms(admin, {
+            orgId: pb.org_id,
+            appointmentId: null,
+            messageType: 'refund_update',
+            to: pb.phone,
+            body: refundUpdateBody({
+              businessName: orgRow?.name ?? 'Vis',
+              serviceName: svcRow?.name ?? '',
+              amount: Number(pb.amount),
+              currency: pb.currency ?? 'GEL',
+            }),
+          })
+        } catch (refundErr) {
+          // Refund couldn't be issued (e.g. real gateway down / stub): keep the
+          // log 'failed' with both errors so superadmin reconciliation finds
+          // the charge still owed back.
+          const msg = refundErr instanceof Error ? refundErr.message : String(refundErr)
+          await finalizePaymentLog(
+            admin, ref, 'failed',
+            `${fulfilErr ?? 'fulfilment_failed'}; auto_refund_failed: ${msg}`,
+          )
+        }
+        // Detail is recorded in payment_log; not echoed to the caller so
+        // internal DB errors don't leak. The customer-facing outcome is the
+        // same either way (booking failed).
         return Response.json({ error: 'fulfilment_failed' }, { status: 409, headers: corsHeaders })
       }
 

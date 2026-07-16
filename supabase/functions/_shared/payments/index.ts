@@ -5,7 +5,10 @@ import { MockPaymentProvider } from './mock.ts'
 // import { BogPaymentProvider } from './bog.ts'
 // import { TbcPaymentProvider } from './tbc.ts'
 
-export type { CheckoutResult, CreateCheckoutParams, PaymentProvider, PaymentPurpose } from './types.ts'
+export type {
+  CheckoutResult, CreateCheckoutParams, PaymentProvider, PaymentPurpose,
+  RefundParams, RefundResult,
+} from './types.ts'
 
 // ---------------------------------------------------------------------------
 // Provider factory
@@ -132,6 +135,88 @@ export async function startCheckout(
         .eq('id', logId)
         .then(() => {}, () => {})
     }
+    throw err
+  }
+}
+
+export interface ExecuteRefundParams {
+  // The original charge's gateway reference (payment_log.provider_reference).
+  providerReference: string
+  // Full charge amount + currency — callers pass what payment_log/
+  // pending_bookings recorded, never a recomputed price.
+  amount: number
+  currency: string
+  // Optional context stored in payment_log.error on success (e.g. the
+  // fulfilment failure that triggered an auto-refund) — `error` doubles as the
+  // row's free-text detail field.
+  note?: string
+}
+
+// Refunds a settled charge through the active provider and records the
+// transition in payment_log (status 'refunded' + refunded_at/refund_reference,
+// migration 086). Used by refund-payment (admin cancel) and payment-webhook
+// (auto-refund when fulfilment fails after a cleared charge).
+//
+// THROWS on any failure ('log_not_found' | 'provider_mismatch' |
+// 'provider_not_configured' | gateway errors) — money movement must never fail
+// silently; callers decide the user-facing outcome and roll back their own
+// state. A thrown refund leaves payment_log.status untouched (still 'paid')
+// with the refund error appended to `error` for superadmin reconciliation.
+//
+// Requires a service-role client.
+export async function executeRefund(
+  supabase: SupabaseClient,
+  params: ExecuteRefundParams,
+): Promise<{ refundReference: string }> {
+  // The log row carries the provider that took the charge and gives us a
+  // stable idempotency key (its id) for gateway retries.
+  const { data: log } = await supabase
+    .from('payment_log')
+    .select('id, provider, status, error')
+    .eq('provider_reference', params.providerReference)
+    .maybeSingle()
+  if (!log) throw new Error('log_not_found')
+
+  const provider = await getPaymentProvider(supabase)
+  if (provider.name !== log.provider) {
+    // Fail closed: never push a refund through a different gateway than the
+    // one that charged (e.g. after a platform provider switch).
+    throw new Error('provider_mismatch')
+  }
+
+  try {
+    const result = await provider.refund({
+      providerReference: params.providerReference,
+      amount: params.amount,
+      currency: params.currency,
+      idempotencyKey: log.id,
+    })
+
+    await supabase
+      .from('payment_log')
+      .update({
+        status: 'refunded',
+        refunded_at: new Date().toISOString(),
+        refund_reference: result.refundReference,
+        error: params.note ?? log.error ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', log.id)
+
+    return { refundReference: result.refundReference }
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err)
+    console.error(`[payments] refund failed (ref=${params.providerReference}): ${error}`)
+    // Keep the row's status; append the refund failure so reconciliation
+    // (superadmin payment_log review) can find charges still owed back.
+    await supabase
+      .from('payment_log')
+      .update({
+        error: [log.error, `refund_failed: ${error}`].filter(Boolean).join('; '),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', log.id)
+      .then(() => {}, () => {})
     throw err
   }
 }

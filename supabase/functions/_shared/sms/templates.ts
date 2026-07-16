@@ -142,6 +142,33 @@ export function meetingLinkBody(data: MeetingLinkData, lang: SmsLang = 'ka'): st
   }
 }
 
+export interface RefundUpdateData {
+  businessName: string
+  serviceName: string
+  // Full refunded amount in human units + its currency (GEL for now); shown so
+  // the customer knows exactly what to expect back on their card.
+  amount: number
+  currency: string
+}
+
+// Sent when a paid online booking is cancelled and the money is returned
+// (admin cancel-with-refund, or the automatic refund when fulfilment fails
+// after a cleared charge). Settlement takes days, so the message says the
+// amount is on its way rather than already back.
+export function refundUpdateBody(data: RefundUpdateData, lang: SmsLang = 'ka'): string {
+  const { businessName, serviceName, amount, currency } = data
+  const sum = currency === 'GEL' ? `${amount}₾` : `${amount} ${currency}`
+  switch (lang) {
+    case 'en':
+      return `${businessName}: your booking for ${serviceName} was cancelled. The ${sum} you paid will be returned to your card within a few days.`
+    case 'ru':
+      return `${businessName}: ваша запись на ${serviceName} отменена. Оплаченные ${sum} вернутся на вашу карту в течение нескольких дней.`
+    case 'ka':
+    default:
+      return `${businessName}: თქვენი ჯავშანი — ${serviceName} — გაუქმდა. გადახდილი ${sum} რამდენიმე დღეში დაგიბრუნდებათ ბარათზე.`
+  }
+}
+
 // Type-check helper so adding a SmsMessageType reminds you a template may be
 // needed. Not all types are wired yet (admin_*, invitation).
 export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
@@ -151,4 +178,5 @@ export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
   'appointment_reminder',
   'setup_complete',
   'meeting_link',
+  'refund_update',
 ]

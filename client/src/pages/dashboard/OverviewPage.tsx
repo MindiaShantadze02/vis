@@ -4,7 +4,7 @@ import {
   Typography, Box, Skeleton, Button, Chip,
   TextField, Select, MenuItem, FormControl, InputLabel, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TablePagination,
-  useMediaQuery, useTheme,
+  useMediaQuery, useTheme, FormControlLabel, Checkbox,
 } from '@mui/material'
 import { AppDatePicker } from '@/components/AppDatePicker'
 import { Add as AddIcon } from '@/components/icons'
@@ -106,6 +106,10 @@ export default function OverviewPage() {
   const [sendingLink, setSendingLink] = useState(false)
   // Inline two-step guard for cancelling an already-approved appointment.
   const [confirmingCancel, setConfirmingCancel] = useState(false)
+  // Cancel-with-refund choice for PAID online appointments (Fresha model: the
+  // business decides at cancel time — default is to give the money back, but
+  // e.g. a late cancellation may deliberately keep it).
+  const [refundOnCancel, setRefundOnCancel] = useState(true)
   // Inline two-step guard for erasing a client's personal data (Art. 16).
   const [confirmingErase, setConfirmingErase] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -240,6 +244,37 @@ export default function OverviewPage() {
 
   async function changeStatus(id: string, status: 'approved' | 'rejected' | 'cancelled') {
     setActionLoading(id)
+
+    // Cancelling a PAID online appointment with the refund box ticked routes
+    // through the refund-payment edge function, which changes the status AND
+    // refunds the charge in one server-side call — a failed refund leaves the
+    // appointment untouched, so pressing cancel again is a clean retry.
+    const withRefund =
+      status === 'cancelled' && refundOnCancel &&
+      selected?.id === id &&
+      selected.payment_method === 'online' && selected.payment_status === 'paid'
+
+    if (withRefund) {
+      const { data, error: fnErr } = await supabase.functions.invoke('refund-payment', {
+        body: { appointment_id: id, new_status: 'cancelled', admin_note: adminNote || null },
+      })
+      if (fnErr || !data?.ok) {
+        // Appointment is unchanged server-side; keep the dialog open for retry.
+        toast.error(t('dashboard.refundFailed'))
+        setActionLoading(null)
+        return
+      }
+      setAppointments(prev => prev.map(a =>
+        a.id === id ? { ...a, status: 'cancelled', payment_status: 'refunded' } : a))
+      loadStats()
+      toast.success(t('dashboard.refundDone'))
+      setSelected(null)
+      setAdminNote('')
+      setConfirmingCancel(false)
+      setActionLoading(null)
+      return
+    }
+
     const { error } = await supabase
       .from('appointments')
       .update({ status, admin_notes: adminNote || null, updated_at: new Date().toISOString() })
@@ -667,7 +702,9 @@ export default function OverviewPage() {
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>გადახდა</Typography>
                   <Typography variant="body2">
                     {selected.payment_method === 'online' ? 'ონლაინ' : 'ადგილზე'} ·{' '}
-                    {selected.payment_status === 'paid' ? '✓ გადახდილია' : 'გადაუხდელი'}
+                    {selected.payment_status === 'refunded'
+                      ? `↩ ${t('dashboard.refunded')}`
+                      : selected.payment_status === 'paid' ? '✓ გადახდილია' : 'გადაუხდელი'}
                   </Typography>
                 </Box>
                 {/* A completed visit can be reviewed: share this capability link with
@@ -725,6 +762,38 @@ export default function OverviewPage() {
                     </Stack>
                   </Box>
                 )}
+                {/* Refund choice — only while confirming the cancellation of a
+                    PAID online appointment. Checked by default; unticking keeps
+                    the money (e.g. a late cancellation per the business's
+                    policy) and the cancel becomes a plain status change. */}
+                {confirmingCancel
+                  && selected.payment_method === 'online'
+                  && selected.payment_status === 'paid' && (
+                  <Box sx={{
+                    p: 1.5, borderRadius: 2,
+                    border: '1px solid', borderColor: 'divider',
+                    bgcolor: surface.hover,
+                  }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={refundOnCancel}
+                          onChange={e => setRefundOnCancel(e.target.checked)}
+                          size="small"
+                          data-testid="appt-refund-checkbox"
+                        />
+                      }
+                      label={
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {t('dashboard.refundCustomer')}
+                        </Typography>
+                      }
+                    />
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', pl: 3.5 }}>
+                      {t('dashboard.refundHint')}
+                    </Typography>
+                  </Box>
+                )}
               </Stack>
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -765,7 +834,7 @@ export default function OverviewPage() {
                   </>
                 ) : (
                   <Button variant="outlined" color="error" data-testid="appt-cancel"
-                    onClick={() => setConfirmingCancel(true)} disabled={!!actionLoading}>
+                    onClick={() => { setRefundOnCancel(true); setConfirmingCancel(true) }} disabled={!!actionLoading}>
                     {t('dashboard.cancelAppointment')}
                   </Button>
                 )

@@ -141,6 +141,40 @@ export async function setRequireApproval(on: boolean): Promise<void> {
 }
 
 /**
+ * Enable/disable the ONLINE payment option on the seeded org by flipping
+ * payment_config.bog.enabled (the Step-3 payment selector shows "online" when
+ * bog or tbc is enabled; the actual checkout still goes through the
+ * platform-level MOCK provider, so no real gateway is touched). Same direct
+ * PostgREST pattern as setRequireApproval. Off is the seed's resting default —
+ * a spec that turns it on MUST restore it in afterAll, or later specs see an
+ * unexpected payment-method selector in the booking flow.
+ */
+export async function setOnlinePayments(on: boolean): Promise<void> {
+  const { url, anonKey, accessToken } = await signInSeed()
+  const payment_config = {
+    bog: { merchantId: '', apiKey: '', enabled: on },
+    tbc: { merchantId: '', apiKey: '', enabled: false },
+    inPerson: { enabled: true },
+  }
+  const update = await fetch(
+    `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: anonKey,
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+        prefer: 'return=representation',
+      },
+      body: JSON.stringify({ payment_config }),
+    },
+  )
+  if (!update.ok) throw new Error(`payment_config update failed: ${update.status} ${await update.text()}`)
+  const rows = (await update.json()) as { id: string }[]
+  if (!rows.length) throw new Error('payment_config update matched no org')
+}
+
+/**
  * Read the hosted project's URL + anon key from client/.env — for Node-side
  * specs that talk straight to the GoTrue / PostgREST / Edge-Function HTTP
  * endpoints (supabase-js won't construct on Node 20; see setRequireApproval).

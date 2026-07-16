@@ -880,7 +880,9 @@ export default function CalendarPage() {
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.payment')}</Typography>
                 <Typography variant="body2">
                   {selected.payment_method === 'online' ? t('settings.locationOnline') : t('settings.locationInPerson')} ·{' '}
-                  {selected.payment_status === 'paid' ? t('calendar.paid') : t('calendar.unpaid')}
+                  {selected.payment_status === 'refunded'
+                    ? t('calendar.refunded')
+                    : selected.payment_status === 'paid' ? t('calendar.paid') : t('calendar.unpaid')}
                 </Typography>
               </Box>
               <Box>

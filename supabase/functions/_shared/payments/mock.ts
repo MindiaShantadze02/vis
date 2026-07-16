@@ -1,4 +1,6 @@
-import type { CheckoutResult, CreateCheckoutParams, PaymentProvider } from './types.ts'
+import type {
+  CheckoutResult, CreateCheckoutParams, PaymentProvider, RefundParams, RefundResult,
+} from './types.ts'
 
 // Development/no-cost provider. It charges nobody: instead of redirecting to a
 // real bank gateway, it sends the browser to our own /pay/mock screen, which
@@ -28,5 +30,15 @@ export class MockPaymentProvider implements PaymentProvider {
     console.log(`[mock-payment] ${params.purpose} ref=${providerReference}`)
 
     return { checkoutUrl: url.toString(), providerReference, status: 'pending' }
+  }
+
+  // Mock refunds always succeed — nobody was charged, so there is nothing to
+  // return; this exists so the full cancel-with-refund flow (and its
+  // payment_log lifecycle) is exercisable before BOG/TBC are wired in.
+  // deno-lint-ignore require-await
+  async refund(params: RefundParams): Promise<RefundResult> {
+    const refundReference = `refund_mock_${crypto.randomUUID()}`
+    console.log(`[mock-payment] refund ref=${params.providerReference} → ${refundReference}`)
+    return { refundReference, status: 'refunded' }
   }
 }
