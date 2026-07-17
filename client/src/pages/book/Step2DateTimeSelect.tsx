@@ -63,6 +63,11 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   const today = businessToday()
   // Mobile day strip scrolls horizontally; keep the active day in view.
   const dayStripRef = useRef<HTMLDivElement>(null)
+  // Set while a carousel swipe is in progress so the trailing synthetic click
+  // (fired on pointer-up over whatever day cell the finger lifted on) doesn't
+  // select that day. framer only fires onDragStart once real drag movement
+  // begins, so a genuine tap never trips this.
+  const swipedRef = useRef(false)
   // Restore a previously chosen date (yyyy-MM-dd) so it stays selected when
   // returning from the details step.
   const initialSelected = initialDate ? startOfDay(new Date(`${initialDate}T00:00:00`)) : null
@@ -523,9 +528,13 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         drag={isMobile ? 'x' : false}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.15}
+        onDragStart={() => { swipedRef.current = true }}
         onDragEnd={(_: unknown, info: { offset: { x: number } }) => {
           if (info.offset.x <= -SWIPE_THRESHOLD) goNextWeek()
           else if (info.offset.x >= SWIPE_THRESHOLD) goPrevWeek()
+          // Clear on the next macrotask — after the browser has dispatched (and
+          // `select` has swallowed) the click that trails this pointer-up.
+          setTimeout(() => { swipedRef.current = false }, 0)
         }}
         ref={dayStripRef}
         role="group"
@@ -553,7 +562,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
           const isToday = isSameDay(day, today)
           const disabled = !isOpen || isPast || beyondMax || isFull
 
-          const select = () => { if (!disabled) setSelectedDate(day) }
+          const select = () => { if (!disabled && !swipedRef.current) setSelectedDate(day) }
           const ariaLabel = `${format(day, 'EEEE, d MMMM', { locale })}${
             disabled ? ` — ${t(isFull ? 'booking.noSlots' : 'onboarding.closed')}` : ''}`
 
@@ -585,7 +594,11 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                 opacity: disabled ? 0.4 : 1,
                 outline: 'none',
                 '&:focus-visible': { boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.5)}` },
-                '&:hover': disabled || isSelected ? {} : { bgcolor: 'secondary.main', borderColor: 'primary.main' },
+                // Hover only for real pointers — on touch, `:hover` sticks after
+                // a tap/swipe and reads as a phantom selection.
+                '@media (hover: hover)': {
+                  '&:hover': disabled || isSelected ? {} : { bgcolor: 'secondary.main', borderColor: 'primary.main' },
+                },
                 transition: 'all 0.15s cubic-bezier(0.16,1,0.3,1)',
               }}
             >
@@ -720,12 +733,16 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                         animationDelay: `${index * 30}ms`,
                         transition: 'all 0.18s cubic-bezier(0.16,1,0.3,1)',
                         '&:focus-visible': { boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.5)}` },
-                        '&:hover': {
-                          bgcolor: 'primary.main',
-                          boxShadow: glowSoft,
-                          borderColor: 'primary.main',
-                          '& .slot-time': { color: 'white' },
-                          '& .slot-left': { color: alpha('#FFFFFF', 0.85) },
+                        // Hover only for real pointers — see day-cell note above;
+                        // on touch a sticky `:hover` makes a slot look chosen.
+                        '@media (hover: hover)': {
+                          '&:hover': {
+                            bgcolor: 'primary.main',
+                            boxShadow: glowSoft,
+                            borderColor: 'primary.main',
+                            '& .slot-time': { color: 'white' },
+                            '& .slot-left': { color: alpha('#FFFFFF', 0.85) },
+                          },
                         },
                       }}
                     >
