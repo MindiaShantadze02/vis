@@ -21,6 +21,12 @@ export interface Organisation {
   booking_theme: string | null
   reviews_enabled: boolean
   require_approval: boolean
+  // Deposit / cancellation policy (migration 089). Org-level deposit default
+  // (services can override); cancellation policy consumed by self-service cancel.
+  deposit_type: 'none' | 'fixed' | 'percent'
+  deposit_value: number | null
+  cancellation_window_hours: number
+  deposit_refundable: boolean
 }
 
 interface OrgContextValue {

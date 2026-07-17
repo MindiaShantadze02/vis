@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { dateLocale } from "@/lib/dateLocale";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
+import { resolveDeposit, computeDeposit } from "@/lib/deposit";
 import {
   isValidGeorgianPhone,
   formatGeorgianPhone,
@@ -103,9 +104,28 @@ export default function Step3CustomerForm({
     org.payment_config?.bog?.enabled || org.payment_config?.tbc?.enabled;
   const inPersonEnabled = org.payment_config?.inPerson?.enabled !== false;
 
+  // Deposit: a service's own deposit overrides the org default. When one is
+  // required the booking must go through online payment so the deposit is
+  // actually collected (create-payment charges it server-side) — offering
+  // pay-in-person would let the customer bypass it. The balance is due in person.
+  const price = booking.service?.price ?? 0;
+  const depositAmount = computeDeposit(
+    price,
+    resolveDeposit(
+      { type: booking.service?.deposit_type ?? null, value: booking.service?.deposit_value ?? null },
+      { type: org.deposit_type, value: org.deposit_value },
+    ),
+  );
+  const depositRequired = depositAmount > 0;
+  const depositBalance = Math.max(0, price - depositAmount);
+
   const availableMethods: Array<"in_person" | "online"> = [];
-  if (inPersonEnabled) availableMethods.push("in_person");
-  if (onlineEnabled) availableMethods.push("online");
+  if (depositRequired) {
+    availableMethods.push("online");
+  } else {
+    if (inPersonEnabled) availableMethods.push("in_person");
+    if (onlineEnabled) availableMethods.push("online");
+  }
   // Only worth asking the customer when there's an actual choice to make.
   const multiplePaymentOptions = availableMethods.length > 1;
 
@@ -133,13 +153,16 @@ export default function Step3CustomerForm({
   // is 'in_person', which would be wrong for an online-only business, so pin
   // paymentMethod to the only available option here.
   useEffect(() => {
-    const methods: Array<"in_person" | "online"> = [];
-    if (inPersonEnabled) methods.push("in_person");
-    if (onlineEnabled) methods.push("online");
+    const methods: Array<"in_person" | "online"> = depositRequired
+      ? ["online"]
+      : [
+          ...(inPersonEnabled ? (["in_person"] as const) : []),
+          ...(onlineEnabled ? (["online"] as const) : []),
+        ];
     if (methods.length > 0 && !methods.includes(booking.paymentMethod)) {
       onChange({ paymentMethod: methods[0] });
     }
-  }, [inPersonEnabled, onlineEnabled, booking.paymentMethod, onChange]);
+  }, [depositRequired, inPersonEnabled, onlineEnabled, booking.paymentMethod, onChange]);
 
   // Step 1: text a verification code to the customer's phone, then switch to the
   // code-entry view. The booking itself is only created after the code checks out.
@@ -582,6 +605,8 @@ export default function Step3CustomerForm({
                   >
                     {booking.paymentMethod === "in_person"
                       ? t("booking.payInPersonHint")
+                      : depositRequired
+                      ? t("booking.depositHint", { amount: depositAmount })
                       : t("booking.payOnlineHint")}
                   </Typography>
                 </Box>
@@ -675,6 +700,27 @@ export default function Step3CustomerForm({
                   {booking.service?.price} ₾
                 </Typography>
               </Box>
+              {/* Deposit breakdown — what's charged online now vs. due in person. */}
+              {depositRequired && (
+                <Box sx={{ mt: 1 }} data-testid="book-deposit-breakdown">
+                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      {t("booking.depositNow")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }} data-testid="book-deposit-amount">
+                      {depositAmount} ₾
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      {t("booking.depositBalance")}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      {depositBalance} ₾
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
             </Box>
 
             <Button

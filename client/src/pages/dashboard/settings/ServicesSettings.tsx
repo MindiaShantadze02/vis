@@ -23,6 +23,10 @@ import {
 
 type LocationType = 'in_person' | 'online'
 
+// A service's deposit: null type = inherit the org default; 'none' = override
+// to no deposit; 'fixed'/'percent' = a service-specific deposit.
+type ServiceDepositType = 'none' | 'fixed' | 'percent'
+
 interface Service {
   id: string
   name: string
@@ -32,6 +36,8 @@ interface Service {
   sort_order: number
   max_per_slot: number
   location_type: LocationType
+  deposit_type: ServiceDepositType | null
+  deposit_value: number | null
 }
 
 interface BookableMember {
@@ -50,6 +56,9 @@ interface ServiceForm {
   is_active: boolean
   max_per_slot: string
   location_type: LocationType
+  // 'inherit' maps to a null deposit_type (use the org default).
+  deposit_type: 'inherit' | ServiceDepositType
+  deposit_value: string
 }
 
 const EMPTY: ServiceForm = {
@@ -59,6 +68,8 @@ const EMPTY: ServiceForm = {
   is_active: true,
   max_per_slot: '1',
   location_type: 'in_person',
+  deposit_type: 'inherit',
+  deposit_value: '',
 }
 
 // A dialog gallery item. `id` present = a persisted service_images row (edit
@@ -166,6 +177,8 @@ export default function ServicesSettings() {
       is_active: s.is_active,
       max_per_slot: String(s.max_per_slot),
       location_type: s.location_type,
+      deposit_type: s.deposit_type ?? 'inherit',
+      deposit_value: s.deposit_value != null ? String(s.deposit_value) : '',
     })
     setGallery((imagesByService[s.id] ?? []).map(img => ({ key: img.id, id: img.id, url: img.url })))
     const { data } = await supabase.from('service_staff').select('member_id').eq('service_id', s.id)
@@ -257,6 +270,19 @@ export default function ServicesSettings() {
   const priceInvalid = form.price.trim().length > 0 &&
     (!isNonNegativeNumber(Number(form.price)) || Number(form.price) > MAX_PRICE)
   const maxPerSlotInvalid = !(Number(form.max_per_slot) >= 1)
+  // A fixed/percent deposit needs a positive value; a percent can't exceed 100.
+  const depositNeedsValue = form.deposit_type === 'fixed' || form.deposit_type === 'percent'
+  const depositValueInvalid = depositNeedsValue && (
+    !(Number(form.deposit_value) > 0) ||
+    (form.deposit_type === 'percent' && Number(form.deposit_value) > 100)
+  )
+
+  // Resolve the form's deposit into the DB shape: 'inherit' → null (use org
+  // default); 'none' → no deposit; fixed/percent carry a value.
+  const depositPayload = () => ({
+    deposit_type: form.deposit_type === 'inherit' ? null : form.deposit_type,
+    deposit_value: depositNeedsValue ? Number(form.deposit_value) : null,
+  })
 
   async function handleSave() {
     if (!org) return
@@ -268,7 +294,8 @@ export default function ServicesSettings() {
       !(Number(form.duration_minutes) > 0) ||
       durationTooLong ||
       priceInvalid ||
-      maxPerSlotInvalid
+      maxPerSlotInvalid ||
+      depositValueInvalid
     if (invalid) {
       focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
       return
@@ -287,6 +314,7 @@ export default function ServicesSettings() {
           is_active: form.is_active,
           max_per_slot: Number(form.max_per_slot),
           location_type: form.location_type,
+          ...depositPayload(),
         })
         .eq('id', editing.id)
       if (err) { setError(friendlyError(err.message, t)); setSaving(false); return }
@@ -303,6 +331,7 @@ export default function ServicesSettings() {
           is_active: form.is_active,
           max_per_slot: Number(form.max_per_slot),
           location_type: form.location_type,
+          ...depositPayload(),
           sort_order: maxOrder + 1,
         })
         .select('id')
@@ -472,6 +501,45 @@ export default function ServicesSettings() {
               helperText={priceInvalid ? t('validation.priceTooLarge', { max: MAX_PRICE }) : undefined}
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-price' } }}
             />
+            {/* Deposit — per-service override of the org default. Requiring an
+                upfront deposit forces the online-payment path on the booking page. */}
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                {t('settings.depositLabel')}
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                size="small"
+                value={form.deposit_type}
+                onChange={(_, v: 'inherit' | ServiceDepositType | null) => {
+                  if (v) setForm(f => ({ ...f, deposit_type: v }))
+                }}
+              >
+                <ToggleButton value="inherit" data-testid="service-deposit-inherit">{t('settings.depositInherit')}</ToggleButton>
+                <ToggleButton value="none" data-testid="service-deposit-none">{t('settings.depositNone')}</ToggleButton>
+                <ToggleButton value="fixed" data-testid="service-deposit-fixed">{t('settings.depositFixed')}</ToggleButton>
+                <ToggleButton value="percent" data-testid="service-deposit-percent">{t('settings.depositPercent')}</ToggleButton>
+              </ToggleButtonGroup>
+              {depositNeedsValue && (
+                <TextField
+                  value={form.deposit_value}
+                  onChange={e => setForm(f => ({ ...f, deposit_value: onlyDecimal(e.target.value) }))}
+                  fullWidth
+                  size="small"
+                  sx={{ mt: 1.5 }}
+                  label={form.deposit_type === 'percent' ? t('settings.depositPercentValue') : t('settings.depositFixedValue')}
+                  error={depositValueInvalid}
+                  helperText={depositValueInvalid ? t('settings.depositValueInvalid') : undefined}
+                  slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-deposit-value' } }}
+                />
+              )}
+              {form.deposit_type === 'inherit' && (
+                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+                  {t('settings.depositInheritHelp')}
+                </Typography>
+              )}
+            </Box>
             <TextField
               required
               label={t('settings.maxPerSlot')}

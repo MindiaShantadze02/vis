@@ -154,7 +154,9 @@ Deno.serve(async (req) => {
             staff_id: pb.staff_id,
             status: 'approved',
             payment_method: 'online',
-            payment_status: 'paid',
+            // A partial deposit leaves the balance due in person → deposit_paid;
+            // a full charge (no deposit, or a 100%/full-prepay deposit) → paid.
+            payment_status: pb.is_deposit ? 'deposit_paid' : 'paid',
             payment_provider: pb.payment_provider,
             payment_reference: pb.payment_reference,
             notes: pb.notes,

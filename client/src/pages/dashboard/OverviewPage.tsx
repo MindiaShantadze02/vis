@@ -60,7 +60,7 @@ interface Stats {
   pendingCount: number
 }
 
-const ALL_STATUSES: AppointmentStatus[] = ['pending', 'approved', 'rejected', 'cancelled', 'completed']
+const ALL_STATUSES: AppointmentStatus[] = ['pending', 'approved', 'rejected', 'cancelled', 'completed', 'no_show']
 const GRID_COLS = '140px 1fr 1fr 100px 90px 140px'
 
 // An online-service appointment that's still live (pending/approved) but has no
@@ -242,7 +242,7 @@ export default function OverviewPage() {
     setApptLoading(false)
   }
 
-  async function changeStatus(id: string, status: 'approved' | 'rejected' | 'cancelled') {
+  async function changeStatus(id: string, status: 'approved' | 'rejected' | 'cancelled' | 'no_show') {
     setActionLoading(id)
 
     // Cancelling a PAID online appointment with the refund box ticked routes
@@ -834,10 +834,18 @@ export default function OverviewPage() {
                     </Button>
                   </>
                 ) : (
-                  <Button variant="outlined" color="error" data-testid="appt-cancel"
-                    onClick={() => { setRefundOnCancel(true); setConfirmingCancel(true) }} disabled={!!actionLoading}>
-                    {t('dashboard.cancelAppointment')}
-                  </Button>
+                  <>
+                    {/* No-show: the slot was consumed (still counts toward usage)
+                        and any deposit is kept per policy — distinct from a cancel. */}
+                    <Button variant="outlined" color="warning" data-testid="appt-no-show"
+                      onClick={() => changeStatus(selected.id, 'no_show')} disabled={!!actionLoading}>
+                      {t('dashboard.markNoShow')}
+                    </Button>
+                    <Button variant="outlined" color="error" data-testid="appt-cancel"
+                      onClick={() => { setRefundOnCancel(true); setConfirmingCancel(true) }} disabled={!!actionLoading}>
+                      {t('dashboard.cancelAppointment')}
+                    </Button>
+                  </>
                 )
               )}
             </DialogActions>

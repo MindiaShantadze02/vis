@@ -238,7 +238,10 @@
     "statusLabel": "სტატუსი",
     "callToChange": "ჯავშნის გასაუქმებლად ან შესაცვლელად დაგვირეკეთ",
     "bookAnother": "კიდევ ერთი ჯავშანი",
-    "poweredBy": "მუშაობს Vis-ზე"
+    "poweredBy": "მუშაობს Vis-ზე",
+    "depositNow": "დეპოზიტი ახლა",
+    "depositBalance": "დარჩენილი ადგილზე",
+    "depositHint": "დასადასტურებლად ახლა ჩამოიჭრება ₾{{amount}} დეპოზიტი; დანარჩენს გადაიხდით ადგილზე."
   },
   "payment": {
     "sandbox": "სატესტო",
@@ -305,7 +308,9 @@
     "embedProOnly": "ჩააშენეთ ჯავშნის ვიჯეტი თქვენს საიტზე — ხელმისაწვდომია Pro გეგმაზე.",
     "noBookingsYetTitle": "ჯავშნები ჯერ არ არის",
     "noBookingsYetCaption": "გააზიარეთ თქვენი ჯავშნის ბმული ზემოთ — ახალი ჯავშნები აქ გამოჩნდება.",
-    "noBookingsFound": "ჯავშნები ვერ მოიძებნა"
+    "noBookingsFound": "ჯავშნები ვერ მოიძებნა",
+    "markNoShow": "არ გამოცხადდა",
+    "no_show": "არ გამოცხადდა"
   },
   "notifications": {
     "title": "შეტყობინებები",
@@ -439,7 +444,24 @@
     "newPassword": "ახალი პაროლი",
     "passwordChanged": "პაროლი შეიცვალა",
     "passwordChangeFailed": "პაროლის შეცვლა ვერ მოხერხდა — სცადეთ თავიდან.",
-    "staffLimitReached": "თქვენი გეგმა {{limit}} დაჯავშნად თანამშრომელს ითვალისწინებს — მეტისთვის განაახლეთ გეგმა"
+    "staffLimitReached": "თქვენი გეგმა {{limit}} დაჯავშნად თანამშრომელს ითვალისწინებს — მეტისთვის განაახლეთ გეგმა",
+    "depositLabel": "დეპოზიტი",
+    "depositInherit": "ნაგულისხმევი",
+    "depositNone": "არა",
+    "depositFixed": "ფიქსირებული",
+    "depositPercent": "პროცენტი",
+    "depositPercentValue": "პროცენტი (%)",
+    "depositFixedValue": "თანხა (₾)",
+    "depositValueInvalid": "შეიყვანეთ სწორი მნიშვნელობა (პროცენტი 1–100)",
+    "depositInheritHelp": "გამოიყენება ბიზნესის ნაგულისხმევი დეპოზიტი.",
+    "depositTitle": "დეპოზიტები",
+    "depositHelp": "მოითხოვეთ წინასწარი დეპოზიტი ჯავშნის დასადასტურებლად — იხდება ონლაინ. სერვისებს შეუძლიათ ამის შეცვლა.",
+    "cancellationTitle": "გაუქმების პოლიტიკა",
+    "cancellationWindowHours": "უფასო გაუქმების ფანჯარა (საათი)",
+    "cancellationWindowHelp": "ამ საათებით ადრე გაუქმება აბრუნებს დეპოზიტს.",
+    "cancellationWindowInvalid": "შეიყვანეთ მთელი რიცხვი (0 ან მეტი).",
+    "depositRefundable": "დეპოზიტის დაბრუნება გაუქმებისას",
+    "depositRefundableHelp": "გამორთვისას დეპოზიტი გაუქმებისას არ ბრუნდება."
   },
   "days": {
     "monday": "ორშაბათი",

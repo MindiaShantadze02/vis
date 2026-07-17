@@ -175,6 +175,38 @@ export async function setOnlinePayments(on: boolean): Promise<void> {
 }
 
 /**
+ * Set (or clear) the deposit on ALL of the seeded org's services, straight via
+ * PostgREST as the owner (same pattern as setOnlinePayments). bookToDetails
+ * books the first service, so blanketing them guarantees the booked one carries
+ * the deposit. null type clears it (resting default). A spec that sets a deposit
+ * MUST clear it in afterAll — otherwise later booking specs get forced online.
+ */
+export async function setServiceDeposit(
+  depositType: 'none' | 'fixed' | 'percent' | null,
+  depositValue: number | null,
+): Promise<void> {
+  const { url, anonKey, accessToken } = await signInSeed()
+  const headers = {
+    apikey: anonKey,
+    authorization: `Bearer ${accessToken}`,
+    'content-type': 'application/json',
+    prefer: 'return=representation',
+  }
+  const orgRes = await fetch(`${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`, { headers })
+  const orgRows = (await orgRes.json()) as { id: string }[]
+  if (!orgRows.length) throw new Error('setServiceDeposit: seed org not found')
+  const update = await fetch(
+    `${url}/rest/v1/services?org_id=eq.${orgRows[0].id}&select=id`,
+    {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ deposit_type: depositType, deposit_value: depositValue }),
+    },
+  )
+  if (!update.ok) throw new Error(`service deposit update failed: ${update.status} ${await update.text()}`)
+}
+
+/**
  * Read the hosted project's URL + anon key from client/.env — for Node-side
  * specs that talk straight to the GoTrue / PostgREST / Edge-Function HTTP
  * endpoints (supabase-js won't construct on Node 20; see setRequireApproval).

@@ -3,7 +3,7 @@ import {
   Box, Typography, Card, CardContent, Button, TextField,
   Switch, FormControlLabel, Stack, Alert, CircularProgress,
   Divider, Accordion, AccordionSummary, AccordionDetails,
-  InputAdornment, IconButton,
+  InputAdornment, IconButton, ToggleButtonGroup, ToggleButton,
 } from '@mui/material'
 import { ExpandMore as ExpandMoreIcon } from '@/components/icons'
 import { VisibilityOutlined as VisibilityOutlinedIcon } from '@/components/icons'
@@ -35,6 +35,18 @@ export default function PaymentSettings() {
   const [error, setError] = useState<string | null>(null)
   const [showBogKey, setShowBogKey] = useState(false)
   const [showTbcKey, setShowTbcKey] = useState(false)
+
+  // Org default deposit + cancellation policy (migration 089). Services can
+  // override the deposit; the policy is consumed by self-service cancel (Phase 3).
+  const [depositType, setDepositType] = useState<'none' | 'fixed' | 'percent'>('none')
+  const [depositValue, setDepositValue] = useState('')
+  const [cancelWindow, setCancelWindow] = useState('24')
+  const [depositRefundable, setDepositRefundable] = useState(true)
+  const depositNeedsValue = depositType === 'fixed' || depositType === 'percent'
+  const depositValueInvalid = depositNeedsValue && (
+    !(Number(depositValue) > 0) || (depositType === 'percent' && Number(depositValue) > 100)
+  )
+  const cancelWindowInvalid = !(Number(cancelWindow) >= 0) || !Number.isInteger(Number(cancelWindow))
   // Accordions are controlled so we can auto-expand a provider when it's
   // enabled — otherwise its required credential fields stay hidden behind a
   // collapsed panel and the disabled Save button has no visible explanation.
@@ -53,6 +65,10 @@ export default function PaymentSettings() {
         if (pc.bog?.enabled) setBogExpanded(true)
         if (pc.tbc?.enabled) setTbcExpanded(true)
       }
+      setDepositType(org.deposit_type ?? 'none')
+      setDepositValue(org.deposit_value != null ? String(org.deposit_value) : '')
+      setCancelWindow(String(org.cancellation_window_hours ?? 24))
+      setDepositRefundable(org.deposit_refundable ?? true)
     }
   }, [org])
 
@@ -94,12 +110,22 @@ export default function PaymentSettings() {
       focusFirstInvalidFieldAfterRender()
       return
     }
+    if (depositValueInvalid || cancelWindowInvalid) {
+      focusFirstInvalidFieldAfterRender()
+      return
+    }
     setSaving(true)
     setError(null)
 
     const { error: err } = await supabase
       .from('organisations')
-      .update({ payment_config: config })
+      .update({
+        payment_config: config,
+        deposit_type: depositType,
+        deposit_value: depositNeedsValue ? Number(depositValue) : null,
+        cancellation_window_hours: Number(cancelWindow),
+        deposit_refundable: depositRefundable,
+      })
       .eq('id', org.id)
 
     setSaving(false)
@@ -134,6 +160,72 @@ export default function PaymentSettings() {
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {t('settings.inPersonPaymentHelp')}
                   </Typography>
+                </Box>
+              }
+            />
+          </CardContent>
+        </Card>
+
+        {/* Deposit & cancellation policy */}
+        <Card>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{t('settings.depositTitle')}</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
+              {t('settings.depositHelp')}
+            </Typography>
+
+            <ToggleButtonGroup
+              exclusive
+              fullWidth
+              size="small"
+              value={depositType}
+              onChange={(_, v: 'none' | 'fixed' | 'percent' | null) => { if (v) setDepositType(v) }}
+            >
+              <ToggleButton value="none" data-testid="org-deposit-none">{t('settings.depositNone')}</ToggleButton>
+              <ToggleButton value="fixed" data-testid="org-deposit-fixed">{t('settings.depositFixed')}</ToggleButton>
+              <ToggleButton value="percent" data-testid="org-deposit-percent">{t('settings.depositPercent')}</ToggleButton>
+            </ToggleButtonGroup>
+
+            {depositNeedsValue && (
+              <TextField
+                value={depositValue}
+                onChange={e => setDepositValue(e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))}
+                fullWidth
+                size="small"
+                sx={{ mt: 2 }}
+                label={depositType === 'percent' ? t('settings.depositPercentValue') : t('settings.depositFixedValue')}
+                error={depositValueInvalid}
+                helperText={depositValueInvalid ? t('settings.depositValueInvalid') : undefined}
+                slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'org-deposit-value' } }}
+              />
+            )}
+
+            <Divider sx={{ my: 2.5 }} />
+
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1.5 }}>{t('settings.cancellationTitle')}</Typography>
+            <TextField
+              value={cancelWindow}
+              onChange={e => setCancelWindow(e.target.value.replace(/[^0-9]/g, ''))}
+              size="small"
+              label={t('settings.cancellationWindowHours')}
+              error={cancelWindowInvalid}
+              helperText={cancelWindowInvalid ? t('settings.cancellationWindowInvalid') : t('settings.cancellationWindowHelp')}
+              slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'org-cancel-window' } }}
+              sx={{ maxWidth: 240 }}
+            />
+            <FormControlLabel
+              sx={{ mt: 1.5, display: 'block' }}
+              control={
+                <Switch
+                  checked={depositRefundable}
+                  onChange={e => setDepositRefundable(e.target.checked)}
+                  data-testid="org-deposit-refundable"
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.depositRefundable')}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('settings.depositRefundableHelp')}</Typography>
                 </Box>
               }
             />

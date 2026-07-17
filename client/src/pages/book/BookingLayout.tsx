@@ -35,6 +35,12 @@ export interface BookingOrg {
   reviews_enabled: boolean
   review_avg: number | null
   review_count: number
+  // Org-level deposit default + cancellation policy (migration 089/090). A
+  // service's own deposit overrides this default; see lib/deposit resolveDeposit.
+  deposit_type: 'none' | 'fixed' | 'percent'
+  deposit_value: number | null
+  cancellation_window_hours: number
+  deposit_refundable: boolean
 }
 
 // Shape returned by the get_public_org RPC (secrets stripped server-side).
@@ -51,6 +57,10 @@ interface PublicOrg {
   reviews_enabled: boolean
   review_avg: number | null
   review_count: number
+  deposit_type: 'none' | 'fixed' | 'percent' | null
+  deposit_value: number | null
+  cancellation_window_hours: number | null
+  deposit_refundable: boolean | null
 }
 
 export interface BookingService {
@@ -59,6 +69,9 @@ export interface BookingService {
   duration_minutes: number
   price: number
   max_per_slot: number
+  // Per-service deposit (migration 089): null type inherits the org default.
+  deposit_type: 'none' | 'fixed' | 'percent' | null
+  deposit_value: number | null
   // Gallery image URLs in display order; shown in the sidebar once selected.
   images: string[]
 }
@@ -192,6 +205,10 @@ export default function BookingLayout() {
         // PostgREST returns numeric as a string; coerce for display/math.
         review_avg: pub.review_avg != null ? Number(pub.review_avg) : null,
         review_count: Number(pub.review_count ?? 0),
+        deposit_type: pub.deposit_type ?? 'none',
+        deposit_value: pub.deposit_value != null ? Number(pub.deposit_value) : null,
+        cancellation_window_hours: Number(pub.cancellation_window_hours ?? 24),
+        deposit_refundable: pub.deposit_refundable ?? true,
       })
     }
     if (slug) loadOrg()

@@ -235,7 +235,10 @@
     "statusLabel": "Статус",
     "callToChange": "Чтобы отменить или изменить запись, позвоните нам",
     "bookAnother": "Записаться ещё раз",
-    "poweredBy": "Работает на Vis"
+    "poweredBy": "Работает на Vis",
+    "depositNow": "Депозит сейчас",
+    "depositBalance": "Остаток на месте",
+    "depositHint": "Сейчас списывается депозит ₾{{amount}} для подтверждения; остальное — на месте."
   },
   "payment": {
     "sandbox": "Тест",
@@ -302,7 +305,9 @@
     "embedProOnly": "Встройте виджет записи на свой сайт — доступно в тарифе Pro.",
     "noBookingsYetTitle": "Записей пока нет",
     "noBookingsYetCaption": "Поделитесь ссылкой на запись выше — новые записи появятся здесь.",
-    "noBookingsFound": "Записи не найдены"
+    "noBookingsFound": "Записи не найдены",
+    "markNoShow": "Отметить неявку",
+    "no_show": "Неявка"
   },
   "notifications": {
     "title": "Уведомления",
@@ -436,7 +441,24 @@
     "newPassword": "Новый пароль",
     "passwordChanged": "Пароль изменён",
     "passwordChangeFailed": "Не удалось сменить пароль — попробуйте снова.",
-    "staffLimitReached": "Ваш план включает {{limit}} доступных для записи сотрудников — чтобы добавить больше, обновите план"
+    "staffLimitReached": "Ваш план включает {{limit}} доступных для записи сотрудников — чтобы добавить больше, обновите план",
+    "depositLabel": "Депозит",
+    "depositInherit": "По умолчанию",
+    "depositNone": "Нет",
+    "depositFixed": "Фиксированный",
+    "depositPercent": "Процент",
+    "depositPercentValue": "Процент (%)",
+    "depositFixedValue": "Сумма (₾)",
+    "depositValueInvalid": "Введите корректное значение (процент 1–100)",
+    "depositInheritHelp": "Используется депозит по умолчанию для бизнеса.",
+    "depositTitle": "Депозиты",
+    "depositHelp": "Требуйте предоплату для подтверждения записи — оплачивается онлайн. Услуги могут переопределить это.",
+    "cancellationTitle": "Политика отмены",
+    "cancellationWindowHours": "Окно бесплатной отмены (часы)",
+    "cancellationWindowHelp": "Отмена не позднее этого числа часов возвращает депозит.",
+    "cancellationWindowInvalid": "Введите целое число часов (0 или больше).",
+    "depositRefundable": "Возврат депозита при отмене",
+    "depositRefundableHelp": "Если выключено, депозиты не возвращаются при отмене."
   },
   "days": {
     "monday": "Понедельник",

@@ -7,8 +7,9 @@ import { CheckCircleOutlined as CheckCircleOutlinedIcon } from '@/components/ico
 import { CancelOutlined as CancelOutlinedIcon } from '@/components/icons'
 import { DoNotDisturbAltOutlined as DoNotDisturbAltOutlinedIcon } from '@/components/icons'
 import { TaskAltOutlined as TaskAltOutlinedIcon } from '@/components/icons'
+import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
 
-export type AppointmentStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed'
+export type AppointmentStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed' | 'no_show'
 
 const STATUS_COLOR: Record<AppointmentStatus, ChipProps['color']> = {
   pending:   'warning',
@@ -16,6 +17,7 @@ const STATUS_COLOR: Record<AppointmentStatus, ChipProps['color']> = {
   rejected:  'error',
   cancelled: 'default',
   completed: 'info',
+  no_show:   'error',
 }
 
 // Each status also carries a distinct icon so meaning isn't conveyed by colour
@@ -26,6 +28,7 @@ const STATUS_ICON: Record<AppointmentStatus, ReactElement> = {
   rejected:  <CancelOutlinedIcon />,
   cancelled: <DoNotDisturbAltOutlinedIcon />,
   completed: <TaskAltOutlinedIcon />,
+  no_show:   <EventBusyOutlinedIcon />,
 }
 
 interface StatusChipProps {
