@@ -43,29 +43,34 @@ test.describe('Settings — Team', () => {
   // Invite-phone and professional-name gating are data-driven now — see
   // e2e/data/team.json + e2e/data-driven/team.spec.ts.
 
-  test('the solo seat limit blocks a second bookable professional', async ({ page }) => {
-    // The seed org is on solo (1 bookable seat, enforce_staff_limit trigger).
+  test('a solo org can add a second bookable professional (seats unlimited)', async ({ page }) => {
+    // Seats are unlimited on both tiers since 2026-07-17 (migration 088 set
+    // tier_staff_limits null/null), so the seed solo org can add more than one
+    // bookable professional — the old 1-seat block is gone.
     const first = tag('E2E Seat One')
     const second = tag('E2E Seat Two')
 
     async function addProfessional(name: string) {
       await page.getByTestId('add-professional-btn').click()
       await page.getByTestId('professional-name').fill(name)
+      // professional-bookable defaults on, so both take a bookable seat.
       await page.getByTestId('professional-save').click()
     }
 
-    // First bookable professional fits the seat.
     await addProfessional(first)
-    const row = page.getByTestId('professional-row').filter({ hasText: first })
-    await expect(row).toBeVisible()
+    const firstRow = page.getByTestId('professional-row').filter({ hasText: first })
+    await expect(firstRow).toBeVisible()
 
-    // Second is rejected by the DB trigger → friendly upgrade prompt, no row.
+    // Second bookable professional is now accepted — no seat-limit error.
     await addProfessional(second)
-    await expect(page.getByTestId('team-error')).toBeVisible()
-    await expect(page.getByText(second)).toHaveCount(0)
+    const secondRow = page.getByTestId('professional-row').filter({ hasText: second })
+    await expect(secondRow).toBeVisible()
+    await expect(page.getByTestId('team-error')).toHaveCount(0)
 
-    // Self-clean
-    await row.getByTestId('professional-delete').click()
+    // Self-clean both.
+    await secondRow.getByTestId('professional-delete').click()
+    await expect(page.getByText(second)).toHaveCount(0)
+    await firstRow.getByTestId('professional-delete').click()
     await expect(page.getByText(first)).toHaveCount(0)
   })
 })

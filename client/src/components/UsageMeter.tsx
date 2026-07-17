@@ -1,36 +1,27 @@
-import { useEffect, useState } from 'react'
 import { Box, Card, CardContent, LinearProgress, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
-import { supabase } from '@/lib/supabase'
-import { useOrg } from '@/contexts/OrgContext'
+import { useEntitlements } from '@/hooks/useEntitlement'
+import { usagePercent, overAllowance } from '@/lib/entitlements'
 
 /**
- * Always-visible dashboard usage meter (record §4.2): "43 / 150 bookings this
- * month" against the same server-derived usage the booking limit is enforced
- * with. Doubles as a passive upgrade surface as it fills (80% turns the bar
- * amber, 100% red — same thresholds as the subscription page).
+ * Always-visible dashboard usage meter: "43 / 100 bookings this period" against
+ * the same server-derived allowance the booking flow meters. Reads the org's
+ * entitlements from context (get_org_entitlements) — no extra round-trip.
+ *
+ * Bookings beyond the included allowance are no longer blocked (2026-07-17):
+ * once over, the bar fills and an "N over your plan · ₾Z" line shows the metered
+ * overage (display only until billing is wired). 80% turns the bar amber.
  */
 export default function UsageMeter() {
   const { t } = useTranslation()
-  const { org } = useOrg()
-  const [used, setUsed] = useState<number | null>(null)
-  const [limit, setLimit] = useState<number | null>(null)
+  const ent = useEntitlements()
 
-  useEffect(() => {
-    if (!org) return
-    supabase
-      .rpc('org_usage_info', { p_org_id: org.id })
-      .maybeSingle()
-      .then(({ data }) => {
-        const usage = data as { used?: number; appt_limit?: number | null } | null
-        setUsed(usage?.used ?? null)
-        setLimit(usage?.appt_limit ?? null)
-      })
-  }, [org])
+  // Unlimited tiers (null allowance) have nothing to meter.
+  if (!ent || ent.included == null) return null
 
-  if (used === null || !limit) return null
-
-  const pct = Math.min((used / limit) * 100, 100)
+  const { used, included, overageCount, overageCost } = ent
+  const pct = usagePercent(used, included)
+  const over = overAllowance(used, included)
 
   return (
     <Card sx={{ mb: 4, maxWidth: 480 }} data-testid="usage-meter">
@@ -39,28 +30,27 @@ export default function UsageMeter() {
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             {t('subscription.bookingsThisMonth')}
           </Typography>
-          <Typography variant="body2" sx={{ color: pct >= 80 ? 'error.main' : 'text.secondary', fontWeight: 600 }}>
-            {used} / {limit}
+          <Typography variant="body2" sx={{ color: over > 0 ? 'warning.main' : pct >= 80 ? 'warning.main' : 'text.secondary', fontWeight: 600 }}>
+            {used} / {included}
           </Typography>
         </Box>
         <LinearProgress
           variant="determinate"
           value={pct}
-          aria-label={`${used} / ${limit}`}
+          aria-label={`${used} / ${included}`}
           sx={{
             '& .MuiLinearProgress-bar': {
-              bgcolor: pct >= 100 ? 'error.main' : pct >= 80 ? 'warning.main' : 'primary.main',
+              bgcolor: pct >= 100 ? 'warning.main' : pct >= 80 ? 'warning.main' : 'primary.main',
             },
           }}
         />
-        {pct >= 80 && pct < 100 && (
+        {over > 0 ? (
+          <Typography variant="caption" data-testid="usage-overage" sx={{ color: 'warning.main', mt: 0.5, display: 'block', fontWeight: 600 }}>
+            {t('subscription.overageSummary', { count: overageCount, cost: overageCost })}
+          </Typography>
+        ) : pct >= 80 && (
           <Typography variant="caption" sx={{ color: 'warning.main', mt: 0.5, display: 'block' }}>
             {t('subscription.nearLimit')}
-          </Typography>
-        )}
-        {pct >= 100 && (
-          <Typography variant="caption" sx={{ color: 'error.main', mt: 0.5, display: 'block' }}>
-            {t('subscription.limitReached')} — {t('subscription.bookingsBlocked')}
           </Typography>
         )}
       </CardContent>

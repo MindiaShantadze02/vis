@@ -6,10 +6,14 @@ import type { Theme } from '@mui/material'
  * one definition. Limits mirror platform_config.tier_limits / tier_staff_limits.
  *
  * Two tiers only (decision 2026-07-16 — the product targets individuals and
- * small businesses; the old Business tier is gone): Solo for one professional,
- * Team for everyone else. There is no free tier: every new organisation starts
- * on a 30-day Solo-level trial and must pick a paid plan afterwards (see
- * subscriptionState below).
+ * small businesses; the old Business tier is gone): Solo and Team. There is no
+ * free tier: every new organisation starts on a 30-day Solo-level trial and
+ * must pick a paid plan afterwards (see subscriptionState below).
+ *
+ * Since 2026-07-17 the tiers differ ONLY by included booking volume + price:
+ * seats are unlimited on both (tier_staff_limits null/null) and no feature is
+ * gated. Bookings beyond the included allowance are metered as overage
+ * (overagePrice ₾/booking) rather than blocked — see lib/entitlements.ts.
  */
 export type Tier = 'solo' | 'team'
 export type TierColorKey = 'grey' | 'info' | 'primary' | 'success'
@@ -19,8 +23,10 @@ export interface TierInfo {
   label: string
   price: string
   limit: number
-  /** Max bookable staff (null = unlimited). Mirrors tier_staff_limits. */
+  /** Max bookable staff (null = unlimited). Mirrors tier_staff_limits — null on both tiers today. */
   staffLimit: number | null
+  /** ₾ per booking beyond the included allowance. Mirrors tier_overage_prices. */
+  overagePrice: number
   features: string[]
   colorKey: TierColorKey
   /** The visually highlighted "recommended" plan on pricing surfaces. */
@@ -29,11 +35,11 @@ export interface TierInfo {
 
 export const TIERS: TierInfo[] = [
   {
-    key: 'solo', label: 'სოლო', price: '₾19 / თვე', limit: 100, staffLimit: 1, colorKey: 'info',
-    features: ['100 ჯავშანი/თვე', '1 თანამშრომელი', 'SMS შეხსენება წინა დღეს', 'ონლაინ ბუქინგ გვერდი', 'ყველა თემა'],
+    key: 'solo', label: 'სოლო', price: '₾19 / თვე', limit: 100, staffLimit: null, overagePrice: 0.30, colorKey: 'info',
+    features: ['100 ჯავშანი/თვე', 'შეუზღუდავი თანამშრომლები', 'SMS შეხსენება წინა დღეს', 'ონლაინ ბუქინგ გვერდი', 'ყველა თემა'],
   },
   {
-    key: 'team', label: 'გუნდი', price: '₾39 / თვე', limit: 300, staffLimit: null, colorKey: 'primary', recommended: true,
+    key: 'team', label: 'გუნდი', price: '₾39 / თვე', limit: 300, staffLimit: null, overagePrice: 0.25, colorKey: 'primary', recommended: true,
     features: ['300 ჯავშანი/თვე', 'შეუზღუდავი თანამშრომლები', 'ყველა სოლოს ფუნქცია'],
   },
 ]

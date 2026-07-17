@@ -14,13 +14,16 @@ describe('TIERS / TIER_KEYS', () => {
     expect(TIER_KEYS).toEqual(['solo', 'team'])
   })
 
+  // Seats are unlimited on both tiers since 2026-07-17 (staffLimit null/null);
+  // the tiers differ only by included volume + price + overage rate.
   it.each([
-    ['solo', 100, 1],
-    ['team', 300, null],
-  ])('%s tier has the expected monthly and staff limits', (key, limit, staffLimit) => {
+    ['solo', 100, null, 0.30],
+    ['team', 300, null, 0.25],
+  ])('%s tier has the expected monthly limit, staff limit, and overage price', (key, limit, staffLimit, overagePrice) => {
     const t = TIERS.find(t => t.key === key)
     expect(t?.limit).toBe(limit)
     expect(t?.staffLimit).toBe(staffLimit)
+    expect(t?.overagePrice).toBe(overagePrice)
   })
 
   it('team is the single recommended plan', () => {

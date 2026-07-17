@@ -308,7 +308,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               </Button>
             }
           >
-            {t('subscription.limitReached')} — {t('subscription.bookingsBlocked')}
+            {t('subscription.expiredStrip')}
           </Alert>
         )}
         <FormErrorAlert message={error} data-testid="add-appt-error" />

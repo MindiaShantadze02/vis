@@ -14,7 +14,7 @@ import { TIERS, type Tier } from '@/lib/tiers'
 
 export default function SubscriptionPage() {
   const { t } = useTranslation()
-  const { org, subscription } = useOrg()
+  const { org, subscription, entitlements } = useOrg()
 
   const [used, setUsed] = useState<number | null>(null)
   const [limit, setLimit] = useState<number | null>(null)
@@ -132,8 +132,9 @@ export default function SubscriptionPage() {
                 value={pct}
                 aria-label={`${used ?? 0} / ${limit}`}
                 sx={{
+                  // Over-allowance is metered, not blocked → amber, never red.
                   '& .MuiLinearProgress-bar': {
-                    bgcolor: pct >= 100 ? 'error.main' : pct >= 80 ? 'warning.main' : 'primary.main',
+                    bgcolor: pct >= 80 ? 'warning.main' : 'primary.main',
                   },
                 }}
               />
@@ -148,9 +149,11 @@ export default function SubscriptionPage() {
                 {t('subscription.nearLimit')}
               </Typography>
             )}
-            {limit && used !== null && used >= limit && (
-              <Typography variant="caption" sx={{ color: 'error.main', mt: 0.5, display: 'block' }}>
-                {t('subscription.limitReached')} — {t('subscription.bookingsBlocked')}
+            {/* Metered overage (active orgs only; trial is a soft allowance so
+                overageCount stays 0). Display only until billing is wired. */}
+            {entitlements && entitlements.overageCount > 0 && (
+              <Typography variant="caption" data-testid="subscription-overage" sx={{ color: 'warning.main', mt: 0.5, display: 'block', fontWeight: 600 }}>
+                {t('subscription.overageSummary', { count: entitlements.overageCount, cost: entitlements.overageCost })}
               </Typography>
             )}
           </Box>

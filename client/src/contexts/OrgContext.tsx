@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { subscriptionState, type SubscriptionState, type Tier } from '@/lib/tiers'
+import { parseEntitlements, type Entitlements } from '@/lib/entitlements'
 
 export interface Organisation {
   id: string
@@ -27,28 +28,49 @@ interface OrgContextValue {
   role: 'owner' | 'admin' | null
   /** trial | active | expired, derived the same way as the DB's org_subscription_state. */
   subscription: SubscriptionState | null
+  /**
+   * Tier entitlements from get_org_entitlements (allowance, overage, seats,
+   * feature map). Null until loaded / when signed out. Feature gates should
+   * read this via useEntitlement; usage widgets read the allowance fields.
+   */
+  entitlements: Entitlements | null
   loading: boolean
   refresh: () => Promise<void>
+  /** Re-fetch just the entitlements (e.g. after a booking changes usage). */
+  refreshEntitlements: () => Promise<void>
 }
 
 const OrgContext = createContext<OrgContextValue>({
   org: null,
   role: null,
   subscription: null,
+  entitlements: null,
   loading: true,
   refresh: async () => {},
+  refreshEntitlements: async () => {},
 })
 
 export function OrgProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth()
   const [org, setOrg] = useState<Organisation | null>(null)
   const [role, setRole] = useState<'owner' | 'admin' | null>(null)
+  const [entitlements, setEntitlements] = useState<Entitlements | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Fetch the org's entitlements (allowance/overage/seats/features) in one
+  // round-trip. Best-effort: a failure just leaves gates/usage widgets to
+  // no-op rather than blocking the dashboard.
+  async function loadEntitlements(orgId: string) {
+    const { data, error } = await supabase.rpc('get_org_entitlements', { p_org_id: orgId })
+    if (error) { console.error('[OrgContext] get_org_entitlements failed:', error); return }
+    setEntitlements(parseEntitlements(data))
+  }
 
   async function loadOrg() {
     if (!user) {
       setOrg(null)
       setRole(null)
+      setEntitlements(null)
       setLoading(false)
       return
     }
@@ -68,15 +90,22 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         .maybeSingle()
       if (error) console.error('[OrgContext] org_members load failed:', error)
       if (data) {
-        setOrg(data.organisations as unknown as Organisation)
+        const loaded = data.organisations as unknown as Organisation
+        setOrg(loaded)
         setRole(data.role as 'owner' | 'admin')
+        void loadEntitlements(loaded.id)
       } else {
         setOrg(null)
         setRole(null)
+        setEntitlements(null)
       }
     } finally {
       setLoading(false)
     }
+  }
+
+  async function refreshEntitlements() {
+    if (org) await loadEntitlements(org.id)
   }
 
   useEffect(() => {
@@ -89,7 +118,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     : null
 
   return (
-    <OrgContext.Provider value={{ org, role, subscription, loading, refresh: loadOrg }}>
+    <OrgContext.Provider value={{ org, role, subscription, entitlements, loading, refresh: loadOrg, refreshEntitlements }}>
       {children}
     </OrgContext.Provider>
   )

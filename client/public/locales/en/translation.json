@@ -476,7 +476,7 @@
       "price": "₾19 / mo",
       "features": [
         "100 bookings/mo",
-        "1 bookable professional",
+        "Unlimited staff",
         "Day-before SMS reminders",
         "Online booking page",
         "All themes"
@@ -515,7 +515,8 @@
     "expiredTitle": "Your plan has ended",
     "expiredBody": "Your booking page is still live and your data is safe, but new bookings are paused and day-before reminders are off. Choose a plan to continue.",
     "expiredStrip": "New bookings are paused — choose a plan",
-    "choosePlan": "Choose a plan"
+    "choosePlan": "Choose a plan",
+    "overageSummary": "{{count}} over your plan · ₾{{cost}}"
   },
   "superadmin": {
     "platform": "Platform",
