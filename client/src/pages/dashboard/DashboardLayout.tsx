@@ -16,6 +16,7 @@ import {
 } from '@mui/material'
 import { DashboardOutlined as DashboardOutlinedIcon } from '@/components/icons'
 import { CalendarMonthOutlined as CalendarMonthOutlinedIcon } from '@/components/icons'
+import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
 import { SettingsOutlined as SettingsOutlinedIcon } from '@/components/icons'
 import { AdminPanelSettingsOutlined as AdminPanelSettingsOutlinedIcon } from '@/components/icons'
 import { NotificationsOutlined as NotificationsOutlinedIcon } from '@/components/icons'
@@ -40,6 +41,7 @@ const DRAWER_WIDTH = 240
 const NAV_ITEMS = [
   { labelKey: 'dashboard.overview',     path: '/dashboard',              icon: <DashboardOutlinedIcon /> },
   { labelKey: 'dashboard.calendar',     path: '/dashboard/calendar',     icon: <CalendarMonthOutlinedIcon /> },
+  { labelKey: 'waitlist.ownerNav',      path: '/dashboard/waitlist',     icon: <EventBusyOutlinedIcon /> },
 ]
 
 // Dashboard settings, grouped by concern so the submenu teaches the mental

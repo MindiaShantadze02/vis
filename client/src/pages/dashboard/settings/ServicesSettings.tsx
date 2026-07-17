@@ -56,8 +56,7 @@ interface ServiceForm {
   is_active: boolean
   max_per_slot: string
   location_type: LocationType
-  // 'inherit' maps to a null deposit_type (use the org default).
-  deposit_type: 'inherit' | ServiceDepositType
+  deposit_type: ServiceDepositType
   deposit_value: string
 }
 
@@ -68,7 +67,7 @@ const EMPTY: ServiceForm = {
   is_active: true,
   max_per_slot: '1',
   location_type: 'in_person',
-  deposit_type: 'inherit',
+  deposit_type: 'none',
   deposit_value: '',
 }
 
@@ -177,7 +176,8 @@ export default function ServicesSettings() {
       is_active: s.is_active,
       max_per_slot: String(s.max_per_slot),
       location_type: s.location_type,
-      deposit_type: s.deposit_type ?? 'inherit',
+      // Legacy null (pre-091 services that inherited) reads as an explicit 'none'.
+      deposit_type: s.deposit_type ?? 'none',
       deposit_value: s.deposit_value != null ? String(s.deposit_value) : '',
     })
     setGallery((imagesByService[s.id] ?? []).map(img => ({ key: img.id, id: img.id, url: img.url })))
@@ -270,17 +270,19 @@ export default function ServicesSettings() {
   const priceInvalid = form.price.trim().length > 0 &&
     (!isNonNegativeNumber(Number(form.price)) || Number(form.price) > MAX_PRICE)
   const maxPerSlotInvalid = !(Number(form.max_per_slot) >= 1)
-  // A fixed/percent deposit needs a positive value; a percent can't exceed 100.
+  // A fixed/percent deposit needs a positive value; a percent can't exceed 100
+  // and a fixed deposit can't exceed the service price (it's a share of it).
   const depositNeedsValue = form.deposit_type === 'fixed' || form.deposit_type === 'percent'
+  const depositExceedsPrice = form.deposit_type === 'fixed' && Number(form.deposit_value) > Number(form.price || 0)
   const depositValueInvalid = depositNeedsValue && (
     !(Number(form.deposit_value) > 0) ||
-    (form.deposit_type === 'percent' && Number(form.deposit_value) > 100)
+    (form.deposit_type === 'percent' && Number(form.deposit_value) > 100) ||
+    depositExceedsPrice
   )
 
-  // Resolve the form's deposit into the DB shape: 'inherit' → null (use org
-  // default); 'none' → no deposit; fixed/percent carry a value.
+  // 'none' → no deposit (value cleared); fixed/percent carry a value.
   const depositPayload = () => ({
-    deposit_type: form.deposit_type === 'inherit' ? null : form.deposit_type,
+    deposit_type: form.deposit_type,
     deposit_value: depositNeedsValue ? Number(form.deposit_value) : null,
   })
 
@@ -512,11 +514,10 @@ export default function ServicesSettings() {
                 fullWidth
                 size="small"
                 value={form.deposit_type}
-                onChange={(_, v: 'inherit' | ServiceDepositType | null) => {
+                onChange={(_, v: ServiceDepositType | null) => {
                   if (v) setForm(f => ({ ...f, deposit_type: v }))
                 }}
               >
-                <ToggleButton value="inherit" data-testid="service-deposit-inherit">{t('settings.depositInherit')}</ToggleButton>
                 <ToggleButton value="none" data-testid="service-deposit-none">{t('settings.depositNone')}</ToggleButton>
                 <ToggleButton value="fixed" data-testid="service-deposit-fixed">{t('settings.depositFixed')}</ToggleButton>
                 <ToggleButton value="percent" data-testid="service-deposit-percent">{t('settings.depositPercent')}</ToggleButton>
@@ -530,14 +531,13 @@ export default function ServicesSettings() {
                   sx={{ mt: 1.5 }}
                   label={form.deposit_type === 'percent' ? t('settings.depositPercentValue') : t('settings.depositFixedValue')}
                   error={depositValueInvalid}
-                  helperText={depositValueInvalid ? t('settings.depositValueInvalid') : undefined}
+                  helperText={
+                    depositExceedsPrice ? t('settings.depositExceedsPrice')
+                    : depositValueInvalid ? t('settings.depositValueInvalid')
+                    : undefined
+                  }
                   slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-deposit-value' } }}
                 />
-              )}
-              {form.deposit_type === 'inherit' && (
-                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
-                  {t('settings.depositInheritHelp')}
-                </Typography>
               )}
             </Box>
             <TextField

@@ -207,6 +207,76 @@ export async function setServiceDeposit(
 }
 
 /**
+ * Create an approved appointment for the seeded org directly via PostgREST as
+ * the owner (member inserts skip the OTP/slot/normalize guards). Used by the
+ * /manage specs so the appointment's phone has NO recent booking OTP — the
+ * self-service flow then requests a fresh code without hitting the 60s cooldown.
+ * Returns the new appointment id.
+ */
+export async function createSeedAppointment(opts: {
+  firstName: string
+  phone: string
+  scheduledAt: string
+  paymentMethod?: 'in_person' | 'online'
+  paymentStatus?: 'unpaid' | 'paid' | 'deposit_paid'
+}): Promise<string> {
+  const { url, anonKey, accessToken } = await signInSeed()
+  // Read headers (SELECT own org/services works for the owner); write headers
+  // omit return=representation — like AddAppointmentDialog, we mint the ids
+  // client-side and don't read customers back (no member SELECT policy on it).
+  const H = { apikey: anonKey, authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }
+  const org = (await (await fetch(`${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`, { headers: H })).json()) as { id: string }[]
+  const orgId = org[0].id
+  const svc = (await (await fetch(`${url}/rest/v1/services?org_id=eq.${orgId}&is_active=eq.true&select=id,duration_minutes&limit=1`, { headers: H })).json()) as { id: string; duration_minutes: number }[]
+
+  const customerId = crypto.randomUUID()
+  const appointmentId = crypto.randomUUID()
+  const custRes = await fetch(`${url}/rest/v1/customers`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({ id: customerId, first_name: opts.firstName, phone_number: opts.phone }),
+  })
+  if (!custRes.ok) throw new Error(`customer insert failed: ${custRes.status} ${await custRes.text()}`)
+  const apptRes = await fetch(`${url}/rest/v1/appointments`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({
+      id: appointmentId, org_id: orgId, service_id: svc[0].id, customer_id: customerId,
+      scheduled_at: opts.scheduledAt, duration_minutes: svc[0].duration_minutes,
+      status: 'approved',
+      payment_method: opts.paymentMethod ?? 'in_person',
+      payment_status: opts.paymentStatus ?? 'unpaid',
+    }),
+  })
+  if (!apptRes.ok) throw new Error(`appointment insert failed: ${apptRes.status} ${await apptRes.text()}`)
+  return appointmentId
+}
+
+/**
+ * Join the seeded org's waitlist for a service on a desired date, via the anon
+ * join_waitlist RPC. Returns the entry id. (Consent-only, no OTP — matches the
+ * booking-page dialog.)
+ */
+export async function joinWaitlist(opts: {
+  firstName: string
+  phone: string
+  desiredDate: string // yyyy-MM-dd
+}): Promise<string> {
+  const { url, anonKey, accessToken } = await signInSeed()
+  const readH = { apikey: anonKey, authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }
+  const org = (await (await fetch(`${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`, { headers: readH })).json()) as { id: string }[]
+  const svc = (await (await fetch(`${url}/rest/v1/services?org_id=eq.${org[0].id}&is_active=eq.true&select=id&limit=1`, { headers: readH })).json()) as { id: string }[]
+  const res = await fetch(`${url}/rest/v1/rpc/join_waitlist`, {
+    method: 'POST',
+    headers: { apikey: anonKey, authorization: `Bearer ${anonKey}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      p_org_id: org[0].id, p_service_id: svc[0].id, p_desired_date: opts.desiredDate,
+      p_first_name: opts.firstName, p_phone: opts.phone,
+    }),
+  })
+  if (!res.ok) throw new Error(`join_waitlist failed: ${res.status} ${await res.text()}`)
+  return (await res.json()) as string
+}
+
+/**
  * Read the hosted project's URL + anon key from client/.env — for Node-side
  * specs that talk straight to the GoTrue / PostgREST / Edge-Function HTTP
  * endpoints (supabase-js won't construct on Node 20; see setRequireApproval).

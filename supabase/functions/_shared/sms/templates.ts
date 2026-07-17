@@ -169,6 +169,100 @@ export function refundUpdateBody(data: RefundUpdateData, lang: SmsLang = 'ka'): 
   }
 }
 
+export interface RescheduleUpdateData {
+  businessName: string
+  serviceName: string
+  // Already-formatted, human-readable NEW local date/time.
+  when: string
+}
+
+// Sent when a customer reschedules their own booking (self-service /manage).
+export function rescheduleUpdateBody(data: RescheduleUpdateData, lang: SmsLang = 'ka'): string {
+  const { businessName, serviceName, when } = data
+  switch (lang) {
+    case 'en':
+      return `${businessName}: your ${serviceName} booking has been moved to ${when}. See you!`
+    case 'ru':
+      return `${businessName}: ваша запись на ${serviceName} перенесена на ${when}. Ждём вас!`
+    case 'ka':
+    default:
+      return `${businessName}: თქვენი ჯავშანი — ${serviceName} — გადაიტანა ${when}-ზე. გელით!`
+  }
+}
+
+export interface CancellationUpdateData {
+  businessName: string
+  serviceName: string
+  // Already-formatted, human-readable local date/time of the cancelled slot.
+  when: string
+  // When true, the deposit/payment is being returned — say so in the same SMS.
+  refunded: boolean
+  amount: number
+  currency: string
+}
+
+// Sent when a customer cancels their own booking (self-service /manage). Folds
+// the refund note in when the policy returned the money, so there's one SMS.
+export function cancellationUpdateBody(data: CancellationUpdateData, lang: SmsLang = 'ka'): string {
+  const { businessName, serviceName, when, refunded, amount, currency } = data
+  const sum = currency === 'GEL' ? `${amount}₾` : `${amount} ${currency}`
+  switch (lang) {
+    case 'en':
+      return `${businessName}: your ${serviceName} booking on ${when} has been cancelled.`
+        + (refunded ? ` The ${sum} you paid will be returned to your card within a few days.` : '')
+    case 'ru':
+      return `${businessName}: ваша запись на ${serviceName} (${when}) отменена.`
+        + (refunded ? ` Оплаченные ${sum} вернутся на вашу карту в течение нескольких дней.` : '')
+    case 'ka':
+    default:
+      return `${businessName}: თქვენი ჯავშანი — ${serviceName}, ${when} — გაუქმდა.`
+        + (refunded ? ` გადახდილი ${sum} რამდენიმე დღეში დაგიბრუნდებათ ბარათზე.` : '')
+  }
+}
+
+export interface WaitlistOfferData {
+  businessName: string
+  serviceName: string
+  when: string
+  claimUrl: string
+  minutes: number
+}
+
+// Sent when a freed slot is offered to a waitlisted customer — the claim link +
+// a short window are the whole point, so the URL goes last, unabbreviated.
+export function waitlistOfferBody(data: WaitlistOfferData, lang: SmsLang = 'ka'): string {
+  const { businessName, serviceName, when, claimUrl, minutes } = data
+  switch (lang) {
+    case 'en':
+      return `${businessName}: a ${serviceName} slot opened on ${when}! Claim it within ${minutes} min: ${claimUrl}`
+    case 'ru':
+      return `${businessName}: освободилось время на ${serviceName} — ${when}! Забронируйте в течение ${minutes} мин: ${claimUrl}`
+    case 'ka':
+    default:
+      return `${businessName}: გამოთავისუფლდა დრო — ${serviceName}, ${when}! დაიკავეთ ${minutes} წუთში: ${claimUrl}`
+  }
+}
+
+export interface WaitlistClaimedData {
+  businessName: string
+  serviceName: string
+  when: string
+}
+
+// Sent once a waitlisted customer claims the offered slot (booking confirmed).
+export function waitlistClaimedBody(data: WaitlistClaimedData, lang: SmsLang = 'ka'): string {
+  const { businessName, serviceName, when } = data
+  switch (lang) {
+    case 'en':
+      return `${businessName}: your ${serviceName} is booked for ${when}. See you!`
+    case 'ru':
+      return `${businessName}: ваша запись на ${serviceName} подтверждена — ${when}. Ждём вас!`
+    case 'ka':
+    default:
+      return `${businessName}: თქვენი ჯავშანი — ${serviceName}, ${when} დადასტურდა. გელით!`
+  }
+}
+
 // Type-check helper so adding a SmsMessageType reminds you a template may be
 // needed. Not all types are wired yet (admin_*, invitation).
 export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
@@ -179,4 +273,8 @@ export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
   'setup_complete',
   'meeting_link',
   'refund_update',
+  'reschedule_update',
+  'cancellation_update',
+  'waitlist_offer',
+  'waitlist_claimed',
 ]

@@ -27,6 +27,7 @@ const SetupHelpPage = lazy(() => import('@/pages/onboarding/SetupHelpPage'))
 const DashboardLayout = lazy(() => import('@/pages/dashboard/DashboardLayout'))
 const OverviewPage = lazy(() => import('@/pages/dashboard/OverviewPage'))
 const CalendarPage = lazy(() => import('@/pages/dashboard/CalendarPage'))
+const WaitlistPage = lazy(() => import('@/pages/dashboard/WaitlistPage'))
 const ProfileSettings = lazy(() => import('@/pages/dashboard/settings/ProfileSettings'))
 const BookingPageSettings = lazy(() => import('@/pages/dashboard/settings/BookingPageSettings'))
 const AccountSettings = lazy(() => import('@/pages/dashboard/settings/AccountSettings'))
@@ -41,6 +42,8 @@ const ApiKeysSettings = lazy(() => import('@/pages/dashboard/settings/ApiKeysSet
 const BookingLayout = lazy(() => import('@/pages/book/BookingLayout'))
 const BookingConfirmationPage = lazy(() => import('@/pages/book/BookingConfirmationPage'))
 const ReviewPage = lazy(() => import('@/pages/review/ReviewPage'))
+const ManagePage = lazy(() => import('@/pages/manage/ManagePage'))
+const WaitlistClaimPage = lazy(() => import('@/pages/waitlist/WaitlistClaimPage'))
 const MockCheckoutPage = lazy(() => import('@/pages/book/MockCheckoutPage'))
 const PaymentReturnPage = lazy(() => import('@/pages/book/PaymentReturnPage'))
 const InvitationAcceptPage = lazy(() => import('@/pages/book/InvitationAcceptPage'))
@@ -156,6 +159,7 @@ export default function App() {
         {/* Everything else needs an organisation. */}
         <Route element={<OrgGuard><Outlet /></OrgGuard>}>
           <Route path="calendar" element={<CalendarPage />} />
+          <Route path="waitlist" element={<WaitlistPage />} />
           <Route path="settings/profile" element={<ProfileSettings />} />
           <Route path="settings/booking" element={<BookingPageSettings />} />
           <Route path="settings/services" element={<ServicesSettings />} />
@@ -171,6 +175,8 @@ export default function App() {
       <Route path="/book/:slug" element={<BookingLayout />} />
       <Route path="/booking-confirmation/:id" element={<BookingConfirmationPage />} />
       <Route path="/review/:appointmentId" element={<ReviewPage />} />
+      <Route path="/manage/:appointmentId" element={<ManagePage />} />
+      <Route path="/waitlist/:token" element={<WaitlistClaimPage />} />
       <Route path="/pay/mock" element={<MockCheckoutPage />} />
       <Route path="/payment-return" element={<PaymentReturnPage />} />
       <Route path="/invite/:token" element={<InvitationAcceptPage />} />
