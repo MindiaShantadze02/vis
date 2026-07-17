@@ -3,6 +3,7 @@ import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getLegalDoc, type LegalDocType } from './legalContent'
+import { useDocumentMeta } from '@/lib/seo'
 
 /** Renders a bullet list or a paragraph from a legal content block. */
 function LegalBlock({ block }: { block: string | string[] }) {
@@ -28,9 +29,14 @@ function LegalBlock({ block }: { block: string | string[] }) {
  *  language-aware via i18n and falls back to Georgian. */
 export default function LegalPage({ type }: { type: LegalDocType }) {
   const navigate = useNavigate()
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const resolved = i18n.resolvedLanguage ?? i18n.language
   const doc = getLegalDoc(type, resolved)
+
+  useDocumentMeta({
+    title: t(type === 'privacy' ? 'seo.privacyTitle' : 'seo.termsTitle'),
+    canonicalPath: type === 'privacy' ? '/privacy' : '/terms',
+  })
   // Mirrors getLegalDoc's fallback: only Georgian gets Georgian chrome text,
   // every other language (including Russian) gets English.
   const isKa = resolved === 'ka'

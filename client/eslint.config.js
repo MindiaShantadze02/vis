@@ -19,4 +19,15 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Vercel Edge Functions (SEO layer) run on the server, not in the browser:
+    // they use process.env + Web fetch/Request/Response and aren't React.
+    files: ['api/**/*.ts'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.serviceworker },
+    },
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

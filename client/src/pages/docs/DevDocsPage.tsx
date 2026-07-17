@@ -4,6 +4,7 @@ import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { radii } from '@/theme/theme'
+import { useDocumentMeta } from '@/lib/seo'
 
 // Public developer documentation for the REST API and the embeddable booking
 // widget, linked from the homepage. Like the legal pages, content is plain
@@ -476,6 +477,11 @@ export default function DevDocsPage({ type }: { type: DevDocType }) {
   const resolved = i18n.resolvedLanguage ?? i18n.language
   const lang: Lang = resolved === 'en' ? 'en' : resolved === 'ru' ? 'ru' : 'ka'
   const doc = DOCS[type]
+
+  useDocumentMeta({
+    title: t(type === 'api' ? 'seo.docsApiTitle' : 'seo.docsWidgetTitle'),
+    canonicalPath: type === 'api' ? '/docs/api' : '/docs/widget',
+  })
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: { xs: 3, md: 6 } }}>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useDocumentMeta } from '@/lib/seo'
 import { format } from 'date-fns'
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n'
 import { dateLocale } from '@/lib/dateLocale'
@@ -199,6 +200,22 @@ export default function BookingLayout() {
   function patch(p: Partial<BookingState>) {
     setBooking(prev => ({ ...prev, ...p }))
   }
+
+  // Per-org document head (title/description/canonical). Crawlers get the same
+  // tags server-injected by api/book-meta.ts; this keeps the tab title and SPA
+  // navigations correct. Called unconditionally (hook rules) with state-derived
+  // values; the canonical drops ?embed=1 by construction.
+  useDocumentMeta(
+    notFound
+      ? { title: t('seo.notFoundTitle'), noindex: true }
+      : {
+          title: org ? t('seo.bookTitle', { org: org.name }) : 'Vis',
+          description: org
+            ? (org.description?.trim() || t('seo.bookDescFallback', { org: org.name }))
+            : undefined,
+          canonicalPath: slug ? `/book/${slug}` : undefined,
+        },
+  )
 
   if (notFound) {
     return (

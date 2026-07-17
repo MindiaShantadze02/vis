@@ -1,4 +1,18 @@
 {
+  "seo": {
+    "homeTitle": "Vis — Online booking system for service businesses",
+    "homeDesc": "Take bookings online: Vis gives salons, clinics, studios and trainers a booking page, a shared calendar and SMS reminders — built for Georgia.",
+    "bookTitle": "{{org}} — Book online | Vis",
+    "bookDescFallback": "Book a visit at {{org}} online — pick a service, a specialist and a time.",
+    "docsApiTitle": "API documentation | Vis",
+    "docsWidgetTitle": "Booking widget documentation | Vis",
+    "privacyTitle": "Privacy policy | Vis",
+    "termsTitle": "Terms of service | Vis",
+    "loginTitle": "Log in | Vis",
+    "registerTitle": "Sign up | Vis",
+    "forgotTitle": "Reset password | Vis",
+    "notFoundTitle": "Page not found | Vis"
+  },
   "common": {
     "back": "Back",
     "next": "Next",

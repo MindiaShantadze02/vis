@@ -4,7 +4,32 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vis</title>
+    <meta name="theme-color" content="#1D5B84" />
+    <!-- Default (homepage) SEO block. The /book/:slug Vercel edge function
+         (api/book-meta.ts) REPLACES everything between the seo markers with
+         per-business meta + LocalBusiness JSON-LD — keep the markers intact.
+         Client-side routes swap title/description/canonical via
+         src/lib/seo.ts (useDocumentMeta). No static canonical here: the SPA
+         catch-all serves this file on every route, and a hardcoded canonical
+         would wrongly claim them all for the homepage. -->
+    <!--seo:start-->
+    <title>Vis — ონლაინ ჯავშნების სისტემა ბიზნესისთვის</title>
+    <meta
+      name="description"
+      content="მიიღეთ ჯავშნები ონლაინ: სალონებს, კლინიკებს, სტუდიოებსა და ტრენერებს Vis აძლევს ჯავშნის გვერდს, კალენდარს და SMS შეხსენებებს — შექმნილია საქართველოსთვის."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Vis" />
+    <meta property="og:title" content="Vis — ონლაინ ჯავშნების სისტემა ბიზნესისთვის" />
+    <meta
+      property="og:description"
+      content="მიიღეთ ჯავშნები ონლაინ: ჯავშნის გვერდი, კალენდარი და SMS შეხსენებები მომსახურების ბიზნესისთვის."
+    />
+    <meta property="og:image" content="https://vis.ge/og-image.png" />
+    <meta property="og:url" content="https://vis.ge/" />
+    <meta property="og:locale" content="ka_GE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!--seo:end-->
   </head>
   <body>
     <div id="root"></div>

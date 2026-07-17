@@ -1,0 +1,12 @@
+# Vis — https://vis.ge
+# Transactional routes (booking-confirmation, review, pay, invite, auth pages)
+# are deliberately NOT disallowed here: they carry X-Robots-Tag: noindex
+# response headers (vercel.json), and a Disallow would stop crawlers from ever
+# seeing that header, leaving tokened URLs indexable as URL-only stubs.
+
+User-agent: *
+Disallow: /dashboard
+Disallow: /superadmin
+Disallow: /onboarding
+
+Sitemap: https://vis.ge/sitemap.xml

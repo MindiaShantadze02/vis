@@ -7,6 +7,7 @@ import VisLogo from '@/components/VisLogo'
 import { displayFont, radii } from '@/theme/theme'
 import { anim } from '@/theme/animations'
 import { TIERS } from '@/lib/tiers'
+import { useDocumentMeta } from '@/lib/seo'
 import {
   StorefrontOutlined, GroupOutlined, ScheduleOutlined, StarRounded,
   LanguageOutlined, CodeOutlined, Check,
@@ -29,9 +30,14 @@ const FEATURES: { key: string; Icon: typeof StorefrontOutlined }[] = [
   { key: 'api', Icon: CodeOutlined },
 ]
 
-/** The brand wordmark (shared VisLogo SVG). */
+/** The brand wordmark (shared VisLogo SVG). aria-label gives the SVG-only
+    lockup an accessible/crawlable brand name. */
 function BrandLockup() {
-  return <VisLogo height={26} />
+  return (
+    <Box component="span" aria-label="Vis" sx={{ display: 'inline-flex' }}>
+      <VisLogo height={26} />
+    </Box>
+  )
 }
 
 /** A flat hairline panel — the app's Card look, used directly for full control. */
@@ -54,6 +60,12 @@ function Panel({ children, sx }: { children: ReactNode; sx?: object }) {
 export default function HomePage() {
   const { t } = useTranslation()
   const year = new Date().getFullYear()
+
+  useDocumentMeta({
+    title: t('seo.homeTitle'),
+    description: t('seo.homeDesc'),
+    canonicalPath: '/',
+  })
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', flexDirection: 'column' }}>
@@ -130,7 +142,8 @@ export default function HomePage() {
           {FEATURES.map(({ key, Icon }) => (
             <Panel key={key}>
               <Icon sx={{ fontSize: 30, color: 'primary.main' }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mt: 1.5 }}>
+              {/* h3 under the section's h2 — heading hierarchy for crawlers. */}
+              <Typography component="h3" variant="subtitle1" sx={{ fontWeight: 600, mt: 1.5 }}>
                 {t(`home.features.${key}.title`)}
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.75 }}>

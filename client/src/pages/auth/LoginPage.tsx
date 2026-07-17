@@ -6,6 +6,7 @@ import {
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useDocumentMeta } from '@/lib/seo'
 import { VisibilityOutlined as VisibilityIcon } from '@/components/icons'
 import { VisibilityOffOutlined as VisibilityOffIcon } from '@/components/icons'
 import { supabase, checkCredentials } from '@/lib/supabase'
@@ -23,6 +24,7 @@ import OtpStep from './OtpStep'
 // keeps invalid credentials from ever reaching the OTP step.
 export default function LoginPage() {
   const { t } = useTranslation()
+  useDocumentMeta({ title: t('seo.loginTitle'), canonicalPath: '/login' })
   const navigate = useNavigate()
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')

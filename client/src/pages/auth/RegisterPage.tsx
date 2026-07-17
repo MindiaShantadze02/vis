@@ -6,6 +6,7 @@ import {
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
+import { useDocumentMeta } from '@/lib/seo'
 import { VisibilityOutlined as VisibilityIcon } from '@/components/icons'
 import { VisibilityOffOutlined as VisibilityOffIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
@@ -21,6 +22,7 @@ import OtpStep from './OtpStep'
 // → signUp. The OTP proves the phone belongs to whoever is creating the account.
 export default function RegisterPage() {
   const { t } = useTranslation()
+  useDocumentMeta({ title: t('seo.registerTitle'), canonicalPath: '/register' })
   const navigate = useNavigate()
 
   const [phone, setPhone] = useState('')

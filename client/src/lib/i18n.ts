@@ -40,4 +40,11 @@ i18n
     },
   })
 
+// Keep <html lang> in sync with the active language (SEO/a11y — index.html
+// ships a static lang="ka"). Fires once when detection resolves at init and
+// again on every switch.
+i18n.on('languageChanged', lng => {
+  document.documentElement.lang = lng
+})
+
 export default i18n

@@ -5,6 +5,7 @@ import {
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useDocumentMeta } from '@/lib/seo'
 import { supabase } from '@/lib/supabase'
 import { isValidGeorgianPhone, toE164Georgian, FIELD_LIMITS, PASSWORD_MIN } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
@@ -28,6 +29,7 @@ function resetErrorKey(code: string): string {
 
 export default function ForgotPasswordPage() {
   const { t } = useTranslation()
+  useDocumentMeta({ title: t('seo.forgotTitle'), canonicalPath: '/forgot-password' })
   const navigate = useNavigate()
 
   const [step, setStep] = useState<Step>('phone')
