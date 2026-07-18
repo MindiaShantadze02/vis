@@ -65,7 +65,7 @@ export default function StatCard({ label, value, icon, color, loading }: StatCar
           {icon}
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{label}</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', overflowWrap: 'anywhere' }}>{label}</Typography>
           {loading
             ? <Skeleton width={80} height={36} />
             : <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.25 }}><AnimatedValue value={value} /></Typography>
@@ -112,8 +112,12 @@ export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boo
           sx={{
             flex: 1,
             display: 'flex',
+            // Mobile stacks the segment vertically (icon over label over value),
+            // centred — the horizontal row only starts at the sm breakpoint.
+            flexDirection: { xs: 'column', sm: 'row' },
             alignItems: 'center',
-            gap: 1.75,
+            textAlign: { xs: 'center', sm: 'left' },
+            gap: { xs: 1, sm: 1.75 },
             p: 2.5,
             minWidth: 0,
             borderColor: 'divider',
@@ -139,7 +143,7 @@ export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boo
             {it.icon}
           </Box>
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>{it.label}</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', overflowWrap: 'anywhere' }}>{it.label}</Typography>
             {loading
               ? <Skeleton width={64} height={32} />
               : <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.25 }}><AnimatedValue value={it.value} /></Typography>
