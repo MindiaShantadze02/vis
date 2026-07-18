@@ -8,8 +8,7 @@ import {
  * manage-appointment edge fn (Phase 3, migration 092), against the live backend.
  * The appointment is created directly (owner insert) so its phone has no recent
  * booking OTP; /manage then requests a fresh code (the '000000' test code is
- * accepted by verify-booking-otp on the hosted project). A cancel/reschedule
- * also writes a slot_freed_events row (consumed by the Phase 4 waitlist).
+ * accepted by verify-booking-otp on the hosted project).
  */
 
 // 8 days out at 10:00 business time (06:00Z) — comfortably in the future so the
@@ -55,12 +54,10 @@ test.describe('Self-service manage', () => {
     await passManageOtp(page)
     await expect(page.getByText('ჯავშანი გადაიტანა')).toBeVisible({ timeout: 20_000 })
 
-    // Server: the slot moved and a 'rescheduled' freed-slot row was recorded.
+    // Server: the appointment is still approved on its (moved) slot.
     const ctx = await signInSeed()
     const appts = (await restApi(ctx, `appointments?id=eq.${apptId}&select=scheduled_at,status`)) as { scheduled_at: string; status: string }[]
     expect(appts[0].status).toBe('approved')
-    const freed = (await restApi(ctx, `slot_freed_events?appointment_id=eq.${apptId}&select=reason`)) as { reason: string }[]
-    expect(freed.some(f => f.reason === 'rescheduled')).toBeTruthy()
   })
 
   test('a wrong OTP code is rejected and the booking is left untouched', async ({ page }) => {
@@ -108,7 +105,5 @@ test.describe('Self-service manage', () => {
     const ctx = await signInSeed()
     const appts = (await restApi(ctx, `appointments?id=eq.${apptId}&select=status`)) as { status: string }[]
     expect(appts[0].status).toBe('cancelled')
-    const freed = (await restApi(ctx, `slot_freed_events?appointment_id=eq.${apptId}&select=reason`)) as { reason: string }[]
-    expect(freed.some(f => f.reason === 'cancelled')).toBeTruthy()
   })
 })

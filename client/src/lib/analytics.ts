@@ -22,8 +22,6 @@ export interface OrgAnalytics {
   revenue_by_staff: StaffRevenue[]
   by_weekday: number[] // 7, Mon→Sun
   by_hour: number[]    // 24, 0→23
-  waitlist_total: number
-  waitlist_conversion: number | null
 }
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v))
@@ -47,8 +45,6 @@ export function parseAnalytics(raw: unknown): OrgAnalytics | null {
       : [],
     by_weekday: Array.isArray(r.by_weekday) ? (r.by_weekday as unknown[]).map(num) : Array(7).fill(0),
     by_hour: Array.isArray(r.by_hour) ? (r.by_hour as unknown[]).map(num) : Array(24).fill(0),
-    waitlist_total: num(r.waitlist_total),
-    waitlist_conversion: rate(r.waitlist_conversion),
   }
 }
 

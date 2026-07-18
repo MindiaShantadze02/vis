@@ -22,7 +22,6 @@ import {
 } from '@/lib/slots'
 import type { SlotApptRow, SlotOverride, SlotCapacity } from '@/lib/slots'
 import type { BookingService, BookingStaff } from './BookingLayout'
-import WaitlistJoinDialog from './WaitlistJoinDialog'
 
 interface Props {
   orgId: string
@@ -84,8 +83,6 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
 
   const [assignedStaff, setAssignedStaff] = useState<BookingStaff[]>([])
   const [selectedStaffId, setSelectedStaffId] = useState<string>(initialStaffId ?? ANY)
-  // "Join the waitlist" dialog for a full day.
-  const [waitlistOpen, setWaitlistOpen] = useState(false)
   const [dayAppts, setDayAppts] = useState<ApptRow[]>([])
   const [override, setOverride] = useState<OverrideRow | null>(null)
 
@@ -678,18 +675,9 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                 p: 3, textAlign: 'center', borderRadius: 2,
                 border: '1px dashed', borderColor: 'divider',
               }}>
-                <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   {t('booking.noSlots')}
                 </Typography>
-                {/* Full day → let the customer join the waitlist for it. */}
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => setWaitlistOpen(true)}
-                  data-testid="book-join-waitlist"
-                >
-                  {t('waitlist.joinCta')}
-                </Button>
               </Box>
             )
             : (
@@ -776,16 +764,6 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
             )
           }
         </>
-      )}
-
-      {waitlistOpen && selectedDate && (
-        <WaitlistJoinDialog
-          orgId={orgId}
-          serviceId={service.id}
-          staffId={selectedStaffId === ANY ? null : selectedStaffId}
-          desiredDate={format(selectedDate, 'yyyy-MM-dd')}
-          onClose={() => setWaitlistOpen(false)}
-        />
       )}
     </Box>
   )

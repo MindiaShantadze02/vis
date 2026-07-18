@@ -89,7 +89,6 @@ export default function AnalyticsPage() {
             <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.noShowRate')} value={pct(data.no_show_rate)} /></Grid>
             <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.cancelRate')} value={pct(data.cancellation_rate)} /></Grid>
             <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.repeatRate')} value={pct(data.repeat_rate)} /></Grid>
-            <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.waitlistConv')} value={pct(data.waitlist_conversion)} /></Grid>
           </Grid>
 
           <Grid container spacing={2}>

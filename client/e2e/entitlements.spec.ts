@@ -49,7 +49,7 @@ test.describe('Entitlements — get_org_entitlements contract', () => {
     // ── Decision: NO feature gating → every feature resolves true on this tier. ──
     const features = e.features as Record<string, boolean>
     expect(features).toMatchObject({
-      deposits: true, waitlist: true, recurring: true, analytics: true, self_service: true,
+      deposits: true, recurring: true, analytics: true, self_service: true,
     })
     expect(Object.values(features).every(Boolean)).toBeTruthy()
 

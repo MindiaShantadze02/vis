@@ -220,49 +220,6 @@ export function cancellationUpdateBody(data: CancellationUpdateData, lang: SmsLa
   }
 }
 
-export interface WaitlistOfferData {
-  businessName: string
-  serviceName: string
-  when: string
-  claimUrl: string
-  minutes: number
-}
-
-// Sent when a freed slot is offered to a waitlisted customer — the claim link +
-// a short window are the whole point, so the URL goes last, unabbreviated.
-export function waitlistOfferBody(data: WaitlistOfferData, lang: SmsLang = 'ka'): string {
-  const { businessName, serviceName, when, claimUrl, minutes } = data
-  switch (lang) {
-    case 'en':
-      return `${businessName}: a ${serviceName} slot opened on ${when}! Claim it within ${minutes} min: ${claimUrl}`
-    case 'ru':
-      return `${businessName}: освободилось время на ${serviceName} — ${when}! Забронируйте в течение ${minutes} мин: ${claimUrl}`
-    case 'ka':
-    default:
-      return `${businessName}: გამოთავისუფლდა დრო — ${serviceName}, ${when}! დაიკავეთ ${minutes} წუთში: ${claimUrl}`
-  }
-}
-
-export interface WaitlistClaimedData {
-  businessName: string
-  serviceName: string
-  when: string
-}
-
-// Sent once a waitlisted customer claims the offered slot (booking confirmed).
-export function waitlistClaimedBody(data: WaitlistClaimedData, lang: SmsLang = 'ka'): string {
-  const { businessName, serviceName, when } = data
-  switch (lang) {
-    case 'en':
-      return `${businessName}: your ${serviceName} is booked for ${when}. See you!`
-    case 'ru':
-      return `${businessName}: ваша запись на ${serviceName} подтверждена — ${when}. Ждём вас!`
-    case 'ka':
-    default:
-      return `${businessName}: თქვენი ჯავშანი — ${serviceName}, ${when} დადასტურდა. გელით!`
-  }
-}
-
 // Type-check helper so adding a SmsMessageType reminds you a template may be
 // needed. Not all types are wired yet (admin_*, invitation).
 export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
@@ -275,6 +232,4 @@ export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
   'refund_update',
   'reschedule_update',
   'cancellation_update',
-  'waitlist_offer',
-  'waitlist_claimed',
 ]

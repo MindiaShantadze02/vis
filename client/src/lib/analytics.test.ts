@@ -8,7 +8,6 @@ describe('parseAnalytics', () => {
       deposits_collected: '5', no_show_rate: '0.067', cancellation_rate: '0.25', repeat_rate: '0.5',
       revenue_by_staff: [{ name: 'Ana', revenue: '800' }, { name: '—', revenue: '450.5' }],
       by_weekday: [22, 17, 5, 9, 11, 1, 1], by_hour: Array(24).fill(0),
-      waitlist_total: '3', waitlist_conversion: '0.333',
     })!
     expect(a.revenue).toBe(1250.5)
     expect(a.completed).toBe(28)

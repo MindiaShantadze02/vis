@@ -251,32 +251,6 @@ export async function createSeedAppointment(opts: {
 }
 
 /**
- * Join the seeded org's waitlist for a service on a desired date, via the anon
- * join_waitlist RPC. Returns the entry id. (Consent-only, no OTP — matches the
- * booking-page dialog.)
- */
-export async function joinWaitlist(opts: {
-  firstName: string
-  phone: string
-  desiredDate: string // yyyy-MM-dd
-}): Promise<string> {
-  const { url, anonKey, accessToken } = await signInSeed()
-  const readH = { apikey: anonKey, authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }
-  const org = (await (await fetch(`${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`, { headers: readH })).json()) as { id: string }[]
-  const svc = (await (await fetch(`${url}/rest/v1/services?org_id=eq.${org[0].id}&is_active=eq.true&select=id&limit=1`, { headers: readH })).json()) as { id: string }[]
-  const res = await fetch(`${url}/rest/v1/rpc/join_waitlist`, {
-    method: 'POST',
-    headers: { apikey: anonKey, authorization: `Bearer ${anonKey}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      p_org_id: org[0].id, p_service_id: svc[0].id, p_desired_date: opts.desiredDate,
-      p_first_name: opts.firstName, p_phone: opts.phone,
-    }),
-  })
-  if (!res.ok) throw new Error(`join_waitlist failed: ${res.status} ${await res.text()}`)
-  return (await res.json()) as string
-}
-
-/**
  * Read the hosted project's URL + anon key from client/.env — for Node-side
  * specs that talk straight to the GoTrue / PostgREST / Edge-Function HTTP
  * endpoints (supabase-js won't construct on Node 20; see setRequireApproval).

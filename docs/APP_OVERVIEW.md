@@ -143,8 +143,7 @@ developer strip, footer links to docs and legal pages).
 - **Analytics** (migration 096) — a money-first dashboard for a chosen range (30/90/365 days) from
   the pre-aggregated `get_org_analytics` RPC: revenue + revenue-per-staff, booking/completion counts,
   **no-show / cancellation / repeat-customer rates**, busiest-weekday & busiest-hour histograms
-  (business time), deposit collection and waitlist conversion. Charts are dependency-free CSS bars.
-- **Waitlist** — the cancellation-waitlist queue + a "check for openings" (dispatch) button.
+  (business time) and deposit collection. Charts are dependency-free CSS bars.
 - **Realtime in-app notifications** (owner bell) for new bookings.
 - **Settings** (grouped by concern, `SETTINGS_GROUPS` in `DashboardLayout.tsx`):
   - **Business:** Business info (name/description/contact phone/address/logo — path kept at
@@ -208,7 +207,7 @@ developer strip, footer links to docs and legal pages).
   expired hard-block surfaces the trigger's `limit_reached` error gracefully. The public API
   returns 403 `quota_exceeded` only for an expired org.
 
-## Booking add-ons: deposits, self-service, waitlist
+## Booking add-ons: deposits, self-service, recurring
 
 ### Deposits / prepayment (migrations 089/090/091)
 - A business can require an **upfront deposit** (or full prepayment) to confirm a booking — the
@@ -230,8 +229,7 @@ developer strip, footer links to docs and legal pages).
 - Reschedule re-validates the new slot under the per-org advisory lock (409 on race);
   cancel applies the refund policy (refunds the deposit/payment iff within
   `cancellation_window_hours` and `deposit_refundable`, via the payments seam, atomic-claim-then-
-  refund like the owner cancel). A cancel/reschedule records a **`slot_freed_events`** row (for any
-  actor — owner or customer), which feeds the waitlist.
+  refund like the owner cancel).
 
 ### Recurring appointments (migration 095)
 - Owner/staff-created **standing bookings** (weekly / biweekly / monthly) for trainers, clinics and
@@ -242,17 +240,7 @@ developer strip, footer links to docs and legal pages).
   slots are **skipped and reported** (`{made, skipped}`), never silently dropped; each occurrence
   meters against the tier allowance. Per-occurrence confirmation SMS is suppressed for series rows.
 - Edits: "this occurrence" is the normal single cancel/reschedule; **`cancel_recurrence_series`**
-  ends the series and cancels all future occurrences (each frees its slot → waitlist).
-
-### Cancellation waitlist (migration 093)
-- When a day is full, the booking page offers **"join the waitlist"** (consent-only; the OTP is at
-  claim time). A `dispatch_waitlist_offers` cron (every 5 min; also an owner "check for openings"
-  button on **Dashboard → Waitlist**) matches a freed future slot to the oldest active entry,
-  creates a **time-limited offer** (15 min) and texts a claim link.
-- The offered customer claims at **`/waitlist/:token`** (OTP-gated `claim-waitlist` edge fn), which
-  books the slot under the advisory lock (409 on race). Expired offers roll over to the next
-  candidate. Concurrency: only one pending offer per freed slot; the claim re-validates capacity.
-  Waitlist claims book in-person/unpaid (a deposit, if any, is collected in person).
+  ends the series and cancels all future occurrences.
 
 ## Data protection & privacy (Georgian Law on Personal Data Protection, No. 3144)
 - **Privacy Policy + Terms** (canonical markdown in `docs/legal/`, in-app pages at `/privacy`,
@@ -283,8 +271,6 @@ developer strip, footer links to docs and legal pages).
   `tier_features`
 - Deposits (089): per-service + org `deposit_type`/`deposit_value`; org `cancellation_window_hours`
   / `deposit_refundable`
-- Self-service + waitlist (092/093): `slot_freed_events` (freed-slot ledger), `waitlist_entries`,
-  `waitlist_offers` (claim-token capability)
 - `reviews` (one per appointment; org-scoped read; public aggregate exposed via `get_public_org`)
 - `api_keys` + `api_rate_counters` (public API; hashed keys, per-minute counters)
 - `setup_requests` (concierge-onboarding queue; one open per org)
@@ -297,11 +283,10 @@ developer strip, footer links to docs and legal pages).
   through a pluggable `SmsProvider` (`_shared/sms/`); currently a **mock** provider. Message types
   include booking confirmation, approval updates, day-before appointment reminders
   (`dispatch_appointment_reminders` cron), meeting links, invitations, verification codes,
-  setup-complete, refund/reschedule/cancellation updates, and waitlist offer/claimed. Go-live
+  setup-complete, and refund/reschedule/cancellation updates. Go-live
   checklist for a real gateway: `docs/SMS_PROVIDER_READINESS.md` (note: `to` numbers need `+995`
-  prefixing). Customer-facing edge fns (`manage-appointment`, `claim-waitlist`) send directly.
-- `pg_cron`: auto-complete past appointments; booking notifications & reminders; retention purge;
-  waitlist-offer dispatch (`dispatch_waitlist_offers`, every 5 min)
+  prefixing). The customer-facing `manage-appointment` edge fn sends directly.
+- `pg_cron`: auto-complete past appointments; booking notifications & reminders; retention purge
 - Account deletion cascades all org data (+ best-effort storage cleanup)
 
 ## Security & multi-tenancy
@@ -335,10 +320,10 @@ developer strip, footer links to docs and legal pages).
   live challenges) and `payment-webhook` v9 (amount/currency validated against the stored intent
   for real providers).
 - Public reads go through SECURITY DEFINER RPCs that strip secrets: `get_public_org`,
-  `get_booking_confirmation`, `get_org_busy_slots`, `get_manage_context`, `get_waitlist_offer`.
-- **Capability links** (`/review`, `/manage`, `/waitlist`): the row UUID / claim token is the
-  capability; reads return stripped jsonb and every mutation is OTP-gated. Writer RPCs
-  (`reschedule_appointment_slot`, `claim_waitlist_offer`) are service-role-only; the customer edge
+  `get_booking_confirmation`, `get_org_busy_slots`, `get_manage_context`.
+- **Capability links** (`/review`, `/manage`): the row UUID is the
+  capability; reads return stripped jsonb and every mutation is OTP-gated. The writer RPC
+  (`reschedule_appointment_slot`) is service-role-only; the customer edge
   fns delegate OTP to `request-booking-otp`/`verify-booking-otp` server-side (no test bypass in the
   new functions).
 - Storage buckets (`logos`, `member-photos`, `service-images`) are folder-scoped per org.
@@ -360,10 +345,7 @@ developer strip, footer links to docs and legal pages).
   (`overage_events`, not blocked), unlimited seats both tiers, `get_org_entitlements` + FeatureGate.
 - **Deposits / prepayment** (089–091): per-service deposit config, `deposit_paid` + `no_show`
   statuses, booking forces online when a deposit is required.
-- **Customer self-service** (092): `/manage/:appointmentId` OTP-gated reschedule/cancel-with-refund;
-  `slot_freed_events` ledger.
-- **Cancellation waitlist** (093/094): join → `dispatch_waitlist_offers` cron → OTP claim at
-  `/waitlist/:token`; owner Dashboard → Waitlist view.
+- **Customer self-service** (092): `/manage/:appointmentId` OTP-gated reschedule/cancel-with-refund.
 - **Recurring appointments** (095): owner-created weekly/biweekly/monthly series (bounded,
   materialized occurrences); `create_recurrence_series` / `cancel_recurrence_series`.
 - **Owner analytics** (096): `get_org_analytics` RPC + a money-first dashboard (Dashboard →

@@ -24,7 +24,7 @@ const raw = {
   period_start: '2026-07-01T00:00:00+00:00',
   period_end: '2026-08-01T00:00:00+00:00',
   trial_ends_at: '2026-07-31T00:00:00+00:00',
-  features: { deposits: true, waitlist: true, recurring: true, analytics: true, self_service: true },
+  features: { deposits: true, recurring: true, analytics: true, self_service: true },
 }
 
 describe('parseEntitlements', () => {
@@ -39,7 +39,7 @@ describe('parseEntitlements', () => {
     expect(ent.overageCost).toBe(0.9)
     expect(ent.seatLimit).toBeNull()
     expect(ent.features).toEqual({
-      deposits: true, waitlist: true, recurring: true, analytics: true, self_service: true,
+      deposits: true, recurring: true, analytics: true, self_service: true,
     })
   })
 
@@ -59,7 +59,7 @@ describe('parseEntitlements', () => {
   it('defaults an absent feature flag to false (fail-closed)', () => {
     const ent = parseEntitlements({ ...raw, features: { deposits: true } })!
     expect(ent.features.deposits).toBe(true)
-    expect(ent.features.waitlist).toBe(false)
+    expect(ent.features.recurring).toBe(false)
     // Every known key is always present in the parsed map.
     expect(Object.keys(ent.features).sort()).toEqual([...FEATURE_KEYS].sort())
   })
@@ -108,7 +108,7 @@ describe('hasFeature (fail-closed gate)', () => {
   })
   it('returns false when the map is missing or null', () => {
     expect(hasFeature(null, 'deposits')).toBe(false)
-    expect(hasFeature(undefined, 'waitlist')).toBe(false)
+    expect(hasFeature(undefined, 'recurring')).toBe(false)
   })
   it('returns false for a disabled flag', () => {
     const gated = parseEntitlements({ ...raw, features: { deposits: false } })!

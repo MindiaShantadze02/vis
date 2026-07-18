@@ -18,8 +18,6 @@ export type SmsMessageType =
   | 'refund_update'
   | 'reschedule_update'
   | 'cancellation_update'
-  | 'waitlist_offer'
-  | 'waitlist_claimed'
 
 export interface SmsMessage {
   // Bare recipient phone. Providers normalise to whatever format they require

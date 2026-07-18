@@ -14,13 +14,12 @@ import type { Tier, SubscriptionState } from '@/lib/tiers'
 /** Feature keys in platform_config.tier_features. All true on both tiers today. */
 export type FeatureKey =
   | 'deposits'
-  | 'waitlist'
   | 'recurring'
   | 'analytics'
   | 'self_service'
 
 export const FEATURE_KEYS: FeatureKey[] = [
-  'deposits', 'waitlist', 'recurring', 'analytics', 'self_service',
+  'deposits', 'recurring', 'analytics', 'self_service',
 ]
 
 export interface Entitlements {

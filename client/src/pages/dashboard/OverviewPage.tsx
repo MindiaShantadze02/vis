@@ -348,7 +348,7 @@ export default function OverviewPage() {
   }
 
   // Cancel the whole recurring series this appointment belongs to (all future
-  // occurrences). Each cancelled occurrence frees its slot for the waitlist.
+  // occurrences).
   async function cancelSeries(id: string) {
     if (!seriesId) return
     setActionLoading(id)
