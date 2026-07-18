@@ -159,11 +159,11 @@ export default function HomePage() {
         <Container maxWidth={false} sx={{ maxWidth: MAX_W, py: { xs: 6, sm: 8 } }}>
           <Typography
             component="h2"
-            sx={{ fontFamily: displayFont, fontWeight: 700, fontSize: { xs: 24, sm: 28 }, letterSpacing: '-0.3px' }}
+            sx={{ fontFamily: displayFont, fontWeight: 700, fontSize: { xs: 24, sm: 28 }, letterSpacing: '-0.3px', textAlign: 'center' }}
           >
             {t('home.pricingTitle')}
           </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1, mb: 3 }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1, mb: 3, textAlign: 'center' }}>
             {t('home.pricingNote')}
           </Typography>
           <Box
@@ -171,7 +171,7 @@ export default function HomePage() {
               display: 'grid', gap: 2,
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
               alignItems: 'stretch',
-              maxWidth: 640, mx: 'auto',
+              maxWidth: 680, mx: 'auto',
             }}
           >
             {TIERS.map(tier => (
@@ -193,6 +193,9 @@ export default function HomePage() {
                 </Stack>
                 <Typography sx={{ fontFamily: displayFont, fontWeight: 700, fontSize: 26 }}>
                   {t(`tiers.${tier.key}.price`)}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {t('home.overageNote', { price: tier.overagePrice.toFixed(2) })}
                 </Typography>
                 <Stack spacing={1} sx={{ mt: 2, mb: 3, flexGrow: 1 }}>
                   {(t(`tiers.${tier.key}.features`, { returnObjects: true }) as string[]).map(f => (

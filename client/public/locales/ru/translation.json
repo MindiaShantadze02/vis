@@ -645,7 +645,8 @@
     "devCta": "Получить API-ключ",
     "apiDocs": "Документация API",
     "widgetDocs": "Документация виджета",
-    "footerRights": "Все права защищены."
+    "footerRights": "Все права защищены.",
+    "overageNote": "затем ₾{{price}} за доп. запись"
   },
   "manage": {
     "otpRequestFailed": "Не удалось отправить код. Попробуйте ещё раз.",

@@ -641,7 +641,8 @@
     "devCta": "Get an API key",
     "apiDocs": "API docs",
     "widgetDocs": "Widget docs",
-    "footerRights": "All rights reserved."
+    "footerRights": "All rights reserved.",
+    "overageNote": "then ₾{{price}} per extra booking"
   },
   "manage": {
     "otpRequestFailed": "Couldn't send the code. Please try again.",
