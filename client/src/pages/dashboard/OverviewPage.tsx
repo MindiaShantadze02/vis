@@ -4,10 +4,11 @@ import {
   Typography, Box, Skeleton, Button, Chip, Divider,
   TextField, Select, MenuItem, FormControl, InputLabel, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TablePagination,
-  useMediaQuery, useTheme, FormControlLabel, Checkbox,
+  useMediaQuery, useTheme, FormControlLabel, Checkbox, Badge,
 } from '@mui/material'
 import { AppDatePicker } from '@/components/AppDatePicker'
 import { Add as AddIcon } from '@/components/icons'
+import { TuneOutlined as TuneOutlinedIcon } from '@/components/icons'
 import { TrendingUp as TrendingUpIcon } from '@/components/icons'
 import { CalendarToday as CalendarTodayIcon } from '@/components/icons'
 import { AccessTime as AccessTimeIcon } from '@/components/icons'
@@ -99,6 +100,9 @@ export default function OverviewPage() {
   const [serviceFilter, setServiceFilter] = useState<string>('all')
   const [staffFilter, setStaffFilter] = useState<string>('all')
   const [paymentFilter, setPaymentFilter] = useState<string>('all')
+  // Mobile: the attribute + date filters collapse behind a single button that
+  // opens this dialog (search stays inline as the primary control).
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [services, setServices] = useState<{ id: string; name: string }[]>([])
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(25)
@@ -288,6 +292,15 @@ export default function OverviewPage() {
     serviceFilter !== 'all' || staffFilter !== 'all' || paymentFilter !== 'all' ||
     dateFrom !== null || dateTo !== null
 
+  // How many of the collapsible filters (everything except the always-visible
+  // search) are active — drives the badge on the mobile "Filters" button.
+  const activeFilterCount =
+    (statusFilter !== 'all' ? 1 : 0) +
+    (serviceFilter !== 'all' ? 1 : 0) +
+    (staffFilter !== 'all' ? 1 : 0) +
+    (paymentFilter !== 'all' ? 1 : 0) +
+    (dateFrom !== null || dateTo !== null ? 1 : 0)
+
   function resetFilters() {
     setStatusFilter('all'); setSearch(''); setDebouncedSearch('')
     setServiceFilter('all'); setStaffFilter('all'); setPaymentFilter('all')
@@ -439,6 +452,136 @@ export default function OverviewPage() {
     )
   }
 
+  // The always-visible search box (kept inline on every breakpoint).
+  const searchField = (
+    <TextField
+      size="small"
+      placeholder={`${t('common.search')}...`}
+      value={search}
+      onChange={e => setSearch(e.target.value)}
+      slotProps={{
+        input: { startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 20 }} /> },
+        htmlInput: { 'data-testid': 'appt-search' },
+      }}
+      sx={{ flexGrow: { sm: 1 }, minWidth: { sm: 200 }, maxWidth: { sm: 300 }, width: { xs: '100%', sm: 'auto' } }}
+    />
+  )
+
+  // Attribute dropdowns (status / service / staff / payment). Collapsed into the
+  // mobile filter dialog; rendered inline on desktop.
+  const attributeFilters = (
+    <>
+      <FormControl size="small" sx={{ minWidth: { sm: 130 }, width: { xs: '100%', sm: 'auto' } }}>
+        <InputLabel>სტატუსი</InputLabel>
+        <Select
+          value={statusFilter}
+          label="სტატუსი"
+          onChange={e => { setStatusFilter(e.target.value as AppointmentStatus | 'all'); setPage(0) }}
+          data-testid="appt-status-filter"
+        >
+          <MenuItem value="all">ყველა</MenuItem>
+          {ALL_STATUSES.map(s => (
+            <MenuItem key={s} value={s}>{t(`dashboard.${s}`)}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } }}>
+        <InputLabel>{t('dashboard.filterService')}</InputLabel>
+        <Select
+          value={serviceFilter}
+          label={t('dashboard.filterService')}
+          onChange={e => { setServiceFilter(e.target.value); setPage(0) }}
+          data-testid="appt-service-filter"
+        >
+          <MenuItem value="all">{t('dashboard.allServices')}</MenuItem>
+          {services.map(s => (
+            <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      {/* Staff filter only helps multi-specialist orgs — a solo practitioner
+          never sees it. */}
+      {bookableMembers.length > 1 && (
+        <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } }}>
+          <InputLabel>{t('dashboard.staff')}</InputLabel>
+          <Select
+            value={staffFilter}
+            label={t('dashboard.staff')}
+            onChange={e => { setStaffFilter(e.target.value); setPage(0) }}
+            data-testid="appt-staff-filter"
+          >
+            <MenuItem value="all">{t('dashboard.allStaff')}</MenuItem>
+            {bookableMembers.map(m => (
+              <MenuItem key={m.id} value={m.id}>{m.display_name || '—'}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
+      <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } }}>
+        <InputLabel>{t('dashboard.filterPayment')}</InputLabel>
+        <Select
+          value={paymentFilter}
+          label={t('dashboard.filterPayment')}
+          onChange={e => { setPaymentFilter(e.target.value); setPage(0) }}
+          data-testid="appt-payment-filter"
+        >
+          <MenuItem value="all">{t('dashboard.allPayments')}</MenuItem>
+          <MenuItem value="unpaid">{t('dashboard.payUnpaid')}</MenuItem>
+          <MenuItem value="paid">{t('dashboard.payPaid')}</MenuItem>
+          <MenuItem value="deposit_paid">{t('dashboard.payDeposit')}</MenuItem>
+          <MenuItem value="refunded">{t('dashboard.payRefunded')}</MenuItem>
+        </Select>
+      </FormControl>
+    </>
+  )
+
+  // Quick-date presets + explicit from/to range. Collapsed into the mobile
+  // filter dialog; rendered inline on desktop.
+  const dateFilters = (
+    <>
+      <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+        {([
+          ['today', 'presetToday'],
+          ['week', 'presetWeek'],
+          ['month', 'presetMonth'],
+          ['upcoming', 'presetUpcoming'],
+        ] as const).map(([key, label]) => (
+          <Chip
+            key={key}
+            label={t(`dashboard.${label}`)}
+            size="small"
+            color={datePreset === key ? 'primary' : 'default'}
+            variant={datePreset === key ? 'filled' : 'outlined'}
+            onClick={() => applyPreset(key)}
+            data-testid={`preset-${key}`}
+          />
+        ))}
+      </Box>
+      <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' }, my: 0.5 }} />
+      <AppDatePicker
+        label={t('dashboard.dateFrom')}
+        value={dateFrom}
+        onChange={v => { setDateFrom(v); setDatePreset(null); setPage(0) }}
+        format="dd MMM yyyy"
+        slotProps={{
+          textField: { size: 'small', sx: { minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } } },
+          field: { clearable: true, onClear: () => { setDateFrom(null); setDatePreset(null); setPage(0) } },
+        }}
+      />
+      <AppDatePicker
+        label={t('dashboard.dateTo')}
+        value={dateTo}
+        minDate={dateFrom ?? undefined}
+        onChange={v => { setDateTo(v); setDatePreset(null); setPage(0) }}
+        format="dd MMM yyyy"
+        slotProps={{
+          textField: { size: 'small', sx: { minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } } },
+          field: { clearable: true, onClear: () => { setDateTo(null); setDatePreset(null); setPage(0) } },
+        }}
+      />
+    </>
+  )
+
   return (
     <Box>
       <PageHeader title={t('dashboard.overview')} />
@@ -488,135 +631,66 @@ export default function OverviewPage() {
         </Button>
       </Box>
 
-      {/* Filters — two aligned rows: search + attribute dropdowns, then the date
-          range (quick presets sit with the pickers they populate, reset ends the
-          row) so nothing floats off on its own. */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2.5 }}>
-        {/* Row 1: search + attribute filters */}
-        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
-          <TextField
-            size="small"
-            placeholder={`${t('common.search')}...`}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            slotProps={{
-              input: { startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 20 }} /> },
-              htmlInput: { 'data-testid': 'appt-search' },
-            }}
-            sx={{ flexGrow: { sm: 1 }, minWidth: { sm: 200 }, maxWidth: { sm: 300 }, width: { xs: '100%', sm: 'auto' } }}
-          />
-          <FormControl size="small" sx={{ minWidth: { sm: 130 }, width: { xs: '100%', sm: 'auto' } }}>
-            <InputLabel>სტატუსი</InputLabel>
-            <Select
-              value={statusFilter}
-              label="სტატუსი"
-              onChange={e => { setStatusFilter(e.target.value as AppointmentStatus | 'all'); setPage(0) }}
-              data-testid="appt-status-filter"
+      {/* Filters. On desktop: two aligned rows (search + attribute dropdowns,
+          then the date range). On mobile everything except the search collapses
+          behind a single "Filters" button that opens a dialog, so the list stays
+          in view. */}
+      {isMobile ? (
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2.5 }}>
+          {searchField}
+          <Badge badgeContent={activeFilterCount} color="primary">
+            <Button
+              variant="outlined"
+              startIcon={<TuneOutlinedIcon />}
+              onClick={() => setFiltersOpen(true)}
+              data-testid="appt-filters-btn"
+              sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
             >
-              <MenuItem value="all">ყველა</MenuItem>
-              {ALL_STATUSES.map(s => (
-                <MenuItem key={s} value={s}>{t(`dashboard.${s}`)}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } }}>
-            <InputLabel>{t('dashboard.filterService')}</InputLabel>
-            <Select
-              value={serviceFilter}
-              label={t('dashboard.filterService')}
-              onChange={e => { setServiceFilter(e.target.value); setPage(0) }}
-              data-testid="appt-service-filter"
-            >
-              <MenuItem value="all">{t('dashboard.allServices')}</MenuItem>
-              {services.map(s => (
-                <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          {/* Staff filter only helps multi-specialist orgs — a solo practitioner
-              never sees it. */}
-          {bookableMembers.length > 1 && (
-            <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } }}>
-              <InputLabel>{t('dashboard.staff')}</InputLabel>
-              <Select
-                value={staffFilter}
-                label={t('dashboard.staff')}
-                onChange={e => { setStaffFilter(e.target.value); setPage(0) }}
-                data-testid="appt-staff-filter"
-              >
-                <MenuItem value="all">{t('dashboard.allStaff')}</MenuItem>
-                {bookableMembers.map(m => (
-                  <MenuItem key={m.id} value={m.id}>{m.display_name || '—'}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-          <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } }}>
-            <InputLabel>{t('dashboard.filterPayment')}</InputLabel>
-            <Select
-              value={paymentFilter}
-              label={t('dashboard.filterPayment')}
-              onChange={e => { setPaymentFilter(e.target.value); setPage(0) }}
-              data-testid="appt-payment-filter"
-            >
-              <MenuItem value="all">{t('dashboard.allPayments')}</MenuItem>
-              <MenuItem value="unpaid">{t('dashboard.payUnpaid')}</MenuItem>
-              <MenuItem value="paid">{t('dashboard.payPaid')}</MenuItem>
-              <MenuItem value="deposit_paid">{t('dashboard.payDeposit')}</MenuItem>
-              <MenuItem value="refunded">{t('dashboard.payRefunded')}</MenuItem>
-            </Select>
-          </FormControl>
+              {t('dashboard.filters')}
+            </Button>
+          </Badge>
         </Box>
-
-        {/* Row 2: quick-date presets grouped with the explicit date range + reset */}
-        <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-            {([
-              ['today', 'presetToday'],
-              ['week', 'presetWeek'],
-              ['month', 'presetMonth'],
-              ['upcoming', 'presetUpcoming'],
-            ] as const).map(([key, label]) => (
-              <Chip
-                key={key}
-                label={t(`dashboard.${label}`)}
-                size="small"
-                color={datePreset === key ? 'primary' : 'default'}
-                variant={datePreset === key ? 'filled' : 'outlined'}
-                onClick={() => applyPreset(key)}
-                data-testid={`preset-${key}`}
-              />
-            ))}
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2.5 }}>
+          {/* Row 1: search + attribute filters */}
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+            {searchField}
+            {attributeFilters}
           </Box>
-          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' }, my: 0.5 }} />
-          <AppDatePicker
-            label={t('dashboard.dateFrom')}
-            value={dateFrom}
-            onChange={v => { setDateFrom(v); setDatePreset(null); setPage(0) }}
-            format="dd MMM yyyy"
-            slotProps={{
-              textField: { size: 'small', sx: { minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } } },
-              field: { clearable: true, onClear: () => { setDateFrom(null); setDatePreset(null); setPage(0) } },
-            }}
-          />
-          <AppDatePicker
-            label={t('dashboard.dateTo')}
-            value={dateTo}
-            minDate={dateFrom ?? undefined}
-            onChange={v => { setDateTo(v); setDatePreset(null); setPage(0) }}
-            format="dd MMM yyyy"
-            slotProps={{
-              textField: { size: 'small', sx: { minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } } },
-              field: { clearable: true, onClear: () => { setDateTo(null); setDatePreset(null); setPage(0) } },
-            }}
-          />
+          {/* Row 2: quick-date presets grouped with the explicit date range + reset */}
+          <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', alignItems: 'center' }}>
+            {dateFilters}
+            {filtersActive && (
+              <Button size="small" variant="text" onClick={resetFilters} data-testid="reset-filters">
+                {t('dashboard.resetFilters')}
+              </Button>
+            )}
+          </Box>
+        </Box>
+      )}
+
+      {/* Mobile filter dialog — holds the collapsed attribute + date filters. */}
+      <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('dashboard.filters')}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            {attributeFilters}
+            <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', alignItems: 'center' }}>
+              {dateFilters}
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           {filtersActive && (
-            <Button size="small" variant="text" onClick={resetFilters} data-testid="reset-filters">
+            <Button variant="text" onClick={resetFilters} data-testid="reset-filters" sx={{ mr: 'auto' }}>
               {t('dashboard.resetFilters')}
             </Button>
           )}
-        </Box>
-      </Box>
+          <Button variant="contained" onClick={() => setFiltersOpen(false)} data-testid="appt-filters-done">
+            {t('dashboard.showResults')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
         {/* Desktop header row */}

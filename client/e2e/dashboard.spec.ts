@@ -59,6 +59,31 @@ test.describe('Dashboard', () => {
     await expect(page.getByTestId('reset-filters')).toHaveCount(0)
   })
 
+  test('on mobile the filters collapse behind a button that opens a dialog', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.reload()
+
+    // The attribute/date controls are no longer inline — they're behind a button.
+    await expect(page.getByTestId('appt-service-filter')).toHaveCount(0)
+    const filtersBtn = page.getByTestId('appt-filters-btn')
+    await expect(filtersBtn).toBeVisible()
+
+    // Opening the dialog reveals the collapsed filters; a preset filters the list.
+    await filtersBtn.click()
+    await expect(page.getByTestId('appt-service-filter')).toBeVisible()
+    await page.getByTestId('preset-today').click()
+    await page.getByTestId('appt-filters-done').click()
+
+    // Back on the list, the button now shows an active-filter badge (the badge span
+    // is a sibling of the button inside the MUI Badge root); reset clears it.
+    const badge = page.locator('.MuiBadge-root:has([data-testid="appt-filters-btn"]) .MuiBadge-badge')
+    await expect(badge).toHaveText('1')
+    await filtersBtn.click()
+    await page.getByTestId('reset-filters').click()
+    await page.getByTestId('appt-filters-done').click()
+    await expect(badge).not.toBeVisible()
+  })
+
   // --- edge cases ---
 
   test('add-appointment flags missing fields inline on save instead of disabling it', async ({ page }) => {

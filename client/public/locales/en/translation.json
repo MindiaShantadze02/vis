@@ -306,6 +306,8 @@
     "presetMonth": "This month",
     "presetUpcoming": "Upcoming",
     "resetFilters": "Reset",
+    "filters": "Filters",
+    "showResults": "Show results",
     "rowsPerPage": "Rows per page",
     "noBusinessTitle": "No business yet",
     "noBusinessCaption": "Set up a business to get started. If you're added to a team, the project will appear here.",

@@ -546,20 +546,25 @@ export default function CalendarPage() {
         >
           {t('calendar.rest')}
         </Button>
-        <Tooltip title={t('calendar.today')}>
-          <IconButton onClick={() => setWeekStart(isMobile ? startOfDay(new Date()) : startOfWeek(new Date(), { weekStartsOn: 1 }))} data-testid="cal-today">
-            <TodayIcon />
+        {/* Date-navigation cluster — today, prev, week label, next kept together
+            as one non-wrapping unit so the arrows never orphan onto their own
+            row on narrow screens. */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+          <Tooltip title={t('calendar.today')}>
+            <IconButton size="small" onClick={() => setWeekStart(isMobile ? startOfDay(new Date()) : startOfWeek(new Date(), { weekStartsOn: 1 }))} data-testid="cal-today">
+              <TodayIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <IconButton size="small" onClick={() => setWeekStart(w => addDays(w, -dayCount))} data-testid="cal-prev">
+            <ArrowBackIosNewIcon fontSize="small" />
           </IconButton>
-        </Tooltip>
-        <IconButton onClick={() => setWeekStart(w => addDays(w, -dayCount))} data-testid="cal-prev">
-          <ArrowBackIosNewIcon fontSize="small" />
-        </IconButton>
-        <Typography variant="body2" sx={{ fontWeight: 500, minWidth: { xs: 110, sm: 160 }, textAlign: 'center', fontSize: { xs: '0.8rem', sm: '0.875rem' } }} data-testid="cal-week-label">
-          {weekLabel}
-        </Typography>
-        <IconButton onClick={() => setWeekStart(w => addDays(w, dayCount))} data-testid="cal-next">
-          <ArrowForwardIosIcon fontSize="small" />
-        </IconButton>
+          <Typography variant="body2" sx={{ fontWeight: 500, minWidth: { xs: 96, sm: 160 }, textAlign: 'center', fontSize: { xs: '0.8rem', sm: '0.875rem' } }} data-testid="cal-week-label">
+            {weekLabel}
+          </Typography>
+          <IconButton size="small" onClick={() => setWeekStart(w => addDays(w, dayCount))} data-testid="cal-next">
+            <ArrowForwardIosIcon fontSize="small" />
+          </IconButton>
+        </Box>
       </Box>
 
       {/* Legend — one swatch per appointment type present this week, plus the
