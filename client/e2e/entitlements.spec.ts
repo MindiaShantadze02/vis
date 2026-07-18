@@ -29,13 +29,13 @@ test.describe('Entitlements — get_org_entitlements contract', () => {
     // ── State + allowance partition: pinned active solo org, under allowance ──
     expect(e.tier).toBe('solo')
     expect(e.state).toBe('active')
-    expect(Number(e.included)).toBe(100) // solo included allowance
+    expect(Number(e.included)).toBe(80) // solo included allowance
     expect(Number(e.used)).toBeGreaterThanOrEqual(0)
     expect(Number(e.used)).toBeLessThan(Number(e.included)) // seed stays under cap
 
     // ── Overage fields present + coherent. Under allowance → no accrued overage. ──
-    // (Crossing the 100 boundary is a BEFORE-INSERT trigger behavior verified at
-    // the DB layer; reproducing it live would mean 100+ permanent seed rows.)
+    // (Crossing the allowance boundary is a BEFORE-INSERT trigger behavior verified
+    // at the DB layer; reproducing it live would mean 80+ permanent seed rows.)
     expect(e).toHaveProperty('overage_price')
     expect(Number(e.overage_count)).toBe(0)
     expect(Number(e.overage_cost)).toBe(0)

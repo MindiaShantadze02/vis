@@ -21,9 +21,9 @@ test.describe('Subscription', () => {
     await expect(page.getByRole('heading', { name: 'მიმდინარე გეგმა' })).toBeVisible()
     await expect(page.getByTestId('trial-chip')).toHaveCount(0)
 
-    // Usage bar against the enforced monthly cap (100 for solo).
+    // Usage bar against the enforced monthly cap (80 for solo).
     await expect(page.getByText('ჯავშნები ამ თვეში')).toBeVisible()
-    await expect(page.getByText(/\/\s*100/)).toBeVisible()
+    await expect(page.getByText(/\/\s*80/)).toBeVisible()
 
     // Both self-serve cards, Team flagged recommended; the removed Business
     // tier must not resurface anywhere.
@@ -36,13 +36,13 @@ test.describe('Subscription', () => {
   test('the dashboard usage meter is driven by entitlements (allowance, not blocked)', async ({ page }) => {
     // Exercises get_org_entitlements (migration 088) end-to-end: OrgContext
     // fetches it, useEntitlements feeds the meter. The seed org is active/solo
-    // and under its allowance, so it shows "used / 100" with no overage line
+    // and under its allowance, so it shows "used / 80" with no overage line
     // and — critically — no "bookings blocked" copy (over-allowance is metered
     // now, never blocked).
     await page.goto('/dashboard')
     const meter = page.getByTestId('usage-meter')
     await expect(meter).toBeVisible()
-    await expect(meter.getByText(/\/\s*100/)).toBeVisible()
+    await expect(meter.getByText(/\/\s*80/)).toBeVisible()
     await expect(page.getByTestId('usage-overage')).toHaveCount(0)
   })
 

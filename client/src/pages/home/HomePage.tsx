@@ -169,15 +169,19 @@ export default function HomePage() {
           <Box
             sx={{
               display: 'grid', gap: 2,
-              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
-              alignItems: 'start',
-              maxWidth: 720,
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+              alignItems: 'stretch',
+              maxWidth: 640, mx: 'auto',
             }}
           >
             {TIERS.map(tier => (
               <Panel
                 key={tier.key}
-                sx={{ borderColor: tier.recommended ? 'primary.main' : 'divider', height: '100%' }}
+                sx={{
+                  borderColor: tier.recommended ? 'primary.main' : 'divider',
+                  ...(tier.recommended && { borderWidth: 2 }),
+                  height: '100%', display: 'flex', flexDirection: 'column',
+                }}
               >
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -190,7 +194,7 @@ export default function HomePage() {
                 <Typography sx={{ fontFamily: displayFont, fontWeight: 700, fontSize: 26 }}>
                   {t(`tiers.${tier.key}.price`)}
                 </Typography>
-                <Stack spacing={1} sx={{ mt: 2, mb: 3 }}>
+                <Stack spacing={1} sx={{ mt: 2, mb: 3, flexGrow: 1 }}>
                   {(t(`tiers.${tier.key}.features`, { returnObjects: true }) as string[]).map(f => (
                     <Stack key={f} direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
                       <Check sx={{ fontSize: 18, color: 'primary.main', mt: '2px' }} />
@@ -203,6 +207,7 @@ export default function HomePage() {
                   to="/register"
                   fullWidth
                   variant={tier.recommended ? 'contained' : 'outlined'}
+                  sx={{ mt: 'auto' }}
                 >
                   {t('home.getStarted')}
                 </Button>

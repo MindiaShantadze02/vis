@@ -17,8 +17,8 @@ describe('TIERS / TIER_KEYS', () => {
   // Seats are unlimited on both tiers since 2026-07-17 (staffLimit null/null);
   // the tiers differ only by included volume + price + overage rate.
   it.each([
-    ['solo', 100, null, 0.30],
-    ['team', 300, null, 0.25],
+    ['solo', 80, null, 0.30],
+    ['team', 200, null, 0.30],
   ])('%s tier has the expected monthly limit, staff limit, and overage price', (key, limit, staffLimit, overagePrice) => {
     const t = TIERS.find(t => t.key === key)
     expect(t?.limit).toBe(limit)

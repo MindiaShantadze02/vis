@@ -35,12 +35,12 @@ export interface TierInfo {
 
 export const TIERS: TierInfo[] = [
   {
-    key: 'solo', label: 'სოლო', price: '₾19 / თვე', limit: 100, staffLimit: null, overagePrice: 0.30, colorKey: 'info',
-    features: ['100 ჯავშანი/თვე', 'შეუზღუდავი თანამშრომლები', 'SMS შეხსენება წინა დღეს', 'ონლაინ ბუქინგ გვერდი', 'ყველა თემა'],
+    key: 'solo', label: 'სოლო', price: '₾19 / თვე', limit: 80, staffLimit: null, overagePrice: 0.30, colorKey: 'info',
+    features: ['80 ჯავშანი/თვე', 'შეუზღუდავი თანამშრომლები', 'SMS შეხსენება წინა დღეს', 'ონლაინ ბუქინგ გვერდი', 'ყველა თემა'],
   },
   {
-    key: 'team', label: 'გუნდი', price: '₾39 / თვე', limit: 300, staffLimit: null, overagePrice: 0.25, colorKey: 'primary', recommended: true,
-    features: ['300 ჯავშანი/თვე', 'შეუზღუდავი თანამშრომლები', 'ყველა სოლოს ფუნქცია'],
+    key: 'team', label: 'გუნდი', price: '₾39 / თვე', limit: 200, staffLimit: null, overagePrice: 0.30, colorKey: 'primary', recommended: true,
+    features: ['200 ჯავშანი/თვე', 'შეუზღუდავი თანამშრომლები', 'ყველა სოლოს ფუნქცია'],
   },
 ]
 

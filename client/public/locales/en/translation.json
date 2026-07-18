@@ -512,7 +512,7 @@
       "label": "Solo",
       "price": "₾19 / mo",
       "features": [
-        "100 bookings/mo",
+        "80 bookings/mo",
         "Unlimited staff",
         "Day-before SMS reminders",
         "Online booking page",
@@ -523,7 +523,7 @@
       "label": "Team",
       "price": "₾39 / mo",
       "features": [
-        "300 bookings/mo",
+        "200 bookings/mo",
         "Unlimited staff",
         "All Solo features"
       ]
