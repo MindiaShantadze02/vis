@@ -28,6 +28,28 @@ test.describe('Dashboard', () => {
     await expect(page.getByTestId('cal-week-label')).toBeVisible()
   })
 
+  test('on mobile the calendar is a single-day timeline with a week strip', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/dashboard/calendar')
+
+    // The week strip has one tappable cell per weekday, plus a focused-day title.
+    await expect(page.getByTestId('cal-strip-day')).toHaveCount(7)
+    const dayTitle = page.getByTestId('cal-day-title')
+    await expect(dayTitle).toBeVisible()
+
+    // Tapping the first (Sunday) then last (Saturday) cell focuses two distinct
+    // days, so their titles must differ — proving strip selection works.
+    await page.getByTestId('cal-strip-day').first().click()
+    const sunTitle = await dayTitle.innerText()
+    await page.getByTestId('cal-strip-day').last().click()
+    const satTitle = await dayTitle.innerText()
+    expect(sunTitle).not.toBe(satTitle)
+
+    // The next arrow steps forward one day.
+    await page.getByTestId('cal-next').click()
+    await expect(dayTitle).not.toHaveText(satTitle)
+  })
+
   test('the appointments list exposes service, payment, and quick-date filters', async ({ page }) => {
     // Controls are present…
     await expect(page.getByTestId('appt-service-filter')).toBeVisible()

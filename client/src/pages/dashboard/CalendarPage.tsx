@@ -230,17 +230,17 @@ export default function CalendarPage() {
   const theme = useTheme()
   const { isMobile } = useBreakpoints()
 
-  // Phones can't fit a 7-day grid without horizontal scrolling, so they show a
-  // narrower 3-day window. The data model stays the same — `weekStart` is just
-  // the first visible day and prev/next page by however many days are shown.
-  const dayCount = isMobile ? 3 : 7
+  // Desktop shows the full 7-day week grid. Mobile switches to a single-day
+  // timeline (iOS-style) driven by `selectedDay`, with a tappable week strip
+  // above it. Either way a whole week of data is loaded at once.
+  const dayCount = 7
 
-  // Desktop opens on the current week; mobile's 3-day window opens on *today*
-  // (starting at the week's Monday would hide today behind two taps — the
-  // "today" button below already used this split, the initial state didn't).
+  // Desktop pages by week from here (Monday-first).
   const [weekStart, setWeekStart] = useState(() =>
-    isMobile ? startOfDay(new Date()) : startOfWeek(new Date(), { weekStartsOn: 1 }),
+    startOfWeek(new Date(), { weekStartsOn: 1 }),
   )
+  // Mobile: the focused day. The visible week strip is the week containing it.
+  const [selectedDay, setSelectedDay] = useState(() => startOfDay(new Date()))
   const [restToRemove, setRestToRemove] = useState<{ dateKey: string; idx: number } | null>(null)
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
@@ -292,7 +292,11 @@ export default function CalendarPage() {
   const [restLabel, setRestLabel] = useState('')
   const [savingRest, setSavingRest] = useState(false)
 
-  const days = Array.from({ length: dayCount }, (_, i) => addDays(weekStart, i))
+  // The week currently loaded/shown. Desktop pages by week from `weekStart`
+  // (Mon-first); mobile follows `selectedDay` (Sun-first strip, matching iOS).
+  const mobileWeekStart = useMemo(() => startOfWeek(selectedDay, { weekStartsOn: 0 }), [selectedDay])
+  const loadStart = isMobile ? mobileWeekStart : weekStart
+  const days = Array.from({ length: dayCount }, (_, i) => addDays(loadStart, i))
 
   useEffect(() => {
     if (org) loadTemplate()
@@ -300,7 +304,8 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (org) loadWeek()
-  }, [org, weekStart, dayCount])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [org, loadStart.getTime(), dayCount])
 
   async function loadTemplate() {
     if (!org) return
@@ -348,14 +353,14 @@ export default function CalendarPage() {
   async function loadWeek() {
     if (!org) return
     setLoading(true)
-    const weekEnd = addDays(weekStart, dayCount)
+    const weekEnd = addDays(loadStart, dayCount)
 
     const [apptRes, overrideRes] = await Promise.all([
       supabase
         .from('appointments')
         .select('id, scheduled_at, duration_minutes, service_id, staff_id, status, payment_method, payment_status, notes, customers(first_name, last_name, phone_number), services(name, price), staff:org_members!appointments_staff_id_fkey(id, display_name, title)')
         .eq('org_id', org.id)
-        .gte('scheduled_at', weekStart.toISOString())
+        .gte('scheduled_at', loadStart.toISOString())
         .lt('scheduled_at', weekEnd.toISOString())
         .not('status', 'in', '(rejected,cancelled)')
         .order('scheduled_at'),
@@ -364,7 +369,7 @@ export default function CalendarPage() {
         .from('working_hours_overrides')
         .select('date, is_closed, ranges, note')
         .eq('org_id', org.id)
-        .gte('date', format(weekStart, 'yyyy-MM-dd'))
+        .gte('date', format(loadStart, 'yyyy-MM-dd'))
         .lt('date', format(weekEnd, 'yyyy-MM-dd')),
     ])
 
@@ -499,7 +504,7 @@ export default function CalendarPage() {
       .filter(({ rest }) => isHourRested(hour, rest))
   }
 
-  const weekLabel = `${format(weekStart, 'd MMM', { locale: dateLocale() })} – ${format(addDays(weekStart, dayCount - 1), 'd MMM yyyy', { locale: dateLocale() })}`
+  const weekLabel = `${format(loadStart, 'd MMM', { locale: dateLocale() })} – ${format(addDays(loadStart, dayCount - 1), 'd MMM yyyy', { locale: dateLocale() })}`
 
   // True when [hour, hour+1) lies fully outside the day's working ranges, so
   // closed time can be shaded and the open schedule reads at a glance. An
@@ -521,7 +526,8 @@ export default function CalendarPage() {
 
   return (
     <Box>
-      {/* Header */}
+      {/* Header — desktop toolbar. */}
+      {!isMobile && (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
         <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>
           {t('dashboard.calendar')}
@@ -551,7 +557,7 @@ export default function CalendarPage() {
             row on narrow screens. */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
           <Tooltip title={t('calendar.today')}>
-            <IconButton size="small" onClick={() => setWeekStart(isMobile ? startOfDay(new Date()) : startOfWeek(new Date(), { weekStartsOn: 1 }))} data-testid="cal-today">
+            <IconButton size="small" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))} data-testid="cal-today">
               <TodayIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -566,9 +572,89 @@ export default function CalendarPage() {
           </IconButton>
         </Box>
       </Box>
+      )}
+
+      {/* Header — mobile single-day: title + actions, month nav, tappable week
+          strip, then the focused day's title. */}
+      {isMobile && (
+      <Box sx={{ mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>
+            {t('dashboard.calendar')}
+          </Typography>
+          <Tooltip title={t('calendar.rest')}>
+            <IconButton onClick={openRestDialog} data-testid="cal-rest-btn">
+              <EventBusyOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+          <IconButton
+            onClick={() => setAddOpen(true)}
+            data-testid="cal-add-btn"
+            sx={{ bgcolor: 'primary.main', color: '#fff', '&:hover': { bgcolor: 'primary.dark' } }}
+          >
+            <AddIcon />
+          </IconButton>
+        </Box>
+
+        {/* Month nav — arrows step one day; today resets to now. */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+          <IconButton size="small" onClick={() => setSelectedDay(d => addDays(d, -1))} data-testid="cal-prev">
+            <ArrowBackIosNewIcon fontSize="small" />
+          </IconButton>
+          <Typography variant="subtitle1" sx={{ flex: 1, textAlign: 'center', fontWeight: 700, textTransform: 'capitalize' }} data-testid="cal-week-label">
+            {format(selectedDay, 'LLLL yyyy', { locale: dateLocale() })}
+          </Typography>
+          <IconButton size="small" onClick={() => setSelectedDay(d => addDays(d, 1))} data-testid="cal-next">
+            <ArrowForwardIosIcon fontSize="small" />
+          </IconButton>
+          <Tooltip title={t('calendar.today')}>
+            <IconButton size="small" onClick={() => setSelectedDay(startOfDay(new Date()))} data-testid="cal-today">
+              <TodayIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Week strip (Sun-first) — tap a day to focus it. */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', mb: 1.5 }}>
+          {days.map((day, i) => {
+            const isSel = isSameDay(day, selectedDay)
+            const isToday = isSameDay(day, new Date())
+            return (
+              <Box
+                key={i}
+                onClick={() => setSelectedDay(startOfDay(day))}
+                data-testid="cal-strip-day"
+                sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, py: 0.5, cursor: 'pointer' }}
+              >
+                <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase' }}>
+                  {format(day, 'EEEEE', { locale: dateLocale() })}
+                </Typography>
+                <Box sx={{
+                  width: 34, height: 34, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  bgcolor: isSel ? 'primary.main' : 'transparent',
+                  color: isSel ? '#fff' : (isToday ? 'primary.main' : 'text.primary'),
+                  transition: 'background-color .15s',
+                }}>
+                  <Typography variant="body2" sx={{ fontWeight: isSel || isToday ? 700 : 500 }}>
+                    {format(day, 'd')}
+                  </Typography>
+                </Box>
+              </Box>
+            )
+          })}
+        </Box>
+
+        <Typography variant="subtitle2" sx={{ textAlign: 'center', fontWeight: 700, textTransform: 'capitalize' }} data-testid="cal-day-title">
+          {format(selectedDay, 'EEEE, d MMM yyyy', { locale: dateLocale() })}
+        </Typography>
+      </Box>
+      )}
 
       {/* Legend — one swatch per appointment type present this week, plus the
-          pending accent (left bar) and rest period. */}
+          pending accent (left bar) and rest period. Desktop only; on mobile the
+          single-day pills already carry their labels. */}
+      {!isMobile && (
       <Stack direction="row" spacing={1.5} sx={{ mb: 2, flexWrap: 'wrap', rowGap: 1 }}>
         {weekServices.map(s => {
           const c = serviceColors(s.id)
@@ -588,8 +674,11 @@ export default function CalendarPage() {
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.rest')}</Typography>
         </Box>
       </Stack>
+      )}
 
-      {/* Calendar grid */}
+      {/* Desktop calendar grid (7-day week). Mobile uses the single-day timeline
+          rendered below instead. */}
+      {!isMobile && (
       <Card sx={{ overflow: 'auto' }}>
         {/* Day headers */}
         <Box
@@ -802,6 +891,155 @@ export default function CalendarPage() {
           ))
         }
       </Card>
+      )}
+
+      {/* Mobile single-day timeline — hour rows with the focused day's pills,
+          rests, and a live "now" indicator overlaid at their time positions. */}
+      {isMobile && (
+      <Card>
+        {loading ? <LoadingState /> : (() => {
+          const DAY_START = HOURS[0]
+          const dayKey = format(selectedDay, 'yyyy-MM-dd')
+          const dayGroups = groupsByDay.get(dayKey) ?? []
+          const dayRests = overrides[dayKey]?.rest_periods ?? []
+          const now = new Date()
+          const showNow = isSameDay(selectedDay, now)
+          const nowMin = (now.getHours() - DAY_START) * 60 + now.getMinutes()
+          const ellipsis = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' } as const
+          const GUTTER = 56
+          return (
+            <Box sx={{ position: 'relative', py: 1 }}>
+              {/* Hour rows — labels in the gutter, a hairline per hour. */}
+              {HOURS.map(hour => {
+                const closed = isHourClosed(selectedDay, hour)
+                return (
+                  <Box
+                    key={hour}
+                    sx={{
+                      display: 'flex', height: HOUR_HEIGHT,
+                      ...(closed && {
+                        backgroundImage:
+                          'repeating-linear-gradient(-45deg, transparent, transparent 5px, rgba(30,36,51,0.03) 5px, rgba(30,36,51,0.03) 10px)',
+                      }),
+                    }}
+                  >
+                    <Box sx={{ width: GUTTER, flexShrink: 0, pr: 1, textAlign: 'right', mt: '-7px' }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        {String(hour).padStart(2, '0')}:00
+                      </Typography>
+                    </Box>
+                    <Box sx={{ flex: 1, borderTop: '1px solid', borderColor: 'divider' }} />
+                  </Box>
+                )
+              })}
+
+              {/* Overlay layer, aligned to the 08:00 line and the gutter edge. */}
+              <Box sx={{ position: 'absolute', top: 8, left: GUTTER, right: 8, bottom: 8 }}>
+                {/* Rest periods (behind appointments). */}
+                {dayRests.map((rest, idx) => {
+                  const [sh, sm] = rest.start.split(':').map(Number)
+                  const [eh, em] = rest.end.split(':').map(Number)
+                  const startMin = sh * 60 + sm - DAY_START * 60
+                  const endMin = eh * 60 + em - DAY_START * 60
+                  const top = Math.max(0, (startMin / 60) * HOUR_HEIGHT)
+                  const height = Math.max(20, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2)
+                  return (
+                    <Box
+                      key={idx}
+                      sx={{
+                        position: 'absolute', top, height, left: 0, right: 0, zIndex: 1,
+                        borderRadius: '6px', borderLeft: '3px solid', borderLeftColor: 'grey.300',
+                        bgcolor: 'grey.50', px: 1, py: 0.5,
+                        display: 'flex', alignItems: 'center', gap: 0.5,
+                        '&:hover .rest-del': { opacity: 1 },
+                      }}
+                    >
+                      <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                        <Typography sx={{ fontWeight: 600, color: 'text.secondary', ...ellipsis, fontSize: 12 }}>{rest.label}</Typography>
+                        <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>{rest.start}–{rest.end}</Typography>
+                      </Box>
+                      <Box
+                        className="rest-del"
+                        role="button"
+                        aria-label={t('common.delete')}
+                        onClick={() => setRestToRemove({ dateKey: dayKey, idx })}
+                        sx={{ opacity: 0, transition: 'opacity .15s', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
+                      >
+                        <CloseIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                      </Box>
+                    </Box>
+                  )
+                })}
+
+                {/* Appointment pills. */}
+                {dayGroups.map(g => {
+                  const first = g.appts[0]
+                  const count = g.appts.length
+                  const isGroup = count > 1
+                  const c = serviceColors(g.service_id)
+                  const hasPending = g.appts.some(a => a.status === 'pending')
+                  const accent = hasPending ? theme.palette.warning.main : c.main
+                  const startMin = (g.start.getHours() - DAY_START) * 60 + g.start.getMinutes()
+                  const top = Math.max(0, (startMin / 60) * HOUR_HEIGHT)
+                  const height = Math.max(26, (g.durationMin / 60) * HOUR_HEIGHT - 2)
+                  const widthPct = 100 / g.cols
+                  const staffName = first.staff?.display_name
+                  return (
+                    <Box
+                      key={g.key}
+                      onClick={() => isGroup ? setGroup(g.appts) : setSelected(first)}
+                      data-testid={isGroup ? 'cal-appt-group' : 'cal-appt'}
+                      sx={{
+                        position: 'absolute', top, height,
+                        left: `calc(${g.col * widthPct}% + 2px)`,
+                        width: `calc(${widthPct}% - 4px)`,
+                        zIndex: 2,
+                        borderRadius: '6px', borderLeft: `3px solid ${accent}`,
+                        bgcolor: c.light, px: 1, py: 0.5,
+                        overflow: 'hidden', cursor: 'pointer', animation: anim.scaleIn,
+                        transition: 'filter .15s',
+                        '&:hover': { filter: 'brightness(0.96)' },
+                      }}
+                    >
+                      {isGroup ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography sx={{ flex: 1, fontWeight: 700, color: c.main, ...ellipsis, fontSize: 12.5, lineHeight: 1.4 }}>
+                            {format(g.start, 'HH:mm')} {first.services?.name}
+                          </Typography>
+                          <Box sx={{ flexShrink: 0, bgcolor: c.main, color: '#fff', borderRadius: '999px', px: 0.7, fontSize: 10.5, fontWeight: 700 }}>
+                            ×{count}
+                          </Box>
+                        </Box>
+                      ) : (
+                        <>
+                          <Typography sx={{ fontWeight: 700, color: c.main, ...ellipsis, fontSize: 12.5, lineHeight: 1.4 }}>
+                            {format(g.start, 'HH:mm')} {first.customers?.first_name} {first.customers?.last_name ?? ''}
+                          </Typography>
+                          <Typography sx={{ color: c.main, opacity: 0.8, ...ellipsis, fontSize: 11.5 }}>
+                            {first.services?.name}{staffName ? ` · ${staffName}` : ''}
+                          </Typography>
+                        </>
+                      )}
+                    </Box>
+                  )
+                })}
+
+                {/* Live "now" indicator — only when viewing today and in-window. */}
+                {showNow && nowMin >= 0 && nowMin <= HOURS.length * 60 && (
+                  <Box sx={{ position: 'absolute', top: (nowMin / 60) * HOUR_HEIGHT, left: -GUTTER, right: 0, display: 'flex', alignItems: 'center', zIndex: 3, pointerEvents: 'none' }}>
+                    <Box sx={{ width: GUTTER - 6, textAlign: 'right', pr: 0.5 }}>
+                      <Typography sx={{ fontSize: 10, fontWeight: 700, color: 'error.main' }}>{format(now, 'HH:mm')}</Typography>
+                    </Box>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main', flexShrink: 0 }} />
+                    <Box sx={{ flex: 1, height: '2px', bgcolor: 'error.main' }} />
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          )
+        })()}
+      </Card>
+      )}
 
       {/* Appointment detail drawer */}
       <Drawer
