@@ -25,7 +25,7 @@ test.describe('Data-driven — Services', () => {
     await page.goto('/dashboard/settings/services')
     await page.getByTestId('service-add').click()
     const save = page.getByTestId('service-save')
-    const dialog = page.locator('.MuiDialog-root')
+    const dialog = page.getByRole('dialog')
 
     // Valid base — sanity-check it enables save before iterating.
     for (const [field, value] of Object.entries(data.base)) {

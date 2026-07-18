@@ -20,6 +20,21 @@ test.describe('Dashboard', () => {
     await expect(page.getByTestId('add-appt-dialog')).toHaveCount(0)
   })
 
+  test('the clients page lists customers and filters by search', async ({ page }) => {
+    await page.goto('/dashboard/clients')
+    const rows = page.getByTestId('client-row')
+    await expect(rows.first()).toBeVisible({ timeout: 20_000 })
+    const before = await rows.count()
+
+    // A search that can't match anything empties the list (client-side filter).
+    await page.getByTestId('clients-search').fill('zzz-no-such-client-zzz')
+    await expect(rows).toHaveCount(0)
+
+    // Clearing it restores the full list.
+    await page.getByTestId('clients-search').fill('')
+    await expect(rows).toHaveCount(before)
+  })
+
   test('the calendar page loads with week navigation', async ({ page }) => {
     await page.goto('/dashboard/calendar')
     await expect(page.getByTestId('cal-week-label')).toBeVisible()

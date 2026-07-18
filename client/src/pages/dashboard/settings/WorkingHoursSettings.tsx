@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import {
   Box, Typography, Card, CardContent, Button, TextField,
   Switch, Stack, Divider, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions,
   Chip,
 } from '@mui/material'
 import { Add as AddIcon } from '@/components/icons'
@@ -21,7 +20,7 @@ import {
 } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, LoadingState, ConfirmDialog, ActionIconButton, FormErrorAlert, useToast } from '@/components/ui'
+import { PageHeader, LoadingState, ConfirmDialog, ActionIconButton, FormErrorAlert, useToast, SideDrawer } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
 
 type WeekTemplate = {
@@ -475,11 +474,22 @@ export default function WorkingHoursSettings() {
         </CardContent>
       </Card>
 
-      {/* Add override dialog */}
-      <Dialog open={overrideOpen} onClose={() => setOverrideOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.addOverride')}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} sx={{ pt: 1 }}>
+      {/* Add override drawer */}
+      <SideDrawer
+        open={overrideOpen}
+        onClose={() => setOverrideOpen(false)}
+        disableClose={ovSaving}
+        title={t('settings.addOverride')}
+        actions={
+          <>
+            <Button onClick={() => setOverrideOpen(false)}>{t('common.cancel')}</Button>
+            <Button variant="contained" onClick={addOverride} disabled={ovSaving} data-testid="wh-ov-save">
+              {ovSaving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
+            </Button>
+          </>
+        }
+      >
+        <Stack spacing={2.5} sx={{ pt: 1 }}>
             <TextField
               label={t('common.date')}
               type="date"
@@ -503,20 +513,8 @@ export default function WorkingHoursSettings() {
               fullWidth
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.note } }}
             />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setOverrideOpen(false)}>{t('common.cancel')}</Button>
-          <Button
-            variant="contained"
-            onClick={addOverride}
-            disabled={ovSaving}
-            data-testid="wh-ov-save"
-          >
-            {ovSaving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Stack>
+      </SideDrawer>
 
       {/* Confirm override deletion */}
       <ConfirmDialog

@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
-import { PageHeader, StatStrip, StatusChip, EmptyState, CopyableText, LoadingState, useToast } from '@/components/ui'
+import { PageHeader, StatStrip, StatusChip, EmptyState, CopyableText, LoadingState, useToast, SideDrawer } from '@/components/ui'
 import type { AppointmentStatus } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import { isValidUrl, FIELD_LIMITS } from '@/lib/validation'
@@ -132,8 +132,6 @@ export default function OverviewPage() {
   // business decides at cancel time — default is to give the money back, but
   // e.g. a late cancellation may deliberately keep it).
   const [refundOnCancel, setRefundOnCancel] = useState(true)
-  // Inline two-step guard for erasing a client's personal data (Art. 16).
-  const [confirmingErase, setConfirmingErase] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
 
   const [bookableMembers, setBookableMembers] = useState<StaffRef[]>([])
@@ -401,22 +399,6 @@ export default function OverviewPage() {
     setAppointments(prev => prev.map(a => a.id === selected.id ? { ...a, meeting_link: link } : a))
     setSelected(s => (s ? { ...s, meeting_link: link } : s))
     toast.success(t('dashboard.meetingLinkSent'))
-  }
-
-  // Honor a client's erasure request (Art. 16): anonymize their PII on this
-  // appointment via the erase_customer_data RPC (org-membership checked server-side).
-  async function eraseClientData(id: string) {
-    setActionLoading(id)
-    const { error } = await supabase.rpc('erase_customer_data', { p_appointment_id: id })
-    if (error) {
-      toast.error(error.message)
-    } else {
-      toast.success(t('dashboard.eraseDone'))
-      setSelected(null)
-      setConfirmingErase(false)
-      loadAppointments()
-    }
-    setActionLoading(null)
   }
 
   // No organisation yet (user skipped onboarding and isn't a member of any
@@ -861,15 +843,63 @@ export default function OverviewPage() {
         )}
       </Box>
 
-      {/* Detail dialog */}
-      <Dialog open={!!selected} onClose={() => { setSelected(null); setConfirmingCancel(false); setConfirmingErase(false) }} maxWidth="sm" fullWidth>
+      {/* Detail drawer */}
+      <SideDrawer
+        open={!!selected}
+        onClose={() => { setSelected(null); setConfirmingCancel(false) }}
+        title={selected ? `${selected.customers?.first_name ?? ''} ${selected.customers?.last_name ?? ''}` : ''}
+        actions={selected && (selected.status === 'pending' || selected.status === 'approved') ? (
+          <>
+            {selected.status === 'pending' && (
+              <>
+                <Button variant="outlined" color="error" data-testid="appt-reject"
+                  onClick={() => changeStatus(selected.id, 'rejected')} disabled={!!actionLoading}>
+                  {t('dashboard.reject')}
+                </Button>
+                <Button variant="contained" color="success" data-testid="appt-approve"
+                  onClick={() => changeStatus(selected.id, 'approved')} disabled={!!actionLoading}>
+                  {t('dashboard.approve')}
+                </Button>
+              </>
+            )}
+            {selected.status === 'approved' && (
+              confirmingCancel ? (
+                <>
+                  <Button onClick={() => setConfirmingCancel(false)} disabled={!!actionLoading} data-testid="appt-keep">
+                    {t('dashboard.keepAppointment')}
+                  </Button>
+                  <Button variant="contained" color="error" data-testid="appt-confirm-cancel"
+                    onClick={() => changeStatus(selected.id, 'cancelled')} disabled={!!actionLoading}>
+                    {t('dashboard.confirmCancel')}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {/* No-show: the slot was consumed (still counts toward usage)
+                      and any deposit is kept per policy — distinct from a cancel. */}
+                  <Button variant="outlined" color="warning" data-testid="appt-no-show"
+                    onClick={() => changeStatus(selected.id, 'no_show')} disabled={!!actionLoading}>
+                    {t('dashboard.markNoShow')}
+                  </Button>
+                  <Button variant="outlined" color="error" data-testid="appt-cancel"
+                    onClick={() => { setRefundOnCancel(true); setConfirmingCancel(true) }} disabled={!!actionLoading}>
+                    {t('dashboard.cancelAppointment')}
+                  </Button>
+                  {seriesId && (
+                    <Button variant="outlined" color="error" data-testid="appt-cancel-series"
+                      onClick={() => cancelSeries(selected.id)} disabled={!!actionLoading}>
+                      {t('recurring.cancelSeries')}
+                    </Button>
+                  )}
+                </>
+              )
+            )}
+          </>
+        ) : undefined}
+      >
         {selected && (
           <>
-            <DialogTitle sx={{ fontWeight: 700 }}>
-              {selected.customers?.first_name} {selected.customers?.last_name}
-            </DialogTitle>
-            <DialogContent>
-              <Stack spacing={1.5}>
+            <Stack spacing={1.5}>
                 <Box>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>სერვისი</Typography>
                   <Typography variant="body2">{selected.services?.name} — {selected.services?.price} ₾</Typography>
@@ -1012,68 +1042,9 @@ export default function OverviewPage() {
                   </Box>
                 )}
               </Stack>
-            </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2 }}>
-              {confirmingErase ? (
-                <Button variant="contained" color="error" sx={{ mr: 'auto' }} data-testid="appt-confirm-erase"
-                  onClick={() => eraseClientData(selected.id)} disabled={!!actionLoading}>
-                  {t('dashboard.eraseConfirm')}
-                </Button>
-              ) : (
-                <Button size="small" color="error" sx={{ mr: 'auto' }} data-testid="appt-erase"
-                  onClick={() => setConfirmingErase(true)} disabled={!!actionLoading}>
-                  {t('dashboard.eraseClientData')}
-                </Button>
-              )}
-              <Button onClick={() => { setSelected(null); setConfirmingCancel(false); setConfirmingErase(false) }}>{t('common.cancel')}</Button>
-              {selected.status === 'pending' && (
-                <>
-                  <Button variant="outlined" color="error" data-testid="appt-reject"
-                    onClick={() => changeStatus(selected.id, 'rejected')} disabled={!!actionLoading}>
-                    {t('dashboard.reject')}
-                  </Button>
-                  <Button variant="contained" color="success" data-testid="appt-approve"
-                    onClick={() => changeStatus(selected.id, 'approved')} disabled={!!actionLoading}>
-                    {t('dashboard.approve')}
-                  </Button>
-                </>
-              )}
-              {selected.status === 'approved' && (
-                confirmingCancel ? (
-                  <>
-                    <Button onClick={() => setConfirmingCancel(false)} disabled={!!actionLoading} data-testid="appt-keep">
-                      {t('dashboard.keepAppointment')}
-                    </Button>
-                    <Button variant="contained" color="error" data-testid="appt-confirm-cancel"
-                      onClick={() => changeStatus(selected.id, 'cancelled')} disabled={!!actionLoading}>
-                      {t('dashboard.confirmCancel')}
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    {/* No-show: the slot was consumed (still counts toward usage)
-                        and any deposit is kept per policy — distinct from a cancel. */}
-                    <Button variant="outlined" color="warning" data-testid="appt-no-show"
-                      onClick={() => changeStatus(selected.id, 'no_show')} disabled={!!actionLoading}>
-                      {t('dashboard.markNoShow')}
-                    </Button>
-                    <Button variant="outlined" color="error" data-testid="appt-cancel"
-                      onClick={() => { setRefundOnCancel(true); setConfirmingCancel(true) }} disabled={!!actionLoading}>
-                      {t('dashboard.cancelAppointment')}
-                    </Button>
-                    {seriesId && (
-                      <Button variant="outlined" color="error" data-testid="appt-cancel-series"
-                        onClick={() => cancelSeries(selected.id)} disabled={!!actionLoading}>
-                        {t('recurring.cancelSeries')}
-                      </Button>
-                    )}
-                  </>
-                )
-              )}
-            </DialogActions>
           </>
         )}
-      </Dialog>
+      </SideDrawer>
 
       {/* Manual appointment entry (e.g. logging a booking taken over the phone) */}
       {addOpen && (

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import {
   Box, Typography, Card, CardContent, TextField, Button, Link, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
   Checkbox, FormControlLabel,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
@@ -11,7 +10,7 @@ import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { displayGeorgianPhone, PASSWORD_MIN } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
-import { PageHeader, useToast } from '@/components/ui'
+import { PageHeader, useToast, SideDrawer } from '@/components/ui'
 
 /**
  * Account settings — who you're signed in as, password change, and the danger
@@ -179,12 +178,32 @@ export default function AccountSettings() {
       </Card>
 
       {/* Delete account confirmation */}
-      <Dialog open={deleteOpen} onClose={deleting ? undefined : () => setDeleteOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.deleteAccountTitle')}</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: 'text.secondary' }}>
+      <SideDrawer
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        disableClose={deleting}
+        title={t('settings.deleteAccountTitle')}
+        actions={
+          <>
+            <Button onClick={() => setDeleteOpen(false)} disabled={deleting} color="inherit">
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleDeleteAccount}
+              disabled={deleting}
+              variant="contained"
+              color="error"
+              data-testid="delete-account-confirm"
+            >
+              {deleting ? <CircularProgress size={20} color="inherit" /> : t('settings.deleteAccount')}
+            </Button>
+          </>
+        }
+      >
+        <Box>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {t('settings.deleteAccountMessage')}
-          </DialogContentText>
+          </Typography>
           {soleMember ? (
             <FormControlLabel
               sx={{ mt: 2 }}
@@ -221,22 +240,8 @@ export default function AccountSettings() {
             helperText={deleteWordError ? t('settings.deleteConfirmPrompt', { word: t('settings.deleteConfirmWord') }) : undefined}
             slotProps={{ htmlInput: { 'data-testid': 'delete-confirm-input' } }}
           />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteOpen(false)} disabled={deleting} color="inherit">
-            {t('common.cancel')}
-          </Button>
-          <Button
-            onClick={handleDeleteAccount}
-            disabled={deleting}
-            variant="contained"
-            color="error"
-            data-testid="delete-account-confirm"
-          >
-            {deleting ? <CircularProgress size={20} color="inherit" /> : t('settings.deleteAccount')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </SideDrawer>
     </Box>
   )
 }

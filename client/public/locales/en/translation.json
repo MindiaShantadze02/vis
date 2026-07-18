@@ -684,6 +684,16 @@
     "cancelSeries": "Cancel series",
     "seriesCancelled": "Cancelled {{count}} appointments"
   },
+  "clients": {
+    "nav": "Clients",
+    "title": "Clients",
+    "empty": "No clients yet",
+    "appointments": "{{n}} appointments",
+    "lastVisit": "Last visit",
+    "erased": "Erased",
+    "eraseTitle": "Erase client data",
+    "eraseMessage": "This permanently anonymizes {{name}}'s name, phone and notes across all their appointments. This cannot be undone."
+  },
   "analytics": {
     "title": "Analytics",
     "days30": "30 days",

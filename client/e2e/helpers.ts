@@ -348,7 +348,26 @@ export async function openApptByName(page: Page, name: string): Promise<void> {
   const row = page.getByTestId('appt-row').filter({ hasText: name })
   await expect(row.first()).toBeVisible({ timeout: 20_000 })
   await row.first().click()
-  await expect(page.getByTestId('appt-erase')).toBeVisible()
+  await expect(page.getByRole('dialog')).toBeVisible()
+}
+
+/**
+ * Erase a client's PII (Art. 16) from the dedicated Clients screen — the erase
+ * action moved off the appointment drawer. Searches by name, confirms the
+ * destructive dialog, and waits for the row to anonymize out of the results.
+ */
+export async function eraseClientByName(page: Page, name: string): Promise<void> {
+  await page.goto('/dashboard/clients')
+  const search = page.getByTestId('clients-search')
+  await search.waitFor({ state: 'visible', timeout: 20_000 })
+  await fillStable(search, name)
+  const row = page.getByTestId('client-row').filter({ hasText: name })
+  await expect(row.first()).toBeVisible({ timeout: 20_000 })
+  await row.first().getByTestId('client-erase').click()
+  await page.getByTestId('confirm-dialog-confirm').click()
+  // The shared customer record is anonymized (name → "erased"), so the original
+  // name drops out of the list.
+  await expect(page.getByTestId('client-row').filter({ hasText: name })).toHaveCount(0, { timeout: 20_000 })
 }
 
 /**

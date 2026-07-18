@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Box, Typography, Card, Button, TextField, Stack,
   Switch, FormControlLabel, Divider, Alert,
-  CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
+  CircularProgress,
   Chip, ToggleButtonGroup, ToggleButton, Avatar,
 } from '@mui/material'
 import { Add as AddIcon } from '@/components/icons'
@@ -12,7 +12,7 @@ import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/componen
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, SkeletonImage, FormErrorAlert, useToast } from '@/components/ui'
+import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, SkeletonImage, FormErrorAlert, useToast, SideDrawer } from '@/components/ui'
 import { isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import ServiceImagesEditor, { type EditorImage } from '@/components/ServiceImagesEditor'
@@ -461,12 +461,23 @@ export default function ServicesSettings() {
         }
       </Card>
 
-      {/* Create / Edit dialog */}
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>
-          {editing ? t('settings.editService') : t('settings.newService')}
-        </DialogTitle>
-        <DialogContent>
+      {/* Create / Edit drawer */}
+      <SideDrawer
+        open={open}
+        onClose={() => setOpen(false)}
+        disableClose={saving}
+        title={editing ? t('settings.editService') : t('settings.newService')}
+        width={560}
+        actions={
+          <>
+            <Button onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
+            <Button variant="contained" onClick={handleSave} data-testid="service-save" disabled={saving}>
+              {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
+            </Button>
+          </>
+        }
+      >
+        <Box>
           <FormErrorAlert message={error} data-testid="service-dialog-error" />
           <Stack spacing={2.5} sx={{ pt: 1 }}>
             <TextField
@@ -612,19 +623,8 @@ export default function ServicesSettings() {
               label={t('settings.serviceActive')}
             />
           </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
-          <Button
-            variant="contained"
-            onClick={handleSave}
-            data-testid="service-save"
-            disabled={saving}
-          >
-            {saving ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </SideDrawer>
 
       {/* Confirm delete */}
       <ConfirmDialog

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button,
+  Button,
   TextField, Stack, FormControl, InputLabel, Select, MenuItem,
   FormHelperText, Alert, CircularProgress, Box, Typography, Avatar,
   Switch, FormControlLabel, ToggleButtonGroup, ToggleButton, Divider,
@@ -14,7 +14,7 @@ import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIM
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { computeAvailableSlots, getDayKey, businessDayWindow, BUSINESS_UTC_OFFSET } from '@/lib/slots'
 import type { SlotApptRow, SlotOverride, WeekTemplate } from '@/lib/slots'
-import { FormErrorAlert, useToast } from '@/components/ui'
+import { FormErrorAlert, useToast, SideDrawer } from '@/components/ui'
 import { surface } from '@/theme/theme'
 
 interface ServiceOption {
@@ -330,9 +330,23 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
   }
 
   return (
-    <Dialog open onClose={saving ? undefined : onClose} maxWidth="sm" fullWidth data-testid="add-appt-dialog">
-      <DialogTitle sx={{ fontWeight: 700 }}>ჯავშნის დამატება</DialogTitle>
-      <DialogContent>
+    <SideDrawer
+      open
+      onClose={onClose}
+      disableClose={saving}
+      title="ჯავშნის დამატება"
+      width={560}
+      data-testid="add-appt-dialog"
+      actions={
+        <>
+          <Button onClick={onClose} disabled={saving} data-testid="add-appt-cancel">{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={handleSave} disabled={saving} data-testid="add-appt-save">
+            {saving ? <CircularProgress size={22} color="inherit" /> : 'დამატება'}
+          </Button>
+        </>
+      }
+    >
+      <Box>
         {atLimit && (
           <Alert
             severity="warning"
@@ -533,13 +547,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
             </Box>
           )}
         </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={saving} data-testid="add-appt-cancel">{t('common.cancel')}</Button>
-        <Button variant="contained" onClick={handleSave} disabled={saving} data-testid="add-appt-save">
-          {saving ? <CircularProgress size={22} color="inherit" /> : 'დამატება'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </SideDrawer>
   )
 }

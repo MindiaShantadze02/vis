@@ -4,7 +4,6 @@ import { tierInfo } from '@/lib/tiers'
 import {
   Box, Typography, Card, Button, TextField, Avatar,
   Stack, Divider, Alert, CircularProgress, Chip,
-  Dialog, DialogTitle, DialogContent, DialogActions,
   Switch, FormControlLabel,
 } from '@mui/material'
 import { PersonAddOutlined as PersonAddOutlinedIcon } from '@/components/icons'
@@ -17,7 +16,7 @@ import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { useOrg } from '@/contexts/OrgContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { PageHeader, LoadingState, ActionIconButton, useToast } from '@/components/ui'
+import { PageHeader, LoadingState, ActionIconButton, useToast, SideDrawer } from '@/components/ui'
 import { surface } from '@/theme/theme'
 
 interface Member {
@@ -510,11 +509,22 @@ export default function TeamSettings() {
         </>
       )}
 
-      {/* Invite dialog */}
-      <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.inviteAdmin')}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
+      {/* Invite drawer */}
+      <SideDrawer
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        disableClose={inviting}
+        title={t('settings.inviteAdmin')}
+        actions={
+          <>
+            <Button onClick={() => setInviteOpen(false)}>{t('common.cancel')}</Button>
+            <Button variant="contained" onClick={handleInvite} disabled={inviting} data-testid="invite-send">
+              {inviting ? <CircularProgress size={20} color="inherit" /> : t('common.send')}
+            </Button>
+          </>
+        }
+      >
+        <Stack spacing={2} sx={{ pt: 1 }}>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {t('settings.inviteHelp')}
             </Typography>
@@ -530,26 +540,25 @@ export default function TeamSettings() {
               slotProps={{ htmlInput: { inputMode: 'tel' as const, 'data-testid': 'invite-phone' } }}
               autoFocus
             />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setInviteOpen(false)}>{t('common.cancel')}</Button>
-          <Button
-            variant="contained"
-            onClick={handleInvite}
-            disabled={inviting}
-            data-testid="invite-send"
-          >
-            {inviting ? <CircularProgress size={20} color="inherit" /> : t('common.send')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Stack>
+      </SideDrawer>
 
-      {/* Edit member dialog */}
-      <Dialog open={!!editMember} onClose={() => setEditMember(null)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.editMember')}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} sx={{ pt: 1 }}>
+      {/* Edit member drawer */}
+      <SideDrawer
+        open={!!editMember}
+        onClose={() => setEditMember(null)}
+        disableClose={savingMember}
+        title={t('settings.editMember')}
+        actions={
+          <>
+            <Button onClick={() => setEditMember(null)}>{t('common.cancel')}</Button>
+            <Button variant="contained" onClick={saveMember} disabled={savingMember} data-testid="member-save">
+              {savingMember ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
+            </Button>
+          </>
+        }
+      >
+        <Stack spacing={2.5} sx={{ pt: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'center' }}>
               <PhotoPicker
                 src={editMember?.avatar_url ?? null}
@@ -577,21 +586,25 @@ export default function TeamSettings() {
               control={<Switch checked={editBookable} onChange={e => setEditBookable(e.target.checked)} data-testid="member-bookable" />}
               label={t('settings.bookable')}
             />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEditMember(null)}>{t('common.cancel')}</Button>
-          <Button variant="contained" onClick={saveMember} disabled={savingMember} data-testid="member-save">
-            {savingMember ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Stack>
+      </SideDrawer>
 
-      {/* Add-professional dialog (account-less staff profile) */}
-      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>{t('settings.addProfessional')}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} sx={{ pt: 1 }}>
+      {/* Add-professional drawer (account-less staff profile) */}
+      <SideDrawer
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        disableClose={adding}
+        title={t('settings.addProfessional')}
+        actions={
+          <>
+            <Button onClick={() => setAddOpen(false)}>{t('common.cancel')}</Button>
+            <Button variant="contained" onClick={handleAddProfessional} disabled={adding} data-testid="professional-save">
+              {adding ? <CircularProgress size={20} color="inherit" /> : t('common.add')}
+            </Button>
+          </>
+        }
+      >
+        <Stack spacing={2.5} sx={{ pt: 1 }}>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {t('settings.addProfessionalHelp')}
             </Typography>
@@ -624,20 +637,8 @@ export default function TeamSettings() {
               control={<Switch checked={addBookable} onChange={e => setAddBookable(e.target.checked)} data-testid="professional-bookable" />}
               label={t('settings.bookable')}
             />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setAddOpen(false)}>{t('common.cancel')}</Button>
-          <Button
-            variant="contained"
-            onClick={handleAddProfessional}
-            disabled={adding}
-            data-testid="professional-save"
-          >
-            {adding ? <CircularProgress size={20} color="inherit" /> : t('common.add')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Stack>
+      </SideDrawer>
     </Box>
   )
 }

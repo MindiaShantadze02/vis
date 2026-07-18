@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Box, Typography, IconButton, Card, Tooltip,
-  Drawer, Stack, Button, CircularProgress, useTheme,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Stack, Button, CircularProgress, useTheme,
   Select, MenuItem, FormControl, InputLabel, TextField,
 } from '@mui/material'
 import { Add as AddIcon } from '@/components/icons'
@@ -17,7 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { useBreakpoints } from '@/hooks/useBreakpoints'
 import { anim } from '@/theme/animations'
-import { StatusChip, ConfirmDialog, LoadingState, useToast } from '@/components/ui'
+import { StatusChip, ConfirmDialog, LoadingState, useToast, SideDrawer } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
 import AddAppointmentDialog from './AddAppointmentDialog'
 
@@ -1042,18 +1041,33 @@ export default function CalendarPage() {
       )}
 
       {/* Appointment detail drawer */}
-      <Drawer
-        anchor="right"
+      <SideDrawer
         open={!!selected || !!group}
         onClose={() => { setSelected(null); setGroup(null) }}
-        slotProps={{ paper: { sx: { width: 340, p: 3 } } }}
+        title={
+          selected
+            ? `${selected.customers?.first_name ?? ''} ${selected.customers?.last_name ?? ''}`
+            : group ? (group[0].services?.name ?? '') : ''
+        }
+        headerStart={selected && group ? (
+          <IconButton size="small" onClick={() => setSelected(null)} aria-label={t('common.back')} sx={{ ml: -1 }}>
+            <ArrowBackIosNewIcon fontSize="small" />
+          </IconButton>
+        ) : undefined}
+        actions={selected && selected.status === 'pending' ? (
+          <>
+            <Button variant="outlined" color="error" onClick={() => changeStatus(selected.id, 'rejected')} disabled={actionLoading} data-testid="cal-reject">
+              {t('dashboard.reject')}
+            </Button>
+            <Button variant="contained" color="success" onClick={() => changeStatus(selected.id, 'approved')} disabled={actionLoading} data-testid="cal-approve">
+              {actionLoading ? <CircularProgress size={20} color="inherit" /> : t('dashboard.approve')}
+            </Button>
+          </>
+        ) : undefined}
       >
         {/* Group list — shown for a multi-appointment slot until one is picked. */}
         {group && !selected && (
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.25 }}>
-              {group[0].services?.name}
-            </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
               {format(new Date(group[0].scheduled_at), 'dd MMM yyyy, HH:mm', { locale: dateLocale() })}
               {' · '}{t('calendar.apptsCount', { count: group.length })}
@@ -1082,27 +1096,11 @@ export default function CalendarPage() {
                 </Box>
               ))}
             </Stack>
-            <Button fullWidth variant="text" sx={{ mt: 2 }} onClick={() => setGroup(null)}>
-              {t('common.cancel')}
-            </Button>
           </Box>
         )}
 
         {selected && (
           <Box>
-            {group && (
-              <Button
-                startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 14 }} />}
-                size="small"
-                onClick={() => setSelected(null)}
-                sx={{ mb: 1, ml: -1, color: 'text.secondary' }}
-              >
-                {t('common.back')}
-              </Button>
-            )}
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-              {selected.customers?.first_name} {selected.customers?.last_name}
-            </Typography>
             <Stack spacing={2}>
               <Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.service')}</Typography>
@@ -1160,30 +1158,26 @@ export default function CalendarPage() {
                 </Box>
               )}
             </Stack>
-
-            {selected.status === 'pending' && (
-              <Stack spacing={1} sx={{ mt: 4 }}>
-                <Button fullWidth variant="contained" color="success" onClick={() => changeStatus(selected.id, 'approved')} disabled={actionLoading} data-testid="cal-approve">
-                  {actionLoading ? <CircularProgress size={20} color="inherit" /> : t('dashboard.approve')}
-                </Button>
-                <Button fullWidth variant="outlined" color="error" onClick={() => changeStatus(selected.id, 'rejected')} disabled={actionLoading} data-testid="cal-reject">
-                  {t('dashboard.reject')}
-                </Button>
-              </Stack>
-            )}
-
-            <Button fullWidth variant="text" sx={{ mt: 2 }} onClick={() => { setSelected(null); setGroup(null) }}>
-              {t('common.cancel')}
-            </Button>
           </Box>
         )}
-      </Drawer>
+      </SideDrawer>
 
-      {/* Add Rest Period dialog */}
-      <Dialog open={restDialog} onClose={() => setRestDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>{t('calendar.restPeriod')}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} sx={{ mt: 0.5 }}>
+      {/* Add Rest Period drawer */}
+      <SideDrawer
+        open={restDialog}
+        onClose={() => setRestDialog(false)}
+        disableClose={savingRest}
+        title={t('calendar.restPeriod')}
+        actions={
+          <>
+            <Button onClick={() => setRestDialog(false)} disabled={savingRest}>{t('common.cancel')}</Button>
+            <Button variant="contained" onClick={addRestPeriod} disabled={savingRest}>
+              {savingRest ? <CircularProgress size={18} color="inherit" /> : t('common.add')}
+            </Button>
+          </>
+        }
+      >
+        <Stack spacing={2.5} sx={{ mt: 0.5 }}>
             <FormControl fullWidth size="small">
               <InputLabel>{t('calendar.day')}</InputLabel>
               <Select value={restDate} label={t('calendar.day')} onChange={e => setRestDate(e.target.value)}>
@@ -1217,19 +1211,8 @@ export default function CalendarPage() {
               value={restLabel}
               onChange={e => setRestLabel(e.target.value)}
             />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setRestDialog(false)}>{t('common.cancel')}</Button>
-          <Button
-            variant="contained"
-            onClick={addRestPeriod}
-            disabled={savingRest}
-          >
-            {savingRest ? <CircularProgress size={18} color="inherit" /> : t('common.add')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Stack>
+      </SideDrawer>
 
       {/* Confirm rest-period removal */}
       <ConfirmDialog

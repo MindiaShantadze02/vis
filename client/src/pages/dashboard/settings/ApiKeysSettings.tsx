@@ -7,7 +7,7 @@ import { Add as AddIcon } from '@/components/icons'
 import { ContentCopyOutlined as ContentCopyOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { PageHeader, LoadingState, useToast } from '@/components/ui'
+import { PageHeader, LoadingState, useToast, SideDrawer } from '@/components/ui'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 
 interface ApiKeyRow {
@@ -170,10 +170,26 @@ export default function ApiKeysSettings() {
         )}
       </Card>
 
-      {/* Create dialog — turns into the show-once reveal after minting. */}
-      <Dialog open={createOpen} onClose={creating ? undefined : closeCreate} maxWidth="sm" fullWidth>
-        <DialogTitle>{t('settings.createApiKey')}</DialogTitle>
-        <DialogContent>
+      {/* Create drawer — turns into the show-once reveal after minting. */}
+      <SideDrawer
+        open={createOpen}
+        onClose={closeCreate}
+        disableClose={creating}
+        title={t('settings.createApiKey')}
+        actions={
+          newKey ? (
+            <Button variant="contained" onClick={closeCreate} data-testid="api-key-done">{t('common.done')}</Button>
+          ) : (
+            <>
+              <Button onClick={closeCreate} disabled={creating}>{t('common.cancel')}</Button>
+              <Button variant="contained" onClick={createKey} disabled={creating} data-testid="api-key-create-submit">
+                {t('common.create')}
+              </Button>
+            </>
+          )
+        }
+      >
+        <Box>
           {newKey ? (
             <>
               <Alert severity="warning" sx={{ mb: 2 }}>
@@ -205,20 +221,8 @@ export default function ApiKeysSettings() {
               sx={{ mt: 1 }}
             />
           )}
-        </DialogContent>
-        <DialogActions>
-          {newKey ? (
-            <Button variant="contained" onClick={closeCreate} data-testid="api-key-done">{t('common.done')}</Button>
-          ) : (
-            <>
-              <Button onClick={closeCreate} disabled={creating}>{t('common.cancel')}</Button>
-              <Button variant="contained" onClick={createKey} disabled={creating} data-testid="api-key-create-submit">
-                {t('common.create')}
-              </Button>
-            </>
-          )}
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </SideDrawer>
 
       {/* Revoke confirm */}
       <Dialog open={!!revokeTarget} onClose={revoking ? undefined : () => setRevokeTarget(null)} maxWidth="xs" fullWidth>

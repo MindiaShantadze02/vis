@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import {
   login, bookToDetails, openApptByName, passBookingOtp, fillStable,
   letterName, uniquePhone, setOnlinePayments, setServiceDeposit,
-  signInSeed, restApi, SEED,
+  signInSeed, restApi, SEED, eraseClientByName,
 } from './helpers'
 
 /**
@@ -62,12 +62,9 @@ test.describe('Deposits — booking', () => {
     expect(rows[0].status).toBe('approved')
     expect(rows[0].payment_status).toBe('deposit_paid')
 
-    // Erase the guest's PII (Art. 16) — doubles as cleanup.
+    // Erase the guest's PII (Art. 16) from the Clients screen — doubles as cleanup.
     await login(page)
-    await openApptByName(page, name)
-    await dialog(page).getByTestId('appt-erase').click()
-    await dialog(page).getByTestId('appt-confirm-erase').click()
-    await expect(dialog(page)).toBeHidden({ timeout: 20_000 })
+    await eraseClientByName(page, name)
   })
 })
 
@@ -147,9 +144,7 @@ test.describe('No-show', () => {
     await openApptByName(page, name)
     await expect(dialog(page).getByTestId('status-no_show')).toBeVisible()
 
-    // Cleanup: erase the guest PII.
-    await dialog(page).getByTestId('appt-erase').click()
-    await dialog(page).getByTestId('appt-confirm-erase').click()
-    await expect(dialog(page)).toBeHidden({ timeout: 20_000 })
+    // Cleanup: erase the guest PII from the Clients screen.
+    await eraseClientByName(page, name)
   })
 })

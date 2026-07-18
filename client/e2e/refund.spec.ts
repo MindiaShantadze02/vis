@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import {
   login, bookToDetails, openApptByName, passBookingOtp, fillStable,
-  letterName, uniquePhone, setOnlinePayments, signInSeed, restApi,
+  letterName, uniquePhone, setOnlinePayments, signInSeed, restApi, eraseClientByName,
 } from './helpers'
 
 /**
@@ -81,10 +81,8 @@ test.describe('Refunds — cancel a paid online booking', () => {
     expect(rows[0].status).toBe('cancelled')
     expect(rows[0].payment_status).toBe('refunded')
 
-    // Erase the guest's PII (Art. 16) — doubles as cleanup, same as
-    // appointment-status.spec.
-    await dialog(page).getByTestId('appt-erase').click()
-    await dialog(page).getByTestId('appt-confirm-erase').click()
-    await expect(dialog(page)).toBeHidden({ timeout: 20_000 })
+    // Erase the guest's PII (Art. 16) from the Clients screen — doubles as
+    // cleanup, same as appointment-status.spec.
+    await eraseClientByName(page, name)
   })
 })
