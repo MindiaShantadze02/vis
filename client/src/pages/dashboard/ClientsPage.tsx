@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Box, Typography, Card, TextField, Chip,
+  Box, Typography, TextField, Chip, TablePagination,
 } from '@mui/material'
 import { Search as SearchIcon } from '@/components/icons'
 import { GroupOutlined as GroupOutlinedIcon } from '@/components/icons'
@@ -47,6 +47,8 @@ export default function ClientsPage() {
   const [search, setSearch] = useState('')
   const [confirmErase, setConfirmErase] = useState<ClientRow | null>(null)
   const [erasing, setErasing] = useState(false)
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(25)
 
   const load = useCallback(async () => {
     if (!org) return
@@ -100,6 +102,17 @@ export default function ClientsPage() {
     )
   }, [rows, search])
 
+  // Reset to the first page whenever the filter changes.
+  useEffect(() => { setPage(0) }, [search])
+  // Clamp the page if the list shrinks (e.g. after an erase) so we never render
+  // an out-of-range, empty page.
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(filtered.length / rowsPerPage) - 1)
+    if (page > maxPage) setPage(maxPage)
+  }, [filtered.length, rowsPerPage, page])
+  const pageStart = page * rowsPerPage
+  const paged = filtered.slice(pageStart, pageStart + rowsPerPage)
+
   async function eraseClient(row: ClientRow) {
     setErasing(true)
     const { error } = await supabase.rpc('erase_customer_data', { p_appointment_id: row.apptId })
@@ -132,13 +145,13 @@ export default function ClientsPage() {
             <EmptyState icon={<GroupOutlinedIcon />} title={t('clients.empty')} />
           ) : (
             <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
-              {filtered.map((row, i) => (
+              {paged.map((row, i) => (
                 <Box
                   key={row.customerId}
                   data-testid="client-row"
                   sx={{
                     display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.75,
-                    borderBottom: i < filtered.length - 1 ? '1px solid' : 'none',
+                    borderBottom: i < paged.length - 1 ? '1px solid' : 'none',
                     borderColor: 'divider',
                     '&:hover': { bgcolor: surface.hover },
                   }}
@@ -177,6 +190,24 @@ export default function ClientsPage() {
                   </ActionIconButton>
                 </Box>
               ))}
+
+              <TablePagination
+                component="div"
+                count={filtered.length}
+                page={page}
+                onPageChange={(_, p) => setPage(p)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={e => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0) }}
+                rowsPerPageOptions={[10, 25, 50]}
+                labelRowsPerPage={t('dashboard.rowsPerPage')}
+                labelDisplayedRows={({ from, to, count }) => `${from}–${to} / ${count}`}
+                sx={{
+                  borderTop: '1px solid',
+                  borderColor: 'divider',
+                  '& .MuiTablePagination-toolbar': { flexWrap: 'wrap', minHeight: 52, gap: 0.5 },
+                  '& .MuiTablePagination-actions button': { p: { xs: 1.25, md: 1 } },
+                }}
+              />
             </Box>
           )}
         </>
