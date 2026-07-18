@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 
 /**
@@ -30,7 +30,7 @@ import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { useSuperadmin } from '@/hooks/useSuperadmin'
 import { useNotifications } from '@/hooks/useNotifications'
-import { LanguageSwitcher, AnimatedOutlet } from '@/components/ui'
+import { LanguageSwitcher, AnimatedOutlet, LoadingState } from '@/components/ui'
 import SubscriptionBanner from '@/components/SubscriptionBanner'
 import { dateLocale } from '@/lib/dateLocale'
 import { anim } from '@/theme/animations'
@@ -412,10 +412,16 @@ export default function DashboardLayout() {
           </Toolbar>
         </AppBar>
 
-        {/* Page content — AnimatedOutlet fades/slides between routes. */}
+        {/* Page content — AnimatedOutlet fades/slides between routes. A local
+            Suspense boundary keeps the sidebar/app-bar mounted while a lazily-
+            loaded page chunk resolves (only the content area shows the spinner),
+            instead of the top-level full-screen fallback that blanked the whole
+            dashboard on a page's first visit. */}
         <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 } }}>
           <SubscriptionBanner />
-          <AnimatedOutlet context={{ refreshSignal } satisfies DashboardOutletContext} />
+          <Suspense fallback={<LoadingState />}>
+            <AnimatedOutlet context={{ refreshSignal } satisfies DashboardOutletContext} />
+          </Suspense>
         </Box>
       </Box>
     </Box>
