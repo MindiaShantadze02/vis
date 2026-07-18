@@ -68,4 +68,34 @@ test.describe('Cancellation waitlist', () => {
     const booked = (await restApi(ctx, `appointments?select=id,customers!inner(phone_number)&customers.phone_number=eq.${bPhone}`)) as unknown[]
     expect(booked).toHaveLength(1)
   })
+
+  test('re-dispatching a slot with a live offer does not double-offer it', async () => {
+    // State/concurrency guard: once a freed slot is offered (entry active→offered,
+    // one PENDING offer), a second dispatch must not create a duplicate offer or
+    // re-offer to another waiter — the pending offer holds the slot (NOT EXISTS
+    // pending-offer guard). Pure backend, no browser claim needed.
+    const slot = futureSlot()
+    const ctx = await signInSeed()
+
+    const apptId = await createSeedAppointment({ firstName: letterName(), phone: uniquePhone(), scheduledAt: slot.iso })
+    const entryId = await joinWaitlist({ firstName: letterName(), phone: uniquePhone(), desiredDate: slot.date })
+
+    await restApi(ctx, `appointments?id=eq.${apptId}`, {
+      method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ status: 'cancelled' }),
+    })
+
+    const org = (await restApi(ctx, `organisations?slug=eq.test-appointments-studio&select=id`)) as { id: string }[]
+    const dispatch = () => restApi(ctx, `rpc/dispatch_waitlist_offers`, {
+      method: 'POST', body: JSON.stringify({ p_org_id: org[0].id }),
+    })
+
+    await dispatch()
+    await dispatch() // idempotent second run while the first offer is still pending
+
+    const offers = (await restApi(ctx, `waitlist_offers?entry_id=eq.${entryId}&select=status`)) as { status: string }[]
+    expect(offers).toHaveLength(1) // exactly one offer, no duplicate
+    expect(offers[0].status).toBe('pending')
+    const entry = (await restApi(ctx, `waitlist_entries?id=eq.${entryId}&select=status`)) as { status: string }[]
+    expect(entry[0].status).toBe('offered') // held, not re-queued
+  })
 })

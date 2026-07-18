@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import {
   login, bookToDetails, openApptByName, passBookingOtp, fillStable,
   letterName, uniquePhone, setOnlinePayments, setServiceDeposit,
-  signInSeed, restApi,
+  signInSeed, restApi, SEED,
 } from './helpers'
 
 /**
@@ -68,6 +68,51 @@ test.describe('Deposits — booking', () => {
     await dialog(page).getByTestId('appt-erase').click()
     await dialog(page).getByTestId('appt-confirm-erase').click()
     await expect(dialog(page)).toBeHidden({ timeout: 20_000 })
+  })
+})
+
+/**
+ * Deposit config — backend validation (migration 091). The DB CHECK constraints
+ * reject out-of-range deposit_value at write time (a direct PostgREST / public-API
+ * write bypasses the client validator). Pure backend e2e via PostgREST as the
+ * owner — no UI. computeDeposit's runtime CLAMP is unit-tested separately
+ * (deposit.test.ts); this proves the data-integrity guard.
+ *
+ * Technique: boundary-value analysis on deposit_value per deposit_type —
+ *   percent: valid [0..100], invalid <0 and >100
+ *   fixed:   valid [0..∞),  invalid <0
+ */
+test.describe('Deposit config — backend validation', () => {
+  // Any deposit we manage to write is cleared after, so later booking specs
+  // aren't unexpectedly forced online.
+  test.afterAll(async () => {
+    await setServiceDeposit(null, null)
+  })
+
+  async function patchSeedServiceDeposit(depositType: string, depositValue: number) {
+    const ctx = await signInSeed()
+    const org = (await restApi(ctx, `organisations?slug=eq.${SEED.slug}&select=id`)) as { id: string }[]
+    // restApi throws on any non-2xx (a rejected CHECK is a 400) — callers assert
+    // resolve/reject accordingly.
+    return restApi(ctx, `services?org_id=eq.${org[0].id}`, {
+      method: 'PATCH',
+      headers: { prefer: 'return=minimal' },
+      body: JSON.stringify({ deposit_type: depositType, deposit_value: depositValue }),
+    })
+  }
+
+  test('percent deposits are constrained to 0..100', async () => {
+    // Below-boundary and above-boundary are rejected by the CHECK.
+    await expect(patchSeedServiceDeposit('percent', -1)).rejects.toThrow()
+    await expect(patchSeedServiceDeposit('percent', 101)).rejects.toThrow()
+    // The two boundaries themselves are accepted.
+    await expect(patchSeedServiceDeposit('percent', 0)).resolves.not.toThrow()
+    await expect(patchSeedServiceDeposit('percent', 100)).resolves.not.toThrow()
+  })
+
+  test('fixed deposits reject negatives, accept zero', async () => {
+    await expect(patchSeedServiceDeposit('fixed', -1)).rejects.toThrow()
+    await expect(patchSeedServiceDeposit('fixed', 0)).resolves.not.toThrow()
   })
 })
 

@@ -63,6 +63,39 @@ test.describe('Self-service manage', () => {
     expect(freed.some(f => f.reason === 'rescheduled')).toBeTruthy()
   })
 
+  test('a wrong OTP code is rejected and the booking is left untouched', async ({ page }) => {
+    // Negative / error-guessing: the capability link opens the page, but the
+    // mutation is OTP-gated. A non-master 6-digit code fails verification — the
+    // error surfaces and the appointment must remain approved (no cancel leaks
+    // through a bad code).
+    const name = letterName()
+    const apptId = await createSeedAppointment({ firstName: name, phone: uniquePhone(), scheduledAt: futureSlotIso() })
+
+    await page.goto(`/manage/${apptId}`)
+    await page.getByTestId('manage-cancel').click()
+    const code = page.getByTestId('manage-otp-code')
+    await expect(code).toBeVisible({ timeout: 20_000 })
+    await code.fill('111111') // valid shape, wrong code (master is 000000)
+    await page.getByTestId('manage-otp-submit').click()
+
+    await expect(page.getByTestId('manage-error')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('ჯავშანი გაუქმდა')).toHaveCount(0)
+
+    const ctx = await signInSeed()
+    const appts = (await restApi(ctx, `appointments?id=eq.${apptId}&select=status`)) as { status: string }[]
+    expect(appts[0].status).toBe('approved')
+  })
+
+  test('an unknown appointment id shows the not-found state (no manage menu)', async ({ page }) => {
+    // Equivalence class: a capability UUID that resolves to no appointment. The
+    // page must render the not-found state and never expose the reschedule/cancel
+    // actions.
+    await page.goto(`/manage/${crypto.randomUUID()}`)
+    await expect(page.getByTestId('manage-reschedule')).toHaveCount(0, { timeout: 20_000 })
+    await expect(page.getByTestId('manage-cancel')).toHaveCount(0)
+    await expect(page.getByTestId('manage-otp-code')).toHaveCount(0)
+  })
+
   test('cancel via OTP cancels the booking and frees the slot', async ({ page }) => {
     const name = letterName()
     const apptId = await createSeedAppointment({ firstName: name, phone: uniquePhone(), scheduledAt: futureSlotIso() })
