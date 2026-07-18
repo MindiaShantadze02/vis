@@ -28,6 +28,7 @@ const DashboardLayout = lazy(() => import('@/pages/dashboard/DashboardLayout'))
 const OverviewPage = lazy(() => import('@/pages/dashboard/OverviewPage'))
 const CalendarPage = lazy(() => import('@/pages/dashboard/CalendarPage'))
 const WaitlistPage = lazy(() => import('@/pages/dashboard/WaitlistPage'))
+const AnalyticsPage = lazy(() => import('@/pages/dashboard/AnalyticsPage'))
 const ProfileSettings = lazy(() => import('@/pages/dashboard/settings/ProfileSettings'))
 const BookingPageSettings = lazy(() => import('@/pages/dashboard/settings/BookingPageSettings'))
 const AccountSettings = lazy(() => import('@/pages/dashboard/settings/AccountSettings'))
@@ -160,6 +161,7 @@ export default function App() {
         <Route element={<OrgGuard><Outlet /></OrgGuard>}>
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="waitlist" element={<WaitlistPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings/profile" element={<ProfileSettings />} />
           <Route path="settings/booking" element={<BookingPageSettings />} />
           <Route path="settings/services" element={<ServicesSettings />} />

@@ -99,6 +99,14 @@ export default function OverviewPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const [selected, setSelected] = useState<Appointment | null>(null)
+  // Look up whether the opened appointment belongs to a recurring series.
+  useEffect(() => {
+    if (!selected) { setSeriesId(null); return }
+    let cancelled = false
+    supabase.from('appointments').select('series_id').eq('id', selected.id).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setSeriesId((data as { series_id: string | null } | null)?.series_id ?? null) })
+    return () => { cancelled = true }
+  }, [selected])
   const [adminNote, setAdminNote] = useState('')
   // Per-appointment online meeting link, edited in the detail dialog.
   const [meetingLink, setMeetingLink] = useState('')
@@ -106,6 +114,9 @@ export default function OverviewPage() {
   const [sendingLink, setSendingLink] = useState(false)
   // Inline two-step guard for cancelling an already-approved appointment.
   const [confirmingCancel, setConfirmingCancel] = useState(false)
+  // Recurring-series id of the selected appointment (fetched on open), so we can
+  // offer "cancel the whole series" alongside the single-occurrence cancel.
+  const [seriesId, setSeriesId] = useState<string | null>(null)
   // Cancel-with-refund choice for PAID online appointments (Fresha model: the
   // business decides at cancel time — default is to give the money back, but
   // e.g. a late cancellation may deliberately keep it).
@@ -293,6 +304,20 @@ export default function OverviewPage() {
       setConfirmingCancel(false)
     }
     setActionLoading(null)
+  }
+
+  // Cancel the whole recurring series this appointment belongs to (all future
+  // occurrences). Each cancelled occurrence frees its slot for the waitlist.
+  async function cancelSeries(id: string) {
+    if (!seriesId) return
+    setActionLoading(id)
+    const { data, error } = await supabase.rpc('cancel_recurrence_series', { p_series_id: seriesId })
+    setActionLoading(null)
+    if (error) { toast.error(error.message); return }
+    toast.success(t('recurring.seriesCancelled', { count: (data as number) ?? 0 }))
+    setSelected(null)
+    loadAppointments()
+    loadStats()
   }
 
   // Save the per-appointment join link and text it to the customer in one
@@ -845,6 +870,12 @@ export default function OverviewPage() {
                       onClick={() => { setRefundOnCancel(true); setConfirmingCancel(true) }} disabled={!!actionLoading}>
                       {t('dashboard.cancelAppointment')}
                     </Button>
+                    {seriesId && (
+                      <Button variant="outlined" color="error" data-testid="appt-cancel-series"
+                        onClick={() => cancelSeries(selected.id)} disabled={!!actionLoading}>
+                        {t('recurring.cancelSeries')}
+                      </Button>
+                    )}
                   </>
                 )
               )}

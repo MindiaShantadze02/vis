@@ -688,5 +688,40 @@
       "expired": "Expired",
       "cancelled": "Cancelled"
     }
+  },
+  "recurring": {
+    "created": "Added {{made}} appointments",
+    "createdWithSkips": "Added {{made}}, skipped {{skipped}} (slot taken)",
+    "repeat": "Repeat",
+    "weekly": "Weekly",
+    "biweekly": "Every 2 weeks",
+    "monthly": "Monthly",
+    "endCount": "Count",
+    "endUntil": "Until date",
+    "occurrences": "Number of appointments",
+    "occurrencesHelp": "1–52",
+    "untilDate": "Until date",
+    "cancelSeries": "Cancel series",
+    "seriesCancelled": "Cancelled {{count}} appointments"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "days30": "30 days",
+    "days90": "90 days",
+    "days365": "Year",
+    "revenue": "Revenue",
+    "bookings": "Bookings",
+    "completed": "Completed",
+    "deposits": "Payments",
+    "noShowRate": "No-show rate",
+    "cancelRate": "Cancel rate",
+    "repeatRate": "Repeat customers",
+    "waitlistConv": "Waitlist conversion",
+    "revenueByStaff": "Revenue by staff",
+    "busiestDays": "Busiest days",
+    "busiestHours": "Busiest hours",
+    "noData": "No data yet",
+    "footer": "All figures for the selected period (Georgia time).",
+    "nav": "Analytics"
   }
 }

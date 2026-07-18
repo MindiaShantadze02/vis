@@ -3,6 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   TextField, Stack, FormControl, InputLabel, Select, MenuItem,
   FormHelperText, Alert, CircularProgress, Box, Typography, Avatar,
+  Switch, FormControlLabel, ToggleButtonGroup, ToggleButton, Divider,
 } from '@mui/material'
 import { AppDatePicker } from '@/components/AppDatePicker'
 import { format, isValid } from 'date-fns'
@@ -72,6 +73,13 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
   const [notes, setNotes] = useState('')
   const [date, setDate] = useState<Date | null>(null)
   const [timeStr, setTimeStr] = useState('')
+
+  // Recurring series (migration 095). Off by default = a single appointment.
+  const [repeat, setRepeat] = useState(false)
+  const [cadence, setCadence] = useState<'weekly' | 'biweekly' | 'monthly'>('weekly')
+  const [endType, setEndType] = useState<'count' | 'until'>('count')
+  const [occCount, setOccCount] = useState('8')
+  const [untilDate, setUntilDate] = useState<Date | null>(null)
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -234,10 +242,42 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       return
     }
     if (!selectedService) return
+    // A recurring "until" needs a date; "count" needs a positive number.
+    if (repeat && endType === 'until' && !untilDate) {
+      focusFirstInvalidFieldAfterRender(document.querySelector('[data-testid="add-appt-dialog"]') ?? document)
+      return
+    }
     setSaving(true)
     setError(null)
 
     try {
+      // Recurring: one server-side call generates the whole series (skipping any
+      // occurrences that collide with an existing booking).
+      if (repeat) {
+        const { data, error: rpcErr } = await supabase.rpc('create_recurrence_series', {
+          p_org_id: orgId,
+          p_service_id: selectedService.id,
+          p_staff_id: staffId || null,
+          p_first_name: firstName.trim(),
+          p_last_name: lastName.trim() || null,
+          p_phone: formatGeorgianPhone(phone),
+          p_start_at: scheduledAt!.toISOString(),
+          p_cadence: cadence,
+          p_end_type: endType,
+          p_occurrence_count: endType === 'count' ? Number(occCount) : null,
+          p_until_date: endType === 'until' && untilDate ? format(untilDate, 'yyyy-MM-dd') : null,
+          p_notes: notes.trim() || null,
+        })
+        if (rpcErr) throw new Error(rpcErr.message)
+        const res = data as { made: number; skipped: number }
+        toast.success(res.skipped > 0
+          ? t('recurring.createdWithSkips', { made: res.made, skipped: res.skipped })
+          : t('recurring.created', { made: res.made }))
+        onCreated()
+        onClose()
+        return
+      }
+
       // Generate IDs client-side to avoid needing SELECT after INSERT (the
       // customers RLS SELECT policy can't see a brand-new customer yet).
       const customerId = crypto.randomUUID()
@@ -438,6 +478,49 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
             fullWidth multiline rows={2} size="small"
             slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.notes } }}
           />
+
+          {/* Recurring series — a standing weekly/biweekly/monthly booking. */}
+          <Box>
+            <FormControlLabel
+              control={<Switch checked={repeat} onChange={e => setRepeat(e.target.checked)} data-testid="add-appt-repeat" />}
+              label={<Typography variant="body2" sx={{ fontWeight: 600 }}>{t('recurring.repeat')}</Typography>}
+            />
+            {repeat && (
+              <Stack spacing={1.5} sx={{ mt: 1 }}>
+                <ToggleButtonGroup
+                  exclusive fullWidth size="small" value={cadence}
+                  onChange={(_, v: 'weekly' | 'biweekly' | 'monthly' | null) => { if (v) setCadence(v) }}
+                >
+                  <ToggleButton value="weekly" data-testid="cadence-weekly">{t('recurring.weekly')}</ToggleButton>
+                  <ToggleButton value="biweekly">{t('recurring.biweekly')}</ToggleButton>
+                  <ToggleButton value="monthly">{t('recurring.monthly')}</ToggleButton>
+                </ToggleButtonGroup>
+                <ToggleButtonGroup
+                  exclusive fullWidth size="small" value={endType}
+                  onChange={(_, v: 'count' | 'until' | null) => { if (v) setEndType(v) }}
+                >
+                  <ToggleButton value="count" data-testid="end-count">{t('recurring.endCount')}</ToggleButton>
+                  <ToggleButton value="until">{t('recurring.endUntil')}</ToggleButton>
+                </ToggleButtonGroup>
+                {endType === 'count' ? (
+                  <TextField
+                    label={t('recurring.occurrences')} value={occCount}
+                    onChange={e => setOccCount(e.target.value.replace(/[^0-9]/g, ''))}
+                    size="small" sx={{ maxWidth: 200 }}
+                    error={!(Number(occCount) >= 1 && Number(occCount) <= 52)}
+                    helperText={t('recurring.occurrencesHelp')}
+                    slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'occ-count' } }}
+                  />
+                ) : (
+                  <AppDatePicker
+                    label={t('recurring.untilDate')} value={untilDate} onChange={setUntilDate}
+                    disablePast slotProps={{ textField: { size: 'small', sx: { maxWidth: 240 } } }}
+                  />
+                )}
+              </Stack>
+            )}
+          </Box>
+          <Divider />
 
           {selectedService && (
             <Box sx={{ bgcolor: surface.subtle, borderRadius: 2, p: 1.5 }}>

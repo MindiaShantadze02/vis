@@ -691,5 +691,40 @@
       "expired": "ვადაგასული",
       "cancelled": "გაუქმებული"
     }
+  },
+  "recurring": {
+    "created": "დაემატა {{made}} ჯავშანი",
+    "createdWithSkips": "დაემატა {{made}} ჯავშანი, {{skipped}} გამოტოვდა (დრო დაკავებულია)",
+    "repeat": "გამეორება",
+    "weekly": "ყოველკვირა",
+    "biweekly": "ორ კვირაში",
+    "monthly": "ყოველთვე",
+    "endCount": "რაოდენობა",
+    "endUntil": "თარიღამდე",
+    "occurrences": "ჯავშნების რაოდენობა",
+    "occurrencesHelp": "1–52",
+    "untilDate": "თარიღამდე",
+    "cancelSeries": "სერიის გაუქმება",
+    "seriesCancelled": "გაუქმდა {{count}} ჯავშანი"
+  },
+  "analytics": {
+    "title": "ანალიტიკა",
+    "days30": "30 დღე",
+    "days90": "90 დღე",
+    "days365": "წელი",
+    "revenue": "შემოსავალი",
+    "bookings": "ჯავშნები",
+    "completed": "დასრულებული",
+    "deposits": "გადახდები",
+    "noShowRate": "გამოუცხადებლობა",
+    "cancelRate": "გაუქმება",
+    "repeatRate": "დაბრუნებადი კლიენტები",
+    "waitlistConv": "მოლოდინის კონვერსია",
+    "revenueByStaff": "შემოსავალი თანამშრომლებით",
+    "busiestDays": "დატვირთული დღეები",
+    "busiestHours": "დატვირთული საათები",
+    "noData": "მონაცემები არ არის",
+    "footer": "ყველა მაჩვენებელი მოცემული პერიოდისთვის (საქართველოს დრო).",
+    "nav": "ანალიტიკა"
   }
 }

@@ -692,5 +692,40 @@
       "expired": "Истекло",
       "cancelled": "Отменено"
     }
+  },
+  "recurring": {
+    "created": "Добавлено записей: {{made}}",
+    "createdWithSkips": "Добавлено {{made}}, пропущено {{skipped}} (время занято)",
+    "repeat": "Повтор",
+    "weekly": "Еженедельно",
+    "biweekly": "Раз в 2 недели",
+    "monthly": "Ежемесячно",
+    "endCount": "Количество",
+    "endUntil": "До даты",
+    "occurrences": "Число записей",
+    "occurrencesHelp": "1–52",
+    "untilDate": "До даты",
+    "cancelSeries": "Отменить серию",
+    "seriesCancelled": "Отменено записей: {{count}}"
+  },
+  "analytics": {
+    "title": "Аналитика",
+    "days30": "30 дней",
+    "days90": "90 дней",
+    "days365": "Год",
+    "revenue": "Доход",
+    "bookings": "Записи",
+    "completed": "Завершено",
+    "deposits": "Оплаты",
+    "noShowRate": "Неявки",
+    "cancelRate": "Отмены",
+    "repeatRate": "Повторные клиенты",
+    "waitlistConv": "Конверсия листа ожидания",
+    "revenueByStaff": "Доход по сотрудникам",
+    "busiestDays": "Загруженные дни",
+    "busiestHours": "Загруженные часы",
+    "noData": "Нет данных",
+    "footer": "Все показатели за выбранный период (время Грузии).",
+    "nav": "Аналитика"
   }
 }

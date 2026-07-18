@@ -137,9 +137,14 @@ developer strip, footer links to docs and legal pages).
   page, reserved for a future owner dashboard).
 
 ### Admin dashboard
-- **Overview** — stats + revenue totals; copy-review-link on completed appointments.
-- **Weekly calendar** — view/manage bookings, add manually, approve/reject/cancel pending; attach
-  and SMS-send a meeting link on online appointments.
+- **Overview** — stats + revenue totals; copy-review-link on completed appointments; mark no-show.
+- **Weekly calendar** — view/manage bookings, add manually (incl. recurring series), approve/reject/
+  cancel pending; attach and SMS-send a meeting link on online appointments.
+- **Analytics** (migration 096) — a money-first dashboard for a chosen range (30/90/365 days) from
+  the pre-aggregated `get_org_analytics` RPC: revenue + revenue-per-staff, booking/completion counts,
+  **no-show / cancellation / repeat-customer rates**, busiest-weekday & busiest-hour histograms
+  (business time), deposit collection and waitlist conversion. Charts are dependency-free CSS bars.
+- **Waitlist** — the cancellation-waitlist queue + a "check for openings" (dispatch) button.
 - **Realtime in-app notifications** (owner bell) for new bookings.
 - **Settings** (grouped by concern, `SETTINGS_GROUPS` in `DashboardLayout.tsx`):
   - **Business:** Business info (name/description/contact phone/address/logo — path kept at
@@ -164,35 +169,90 @@ developer strip, footer links to docs and legal pages).
 - When a superadmin changes an org's tier they must also set `subscription_expires_at`
   (subscription state is derived — see below).
 
-## Pricing & subscription (migrations 072 + 083)
-- **Two tiers only** (083, 2026-07-16 — the product targets individuals and small businesses; the
+## Pricing & subscription (migrations 072 + 083, entitlements 088)
+- **Two tiers** (083, 2026-07-16 — the product targets individuals and small businesses; the
   old Starter/Pro/Business ladder is gone, Business removed entirely):
-  - **Solo ₾19/mo** — 100 appointments/mo, **1 bookable professional**
-  - **Team ₾39/mo** — 300 appointments/mo, **unlimited staff** (the recommended plan)
+  - **Solo ₾19/mo** — 100 **included** appointments/mo
+  - **Team ₾39/mo** — 300 **included** appointments/mo (the recommended plan)
+- **Included allowance + metered overage** (088, 2026-07-17): the tier's included appointments are
+  free; **bookings beyond the allowance are ALLOWED and metered as overage** (recorded in
+  `overage_events`, ₾ per `tier_overage_prices`), not blocked. Only an **expired** org (no active
+  sub/trial) is hard-blocked. During the trial, overage is a **soft allowance** (metered as usage,
+  no billable events). *Charging* overage/subscriptions is a separate billing-integration track —
+  today the platform **enforces, meters, records, and displays** overage but does not charge it.
+- **Seats are unlimited on both tiers** (088 set `tier_staff_limits` null/null) and **no feature is
+  gated** — the tiers differ only by included volume + price. `platform_config.tier_features` plus
+  the client `FeatureGate`/`useEntitlement` seam exist (all-true today) so a feature can be gated
+  later with a config flip.
 - **No free tier** (072). Every new org gets a **30-day Solo-level trial** (no card). Subscription
   state (**trial / active / expired**) is **derived** from `trial_ends_at` /
   `subscription_expires_at` — no cron. An expired org is never disabled: dashboard, data and the
   booking page stay alive, but new bookings are blocked and day-before reminders stop.
-- Limits live in `platform_config.tier_limits` / `tier_prices` / `tier_staff_limits` JSON
-  (superadmin-editable, no deploy); enforced **in the database** via
-  `org_can_accept_appointment` / `enforce_appointment_limit` (appointments) and
-  `enforce_staff_limit` (bookable seats), plus a billing-column guard trigger that blocks owner
-  self-upgrades. `create-payment` recomputes the charge from `tier_prices` server-side.
+- Config lives in `platform_config.tier_limits` / `tier_prices` / `tier_overage_prices` /
+  `tier_features` / `tier_staff_limits` JSON (superadmin-editable, no deploy). Enforced **in the
+  database**: `enforce_appointment_limit` (hard-blocks only expired orgs) + `record_appointment_overage`
+  (AFTER-insert metering, voids on cancel), plus a billing-column guard trigger that blocks owner
+  self-upgrades. `get_org_entitlements` is the one RPC the dashboard reads (allowance/overage/seats/
+  features); `create-payment` recomputes the charge from `tier_prices` server-side.
 - Landing page shows the same two public price cards (`lib/tiers.ts` mirrors this config).
 
 ### Limit / expiry UX (what the user actually sees)
-- **Owner, approaching the cap:** the dashboard `UsageMeter` and the Subscription page turn the
-  usage bar amber at 80% with a "consider upgrading" hint, red at 100% with "limit reached — new
-  bookings are blocked".
+- **Owner, approaching/over the allowance:** the dashboard `UsageMeter` and the Subscription page
+  turn the usage bar amber at 80%; once **over the included allowance** it shows **"N over your
+  plan · ₾Z"** (the metered overage) — bookings are **not** blocked (088).
 - **Owner, trial ending:** a countdown banner on the dashboard for the last 7 trial days; after
   expiry a one-time prominent notice (dismissal persisted in `trial_expiry_ack_at`), which
   collapses into a permanent non-dismissible "choose a plan" strip. All in-app; never SMS.
-- **Owner, at the seat limit:** adding another bookable professional is rejected by the DB
-  (`staff_limit_reached`) and Team settings shows an upgrade-prompt error.
-- **Guest, org at cap / expired:** the public booking page pre-checks
-  `org_can_accept_appointment` and shows a friendly "unavailable" state instead of the form; a
-  race at insert time surfaces the trigger's `limit_reached` error gracefully. The public API
-  returns 403 `quota_exceeded`.
+- **Guest, org expired:** the public booking page pre-checks `org_can_accept_appointment` (now
+  false only when expired) and shows a friendly "unavailable" state instead of the form; the
+  expired hard-block surfaces the trigger's `limit_reached` error gracefully. The public API
+  returns 403 `quota_exceeded` only for an expired org.
+
+## Booking add-ons: deposits, self-service, waitlist
+
+### Deposits / prepayment (migrations 089/090/091)
+- A business can require an **upfront deposit** (or full prepayment) to confirm a booking — the
+  strongest no-show killer. Configured **per service** (none / fixed ₾ / percent, in Services
+  settings; a fixed deposit can't exceed the price) with an org default; the org-level
+  cancellation/refund policy (`cancellation_window_hours`, `deposit_refundable`) lives in Payment
+  settings. Percent 0–100 and fixed ≥ 0 are DB-CHECK-enforced.
+- A deposit **forces the online path** on the booking page (pay-in-person would bypass it); the
+  charge is computed server-side (`lib/deposit.ts` + a Deno mirror) and routed through the existing
+  `create-payment` → `payment-webhook` rails. The appointment materialises only after the charge
+  clears, with `payment_status = deposit_paid` (balance due in person) or `paid` (full prepay).
+- **`no_show`** is a first-class appointment status (owners "mark no-show"); it still counts toward
+  usage (the slot was consumed) and keeps any deposit per policy.
+
+### Customer self-service reschedule / cancel (migration 092)
+- Every confirmation can carry a **`/manage/:appointmentId`** capability link (UUID = capability,
+  like `/review`). The customer reschedules or cancels **without logging in**, but each mutation is
+  **OTP-gated** (`manage-appointment` edge fn delegates to the booking-OTP functions server-side).
+- Reschedule re-validates the new slot under the per-org advisory lock (409 on race);
+  cancel applies the refund policy (refunds the deposit/payment iff within
+  `cancellation_window_hours` and `deposit_refundable`, via the payments seam, atomic-claim-then-
+  refund like the owner cancel). A cancel/reschedule records a **`slot_freed_events`** row (for any
+  actor — owner or customer), which feeds the waitlist.
+
+### Recurring appointments (migration 095)
+- Owner/staff-created **standing bookings** (weekly / biweekly / monthly) for trainers, clinics and
+  regular clients — a "Repeat" option in the manual add-appointment dialog. Each occurrence is a
+  **real appointment row** carrying a `series_id` (materialized, so reminders/capacity/calendar see
+  them). The series is **bounded** (end after N occurrences, or on a date; capped at 52) and all
+  occurrences are generated at creation (`create_recurrence_series`, owner context) — colliding
+  slots are **skipped and reported** (`{made, skipped}`), never silently dropped; each occurrence
+  meters against the tier allowance. Per-occurrence confirmation SMS is suppressed for series rows.
+- Edits: "this occurrence" is the normal single cancel/reschedule; **`cancel_recurrence_series`**
+  ends the series and cancels all future occurrences (each frees its slot → waitlist).
+
+### Cancellation waitlist (migration 093)
+- When a day is full, the booking page offers **"join the waitlist"** (consent-only; the OTP is at
+  claim time). A `dispatch_waitlist_offers` cron (every 5 min; also an owner "check for openings"
+  button on **Dashboard → Waitlist**) matches a freed future slot to the oldest active entry,
+  creates a **time-limited offer** (15 min) and texts a claim link.
+- The offered customer claims at **`/waitlist/:token`** (OTP-gated `claim-waitlist` edge fn), which
+  books the slot under the advisory lock (409 on race). Expired offers roll over to the next
+  candidate. Concurrency: only one pending offer per freed slot; the claim re-validates capacity.
+  Waitlist claims book in-person/unpaid (a deposit, if any, is collected in person).
 
 ## Data protection & privacy (Georgian Law on Personal Data Protection, No. 3144)
 - **Privacy Policy + Terms** (canonical markdown in `docs/legal/`, in-app pages at `/privacy`,
@@ -217,8 +277,14 @@ developer strip, footer links to docs and legal pages).
 - `services` (name, duration, price, `max_per_slot` capacity, in-person/online location type),
   `service_staff` (who performs what), `service_images` (per-service gallery, composite-FK
   tenant-integrity pattern; `service-images` bucket)
-- `appointments` (+ `meeting_link` for online ones) + shared `customers` (name + phone; consent
-  fields; `anonymized_at`)
+- `appointments` (+ `meeting_link` for online ones; `payment_status` incl. `deposit_paid`; status
+  incl. `no_show`) + shared `customers` (name + phone; consent fields; `anonymized_at`)
+- Entitlements/overage (088): `overage_events` ledger; `platform_config.tier_overage_prices` /
+  `tier_features`
+- Deposits (089): per-service + org `deposit_type`/`deposit_value`; org `cancellation_window_hours`
+  / `deposit_refundable`
+- Self-service + waitlist (092/093): `slot_freed_events` (freed-slot ledger), `waitlist_entries`,
+  `waitlist_offers` (claim-token capability)
 - `reviews` (one per appointment; org-scoped read; public aggregate exposed via `get_public_org`)
 - `api_keys` + `api_rate_counters` (public API; hashed keys, per-minute counters)
 - `setup_requests` (concierge-onboarding queue; one open per org)
@@ -230,10 +296,12 @@ developer strip, footer links to docs and legal pages).
 - SMS: event-driven — a DB trigger (or RPC) enqueues, the `send-sms` edge function dispatches
   through a pluggable `SmsProvider` (`_shared/sms/`); currently a **mock** provider. Message types
   include booking confirmation, approval updates, day-before appointment reminders
-  (`dispatch_appointment_reminders` cron), meeting links, invitations, verification codes, and
-  setup-complete notices. Go-live checklist for a real gateway: `docs/SMS_PROVIDER_READINESS.md`
-  (note: `to` numbers need `+995` prefixing).
-- `pg_cron`: auto-complete past appointments; booking notifications & reminders; retention purge
+  (`dispatch_appointment_reminders` cron), meeting links, invitations, verification codes,
+  setup-complete, refund/reschedule/cancellation updates, and waitlist offer/claimed. Go-live
+  checklist for a real gateway: `docs/SMS_PROVIDER_READINESS.md` (note: `to` numbers need `+995`
+  prefixing). Customer-facing edge fns (`manage-appointment`, `claim-waitlist`) send directly.
+- `pg_cron`: auto-complete past appointments; booking notifications & reminders; retention purge;
+  waitlist-offer dispatch (`dispatch_waitlist_offers`, every 5 min)
 - Account deletion cascades all org data (+ best-effort storage cleanup)
 
 ## Security & multi-tenancy
@@ -267,12 +335,17 @@ developer strip, footer links to docs and legal pages).
   live challenges) and `payment-webhook` v9 (amount/currency validated against the stored intent
   for real providers).
 - Public reads go through SECURITY DEFINER RPCs that strip secrets: `get_public_org`,
-  `get_booking_confirmation`, `get_org_busy_slots`.
+  `get_booking_confirmation`, `get_org_busy_slots`, `get_manage_context`, `get_waitlist_offer`.
+- **Capability links** (`/review`, `/manage`, `/waitlist`): the row UUID / claim token is the
+  capability; reads return stripped jsonb and every mutation is OTP-gated. Writer RPCs
+  (`reschedule_appointment_slot`, `claim_waitlist_offer`) are service-role-only; the customer edge
+  fns delegate OTP to `request-booking-otp`/`verify-booking-otp` server-side (no test bypass in the
+  new functions).
 - Storage buckets (`logos`, `member-photos`, `service-images`) are folder-scoped per org.
 
 ## Build status
 
-**Built & live** (migrations through `083` on `dnmecnpugjxkjonqsfxx`):
+**Built & live** (migrations through `096` on `dnmecnpugjxkjonqsfxx`):
 - Appointments end-to-end: 4-step onboarding (or concierge setup) → settings → public booking with
   OTP → owner notification → dashboard approval (or auto-approve) → completion → verified review.
 - Phone auth with OTP second step; OTP password reset.
@@ -283,7 +356,18 @@ developer strip, footer links to docs and legal pages).
 - Per-service photo galleries; staff profiles with photos; per-appointment meeting links with
   owner-sent SMS.
 - Online-payment plumbing via `create-payment`/`payment-webhook` (mock gateway); Solo/Team pricing
-  with 30-day trial, usage metering and seat/quota enforcement.
+  with 30-day trial. **Entitlements substrate** (088): included allowance + metered overage
+  (`overage_events`, not blocked), unlimited seats both tiers, `get_org_entitlements` + FeatureGate.
+- **Deposits / prepayment** (089–091): per-service deposit config, `deposit_paid` + `no_show`
+  statuses, booking forces online when a deposit is required.
+- **Customer self-service** (092): `/manage/:appointmentId` OTP-gated reschedule/cancel-with-refund;
+  `slot_freed_events` ledger.
+- **Cancellation waitlist** (093/094): join → `dispatch_waitlist_offers` cron → OTP claim at
+  `/waitlist/:token`; owner Dashboard → Waitlist view.
+- **Recurring appointments** (095): owner-created weekly/biweekly/monthly series (bounded,
+  materialized occurrences); `create_recurrence_series` / `cancel_recurrence_series`.
+- **Owner analytics** (096): `get_org_analytics` RPC + a money-first dashboard (Dashboard →
+  Analytics) with CSS-bar charts.
 - Themed booking pages incl. custom brand color; business-timezone (+04:00) slot logic; regrouped
   settings IA; Deep Harbor admin theme.
 - Data-protection compliance (privacy/terms/consent/retention/erasure); security hardening passes
