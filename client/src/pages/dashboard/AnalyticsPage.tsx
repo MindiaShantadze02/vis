@@ -128,12 +128,18 @@ export default function AnalyticsPage() {
                 {data.by_hour.map((c, h) => {
                   const max = Math.max(...data.by_hour, 1)
                   return (
-                    <Box key={h} sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                    <Box key={h} sx={{ flex: 1, height: '100%', display: 'flex', alignItems: 'flex-end' }}>
                       <Box sx={{ width: '100%', height: `${Math.round((c / max) * 100)}%`, minHeight: c > 0 ? 3 : 0, bgcolor: 'primary.main', borderRadius: '3px 3px 0 0' }} />
-                      {h % 3 === 0 && <Typography variant="caption" sx={{ fontSize: 9, color: 'text.secondary' }}>{h}</Typography>}
                     </Box>
                   )
                 })}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                {data.by_hour.map((_, h) => (
+                  <Box key={h} sx={{ flex: 1, textAlign: 'center' }}>
+                    {h % 3 === 0 && <Typography variant="caption" sx={{ fontSize: 9, color: 'text.secondary' }}>{h}</Typography>}
+                  </Box>
+                ))}
               </Box>
             </CardContent>
           </Card>
