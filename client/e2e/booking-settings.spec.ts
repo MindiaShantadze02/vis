@@ -35,13 +35,15 @@ test.describe('Settings — Booking page', () => {
     // Not saved — the org's reviews flag is left unchanged.
   })
 
-  test('the require-approval toggle is present, off for the seed org, and switchable', async ({ page }) => {
-    const toggle = page.getByTestId('require-approval-toggle').locator('input')
-    // The seed org rests with auto-approve on (require_approval = false), even
-    // though approval-required is the column default for new orgs since 080.
-    await expect(toggle).not.toBeChecked()
-    await toggle.check()
+  test('the automatic-approval toggle is present, on for the seed org, and switchable', async ({ page }) => {
+    const toggle = page.getByTestId('auto-approve-toggle').locator('input')
+    // The control is framed as "Automatic approval" (opt-in): OFF means the
+    // approval-required default (the column default for new orgs since 080),
+    // ON means auto-confirm. The seed org rests with auto-approve on
+    // (require_approval = false), so the toggle reads checked.
     await expect(toggle).toBeChecked()
+    await toggle.uncheck()
+    await expect(toggle).not.toBeChecked()
     // Not saved — the org keeps auto-approving; the pending workflow itself is
     // exercised (via setRequireApproval) in appointment-status/calendar specs.
   })

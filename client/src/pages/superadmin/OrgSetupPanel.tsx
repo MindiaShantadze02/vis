@@ -324,12 +324,12 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
           />
           <FormControlLabel
             sx={{ ml: 0, display: 'flex' }}
-            control={<Switch checked={requireApproval} onChange={e => setRequireApproval(e.target.checked)} data-testid="sa-require-approval-toggle" />}
+            control={<Switch checked={!requireApproval} onChange={e => setRequireApproval(!e.target.checked)} data-testid="sa-auto-approve-toggle" />}
             label={
               <Box>
-                <Typography variant="body2">ჯავშნის დადასტურება საჭიროა</Typography>
+                <Typography variant="body2">ავტომატური დადასტურება</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  გამორთვისას ჯავშნები ავტომატურად დასტურდება
+                  გამორთვისას ჯავშნები დადასტურებას დაელოდება (ნაგულისხმევი)
                 </Typography>
               </Box>
             }

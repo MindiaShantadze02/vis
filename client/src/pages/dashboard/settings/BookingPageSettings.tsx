@@ -28,8 +28,9 @@ export default function BookingPageSettings() {
   const [bookingTheme, setBookingTheme] = useState<string>(DEFAULT_BOOKING_THEME)
   // Whole-feature on/off for customer reviews (badge on the booking page).
   const [reviewsEnabled, setReviewsEnabled] = useState(true)
-  // When on (default), new bookings arrive as 'pending' and need manual
-  // approval; off means bookings auto-approve on creation.
+  // Non-paid guest bookings need manual approval by default (require_approval
+  // defaults to true, migration 080); turning automatic approval ON opts out.
+  // Paid bookings (deposit/online) always auto-confirm via the webhook.
   const [requireApproval, setRequireApproval] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -218,22 +219,23 @@ export default function BookingPageSettings() {
 
           <Divider sx={{ my: 3 }} />
 
-          {/* Manual approval — when off (default), guest bookings auto-approve
-              on creation; when on, they arrive 'pending' until approved. */}
+          {/* Automatic approval — off by default, so non-paid guest bookings
+              arrive 'pending' until approved; on lets them auto-confirm. Paid
+              bookings auto-confirm regardless (handled by the webhook). */}
           <FormControlLabel
             sx={{ ml: 0 }}
             control={
               <Switch
-                checked={requireApproval}
-                onChange={e => setRequireApproval(e.target.checked)}
-                data-testid="require-approval-toggle"
+                checked={!requireApproval}
+                onChange={e => setRequireApproval(!e.target.checked)}
+                data-testid="auto-approve-toggle"
               />
             }
             label={
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.requireApprovalTitle')}</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.autoApproveTitle')}</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {t('settings.requireApprovalHelp')}
+                  {t('settings.autoApproveHelp')}
                 </Typography>
               </Box>
             }
