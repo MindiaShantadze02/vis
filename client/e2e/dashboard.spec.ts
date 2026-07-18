@@ -28,6 +28,37 @@ test.describe('Dashboard', () => {
     await expect(page.getByTestId('cal-week-label')).toBeVisible()
   })
 
+  test('the appointments list exposes service, payment, and quick-date filters', async ({ page }) => {
+    // Controls are present…
+    await expect(page.getByTestId('appt-service-filter')).toBeVisible()
+    await expect(page.getByTestId('appt-payment-filter')).toBeVisible()
+    await expect(page.getByTestId('preset-today')).toBeVisible()
+    await expect(page.getByTestId('preset-upcoming')).toBeVisible()
+    // …and with nothing filtering yet, there's no reset affordance.
+    await expect(page.getByTestId('reset-filters')).toHaveCount(0)
+
+    // A quick-date preset filters the list and reveals the reset control.
+    await page.getByTestId('preset-today').click()
+    await expect(page.getByTestId('reset-filters')).toBeVisible()
+
+    // Reset clears everything and the reset control disappears again.
+    await page.getByTestId('reset-filters').click()
+    await expect(page.getByTestId('reset-filters')).toHaveCount(0)
+  })
+
+  test('the payment-status filter narrows the list and can be reset', async ({ page }) => {
+    // Pick a payment status via the MUI select; the list re-queries server-side.
+    await page.getByTestId('appt-payment-filter').click()
+    await page.getByRole('option', { name: 'გადახდილი', exact: true }).click()
+    await expect(page.getByTestId('reset-filters')).toBeVisible()
+    // The list container still renders (rows or the "not found" empty state) —
+    // i.e. the filtered query resolved without error.
+    await expect(page.getByTestId('appt-row').first().or(page.getByText('ჯავშნები ვერ მოიძებნა')))
+      .toBeVisible({ timeout: 20_000 })
+    await page.getByTestId('reset-filters').click()
+    await expect(page.getByTestId('reset-filters')).toHaveCount(0)
+  })
+
   // --- edge cases ---
 
   test('add-appointment flags missing fields inline on save instead of disabling it', async ({ page }) => {

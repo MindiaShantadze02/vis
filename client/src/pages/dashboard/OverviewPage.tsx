@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import {
-  Typography, Box, Skeleton, Button, Chip,
+  Typography, Box, Skeleton, Button, Chip, Divider,
   TextField, Select, MenuItem, FormControl, InputLabel, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TablePagination,
   useMediaQuery, useTheme, FormControlLabel, Checkbox,
@@ -93,6 +93,13 @@ export default function OverviewPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [dateFrom, setDateFrom] = useState<Date | null>(null)
   const [dateTo, setDateTo] = useState<Date | null>(null)
+  // Which quick-preset chip (if any) produced the current date range, so we can
+  // highlight it. Cleared when the admin edits a date picker by hand.
+  const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'upcoming' | null>(null)
+  const [serviceFilter, setServiceFilter] = useState<string>('all')
+  const [staffFilter, setStaffFilter] = useState<string>('all')
+  const [paymentFilter, setPaymentFilter] = useState<string>('all')
+  const [services, setServices] = useState<{ id: string; name: string }[]>([])
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(25)
   const [total, setTotal] = useState(0)
@@ -138,6 +145,14 @@ export default function OverviewPage() {
       .eq('is_bookable', true)
       .order('sort_order')
       .then(({ data }) => setBookableMembers((data ?? []) as StaffRef[]))
+    // Active services power the "Service" filter dropdown.
+    supabase
+      .from('services')
+      .select('id, name')
+      .eq('org_id', org.id)
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => setServices((data ?? []) as { id: string; name: string }[]))
   }, [org])
 
   // Debounce the search box so we issue one query after typing settles,
@@ -152,7 +167,7 @@ export default function OverviewPage() {
   // server-side via the search_appointments RPC.
   useEffect(() => {
     if (org) loadAppointments()
-  }, [org, statusFilter, debouncedSearch, dateFrom, dateTo, page, rowsPerPage])
+  }, [org, statusFilter, debouncedSearch, dateFrom, dateTo, serviceFilter, staffFilter, paymentFilter, page, rowsPerPage])
 
   // Refetch when the admin acts on a notification (signal bumped by the layout)
   // so the list and stats reflect the newest appointment requests. Skip the
@@ -242,6 +257,9 @@ export default function OverviewPage() {
       p_search: debouncedSearch || null,
       p_date_from: dateFrom ? startOfDay(dateFrom).toISOString() : null,
       p_date_to: dateTo ? endOfDay(dateTo).toISOString() : null,
+      p_service_id: serviceFilter === 'all' ? null : serviceFilter,
+      p_staff_id: staffFilter === 'all' ? null : staffFilter,
+      p_payment_status: paymentFilter === 'all' ? null : paymentFilter,
       p_limit: rowsPerPage,
       p_offset: page * rowsPerPage,
     })
@@ -251,6 +269,29 @@ export default function OverviewPage() {
     // total_count is identical on every row; absent when zero rows match.
     setTotal(rows[0]?.total_count ?? 0)
     setApptLoading(false)
+  }
+
+  // One-tap date ranges. "Upcoming" is open-ended (from today onward).
+  function applyPreset(preset: 'today' | 'week' | 'month' | 'upcoming') {
+    const now = new Date()
+    if (preset === 'today') { setDateFrom(startOfDay(now)); setDateTo(endOfDay(now)) }
+    else if (preset === 'week') { setDateFrom(startOfWeek(now, { weekStartsOn: 1 })); setDateTo(endOfWeek(now, { weekStartsOn: 1 })) }
+    else if (preset === 'month') { setDateFrom(startOfMonth(now)); setDateTo(endOfMonth(now)) }
+    else { setDateFrom(startOfDay(now)); setDateTo(null) }
+    setDatePreset(preset)
+    setPage(0)
+  }
+
+  // Any filter (other than pagination) is narrowing the list right now.
+  const filtersActive =
+    statusFilter !== 'all' || search !== '' || debouncedSearch !== '' ||
+    serviceFilter !== 'all' || staffFilter !== 'all' || paymentFilter !== 'all' ||
+    dateFrom !== null || dateTo !== null
+
+  function resetFilters() {
+    setStatusFilter('all'); setSearch(''); setDebouncedSearch('')
+    setServiceFilter('all'); setStaffFilter('all'); setPaymentFilter('all')
+    setDateFrom(null); setDateTo(null); setDatePreset(null); setPage(0)
   }
 
   async function changeStatus(id: string, status: 'approved' | 'rejected' | 'cancelled' | 'no_show') {
@@ -439,19 +480,20 @@ export default function OverviewPage() {
         ]}
       />
 
-      {/* Appointments list */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>{t('dashboard.appointments')}</Typography>
-          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setAddOpen(true)} data-testid="appt-add-btn">
-            ჯავშნის დამატება
-          </Button>
-        </Box>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={1.5}
-          sx={{ flexWrap: 'wrap', gap: 1.5, width: { xs: '100%', md: 'auto' } }}
-        >
+      {/* Appointments — header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>{t('dashboard.appointments')}</Typography>
+        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setAddOpen(true)} data-testid="appt-add-btn">
+          ჯავშნის დამატება
+        </Button>
+      </Box>
+
+      {/* Filters — two aligned rows: search + attribute dropdowns, then the date
+          range (quick presets sit with the pickers they populate, reset ends the
+          row) so nothing floats off on its own. */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2.5 }}>
+        {/* Row 1: search + attribute filters */}
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
           <TextField
             size="small"
             placeholder={`${t('common.search')}...`}
@@ -461,9 +503,9 @@ export default function OverviewPage() {
               input: { startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 20 }} /> },
               htmlInput: { 'data-testid': 'appt-search' },
             }}
-            sx={{ minWidth: { sm: 200 }, width: { xs: '100%', sm: 'auto' } }}
+            sx={{ flexGrow: { sm: 1 }, minWidth: { sm: 200 }, maxWidth: { sm: 300 }, width: { xs: '100%', sm: 'auto' } }}
           />
-          <FormControl size="small" sx={{ minWidth: { sm: 140 }, width: { xs: '100%', sm: 'auto' } }}>
+          <FormControl size="small" sx={{ minWidth: { sm: 130 }, width: { xs: '100%', sm: 'auto' } }}>
             <InputLabel>სტატუსი</InputLabel>
             <Select
               value={statusFilter}
@@ -477,28 +519,103 @@ export default function OverviewPage() {
               ))}
             </Select>
           </FormControl>
+          <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } }}>
+            <InputLabel>{t('dashboard.filterService')}</InputLabel>
+            <Select
+              value={serviceFilter}
+              label={t('dashboard.filterService')}
+              onChange={e => { setServiceFilter(e.target.value); setPage(0) }}
+              data-testid="appt-service-filter"
+            >
+              <MenuItem value="all">{t('dashboard.allServices')}</MenuItem>
+              {services.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {/* Staff filter only helps multi-specialist orgs — a solo practitioner
+              never sees it. */}
+          {bookableMembers.length > 1 && (
+            <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } }}>
+              <InputLabel>{t('dashboard.staff')}</InputLabel>
+              <Select
+                value={staffFilter}
+                label={t('dashboard.staff')}
+                onChange={e => { setStaffFilter(e.target.value); setPage(0) }}
+                data-testid="appt-staff-filter"
+              >
+                <MenuItem value="all">{t('dashboard.allStaff')}</MenuItem>
+                {bookableMembers.map(m => (
+                  <MenuItem key={m.id} value={m.id}>{m.display_name || '—'}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+          <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } }}>
+            <InputLabel>{t('dashboard.filterPayment')}</InputLabel>
+            <Select
+              value={paymentFilter}
+              label={t('dashboard.filterPayment')}
+              onChange={e => { setPaymentFilter(e.target.value); setPage(0) }}
+              data-testid="appt-payment-filter"
+            >
+              <MenuItem value="all">{t('dashboard.allPayments')}</MenuItem>
+              <MenuItem value="unpaid">{t('dashboard.payUnpaid')}</MenuItem>
+              <MenuItem value="paid">{t('dashboard.payPaid')}</MenuItem>
+              <MenuItem value="deposit_paid">{t('dashboard.payDeposit')}</MenuItem>
+              <MenuItem value="refunded">{t('dashboard.payRefunded')}</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
+        {/* Row 2: quick-date presets grouped with the explicit date range + reset */}
+        <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+            {([
+              ['today', 'presetToday'],
+              ['week', 'presetWeek'],
+              ['month', 'presetMonth'],
+              ['upcoming', 'presetUpcoming'],
+            ] as const).map(([key, label]) => (
+              <Chip
+                key={key}
+                label={t(`dashboard.${label}`)}
+                size="small"
+                color={datePreset === key ? 'primary' : 'default'}
+                variant={datePreset === key ? 'filled' : 'outlined'}
+                onClick={() => applyPreset(key)}
+                data-testid={`preset-${key}`}
+              />
+            ))}
+          </Box>
+          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' }, my: 0.5 }} />
           <AppDatePicker
             label={t('dashboard.dateFrom')}
             value={dateFrom}
-            onChange={v => { setDateFrom(v); setPage(0) }}
+            onChange={v => { setDateFrom(v); setDatePreset(null); setPage(0) }}
             format="dd MMM yyyy"
             slotProps={{
               textField: { size: 'small', sx: { minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } } },
-              field: { clearable: true, onClear: () => { setDateFrom(null); setPage(0) } },
+              field: { clearable: true, onClear: () => { setDateFrom(null); setDatePreset(null); setPage(0) } },
             }}
           />
           <AppDatePicker
             label={t('dashboard.dateTo')}
             value={dateTo}
             minDate={dateFrom ?? undefined}
-            onChange={v => { setDateTo(v); setPage(0) }}
+            onChange={v => { setDateTo(v); setDatePreset(null); setPage(0) }}
             format="dd MMM yyyy"
             slotProps={{
               textField: { size: 'small', sx: { minWidth: { sm: 150 }, width: { xs: '100%', sm: 'auto' } } },
-              field: { clearable: true, onClear: () => { setDateTo(null); setPage(0) } },
+              field: { clearable: true, onClear: () => { setDateTo(null); setDatePreset(null); setPage(0) } },
             }}
           />
-        </Stack>
+          {filtersActive && (
+            <Button size="small" variant="text" onClick={resetFilters} data-testid="reset-filters">
+              {t('dashboard.resetFilters')}
+            </Button>
+          )}
+        </Box>
       </Box>
 
       <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
@@ -531,7 +648,7 @@ export default function OverviewPage() {
           : appointments.length === 0
           // A fresh org with no bookings at all gets a welcoming "share your
           // link" nudge; "not found" is reserved for filtered/searched views.
-          ? (statusFilter === 'all' && !debouncedSearch && !dateFrom && !dateTo
+          ? (!filtersActive
             ? <EmptyState
                 icon={<EventBusyOutlinedIcon />}
                 title={t('dashboard.noBookingsYetTitle')}
