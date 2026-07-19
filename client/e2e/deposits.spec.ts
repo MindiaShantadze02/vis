@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import {
   login, bookToDetails, openApptByName, passBookingOtp, fillStable,
   letterName, uniquePhone, setOnlinePayments, setServiceDeposit,
-  signInSeed, restApi, SEED, eraseClientByName,
+  signInSeed, restApi, SEED, eraseClientByName, readSupabaseEnv,
 } from './helpers'
 
 /**
@@ -110,6 +110,50 @@ test.describe('Deposit config — backend validation', () => {
   test('fixed deposits reject negatives, accept zero', async () => {
     await expect(patchSeedServiceDeposit('fixed', -1)).rejects.toThrow()
     await expect(patchSeedServiceDeposit('fixed', 0)).resolves.not.toThrow()
+  })
+})
+
+/**
+ * Deposit bypass guard (2026-07-19 security review, F1). The "deposit forces
+ * online prepayment" rule was enforced only client-side. A guest with an OTP
+ * could call the anon RPC create_guest_booking directly and get a confirmed
+ * in-person/unpaid booking for a deposit-required service, skipping the deposit.
+ * normalize_guest_appointment (the first BEFORE INSERT trigger) now rejects that
+ * path with 'deposit_required' — so knowing the RPC exists buys nothing.
+ */
+test.describe('Deposit bypass guard', () => {
+  test.afterAll(async () => {
+    await setServiceDeposit(null, null)
+  })
+
+  test('a deposit-required service rejects the direct in-person guest RPC', async () => {
+    await setServiceDeposit('percent', 50)
+    const { url, anonKey } = readSupabaseEnv()
+    const ctx = await signInSeed()
+    const org = (await restApi(ctx, `organisations?slug=eq.${SEED.slug}&select=id`)) as { id: string }[]
+    // A priced service so the percent deposit resolves > 0 (free services can't
+    // carry a deposit, and would legitimately be allowed through).
+    const svc = (await restApi(
+      ctx,
+      `services?org_id=eq.${org[0].id}&is_active=eq.true&price=gt.0&select=id&limit=1`,
+    )) as { id: string }[]
+    expect(svc.length, 'seed org needs a priced service').toBe(1)
+
+    // Straight anon RPC call, bypassing the booking UI's forced-online path.
+    const res = await fetch(`${url}/rest/v1/rpc/create_guest_booking`, {
+      method: 'POST',
+      headers: { apikey: anonKey, authorization: `Bearer ${anonKey}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        p_org_id: org[0].id,
+        p_service_id: svc[0].id,
+        p_scheduled_at: new Date(Date.now() + 24 * 3_600_000).toISOString(),
+        p_first_name: 'Bypasser',
+        p_last_name: null,
+        p_phone: uniquePhone(),
+      }),
+    })
+    expect(res.status, 'the guarded RPC must reject, not create').toBeGreaterThanOrEqual(400)
+    expect(await res.text()).toContain('deposit_required')
   })
 })
 

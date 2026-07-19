@@ -6,6 +6,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
 import { PlaceOutlined as PlaceOutlinedIcon } from '@/components/icons'
+import { MailOutlined as MailOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { stepVariants } from '@/theme/motion'
 import { LanguageSwitcher } from '@/components/ui'
@@ -111,6 +112,25 @@ export default function BookingShell({
               <PlaceOutlinedIcon sx={{ fontSize: 14, opacity: 0.8, mt: '2px' }} />
               <Typography variant="caption" sx={{ opacity: 0.8 }}>{org.address}</Typography>
             </Box>
+          )}
+          {org.contact_email && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }} data-testid="booking-email">
+              <MailOutlinedIcon sx={{ fontSize: 14, opacity: 0.8 }} />
+              <Typography
+                variant="caption"
+                component="a"
+                href={`mailto:${org.contact_email}`}
+                sx={{ opacity: 0.8, color: 'inherit', textDecoration: 'none', wordBreak: 'break-all', '&:hover': { textDecoration: 'underline' } }}
+              >
+                {org.contact_email}
+              </Typography>
+            </Box>
+          )}
+          {/* Merchant identification number (E-Commerce Law Art. 4). */}
+          {org.business_id_number && (
+            <Typography variant="caption" data-testid="booking-business-id" sx={{ display: 'block', opacity: 0.7, mt: 0.25 }}>
+              {t('booking.businessId')}: {org.business_id_number}
+            </Typography>
           )}
         </Box>
       </Box>

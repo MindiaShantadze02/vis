@@ -21,6 +21,7 @@ interface PublicOrg {
   name: string
   description: string | null
   contact_phone: string | null
+  contact_email: string | null
   address: string | null
   logo_url: string | null
   slug: string
@@ -85,6 +86,7 @@ export default async function handler(req: Request): Promise<Response> {
     ...(org.description?.trim() && { description: org.description.trim() }),
     ...(org.address?.trim() && { address: org.address.trim() }),
     ...(org.contact_phone && { telephone: org.contact_phone }),
+    ...(org.contact_email?.trim() && { email: org.contact_email.trim() }),
     ...(reviewCount > 0 && {
       aggregateRating: {
         '@type': 'AggregateRating',

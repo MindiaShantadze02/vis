@@ -5,7 +5,7 @@ import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons
 import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { slugify } from '@/lib/slug'
-import { isValidGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
+import { isValidGeorgianPhone, isValidEmail, imageFileError, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
@@ -50,12 +50,21 @@ export default function BusinessProfileStep() {
   const phoneInvalid =
     (submitted || data.contact_phone.trim().length > 0) && !isValidGeorgianPhone(data.contact_phone)
   const nameTooShort = (submitted || data.name.trim().length > 0) && data.name.trim().length < 2
+  // Email + business ID are legally required merchant-disclosure fields.
+  const emailInvalid =
+    (submitted || data.contact_email.trim().length > 0) && !isValidEmail(data.contact_email.trim())
+  const businessIdMissing = submitted && data.business_id_number.trim().length === 0
 
   // Validate on click with inline field errors rather than a silently disabled
   // Next button. On failure, bring the first offending field into view + focus it.
   function handleNext() {
     setSubmitted(true)
-    if (data.name.trim().length < 2 || !isValidGeorgianPhone(data.contact_phone)) {
+    if (
+      data.name.trim().length < 2 ||
+      !isValidGeorgianPhone(data.contact_phone) ||
+      !isValidEmail(data.contact_email.trim()) ||
+      data.business_id_number.trim().length === 0
+    ) {
       focusFirstInvalidFieldAfterRender()
       return
     }
@@ -139,6 +148,33 @@ export default function BusinessProfileStep() {
         error={phoneInvalid}
         helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
         slotProps={{ htmlInput: { inputMode: 'tel' as const, 'data-testid': 'biz-phone' } }}
+        sx={{ mb: 2 }}
+      />
+
+      {/* Legally required merchant-disclosure fields (shown on the booking page). */}
+      <TextField
+        fullWidth
+        required
+        type="email"
+        label={t('settings.contactEmail')}
+        value={data.contact_email}
+        onChange={e => update({ contact_email: e.target.value })}
+        placeholder="business@example.com"
+        error={emailInvalid}
+        helperText={emailInvalid ? t('validation.invalidEmail') : ' '}
+        slotProps={{ htmlInput: { inputMode: 'email' as const, maxLength: FIELD_LIMITS.email, 'data-testid': 'biz-email' } }}
+        sx={{ mb: 2 }}
+      />
+
+      <TextField
+        fullWidth
+        required
+        label={t('settings.businessId')}
+        value={data.business_id_number}
+        onChange={e => update({ business_id_number: e.target.value })}
+        error={businessIdMissing}
+        helperText={businessIdMissing ? t('validation.required') : t('settings.businessIdHint')}
+        slotProps={{ htmlInput: { maxLength: 30, 'data-testid': 'biz-business-id' } }}
         sx={{ mb: 4 }}
       />
 

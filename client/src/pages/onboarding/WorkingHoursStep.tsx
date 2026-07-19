@@ -171,6 +171,8 @@ export default function WorkingHoursStep() {
         description: data.description || null,
         slug,
         contact_phone: data.contact_phone.trim() ? formatGeorgianPhone(data.contact_phone) : null,
+        contact_email: data.contact_email.trim() || null,
+        business_id_number: data.business_id_number.trim() || null,
         owner_id: user.id,
         // Tier and trial_ends_at come from the column defaults: every new org
         // starts a 30-day Starter-level trial (no free tier since 072).

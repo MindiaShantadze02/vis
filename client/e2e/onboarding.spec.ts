@@ -16,6 +16,8 @@ test.describe('Business onboarding', () => {
     const bizName = tag('E2E Studio')
     await fillStable(page.getByTestId('biz-name'), bizName)
     await fillStable(page.getByTestId('biz-phone'), '555123456')
+    await fillStable(page.getByTestId('biz-email'), 'e2e@studio.ge')
+    await fillStable(page.getByTestId('biz-business-id'), '405123456')
     await page.getByTestId('biz-next').click()
     await expect(page).toHaveURL(/\/onboarding\/services/)
 
@@ -102,8 +104,16 @@ test.describe('Business onboarding — edge cases', () => {
     await expect(page.getByTestId('biz-phone')).toHaveAttribute('aria-invalid', 'true')
     await expect(page).toHaveURL(/\/onboarding\/business/)
 
-    // Valid name + phone advances to the services step.
+    // Valid name + phone, but the required merchant email / ID are still empty →
+    // the first missing one (email) is flagged, still on step 1.
     await fillStable(page.getByTestId('biz-phone'), '599123456')
+    await next.click()
+    await expect(page.getByTestId('biz-email')).toHaveAttribute('aria-invalid', 'true')
+    await expect(page).toHaveURL(/\/onboarding\/business/)
+
+    // All required merchant-disclosure fields valid advances to the services step.
+    await fillStable(page.getByTestId('biz-email'), 'e2e@studio.ge')
+    await fillStable(page.getByTestId('biz-business-id'), '405123456')
     await next.click()
     await expect(page).toHaveURL(/\/onboarding\/services/)
     // Leaves a throwaway account with no org (never reached hours-finish).
@@ -113,6 +123,8 @@ test.describe('Business onboarding — edge cases', () => {
     await register(page, uniquePhone())
     await fillStable(page.getByTestId('biz-name'), tag('E2E Studio'))
     await fillStable(page.getByTestId('biz-phone'), '555123456')
+    await fillStable(page.getByTestId('biz-email'), 'e2e@studio.ge')
+    await fillStable(page.getByTestId('biz-business-id'), '405123456')
     await page.getByTestId('biz-next').click()
     await expect(page).toHaveURL(/\/onboarding\/services/)
 

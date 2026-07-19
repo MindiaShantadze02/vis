@@ -7,7 +7,7 @@ import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/ico
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { isValidGeorgianPhone, formatGeorgianPhone, imageFileError, FIELD_LIMITS } from '@/lib/validation'
+import { isValidGeorgianPhone, formatGeorgianPhone, isValidEmail, imageFileError, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { PageHeader, FormErrorAlert, useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
@@ -25,6 +25,8 @@ export default function ProfileSettings() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [contactPhone, setContactPhone] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [businessId, setBusinessId] = useState('')
   const [address, setAddress] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
@@ -38,6 +40,8 @@ export default function ProfileSettings() {
       setName(org.name ?? '')
       setDescription((org as unknown as Record<string, string>).description ?? '')
       setContactPhone((org as unknown as Record<string, string>).contact_phone ?? '')
+      setContactEmail((org as unknown as Record<string, string>).contact_email ?? '')
+      setBusinessId((org as unknown as Record<string, string>).business_id_number ?? '')
       setAddress((org as unknown as Record<string, string>).address ?? '')
       setLogoUrl((org as unknown as Record<string, string>).logo_url ?? null)
     }
@@ -85,16 +89,18 @@ export default function ProfileSettings() {
   // flagged inline too (before that, only typed-but-invalid values are).
   const [submitted, setSubmitted] = useState(false)
 
-  // Business name is required; contact phone is mandatory.
+  // Business name is required; contact phone is mandatory. Email is optional but
+  // validated when provided (shown on the booking page for merchant disclosure).
   const nameTooShort = (submitted || name.trim().length > 0) && name.trim().length < 2
   const phoneMissing = contactPhone.trim().length === 0
   const phoneInvalid = (submitted || !phoneMissing) && !isValidGeorgianPhone(contactPhone)
+  const emailInvalid = contactEmail.trim().length > 0 && !isValidEmail(contactEmail.trim())
 
   async function handleSave() {
     if (!org) return
     // Flag every invalid field inline and pull the first one into view.
     setSubmitted(true)
-    if (name.trim().length < 2 || !isValidGeorgianPhone(contactPhone)) {
+    if (name.trim().length < 2 || !isValidGeorgianPhone(contactPhone) || emailInvalid) {
       focusFirstInvalidFieldAfterRender()
       return
     }
@@ -107,6 +113,8 @@ export default function ProfileSettings() {
         name: name.trim(),
         description: description.trim() || null,
         contact_phone: formatGeorgianPhone(contactPhone),
+        contact_email: contactEmail.trim() || null,
+        business_id_number: businessId.trim() || null,
         address: address.trim() || null,
       })
       .eq('id', org.id)
@@ -208,6 +216,27 @@ export default function ProfileSettings() {
               fullWidth
               helperText={t('settings.addressHint')}
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.address, 'data-testid': 'profile-address' } }}
+            />
+            {/* Merchant legal disclosure (E-Commerce Law Art. 4 / Consumer Law Art. 5):
+                email + business ID are shown on the public booking page. */}
+            <TextField
+              label={t('settings.contactEmail')}
+              value={contactEmail}
+              onChange={e => setContactEmail(e.target.value)}
+              fullWidth
+              type="email"
+              placeholder="business@example.com"
+              error={emailInvalid}
+              helperText={emailInvalid ? t('validation.invalidEmail') : t('settings.contactEmailHint')}
+              slotProps={{ htmlInput: { inputMode: 'email', maxLength: FIELD_LIMITS.email, 'data-testid': 'profile-email' } }}
+            />
+            <TextField
+              label={t('settings.businessId')}
+              value={businessId}
+              onChange={e => setBusinessId(e.target.value)}
+              fullWidth
+              helperText={t('settings.businessIdHint')}
+              slotProps={{ htmlInput: { maxLength: 30, 'data-testid': 'profile-business-id' } }}
             />
           </Stack>
 

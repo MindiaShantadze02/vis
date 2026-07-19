@@ -27,6 +27,9 @@ export interface BookingOrg {
   name: string
   description: string | null
   contact_phone: string | null
+  // Merchant legal disclosure (E-Commerce Law Art. 4 / Consumer Law Art. 5).
+  contact_email: string | null
+  business_id_number: string | null
   address: string | null
   logo_url: string | null
   slug: string
@@ -49,6 +52,8 @@ interface PublicOrg {
   name: string
   description: string | null
   contact_phone: string | null
+  contact_email: string | null
+  business_id_number: string | null
   address: string | null
   logo_url: string | null
   slug: string
@@ -196,6 +201,8 @@ export default function BookingLayout() {
         name: pub.name,
         description: pub.description,
         contact_phone: pub.contact_phone,
+        contact_email: pub.contact_email,
+        business_id_number: pub.business_id_number,
         address: pub.address,
         logo_url: pub.logo_url,
         slug: pub.slug,
