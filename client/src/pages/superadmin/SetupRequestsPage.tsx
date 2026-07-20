@@ -17,6 +17,7 @@ interface SetupRequest {
   user_id: string
   org_id: string | null
   phone: string
+  contact_email: string | null
   business_name: string
   address: string | null
   details: string
@@ -69,6 +70,7 @@ export default function SetupRequestsPage() {
       slug,
       address: r.address,
       contact_phone: isValidGeorgianPhone(localPhone) ? localPhone : null,
+      contact_email: r.contact_email,
       owner_id: r.user_id,
     }
     let attempt = await supabase.from('organisations').insert(orgRow).select('id').single()
@@ -127,8 +129,11 @@ export default function SetupRequestsPage() {
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1 }}>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{r.business_name}</Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        {displayGeorgianPhone(r.phone)}{r.contact_email ? ` · ${r.contact_email}` : ''}
+                      </Typography>
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {displayGeorgianPhone(r.phone)}{r.address ? ` · ${r.address}` : ''} · {format(new Date(r.created_at), 'dd MMM yyyy HH:mm')}
+                        {r.address ? `${r.address} · ` : ''}{format(new Date(r.created_at), 'dd MMM yyyy HH:mm')}
                       </Typography>
                     </Box>
                     <Chip

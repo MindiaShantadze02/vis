@@ -15,13 +15,18 @@ test.describe('Onboarding — setup help request', () => {
     await login(page)
     await page.goto('/onboarding/help')
 
-    // Form loads (no open request on the seed account). Submit is always
-    // enabled; clicking with empty required fields flags them inline.
+    // Form loads (no open request on the seed account). The contact phone
+    // pre-fills from the logged-in account; email is required and starts empty.
     await expect(page.getByTestId('setup-help-submit')).toBeVisible()
+    await expect(page.getByTestId('setup-help-phone')).not.toHaveValue('')
+
+    // Submit is always enabled; clicking with empty required fields flags them.
     await page.getByTestId('setup-help-submit').click()
     await expect(page.getByTestId('setup-help-name')).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByTestId('setup-help-email')).toHaveAttribute('aria-invalid', 'true')
 
     await page.getByTestId('setup-help-name').fill('E2E დახმარების ბიზნესი')
+    await page.getByTestId('setup-help-email').fill('e2e-help@example.com')
     await page.getByTestId('setup-help-address').fill('თბილისი, ტესტის 1')
     await page.getByTestId('setup-help-details').fill('სერვისები: თმის შეჭრა 40₾ 45წთ. სპეციალისტი: ნინო. საათები: ორშ–შაბ 10–19.')
     await page.getByTestId('setup-help-submit').click()

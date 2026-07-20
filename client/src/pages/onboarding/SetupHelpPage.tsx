@@ -9,7 +9,7 @@ import { SupportOutlined as SupportOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { displayGeorgianPhone } from '@/lib/validation'
+import { displayGeorgianPhone, isValidGeorgianPhone, formatGeorgianPhone, isValidEmail } from '@/lib/validation'
 import { FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import VisLogo from '@/components/VisLogo'
@@ -31,6 +31,8 @@ export default function SetupHelpPage() {
   const [pendingId, setPendingId] = useState<string | null>(null)
 
   const [businessName, setBusinessName] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
   const [address, setAddress] = useState('')
   const [details, setDetails] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -41,9 +43,16 @@ export default function SetupHelpPage() {
 
   const nameTooShort = submitted && businessName.trim().length < 2
   const detailsTooShort = submitted && details.trim().length < 10
+  const phoneInvalid = (submitted || contactPhone.trim().length > 0) && !isValidGeorgianPhone(contactPhone)
+  const emailInvalid = (submitted || contactEmail.trim().length > 0) && !isValidEmail(contactEmail.trim())
 
   // user.phone is stored without the leading + (see auth notes).
   const phoneLabel = user?.phone ? displayGeorgianPhone(user.phone.replace(/^995/, '')) : ''
+
+  // Pre-fill the contact phone from the account they registered with (editable).
+  useEffect(() => {
+    if (user?.phone) setContactPhone(prev => prev || displayGeorgianPhone(user.phone!.replace(/^995/, '')))
+  }, [user])
 
   useEffect(() => {
     if (!user) return
@@ -64,7 +73,12 @@ export default function SetupHelpPage() {
 
   async function submit() {
     setSubmitted(true)
-    if (businessName.trim().length < 2 || details.trim().length < 10) {
+    if (
+      businessName.trim().length < 2 ||
+      details.trim().length < 10 ||
+      !isValidGeorgianPhone(contactPhone) ||
+      !isValidEmail(contactEmail.trim())
+    ) {
       focusFirstInvalidFieldAfterRender()
       return
     }
@@ -74,6 +88,8 @@ export default function SetupHelpPage() {
       p_business_name: businessName.trim(),
       p_address: address.trim() || null,
       p_details: details.trim(),
+      p_contact_phone: formatGeorgianPhone(contactPhone),
+      p_contact_email: contactEmail.trim(),
     })
     setBusy(false)
     const res = data as { ok?: boolean; error?: string } | null
@@ -169,6 +185,30 @@ export default function SetupHelpPage() {
         error={nameTooShort}
         helperText={nameTooShort ? t('validation.minLength', { min: 2 }) : undefined}
         slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.orgName, 'data-testid': 'setup-help-name' } }}
+      />
+      {/* Explicit contact details so the operator can reach the requester. */}
+      <TextField
+        label={t('settings.contactPhone')}
+        value={contactPhone}
+        onChange={e => setContactPhone(e.target.value)}
+        required
+        fullWidth
+        placeholder="555 123 456"
+        error={phoneInvalid}
+        helperText={phoneInvalid ? t('validation.invalidPhone') : undefined}
+        slotProps={{ htmlInput: { inputMode: 'tel' as const, maxLength: 20, 'data-testid': 'setup-help-phone' } }}
+      />
+      <TextField
+        label={t('settings.contactEmail')}
+        value={contactEmail}
+        onChange={e => setContactEmail(e.target.value)}
+        required
+        fullWidth
+        type="email"
+        placeholder="business@example.com"
+        error={emailInvalid}
+        helperText={emailInvalid ? t('validation.invalidEmail') : undefined}
+        slotProps={{ htmlInput: { inputMode: 'email' as const, maxLength: FIELD_LIMITS.email, 'data-testid': 'setup-help-email' } }}
       />
       <TextField
         label={t('onboarding.helpAddress')}
