@@ -184,8 +184,8 @@ export default function ServicesStep() {
         <Card variant="outlined" sx={{ borderRadius: 2, mb: 3 }}>
           <EmptyState
             icon={<DesignServicesOutlinedIcon />}
-            title="სერვისები ჯერ არ დაგიმატებიათ"
-            caption="დაამატეთ პირველი სერვისი ქვემოთ"
+            title={t('onboarding.noServicesTitle')}
+            caption={t('onboarding.noServicesCaption')}
             py={4}
           />
         </Card>
@@ -220,7 +220,7 @@ export default function ServicesStep() {
                     )}
                   </Box>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    {svc.duration_minutes} წთ · <Box component="span" sx={{ color: HONEY, fontWeight: 700 }}>{svc.price} ₾</Box>
+                    {svc.duration_minutes} {t('common.minutesShort')} · <Box component="span" sx={{ color: HONEY, fontWeight: 700 }}>{svc.price} ₾</Box>
                   </Typography>
                 </Box>
                 <ActionIconButton aria-label={t('common.edit')} data-testid="onb-service-edit" onClick={() => startEdit(i)}>

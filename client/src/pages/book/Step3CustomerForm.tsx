@@ -604,7 +604,9 @@ export default function Step3CustomerForm({
                     sx={{ color: "text.secondary" }}
                   >
                     {booking.paymentMethod === "in_person"
-                      ? t("booking.payInPersonHint")
+                      ? org.require_approval
+                        ? t("booking.payInPersonHint")
+                        : t("booking.payInPersonHintAuto")
                       : depositRequired
                       ? t("booking.depositHint", { amount: depositAmount })
                       : t("booking.payOnlineHint")}

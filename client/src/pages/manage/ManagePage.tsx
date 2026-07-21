@@ -16,6 +16,7 @@ import { LAYOUT, elevation } from '@/theme/theme'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { dateLocale } from '@/lib/dateLocale'
 import { toBusinessWallClock, BUSINESS_UTC_OFFSET } from '@/lib/slots'
+import { isUuid } from '@/lib/validation'
 import { anim } from '@/theme/animations'
 import Step2DateTimeSelect from '@/pages/book/Step2DateTimeSelect'
 import type { BookingService } from '@/pages/book/BookingLayout'
@@ -70,6 +71,9 @@ export default function ManagePage() {
 
   async function loadContext() {
     if (!appointmentId) return
+    // A malformed id can't match any row — skip the RPC (which would 400 on an
+    // invalid uuid) and show not-found directly.
+    if (!isUuid(appointmentId)) { setView('not_found'); return }
     const { data } = await supabase.rpc('get_manage_context', { p_appointment_id: appointmentId })
     const c = (data as ManageContext | null) ?? null
     setCtx(c)
@@ -190,7 +194,14 @@ export default function ManagePage() {
     )
   }
   if (view === 'closed') {
-    return outcome(<EventBusyOutlinedIcon sx={{ fontSize: 32 }} />, t('manage.closedTitle'), t('manage.closedBody'))
+    // A booking can be un-manageable for different reasons; don't tell a
+    // customer their (future) cancelled booking "already passed or completed".
+    const cancelledish = ctx?.status === 'cancelled' || ctx?.status === 'rejected'
+    return outcome(
+      <EventBusyOutlinedIcon sx={{ fontSize: 32 }} />,
+      t('manage.closedTitle'),
+      cancelledish ? t('manage.closedCancelledBody') : t('manage.closedBody'),
+    )
   }
   if (view === 'done' && doneKind) {
     return doneKind.action === 'reschedule'

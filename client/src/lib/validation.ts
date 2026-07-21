@@ -92,6 +92,16 @@ export function isValidUrl(raw: string): boolean {
 }
 
 /**
+ * True when `raw` looks like a canonical UUID. The public capability pages
+ * (/manage, /review, /booking-confirmation) take an appointment id straight
+ * from the URL; guarding with this before the RPC means a malformed id renders
+ * "not found" locally instead of firing a Postgres 22P02 (400 + console noise).
+ */
+export function isUuid(raw: string | undefined | null): boolean {
+  return !!raw && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
+}
+
+/**
  * Maximum lengths for free-text fields, in one place so forms cap inputs
  * consistently. Values mirror the DB `varchar(N)` columns where they exist
  * (organisations/services name 255, customer names 100, slug 100); `text`

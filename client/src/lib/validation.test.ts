@@ -7,6 +7,7 @@ import {
   isValidEmail,
   isValidPersonName,
   isValidUrl,
+  isUuid,
   isNonNegativeNumber,
   imageFileError,
   MAX_PRICE,
@@ -173,6 +174,27 @@ describe('isValidUrl', () => {
     ['empty (throws)', ''],
   ])('rejects %s', (_label, value) => {
     expect(isValidUrl(value)).toBe(false)
+  })
+})
+
+describe('isUuid', () => {
+  it.each([
+    '4231f03e-f733-4f82-b1e2-e2ebd8e2ba39',
+    '00000000-0000-0000-0000-000000000000',
+    'A1B2C3D4-E5F6-7A8B-9C0D-1E2F3A4B5C6D', // upper-case is accepted
+  ])('accepts a canonical uuid (%s)', v => expect(isUuid(v)).toBe(true))
+
+  it.each([
+    ['too short', 'not-a-real-uuid-12345'],
+    ['missing dashes', '4231f03ef7334f82b1e2e2ebd8e2ba39'],
+    ['non-hex chars', 'gggggggg-gggg-gggg-gggg-gggggggggggg'],
+    ['trailing junk', '4231f03e-f733-4f82-b1e2-e2ebd8e2ba39x'],
+    ['empty', ''],
+  ])('rejects %s', (_label, v) => expect(isUuid(v)).toBe(false))
+
+  it('rejects null/undefined', () => {
+    expect(isUuid(null)).toBe(false)
+    expect(isUuid(undefined)).toBe(false)
   })
 })
 

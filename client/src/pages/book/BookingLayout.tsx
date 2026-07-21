@@ -44,6 +44,9 @@ export interface BookingOrg {
   deposit_value: number | null
   cancellation_window_hours: number
   deposit_refundable: boolean
+  // Whether new bookings wait for owner approval. Auto-approve (false) is the
+  // default since migration 075; the Step-3 hint copy branches on this.
+  require_approval: boolean
 }
 
 // Shape returned by the get_public_org RPC (secrets stripped server-side).
@@ -66,6 +69,7 @@ interface PublicOrg {
   deposit_value: number | null
   cancellation_window_hours: number | null
   deposit_refundable: boolean | null
+  require_approval: boolean | null
 }
 
 export interface BookingService {
@@ -216,6 +220,9 @@ export default function BookingLayout() {
         deposit_value: pub.deposit_value != null ? Number(pub.deposit_value) : null,
         cancellation_window_hours: Number(pub.cancellation_window_hours ?? 24),
         deposit_refundable: pub.deposit_refundable ?? true,
+        // Default to auto-approve when the flag is absent (older cached RPC),
+        // matching the DB default since migration 075.
+        require_approval: pub.require_approval ?? false,
       })
     }
     if (slug) loadOrg()
@@ -246,8 +253,8 @@ export default function BookingLayout() {
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <EmptyState
           icon={<SearchOffOutlinedIcon />}
-          title="ბიზნესი ვერ მოიძებნა"
-          caption="შეამოწმეთ ბმული და სცადეთ თავიდან"
+          title={t('booking.orgNotFoundTitle')}
+          caption={t('booking.orgNotFoundCaption')}
         />
       </Box>
     )

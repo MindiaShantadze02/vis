@@ -311,7 +311,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
         })
       if (apptErr) throw new Error(apptErr.message)
 
-      toast.success('ჯავშანი დაემატა')
+      toast.success(t('calendar.apptAdded'))
       onCreated()
       onClose()
     } catch (err) {
@@ -334,14 +334,14 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       open
       onClose={onClose}
       disableClose={saving}
-      title="ჯავშნის დამატება"
+      title={t('calendar.addAppointment')}
       width={560}
       data-testid="add-appt-dialog"
       actions={
         <>
           <Button onClick={onClose} disabled={saving} data-testid="add-appt-cancel">{t('common.cancel')}</Button>
           <Button variant="contained" onClick={handleSave} disabled={saving} data-testid="add-appt-save">
-            {saving ? <CircularProgress size={22} color="inherit" /> : 'დამატება'}
+            {saving ? <CircularProgress size={22} color="inherit" /> : t('common.add')}
           </Button>
         </>
       }
@@ -369,16 +369,16 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
 
         <Stack spacing={2} sx={{ mt: 1 }}>
           <FormControl fullWidth required size="small" error={serviceMissing}>
-            <InputLabel>სერვისი</InputLabel>
+            <InputLabel>{t('calendar.service')}</InputLabel>
             <Select
               value={serviceId}
-              label="სერვისი"
+              label={t('calendar.service')}
               data-testid="add-appt-service"
               onChange={e => { setServiceId(e.target.value); setStaffId(''); setTimeStr('') }}
             >
               {services.map(s => (
                 <MenuItem key={s.id} value={s.id}>
-                  {s.name} — {s.price} ₾ · {s.duration_minutes} წთ
+                  {s.name} — {s.price} ₾ · {s.duration_minutes} {t('common.minutesShort')}
                 </MenuItem>
               ))}
             </Select>
@@ -408,7 +408,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <TextField
-              label="სახელი"
+              label={t('calendar.name')}
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               fullWidth required size="small"
@@ -421,7 +421,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'add-appt-first-name' } }}
             />
             <TextField
-              label="გვარი"
+              label={t('calendar.lastName')}
               value={lastName}
               onChange={e => setLastName(e.target.value)}
               fullWidth size="small"
@@ -432,7 +432,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
           </Stack>
 
           <TextField
-            label="ტელეფონი"
+            label={t('calendar.phone')}
             value={phone}
             onChange={e => setPhone(e.target.value)}
             fullWidth required size="small"
@@ -444,7 +444,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <AppDatePicker
-              label="თარიღი"
+              label={t('calendar.date')}
               value={date}
               onChange={v => { setDate(v); setTimeStr('') }}
               format="dd MMM yyyy"
@@ -462,10 +462,10 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               disabled={!serviceId || !date || timeLoading}
               error={noSlots || timeMissing}
             >
-              <InputLabel>დრო</InputLabel>
+              <InputLabel>{t('calendar.time')}</InputLabel>
               <Select
                 value={slots.includes(timeStr) ? timeStr : ''}
-                label="დრო"
+                label={t('calendar.time')}
                 onChange={e => setTimeStr(e.target.value)}
                 MenuProps={{ slotProps: { paper: { sx: { maxHeight: 240 } } } }}
               >
@@ -474,19 +474,19 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
                 ))}
               </Select>
               {timeLoading
-                ? <FormHelperText>იტვირთება…</FormHelperText>
+                ? <FormHelperText>{t('common.loading')}</FormHelperText>
                 : noSlots
-                ? <FormHelperText>ამ დღეს თავისუფალი დრო არ არის</FormHelperText>
+                ? <FormHelperText>{t('calendar.noFreeSlots')}</FormHelperText>
                 : timeMissing
                 ? <FormHelperText>{t('validation.chooseTime')}</FormHelperText>
                 : usingFallback
-                ? <FormHelperText>ნაგულისხმევი სლოტები — სამუშაო საათები არ არის მითითებული</FormHelperText>
+                ? <FormHelperText>{t('calendar.defaultSlotsNoHours')}</FormHelperText>
                 : null}
             </FormControl>
           </Stack>
 
           <TextField
-            label="შენიშვნა (არასავალდებულო)"
+            label={t('calendar.noteOptional')}
             value={notes}
             onChange={e => setNotes(e.target.value)}
             fullWidth multiline rows={2} size="small"
@@ -539,7 +539,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
           {selectedService && (
             <Box sx={{ bgcolor: surface.subtle, borderRadius: 2, p: 1.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>ფასი</Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('calendar.price')}</Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
                   {selectedService.price} ₾
                 </Typography>

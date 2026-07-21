@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Card, Box, Typography, Button, Stack, CircularProgress } from '@mui/material'
 import { MailOutlined as MailOutlineIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
@@ -15,13 +16,13 @@ interface Invite {
   org_name: string
 }
 
-/** Maps an accept_invitation() error code to a Georgian message. */
-const ACCEPT_ERRORS: Record<string, string> = {
-  already_in_org: 'თქვენ უკვე ხართ ორგანიზაციის წევრი',
-  expired: 'მოწვევის ვადა გავიდა',
-  wrong_account: 'ეს მოწვევა სხვა ანგარიშზეა გაგზავნილი',
-  not_found: 'მოწვევა ვერ მოიძებნა',
-  not_authenticated: 'გთხოვთ თავიდან შეხვიდეთ',
+/** Maps an accept_invitation() error code to an `invites.*` translation key. */
+const ACCEPT_ERROR_KEYS: Record<string, string> = {
+  already_in_org: 'invites.errAlreadyInOrg',
+  expired: 'invites.errExpired',
+  wrong_account: 'invites.errWrongAccount',
+  not_found: 'invites.errNotFound',
+  not_authenticated: 'invites.errNotAuthenticated',
 }
 
 /**
@@ -35,6 +36,7 @@ export default function PendingInvites() {
   const { refresh } = useOrg()
   const toast = useToast()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const [invites, setInvites] = useState<Invite[]>([])
   const [accepting, setAccepting] = useState<string | null>(null)
@@ -72,7 +74,8 @@ export default function PendingInvites() {
 
     const result = data as { ok: boolean; error?: string }
     if (!result?.ok) {
-      toast.error(ACCEPT_ERRORS[result?.error ?? ''] ?? 'მოწვევის მიღება ვერ მოხერხდა')
+      const key = ACCEPT_ERROR_KEYS[result?.error ?? '']
+      toast.error(key ? t(key) : t('invites.errAcceptFailed'))
       // If it's already accepted/expired/taken, drop it from the list.
       if (result?.error && result.error !== 'not_authenticated') {
         setInvites(prev => prev.filter(i => i.id !== inv.id))
@@ -81,7 +84,7 @@ export default function PendingInvites() {
     }
 
     setInvites(prev => prev.filter(i => i.id !== inv.id))
-    toast.success(`შეუერთდით ორგანიზაციას: ${inv.org_name}`)
+    toast.success(t('invites.joined', { org: inv.org_name }))
     await refresh()
     // From onboarding this lands them on the dashboard; on the dashboard the
     // refreshed org context simply re-renders the full view.
@@ -97,10 +100,10 @@ export default function PendingInvites() {
           <MailOutlineIcon sx={{ color: 'primary.main' }} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              მოწვევა: <b>{inv.org_name}</b>
+              {t('invites.invitationLabel')}: <b>{inv.org_name}</b>
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              თქვენ მიწვეული ხართ {inv.role === 'owner' ? 'მფლობელად' : 'ადმინად'}
+              {inv.role === 'owner' ? t('invites.invitedAsOwner') : t('invites.invitedAsAdmin')}
             </Typography>
           </Box>
           <Button
@@ -110,7 +113,7 @@ export default function PendingInvites() {
             disabled={accepting !== null}
             data-testid="pending-invite-accept"
           >
-            {accepting === inv.id ? <CircularProgress size={18} color="inherit" /> : 'მიღება'}
+            {accepting === inv.id ? <CircularProgress size={18} color="inherit" /> : t('invites.accept')}
           </Button>
         </Card>
       ))}

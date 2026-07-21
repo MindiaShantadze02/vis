@@ -31,17 +31,8 @@ interface OutletCtx {
   update: (patch: Partial<OnboardingData>) => void
 }
 
-const DAY_LABELS: Record<string, string> = {
-  monday:    'ორშაბათი',
-  tuesday:   'სამშაბათი',
-  wednesday: 'ოთხშაბათი',
-  thursday:  'ხუთშაბათი',
-  friday:    'პარასკევი',
-  saturday:  'შაბათი',
-  sunday:    'კვირა',
-}
-
-const DAYS = Object.keys(DAY_LABELS)
+// Day labels come from the shared `days.*` translations (t('days.monday')…).
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
 export default function WorkingHoursStep() {
   const { t } = useTranslation()
@@ -299,7 +290,7 @@ export default function WorkingHoursStep() {
                   control={<Switch checked={cfg.open} onChange={() => toggleDay(day)} color="primary" data-testid={`hours-toggle-${day}`} />}
                   label={
                     <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 90 }}>
-                      {DAY_LABELS[day]}
+                      {t(`days.${day}`)}
                     </Typography>
                   }
                   // Kill the label's default -11px left margin so the row
@@ -324,7 +315,7 @@ export default function WorkingHoursStep() {
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 88, color: 'success.dark' }}>
                       <WorkOutlineOutlinedIcon sx={{ fontSize: 16 }} />
-                      <Typography variant="caption" sx={{ fontWeight: 600 }}>სამუშაო</Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>{t('onboarding.workLabel')}</Typography>
                     </Box>
                     <TextField
                       size="small" type="time" value={cfg.openTime}
@@ -369,7 +360,7 @@ export default function WorkingHoursStep() {
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 88, color: 'text.secondary' }}>
                           <CoffeeOutlinedIcon sx={{ fontSize: 16 }} />
-                          <Typography variant="caption" sx={{ fontWeight: 600 }}>შესვენება</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>{t('onboarding.breakLabel')}</Typography>
                         </Box>
                         <TextField
                           size="small" type="time" value={b.start}
@@ -387,8 +378,8 @@ export default function WorkingHoursStep() {
                           slotProps={{ htmlInput: { min: cfg.openTime, max: cfg.closeTime } }}
                           sx={{ width: 110 }}
                         />
-                        <Tooltip title="ამოშლა">
-                          <ActionIconButton tone="danger" compact aria-label="ამოშლა" onClick={() => removeBreak(day, bi)}>
+                        <Tooltip title={t('onboarding.removeBreak')}>
+                          <ActionIconButton tone="danger" compact aria-label={t('onboarding.removeBreak')} onClick={() => removeBreak(day, bi)}>
                             <CloseIcon sx={{ fontSize: 16 }} />
                           </ActionIconButton>
                         </Tooltip>
@@ -402,7 +393,7 @@ export default function WorkingHoursStep() {
                     onClick={() => addBreak(day)}
                     sx={{ color: 'text.secondary', fontSize: 12, mt: 0.25 }}
                   >
-                    შესვენების დამატება
+                    {t('onboarding.addBreak')}
                   </Button>
                   <Button
                     size="small"

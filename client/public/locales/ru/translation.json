@@ -109,7 +109,16 @@
     "otpTooMany": "Слишком много запросов кода — попробуйте позже.",
     "otpChangePhone": "← Изменить номер",
     "otpEnterCode": "Введите 6-значный код",
-    "resetCodeInvalid": "Код неверен или истёк."
+    "resetCodeInvalid": "Код неверен или истёк.",
+    "forgotHeading": "Восстановление пароля",
+    "forgotSubtitlePhone": "Введите номер телефона, и мы отправим вам код.",
+    "forgotSubtitleReset": "Введите полученный код и новый пароль.",
+    "resetSentNeutral": "Если аккаунт с этим номером существует, код отправлен.",
+    "codeLabel": "Код",
+    "newPassword": "Новый пароль",
+    "changePassword": "Сменить пароль",
+    "resendCodeCooldown": "Отправить снова ({{s}})",
+    "backToLogin": "← Назад ко входу"
   },
   "onboarding": {
     "step1": "Информация о бизнесе",
@@ -158,7 +167,13 @@
     "noSpecialistsTitle": "Специалисты пока не добавлены",
     "noSpecialistsCaption": "Добавьте ниже или перейдите к следующему шагу",
     "finishSpecialistFirst": "Сначала добавьте или очистите заполняемого специалиста.",
-    "serviceRequired": "Добавьте хотя бы одну услугу, чтобы продолжить"
+    "serviceRequired": "Добавьте хотя бы одну услугу, чтобы продолжить",
+    "workLabel": "Работа",
+    "breakLabel": "Перерыв",
+    "addBreak": "Добавить перерыв",
+    "removeBreak": "Удалить",
+    "noServicesTitle": "Услуги ещё не добавлены",
+    "noServicesCaption": "Добавьте первую услугу ниже"
   },
   "booking": {
     "title": "Онлайн запись",
@@ -185,6 +200,7 @@
     "total": "Итого",
     "verifyNumber": "Подтвердим ваш номер",
     "payInPersonHint": "Запись требует подтверждения · оплата на месте",
+    "payInPersonHintAuto": "Запись подтверждается сразу · оплата на месте",
     "payOnlineHint": "Запись подтверждается сразу · оплата сейчас",
     "proceedToPayment": "Перейти к оплате",
     "yourBooking": "Ваша запись",
@@ -239,7 +255,10 @@
     "poweredBy": "Работает на Vis",
     "depositNow": "Депозит сейчас",
     "depositBalance": "Остаток на месте",
-    "depositHint": "Сейчас списывается депозит ₾{{amount}} для подтверждения; остальное — на месте."
+    "depositHint": "Сейчас списывается депозит ₾{{amount}} для подтверждения; остальное — на месте.",
+    "contactToCancel": "Позвоните нам, чтобы отменить или изменить запись",
+    "orgNotFoundTitle": "Бизнес не найден",
+    "orgNotFoundCaption": "Проверьте ссылку и попробуйте снова"
   },
   "payment": {
     "sandbox": "Тест",
@@ -514,7 +533,19 @@
     "apptsCount_few": "{{count}} записи",
     "apptsCount_many": "{{count}} записей",
     "apptsCount_other": "{{count}} записи",
-    "addAppointment": "Добавить запись"
+    "addAppointment": "Добавить запись",
+    "all": "Все",
+    "client": "Клиент",
+    "price": "Цена",
+    "dateTime": "Дата / время",
+    "internalNoteOptional": "Внутренняя заметка (необязательно)",
+    "apptAdded": "Запись добавлена",
+    "name": "Имя",
+    "lastName": "Фамилия",
+    "date": "Дата",
+    "noFreeSlots": "На этот день нет свободного времени",
+    "defaultSlotsNoHours": "Слоты по умолчанию — рабочие часы не заданы",
+    "noteOptional": "Примечание (необязательно)"
   },
   "tiers": {
     "solo": {
@@ -660,6 +691,7 @@
     "notFoundTitle": "Запись не найдена",
     "closedTitle": "Запись больше нельзя изменить",
     "closedBody": "Эта запись уже прошла или завершена.",
+    "closedCancelledBody": "Эта запись отменена.",
     "rescheduledTitle": "Запись перенесена",
     "rescheduledBody": "Вы получите SMS с подтверждением.",
     "cancelledTitle": "Запись отменена",
@@ -721,5 +753,39 @@
     "noData": "Нет данных",
     "footer": "Все показатели за выбранный период (время Грузии).",
     "nav": "Аналитика"
+  },
+  "invites": {
+    "errAlreadyInOrg": "Вы уже являетесь участником организации",
+    "errExpired": "Срок действия приглашения истёк",
+    "errWrongAccount": "Это приглашение отправлено на другой аккаунт",
+    "errNotFound": "Приглашение не найдено",
+    "errNotFoundOrUsed": "Приглашение не найдено или уже использовано",
+    "errNotAuthenticated": "Пожалуйста, войдите в систему",
+    "errAcceptFailed": "Не удалось принять приглашение",
+    "invitationLabel": "Приглашение",
+    "invitedAsOwner": "Вас пригласили как владельца",
+    "invitedAsAdmin": "Вас пригласили как администратора",
+    "joined": "Вы присоединились к организации: {{org}}",
+    "accept": "Принять",
+    "processing": "Обработка приглашения…",
+    "signInToAccept": "Войдите, чтобы принять приглашение",
+    "signInHint": "Пожалуйста, войдите в аккаунт, на который было отправлено приглашение.",
+    "signIn": "Войти",
+    "accepted": "Приглашение принято",
+    "goToDashboard": "Перейти в панель"
+  },
+  "notFound": {
+    "title": "Страница не найдена",
+    "caption": "Возможно, адрес неверен или страница больше не существует.",
+    "backHome": "На главную"
+  },
+  "daysShort": {
+    "monday": "Пн",
+    "tuesday": "Вт",
+    "wednesday": "Ср",
+    "thursday": "Чт",
+    "friday": "Пт",
+    "saturday": "Сб",
+    "sunday": "Вс"
   }
 }

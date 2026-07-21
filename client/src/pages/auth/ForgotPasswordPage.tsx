@@ -105,10 +105,10 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
-      title="პაროლის აღდგენა"
+      title={t('auth.forgotHeading')}
       subtitle={step === 'phone'
-        ? 'შეიყვანეთ ტელეფონის ნომერი და გამოგიგზავნით კოდს.'
-        : 'შეიყვანეთ მიღებული კოდი და ახალი პაროლი.'}
+        ? t('auth.forgotSubtitlePhone')
+        : t('auth.forgotSubtitleReset')}
     >
       <FormErrorAlert message={error} data-testid="forgot-error" />
 
@@ -137,19 +137,19 @@ export default function ForgotPasswordPage() {
             sx={{ mt: 1 }}
             data-testid="forgot-send"
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'კოდის გაგზავნა'}
+            {loading ? <CircularProgress size={20} color="inherit" /> : t('auth.sendOtp')}
           </Button>
         </>
       ) : (
         <>
           <Alert severity="info" sx={{ mb: 2 }}>
-            თუ ამ ნომერზე ანგარიში არსებობს, კოდი გამოგზავნილია.
+            {t('auth.resetSentNeutral')}
           </Alert>
 
           <TextField
             fullWidth
             required
-            label="კოდი"
+            label={t('auth.codeLabel')}
             value={code}
             onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
             placeholder="123456"
@@ -163,7 +163,7 @@ export default function ForgotPasswordPage() {
           <TextField
             fullWidth
             required
-            label="ახალი პაროლი"
+            label={t('auth.newPassword')}
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
@@ -176,7 +176,7 @@ export default function ForgotPasswordPage() {
           <TextField
             fullWidth
             required
-            label="პაროლის დადასტურება"
+            label={t('auth.confirmPassword')}
             type="password"
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
@@ -195,7 +195,7 @@ export default function ForgotPasswordPage() {
             disabled={loading}
             data-testid="forgot-submit"
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'პაროლის შეცვლა'}
+            {loading ? <CircularProgress size={20} color="inherit" /> : t('auth.changePassword')}
           </Button>
 
           <Box sx={{ mt: 1.5 }}>
@@ -207,7 +207,7 @@ export default function ForgotPasswordPage() {
               onClick={requestCode}
               sx={{ fontSize: '0.875rem', color: cooldown > 0 ? 'text.disabled' : 'primary.main' }}
             >
-              {cooldown > 0 ? `ხელახლა გაგზავნა (${cooldown})` : 'კოდის ხელახლა გაგზავნა'}
+              {cooldown > 0 ? t('auth.resendCodeCooldown', { s: cooldown }) : t('auth.otpResend')}
             </MuiLink>
           </Box>
         </>
@@ -221,7 +221,7 @@ export default function ForgotPasswordPage() {
           onClick={() => navigate('/login')}
           sx={{ fontSize: '0.875rem', color: 'text.secondary' }}
         >
-          ← შესვლაზე დაბრუნება
+          {t('auth.backToLogin')}
         </MuiLink>
       </Box>
     </AuthShell>

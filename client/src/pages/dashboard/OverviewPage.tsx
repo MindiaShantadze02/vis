@@ -17,7 +17,7 @@ import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
 import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
 import { CreditCardOutlined as CreditCardOutlinedIcon } from '@/components/icons'
 import { format } from 'date-fns'
-import { ka } from 'date-fns/locale'
+import { dateLocale } from '@/lib/dateLocale'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
@@ -454,14 +454,14 @@ export default function OverviewPage() {
   const attributeFilters = (
     <>
       <FormControl size="small" sx={{ minWidth: { sm: 130 }, width: { xs: '100%', sm: 'auto' } }}>
-        <InputLabel>სტატუსი</InputLabel>
+        <InputLabel>{t('calendar.status')}</InputLabel>
         <Select
           value={statusFilter}
-          label="სტატუსი"
+          label={t('calendar.status')}
           onChange={e => { setStatusFilter(e.target.value as AppointmentStatus | 'all'); setPage(0) }}
           data-testid="appt-status-filter"
         >
-          <MenuItem value="all">ყველა</MenuItem>
+          <MenuItem value="all">{t('calendar.all')}</MenuItem>
           {ALL_STATUSES.map(s => (
             <MenuItem key={s} value={s}>{t(`dashboard.${s}`)}</MenuItem>
           ))}
@@ -609,7 +609,7 @@ export default function OverviewPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 600 }}>{t('dashboard.appointments')}</Typography>
         <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setAddOpen(true)} data-testid="appt-add-btn">
-          ჯავშნის დამატება
+          {t('calendar.addAppointment')}
         </Button>
       </Box>
 
@@ -687,7 +687,7 @@ export default function OverviewPage() {
               borderColor: 'divider',
             }}
           >
-            {['დრო', 'კლიენტი', 'სერვისი', 'გადახდა', 'ფასი', 'სტატუსი'].map(h => (
+            {[t('calendar.time'), t('calendar.client'), t('calendar.service'), t('calendar.payment'), t('calendar.price'), t('calendar.status')].map(h => (
               <Typography key={h} variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                 {h}
               </Typography>
@@ -752,7 +752,7 @@ export default function OverviewPage() {
                         {appt.customers?.first_name} {appt.customers?.last_name}
                       </Typography>
                       <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block', fontSize: { xs: '0.8rem', md: '0.75rem' } }}>
-                        {format(new Date(appt.scheduled_at), 'd MMM, HH:mm', { locale: ka })} · {appt.services?.name}
+                        {format(new Date(appt.scheduled_at), 'd MMM, HH:mm', { locale: dateLocale() })} · {appt.services?.name}
                         {appt.staff?.display_name ? ` · ${appt.staff.display_name}` : ''}
                       </Typography>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', md: '0.75rem' } }}>
@@ -776,7 +776,7 @@ export default function OverviewPage() {
               <Box key={appt.id} {...rowProps} sx={{ ...rowProps.sx, display: 'grid', gridTemplateColumns: GRID_COLS, alignItems: 'center' }}>
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {format(new Date(appt.scheduled_at), 'dd MMM', { locale: ka })}
+                    {format(new Date(appt.scheduled_at), 'dd MMM', { locale: dateLocale() })}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {format(new Date(appt.scheduled_at), 'HH:mm')}
@@ -803,7 +803,7 @@ export default function OverviewPage() {
                     ? <CreditCardOutlinedIcon sx={{ fontSize: 16 }} />
                     : <StorefrontOutlinedIcon sx={{ fontSize: 16 }} />}
                   <Typography variant="caption" noWrap>
-                    {appt.payment_method === 'online' ? 'ონლაინ' : 'ადგილზე'}
+                    {appt.payment_method === 'online' ? t('settings.locationOnline') : t('settings.locationInPerson')}
                   </Typography>
                 </Box>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -901,21 +901,21 @@ export default function OverviewPage() {
           <>
             <Stack spacing={1.5}>
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>სერვისი</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.service')}</Typography>
                   <Typography variant="body2">{selected.services?.name} — {selected.services?.price} ₾</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>თარიღი / დრო</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.dateTime')}</Typography>
                   <Typography variant="body2">
-                    {format(new Date(selected.scheduled_at), 'd MMMM yyyy, HH:mm', { locale: ka })}
+                    {format(new Date(selected.scheduled_at), 'd MMMM yyyy, HH:mm', { locale: dateLocale() })}
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>ტელეფონი</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.phone')}</Typography>
                   <Typography variant="body2">{selected.customers?.phone_number}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>სტატუსი</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.status')}</Typography>
                   <Box sx={{ mt: 0.25 }}><StatusChip status={selected.status} /></Box>
                 </Box>
                 {(() => {
@@ -940,17 +940,17 @@ export default function OverviewPage() {
                 })()}
                 {selected.notes && (
                   <Box>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>შენიშვნა</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.note')}</Typography>
                     <Typography variant="body2">{selected.notes}</Typography>
                   </Box>
                 )}
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>გადახდა</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.payment')}</Typography>
                   <Typography variant="body2">
-                    {selected.payment_method === 'online' ? 'ონლაინ' : 'ადგილზე'} ·{' '}
+                    {selected.payment_method === 'online' ? t('settings.locationOnline') : t('settings.locationInPerson')} ·{' '}
                     {selected.payment_status === 'refunded'
                       ? `↩ ${t('dashboard.refunded')}`
-                      : selected.payment_status === 'paid' ? '✓ გადახდილია' : 'გადაუხდელი'}
+                      : selected.payment_status === 'paid' ? t('calendar.paid') : t('calendar.unpaid')}
                   </Typography>
                 </Box>
                 {/* A completed visit can be reviewed: share this capability link with
@@ -966,7 +966,7 @@ export default function OverviewPage() {
                 {(selected.status === 'pending' || selected.status === 'approved') && (
                   <TextField
                     fullWidth size="small"
-                    label="შიდა შენიშვნა (არასავალდებულო)"
+                    label={t('calendar.internalNoteOptional')}
                     value={adminNote}
                     onChange={e => setAdminNote(e.target.value)}
                     multiline rows={2}

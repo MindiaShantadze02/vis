@@ -109,7 +109,16 @@
     "otpTooMany": "Too many code requests — please try again later.",
     "otpChangePhone": "← Change number",
     "otpEnterCode": "Enter the 6-digit code",
-    "resetCodeInvalid": "The code is wrong or has expired."
+    "resetCodeInvalid": "The code is wrong or has expired.",
+    "forgotHeading": "Reset password",
+    "forgotSubtitlePhone": "Enter your phone number and we'll text you a code.",
+    "forgotSubtitleReset": "Enter the code you received and a new password.",
+    "resetSentNeutral": "If an account exists for this number, a code has been sent.",
+    "codeLabel": "Code",
+    "newPassword": "New password",
+    "changePassword": "Change password",
+    "resendCodeCooldown": "Resend ({{s}})",
+    "backToLogin": "← Back to sign in"
   },
   "onboarding": {
     "step1": "Business info",
@@ -158,7 +167,13 @@
     "noSpecialistsTitle": "No specialists added yet",
     "noSpecialistsCaption": "Add one below, or continue to the next step",
     "finishSpecialistFirst": "Add or clear the specialist you're filling in first.",
-    "serviceRequired": "Add at least one service to continue"
+    "serviceRequired": "Add at least one service to continue",
+    "workLabel": "Working",
+    "breakLabel": "Break",
+    "addBreak": "Add a break",
+    "removeBreak": "Remove",
+    "noServicesTitle": "No services added yet",
+    "noServicesCaption": "Add your first service below"
   },
   "booking": {
     "title": "Online Booking",
@@ -185,6 +200,7 @@
     "total": "Total",
     "verifyNumber": "Let's confirm your number",
     "payInPersonHint": "Booking needs confirmation · pay in person",
+    "payInPersonHintAuto": "Booking is confirmed instantly · pay in person",
     "payOnlineHint": "Booking is confirmed instantly · pay now",
     "proceedToPayment": "Proceed to payment",
     "yourBooking": "Your booking",
@@ -239,7 +255,10 @@
     "poweredBy": "Powered by Vis",
     "depositNow": "Deposit now",
     "depositBalance": "Balance in person",
-    "depositHint": "A ₾{{amount}} deposit is charged now to confirm; pay the rest in person."
+    "depositHint": "A ₾{{amount}} deposit is charged now to confirm; pay the rest in person.",
+    "contactToCancel": "Call us to cancel or change your booking",
+    "orgNotFoundTitle": "Business not found",
+    "orgNotFoundCaption": "Check the link and try again"
   },
   "payment": {
     "sandbox": "Sandbox",
@@ -512,7 +531,19 @@
     "restPlaceholder": "e.g. Lunch, break",
     "apptsCount_one": "{{count}} appointment",
     "apptsCount_other": "{{count}} appointments",
-    "addAppointment": "Add appointment"
+    "addAppointment": "Add appointment",
+    "all": "All",
+    "client": "Client",
+    "price": "Price",
+    "dateTime": "Date / time",
+    "internalNoteOptional": "Internal note (optional)",
+    "apptAdded": "Appointment added",
+    "name": "Name",
+    "lastName": "Last name",
+    "date": "Date",
+    "noFreeSlots": "No free times on this day",
+    "defaultSlotsNoHours": "Default slots — working hours not set",
+    "noteOptional": "Note (optional)"
   },
   "tiers": {
     "solo": {
@@ -656,6 +687,7 @@
     "notFoundTitle": "Booking not found",
     "closedTitle": "This booking can't be changed",
     "closedBody": "It's already passed or completed.",
+    "closedCancelledBody": "This booking has been cancelled.",
     "rescheduledTitle": "Booking rescheduled",
     "rescheduledBody": "You'll get a confirmation SMS.",
     "cancelledTitle": "Booking cancelled",
@@ -717,5 +749,39 @@
     "noData": "No data yet",
     "footer": "All figures for the selected period (Georgia time).",
     "nav": "Analytics"
+  },
+  "invites": {
+    "errAlreadyInOrg": "You are already a member of this organisation",
+    "errExpired": "This invitation has expired",
+    "errWrongAccount": "This invitation was sent to a different account",
+    "errNotFound": "Invitation not found",
+    "errNotFoundOrUsed": "Invitation not found or already used",
+    "errNotAuthenticated": "Please sign in",
+    "errAcceptFailed": "Could not accept the invitation",
+    "invitationLabel": "Invitation",
+    "invitedAsOwner": "You're invited as owner",
+    "invitedAsAdmin": "You're invited as admin",
+    "joined": "Joined organisation: {{org}}",
+    "accept": "Accept",
+    "processing": "Processing invitation…",
+    "signInToAccept": "Sign in to accept the invitation",
+    "signInHint": "Please sign in with the account the invitation was sent to.",
+    "signIn": "Sign in",
+    "accepted": "Invitation accepted",
+    "goToDashboard": "Go to dashboard"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "caption": "The address may be wrong or the page no longer exists.",
+    "backHome": "Back to home"
+  },
+  "daysShort": {
+    "monday": "Mon",
+    "tuesday": "Tue",
+    "wednesday": "Wed",
+    "thursday": "Thu",
+    "friday": "Fri",
+    "saturday": "Sat",
+    "sunday": "Sun"
   }
 }

@@ -10,13 +10,9 @@ import { HONEY, INK } from '@/theme/theme'
 import { listItem } from '@/theme/motion'
 import type { OnboardingData } from './OnboardingLayout'
 
-// Short Georgian weekday labels for the compact hours line (Mon→Sun order,
-// matching workingHours keys).
+// Compact hours line runs Mon→Sun; the short weekday labels come from the
+// shared `daysShort.*` translations.
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
-const SHORT_DAY: Record<string, string> = {
-  monday: 'ორ', tuesday: 'სამ', wednesday: 'ოთხ', thursday: 'ხუთ',
-  friday: 'პარ', saturday: 'შაბ', sunday: 'კვ',
-}
 
 /** A preview section — a dashed-divided block that fades in as it populates. */
 function Section({ children }: { children: React.ReactNode }) {
@@ -37,13 +33,17 @@ const emptyHint = (label: string) => (
   <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>{label}</Typography>
 )
 
-/** Compact "which days · what hours" summary, or null when nothing is open. */
-function hoursSummary(workingHours: OnboardingData['workingHours']) {
+/** Compact "which days · what hours" summary, or null when nothing is open.
+ *  `shortDay` maps a weekday key to its localized abbreviation. */
+function hoursSummary(
+  workingHours: OnboardingData['workingHours'],
+  shortDay: (key: string) => string,
+) {
   const openDays = DAY_ORDER.filter(d => workingHours[d]?.open)
   if (openDays.length === 0) return null
   const first = workingHours[openDays[0]]
   return {
-    days: openDays.map(d => SHORT_DAY[d]).join(', '),
+    days: openDays.map(d => shortDay(d)).join(', '),
     window: `${first.openTime}–${first.closeTime}`,
   }
 }
@@ -58,7 +58,7 @@ export default function OnboardingPreview({ data }: { data: OnboardingData }) {
   const { t } = useTranslation()
   const name = data.name.trim()
   const slug = name ? slugify(name) : ''
-  const hrs = hoursSummary(data.workingHours)
+  const hrs = hoursSummary(data.workingHours, (key) => t(`daysShort.${key}`))
   const shownServices = data.services.slice(0, 3)
   const extraServices = data.services.length - shownServices.length
 

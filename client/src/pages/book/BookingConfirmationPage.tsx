@@ -10,7 +10,7 @@ import { format } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { dateLocale } from '@/lib/dateLocale'
 import { supabase } from '@/lib/supabase'
-import { displayGeorgianPhone, toE164Georgian } from '@/lib/validation'
+import { displayGeorgianPhone, toE164Georgian, isUuid } from '@/lib/validation'
 import { toBusinessWallClock } from '@/lib/slots'
 import { LoadingState, EmptyState, StatusChip, BookingTicket } from '@/components/ui'
 import { LAYOUT } from '@/theme/theme'
@@ -40,6 +40,9 @@ export default function BookingConfirmationPage() {
 
   useEffect(() => {
     if (!id) return
+    // A malformed id would 400 on the RPC and burn the whole retry budget before
+    // rendering not-found; short-circuit it.
+    if (!isUuid(id)) { setLoading(false); return }
     let cancelled = false
 
     // We almost always land here immediately after creating the booking, so a
@@ -89,7 +92,7 @@ export default function BookingConfirmationPage() {
   if (!appt) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: inIframe ? 320 : '100vh' }}>
-        <EmptyState icon={<SearchOffOutlinedIcon />} title="ჯავშანი ვერ მოიძებნა" />
+        <EmptyState icon={<SearchOffOutlinedIcon />} title={t('manage.notFoundTitle')} />
       </Box>
     )
   }

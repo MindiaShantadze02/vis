@@ -16,7 +16,7 @@ import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
 import { LAYOUT, elevation } from '@/theme/theme'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { dateLocale } from '@/lib/dateLocale'
-import { FIELD_LIMITS } from '@/lib/validation'
+import { FIELD_LIMITS, isUuid } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { toBusinessWallClock } from '@/lib/slots'
 import { anim } from '@/theme/animations'
@@ -56,6 +56,7 @@ export default function ReviewPage() {
 
   useEffect(() => {
     if (!appointmentId) return
+    if (!isUuid(appointmentId)) { setView('not_found'); return }
     let cancelled = false
     supabase.rpc('get_review_context', { p_appointment_id: appointmentId }).then(({ data }) => {
       if (cancelled) return

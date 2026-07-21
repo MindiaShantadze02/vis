@@ -33,11 +33,11 @@ export default function NotFoundPage() {
       </Typography>
       <EmptyState
         icon={<SearchOffOutlinedIcon />}
-        title="გვერდი ვერ მოიძებნა"
-        caption="შესაძლოა მისამართი არასწორია ან გვერდი აღარ არსებობს."
+        title={t('notFound.title')}
+        caption={t('notFound.caption')}
         action={
           <Button variant="contained" onClick={() => navigate('/')} data-testid="notfound-home">
-            მთავარ გვერდზე დაბრუნება
+            {t('notFound.backHome')}
           </Button>
         }
       />

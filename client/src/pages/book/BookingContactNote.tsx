@@ -1,5 +1,6 @@
 import { Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import { useTranslation } from 'react-i18next'
 import { PhoneOutlined as PhoneOutlinedIcon } from '@/components/icons'
 import { displayGeorgianPhone, toE164Georgian } from '@/lib/validation'
 
@@ -11,6 +12,7 @@ interface Props {
  *  done screens. Guests have no self-service cancel, so every vertical points
  *  them at the org's phone — formatted and tappable, not a bare number. */
 export default function BookingContactNote({ phone }: Props) {
+  const { t } = useTranslation()
   if (!phone) return null
   return (
     <Box
@@ -25,7 +27,7 @@ export default function BookingContactNote({ phone }: Props) {
       <PhoneOutlinedIcon fontSize="small" sx={{ color: 'primary.dark' }} />
       <Box>
         <Typography variant="caption" sx={{ display: 'block', color: 'primary.dark', opacity: 0.9 }}>
-          ჯავშნის გასაუქმებლად ან შესაცვლელად დაგვირეკეთ
+          {t('booking.contactToCancel')}
         </Typography>
         <Typography
           variant="body2"
