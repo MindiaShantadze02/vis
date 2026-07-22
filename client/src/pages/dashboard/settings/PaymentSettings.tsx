@@ -18,7 +18,6 @@ import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 interface PaymentConfig {
   bog?: { merchantId?: string; apiKey?: string; enabled?: boolean }
   tbc?: { merchantId?: string; apiKey?: string; enabled?: boolean }
-  inPerson?: { enabled?: boolean }
 }
 
 export default function PaymentSettings() {
@@ -29,7 +28,6 @@ export default function PaymentSettings() {
   const [config, setConfig] = useState<PaymentConfig>({
     bog: { merchantId: '', apiKey: '', enabled: false },
     tbc: { merchantId: '', apiKey: '', enabled: false },
-    inPerson: { enabled: true },
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +53,6 @@ export default function PaymentSettings() {
         setConfig({
           bog: { merchantId: '', apiKey: '', enabled: false, ...(pc.bog ?? {}) },
           tbc: { merchantId: '', apiKey: '', enabled: false, ...(pc.tbc ?? {}) },
-          inPerson: { enabled: true, ...(pc.inPerson ?? {}) },
         })
         if (pc.bog?.enabled) setBogExpanded(true)
         if (pc.tbc?.enabled) setTbcExpanded(true)
@@ -135,28 +132,6 @@ export default function PaymentSettings() {
       </Alert>
 
       <Stack spacing={2}>
-        {/* In-person */}
-        <Card>
-          <CardContent sx={{ p: 3 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={config.inPerson?.enabled ?? true}
-                  onChange={e => setConfig(c => ({ ...c, inPerson: { enabled: e.target.checked } }))}
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.inPersonPayment')}</Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    {t('settings.inPersonPaymentHelp')}
-                  </Typography>
-                </Box>
-              }
-            />
-          </CardContent>
-        </Card>
-
         {/* Cancellation / deposit-refund policy. Deposits are set per service
             (Services settings); this governs what a cancellation refunds. */}
         <Card>

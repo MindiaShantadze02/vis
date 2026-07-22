@@ -12,22 +12,63 @@ import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader } from '@/components/ui'
 import { TIERS, type Tier } from '@/lib/tiers'
 
+interface CreditPack {
+  id: string
+  credits: number
+  price: number
+}
+
 export default function SubscriptionPage() {
   const { t } = useTranslation()
-  const { org, subscription, entitlements } = useOrg()
+  const { org, subscription, entitlements, refreshEntitlements } = useOrg()
 
   const [used, setUsed] = useState<number | null>(null)
   const [limit, setLimit] = useState<number | null>(null)
   const [periodEnd, setPeriodEnd] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [upgrading, setUpgrading] = useState<Tier | null>(null)
+  const [packs, setPacks] = useState<CreditPack[]>([])
+  const [buying, setBuying] = useState<string | null>(null)
 
   const currentTier: Tier = org?.subscription_tier ?? 'solo'
   const expires = org?.subscription_expires_at
 
   useEffect(() => {
-    if (org) loadUsage()
+    if (org) { loadUsage(); loadPacks() }
   }, [org])
+
+  // Returning from the credit checkout — reflect the new balance immediately.
+  useEffect(() => {
+    if (org) refreshEntitlements()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [org?.id])
+
+  async function loadPacks() {
+    const { data } = await supabase.rpc('get_credit_packs')
+    if (Array.isArray(data)) setPacks(data as CreditPack[])
+  }
+
+  // Buy a booking-credit pack. A fresh idempotency key per click makes a
+  // resubmit reuse the same purchase row server-side (no double charge); the
+  // price is resolved server-side from the pack id, never sent by the client.
+  async function handleBuyCredits(packId: string) {
+    if (!org) return
+    setBuying(packId)
+    const { data, error } = await supabase.functions.invoke('create-payment', {
+      body: {
+        purpose: 'credit',
+        org_id: org.id,
+        pack_id: packId,
+        idempotency_key: crypto.randomUUID(),
+        returnBaseUrl: window.location.origin,
+      },
+    })
+    if (error || !data?.checkoutUrl) {
+      setBuying(null)
+      return
+    }
+    window.location.assign(data.checkoutUrl)
+  }
 
   async function loadUsage() {
     if (!org) return
@@ -157,6 +198,47 @@ export default function SubscriptionPage() {
               </Typography>
             )}
           </Box>
+        </CardContent>
+      </Card>
+
+      {/* Booking credits — top up to keep booking past the included allowance. */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 0.5 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {t('subscription.creditsTitle')}
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700 }} data-testid="credit-balance">
+              {t('subscription.creditBalance', { count: entitlements?.creditBalance ?? 0 })}
+            </Typography>
+          </Box>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
+            {t('subscription.creditsHint')}
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            {packs.map(pack => (
+              <Card key={pack.id} variant="outlined" sx={{ flex: 1 }}>
+                <CardContent sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                    {t('subscription.creditPackCount', { count: pack.credits })}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
+                    {t('subscription.creditPackPrice', { price: pack.price })}
+                  </Typography>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    onClick={() => handleBuyCredits(pack.id)}
+                    disabled={buying !== null}
+                    data-testid={`buy-credit-${pack.id}`}
+                  >
+                    {buying === pack.id ? <CircularProgress size={16} /> : t('subscription.buyCredits')}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
         </CardContent>
       </Card>
 

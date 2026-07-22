@@ -23,6 +23,9 @@ interface ServiceOption {
   duration_minutes: number
   price: number
   max_per_slot: number
+  recurring_default: boolean
+  recurring_cadence: 'weekly' | 'biweekly' | 'monthly' | null
+  recurring_occurrence_count: number | null
 }
 
 interface StaffOption { id: string; display_name: string | null; sort_order: number; avatar_url: string | null }
@@ -88,7 +91,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
   useEffect(() => {
     supabase
       .from('services')
-      .select('id, name, duration_minutes, price, max_per_slot')
+      .select('id, name, duration_minutes, price, max_per_slot, recurring_default, recurring_cadence, recurring_occurrence_count')
       .eq('org_id', orgId)
       .eq('is_active', true)
       .order('sort_order')
@@ -134,6 +137,18 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
         setStaff(members)
       })
   }, [serviceId])
+
+  // A service marked recurring-by-default (Settings → Services) pre-fills and
+  // enables the repeat options here. The owner can still edit or turn them off.
+  useEffect(() => {
+    const svc = services.find(s => s.id === serviceId)
+    if (svc?.recurring_default) {
+      setRepeat(true)
+      setEndType('count')
+      if (svc.recurring_cadence) setCadence(svc.recurring_cadence)
+      if (svc.recurring_occurrence_count != null) setOccCount(String(svc.recurring_occurrence_count))
+    }
+  }, [serviceId, services])
 
   // Fetch the chosen day's appointments + override so slots reflect real load.
   useEffect(() => {

@@ -46,6 +46,26 @@ test.describe('Subscription', () => {
     await expect(page.getByTestId('usage-overage')).toHaveCount(0)
   })
 
+  test('an active org can buy booking credits through the mock gateway and the balance grows', async ({ page }) => {
+    // Hard-cap top-up flow (2026-07-22): pick a server-defined pack → create-payment
+    // (purpose credit, price resolved server-side) → mock gateway → payment-webhook
+    // grants the credits → the balance on this page reflects the increase.
+    const readBalance = async () =>
+      Number(((await page.getByTestId('credit-balance').textContent()) ?? '').match(/\d+/)?.[0] ?? '0')
+    await expect(page.getByTestId('credit-balance')).toBeVisible()
+    const before = await readBalance()
+
+    await page.getByTestId('buy-credit-pack_20').click()
+    await expect(page).toHaveURL(/\/pay\/mock/, { timeout: 20_000 })
+    await page.getByTestId('mock-pay-success').click()
+    await expect(page).toHaveURL(/\/payment-return/, { timeout: 20_000 })
+    await page.getByTestId('payment-return-primary').click()
+    await expect(page).toHaveURL(/\/settings\/subscription/, { timeout: 20_000 })
+
+    // The pack_20 pack grants 20 credits; the balance line refreshes on return.
+    await expect.poll(readBalance, { timeout: 15_000 }).toBe(before + 20)
+  })
+
   test('an active org shows no trial/expired banner on the dashboard', async ({ page }) => {
     // Regression guard: SubscriptionBanner must render nothing for active orgs
     // (and its expired notice, when shown, must carry a dismiss control — see

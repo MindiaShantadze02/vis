@@ -6,14 +6,11 @@ import {
   TextField,
   Stack,
   CircularProgress,
-  ToggleButtonGroup,
-  ToggleButton,
   Link as MuiLink,
 } from "@mui/material";
 import { Trans } from "react-i18next";
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from "@/components/icons";
 import { CreditCardOutlined as CreditCardOutlinedIcon } from "@/components/icons";
-import { StorefrontOutlined as StorefrontOutlinedIcon } from "@/components/icons";
 import { SmsOutlined as SmsOutlinedIcon } from "@/components/icons";
 import { format } from "date-fns";
 import { dateLocale } from "@/lib/dateLocale";
@@ -100,14 +97,9 @@ export default function Step3CustomerForm({
   // while the same 6 digits sit in the field.
   const autoSubmitted = useRef<string | null>(null);
 
-  const onlineEnabled =
-    org.payment_config?.bog?.enabled || org.payment_config?.tbc?.enabled;
-  const inPersonEnabled = org.payment_config?.inPerson?.enabled !== false;
-
-  // Deposit: a service's own deposit overrides the org default. When one is
-  // required the booking must go through online payment so the deposit is
-  // actually collected (create-payment charges it server-side) — offering
-  // pay-in-person would let the customer bypass it. The balance is due in person.
+  // Deposit: a service's own deposit overrides the org default. Paid services
+  // are always collected online (create-payment charges the deposit or full
+  // price server-side). The balance, if any, is settled at the venue.
   const price = booking.service?.price ?? 0;
   const depositAmount = computeDeposit(
     price,
@@ -119,15 +111,10 @@ export default function Step3CustomerForm({
   const depositRequired = depositAmount > 0;
   const depositBalance = Math.max(0, price - depositAmount);
 
-  const availableMethods: Array<"in_person" | "online"> = [];
-  if (depositRequired) {
-    availableMethods.push("online");
-  } else {
-    if (inPersonEnabled) availableMethods.push("in_person");
-    if (onlineEnabled) availableMethods.push("online");
-  }
-  // Only worth asking the customer when there's an actual choice to make.
-  const multiplePaymentOptions = availableMethods.length > 1;
+  // Payment method is no longer a customer choice (pay-in-person was removed):
+  // a priced service is charged online; a free service (price 0) is booked with
+  // no charge. 'in_person' survives only as the internal no-charge marker.
+  const paymentMethod: "online" | "in_person" = price > 0 ? "online" : "in_person";
 
   // The chosen slot is business (Georgia) wall-clock time — pin the stored
   // instant to the business offset so it doesn't shift with the viewer's zone.
@@ -148,21 +135,13 @@ export default function Step3CustomerForm({
     return () => clearTimeout(id);
   }, [resendIn]);
 
-  // With a single payment option there's nothing to pick, so we hide the
-  // selector — but the booking still has to carry the right method. The default
-  // is 'in_person', which would be wrong for an online-only business, so pin
-  // paymentMethod to the only available option here.
+  // Keep the booking state's method in sync with the derived value so any
+  // downstream consumer (and confirmBooking) sees the right one.
   useEffect(() => {
-    const methods: Array<"in_person" | "online"> = depositRequired
-      ? ["online"]
-      : [
-          ...(inPersonEnabled ? (["in_person"] as const) : []),
-          ...(onlineEnabled ? (["online"] as const) : []),
-        ];
-    if (methods.length > 0 && !methods.includes(booking.paymentMethod)) {
-      onChange({ paymentMethod: methods[0] });
+    if (booking.paymentMethod !== paymentMethod) {
+      onChange({ paymentMethod });
     }
-  }, [depositRequired, inPersonEnabled, onlineEnabled, booking.paymentMethod, onChange]);
+  }, [paymentMethod, booking.paymentMethod, onChange]);
 
   // Step 1: text a verification code to the customer's phone, then switch to the
   // code-entry view. The booking itself is only created after the code checks out.
@@ -249,7 +228,7 @@ export default function Step3CustomerForm({
       // payment flow — the appointment is created by payment-webhook only once
       // the charge clears, so a failed or abandoned payment leaves nothing on
       // the business's dashboard.
-      if (booking.paymentMethod === "online") {
+      if (paymentMethod === "online") {
         // Best-effort availability re-check before sending the customer to the
         // gateway (the webhook insert itself is exempt from the 084 capacity
         // trigger — a cleared charge must not be dropped).
@@ -350,11 +329,11 @@ export default function Step3CustomerForm({
         return;
       }
 
-      // In-person: one atomic RPC (migration 084). Capacity, the staff pick
-      // ("any available" is resolved under the per-org lock) and the customer +
-      // appointment inserts all happen server-side in one transaction, closing
-      // the check-then-insert double-booking race the old client-side re-check
-      // could not.
+      // No-charge (free service, price 0): one atomic RPC (migration 084).
+      // Capacity, the staff pick ("any available" is resolved under the per-org
+      // lock) and the customer + appointment inserts all happen server-side in
+      // one transaction, closing the check-then-insert double-booking race the
+      // old client-side re-check could not. The row is stored unpaid.
       const { data: created, error: rpcErr } = (await supabase.rpc(
         "create_guest_booking",
         {
@@ -551,67 +530,19 @@ export default function Step3CustomerForm({
               />
             </Box>
 
-            {/* Payment method — only ask when more than one option exists. */}
-            {availableMethods.length > 0 && (
-              <Box>
-                {multiplePaymentOptions && (
-                  <>
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                      {t("booking.paymentMethod")}
-                    </Typography>
-                    <ToggleButtonGroup
-                      value={booking.paymentMethod}
-                      exclusive
-                      onChange={(_, v) => v && onChange({ paymentMethod: v })}
-                      fullWidth
-                    >
-                      <ToggleButton
-                        value="in_person"
-                        data-testid="book-pay-in_person"
-                      >
-                        <StorefrontOutlinedIcon sx={{ mr: 1, fontSize: 18 }} />
-                        {t("settings.locationInPerson")}
-                      </ToggleButton>
-                      <ToggleButton
-                        value="online"
-                        data-testid="book-pay-online"
-                      >
-                        <CreditCardOutlinedIcon sx={{ mr: 1, fontSize: 18 }} />
-                        {t("settings.locationOnline")}
-                      </ToggleButton>
-                    </ToggleButtonGroup>
-                  </>
-                )}
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    mt: multiplePaymentOptions ? 1.25 : 0,
-                  }}
-                >
-                  {booking.paymentMethod === "in_person" ? (
-                    <StorefrontOutlinedIcon
-                      sx={{ fontSize: 16, color: "success.main" }}
-                    />
-                  ) : (
-                    <CreditCardOutlinedIcon
-                      sx={{ fontSize: 16, color: "primary.main" }}
-                    />
-                  )}
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "text.secondary" }}
-                  >
-                    {booking.paymentMethod === "in_person"
-                      ? org.require_approval
-                        ? t("booking.payInPersonHint")
-                        : t("booking.payInPersonHintAuto")
-                      : depositRequired
-                      ? t("booking.depositHint", { amount: depositAmount })
-                      : t("booking.payOnlineHint")}
-                  </Typography>
-                </Box>
+            {/* Payment: priced services are always paid online now (the
+                pay-in-person choice was removed). A free service shows no
+                payment hint. */}
+            {price > 0 && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <CreditCardOutlinedIcon
+                  sx={{ fontSize: 16, color: "primary.main" }}
+                />
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                  {depositRequired
+                    ? t("booking.depositHint", { amount: depositAmount })
+                    : t("booking.payOnlineHint")}
+                </Typography>
               </Box>
             )}
 
@@ -735,7 +666,7 @@ export default function Step3CustomerForm({
             >
               {loading ? (
                 <CircularProgress size={22} color="inherit" />
-              ) : booking.paymentMethod === "online" ? (
+              ) : paymentMethod === "online" ? (
                 t("booking.proceedToPayment")
               ) : (
                 t("booking.book")

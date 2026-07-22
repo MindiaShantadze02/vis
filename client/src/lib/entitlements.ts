@@ -5,10 +5,11 @@ import type { Tier, SubscriptionState } from '@/lib/tiers'
  * (migration 088). One cacheable read that drives the usage widget and the
  * (currently permissive) feature gates.
  *
- * Tiering model since 2026-07-17: a tier's `included` allowance is free; every
- * booking beyond it is ALLOWED and metered as overage (billing reconciles
- * against overage_events later — nothing is charged yet). Only an `expired`
- * org (lapsed trial / lapsed plan) is actually blocked from new bookings.
+ * Tiering model since 2026-07-22 (hard cap + credits): a tier's `included`
+ * allowance is free. For an ACTIVE org, each booking beyond it consumes one
+ * purchased credit; with no credit left the booking is BLOCKED. Trials keep a
+ * soft allowance (never blocked, no credit consumed); an `expired` org is fully
+ * blocked. `creditBalance` is spendable credit the owner tops up in-app.
  */
 
 /** Feature keys in platform_config.tier_features. All true on both tiers today. */
@@ -35,6 +36,10 @@ export interface Entitlements {
   overageCount: number
   /** overageCount × overagePrice, in ₾. */
   overageCost: number
+  /** Spendable booking credit the owner has purchased (hard-cap top-up). */
+  creditBalance: number
+  /** Credits consumed this period (over-allowance bookings). */
+  creditUsed: number
   /** Bookable professionals in use. */
   seatUsed: number
   /** Max bookable professionals; null = unlimited (both tiers today). */
@@ -75,6 +80,8 @@ export function parseEntitlements(raw: unknown): Entitlements | null {
     overagePrice: numOrNull(r.overage_price),
     overageCount: num(r.overage_count),
     overageCost: num(r.overage_cost),
+    creditBalance: num(r.credit_balance),
+    creditUsed: num(r.credit_used),
     seatUsed: num(r.seat_used),
     seatLimit: numOrNull(r.seat_limit),
     periodStart: String(r.period_start ?? ''),

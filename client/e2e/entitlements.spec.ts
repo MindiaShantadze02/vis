@@ -40,6 +40,14 @@ test.describe('Entitlements — get_org_entitlements contract', () => {
     expect(Number(e.overage_count)).toBe(0)
     expect(Number(e.overage_cost)).toBe(0)
 
+    // ── Credit fields (hard-cap top-up, 2026-07-22). credit_balance is spendable
+    // credit; credit_used counts over-allowance bookings this period (0 under cap).
+    // The seed org carries a large credit buffer so the hard cap never disrupts
+    // the booking specs, so assert it's a real non-negative number, not a fixed one.
+    expect(e).toHaveProperty('credit_balance')
+    expect(Number(e.credit_balance)).toBeGreaterThanOrEqual(0)
+    expect(Number(e.credit_used)).toBe(0)
+
     // ── Decision: UNLIMITED seats on both tiers → seat_limit is null. ──
     // seat_used counts BOOKABLE members; the seed owner isn't flagged bookable
     // and has no staff, so 0 is valid — the point is it's a real count with no cap.
@@ -58,10 +66,11 @@ test.describe('Entitlements — get_org_entitlements contract', () => {
       .toBeLessThan(new Date(String(e.period_end)).getTime())
   })
 
-  test('org_can_accept_appointment is true for an active org (over-allowance is metered, never blocked)', async () => {
-    // The relaxed guard (migration 088) blocks ONLY the `expired` state now.
-    // Active/trial always accept — over-allowance accrues an overage_event
-    // instead of raising limit_reached. The seed org is active → accepts.
+  test('org_can_accept_appointment is true for an active org under its allowance', async () => {
+    // Hard-cap model (2026-07-22): an active org accepts while under its included
+    // allowance; over the allowance it accepts only while it has credit, else
+    // raises limit_reached. Expired = always blocked; trial = soft (always).
+    // The seed org is active and under cap (and holds a credit buffer) → accepts.
     const ctx = await signInSeed()
     const org = (await restApi(ctx, `organisations?slug=eq.${SEED.slug}&select=id`)) as { id: string }[]
     const canAccept = (await restApi(ctx, 'rpc/org_can_accept_appointment', {

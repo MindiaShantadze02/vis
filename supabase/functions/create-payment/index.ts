@@ -257,6 +257,137 @@ Deno.serve(async (req) => {
       return Response.json({ checkoutUrl: checkout.checkoutUrl }, { headers: corsHeaders })
     }
 
+    // -------------------------------------------------------------------
+    // Credit: business buys additional booking credit (authenticated).
+    // Hardened against an attacker charging a card via repeated requests:
+    //   * auth-gated (must be a member of the org),
+    //   * price comes from platform_config.credit_packs, never the client,
+    //   * an idempotency_key (UNIQUE per org) makes a resubmit reuse the same
+    //     purchase row instead of starting a second charge,
+    //   * a short rate window blocks rapid-fire distinct-key spam.
+    // -------------------------------------------------------------------
+    if (purpose === 'credit') {
+      const orgId = body.org_id as string
+      const packId = body.pack_id as string
+      const idempotencyKey = typeof body.idempotency_key === 'string' ? body.idempotency_key.trim() : ''
+      if (!orgId || !packId || !idempotencyKey || idempotencyKey.length > 100) {
+        return Response.json({ error: 'invalid_request' }, { status: 400, headers: corsHeaders })
+      }
+
+      // Authenticate the caller and confirm org membership.
+      const authHeader = req.headers.get('Authorization')
+      if (!authHeader) {
+        return Response.json({ error: 'unauthorized' }, { status: 401, headers: corsHeaders })
+      }
+      const authClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      )
+      const { data: { user }, error: userErr } = await authClient.auth.getUser()
+      if (userErr || !user) {
+        return Response.json({ error: 'unauthorized' }, { status: 401, headers: corsHeaders })
+      }
+      const { data: membership } = await admin
+        .from('org_members')
+        .select('role')
+        .eq('org_id', orgId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (!membership) {
+        return Response.json({ error: 'forbidden' }, { status: 403, headers: corsHeaders })
+      }
+
+      // Resolve the pack (price + credits) SERVER-SIDE. The client never sends
+      // an amount, so it can't be tampered with.
+      const { data: cfg } = await admin
+        .from('platform_config')
+        .select('credit_packs')
+        .eq('id', 1)
+        .maybeSingle()
+      const packs = (cfg?.credit_packs as Array<{ id: string; credits: number; price: number }> | null) ?? []
+      const pack = packs.find(p => p.id === packId)
+      if (!pack || !(Number(pack.price) > 0) || !(Number(pack.credits) > 0)) {
+        return Response.json({ error: 'invalid_pack' }, { status: 422, headers: corsHeaders })
+      }
+
+      // Idempotency: a repeat of the SAME key reuses the existing purchase row
+      // (no second charge). A key that already settled must not be reused.
+      const { data: existing } = await admin
+        .from('credit_purchases')
+        .select('id, status')
+        .eq('org_id', orgId)
+        .eq('idempotency_key', idempotencyKey)
+        .maybeSingle()
+      if (existing && existing.status === 'paid') {
+        return Response.json({ error: 'already_settled' }, { status: 409, headers: corsHeaders })
+      }
+
+      let purchaseId = existing?.id ?? null
+      if (!purchaseId) {
+        // New intent — rate-limit rapid-fire purchases (distinct keys) so a
+        // script can't spin up many pending charges at once.
+        const { count: recent } = await admin
+          .from('credit_purchases')
+          .select('id', { count: 'exact', head: true })
+          .eq('org_id', orgId)
+          .eq('status', 'pending')
+          .gt('created_at', new Date(Date.now() - 15_000).toISOString())
+        if ((recent ?? 0) >= 2) {
+          return Response.json({ error: 'too_many_requests' }, { status: 429, headers: corsHeaders })
+        }
+
+        const { data: created, error: insErr } = await admin
+          .from('credit_purchases')
+          .insert({
+            org_id: orgId,
+            credits: pack.credits,
+            amount: pack.price,
+            currency: 'GEL',
+            status: 'pending',
+            idempotency_key: idempotencyKey,
+          })
+          .select('id')
+          .single()
+        if (insErr || !created) {
+          // A concurrent request may have inserted the same key first — fetch it.
+          const { data: race } = await admin
+            .from('credit_purchases')
+            .select('id, status')
+            .eq('org_id', orgId)
+            .eq('idempotency_key', idempotencyKey)
+            .maybeSingle()
+          if (!race) {
+            console.error('[create-payment] credit_purchases insert:', insErr)
+            return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
+          }
+          if (race.status === 'paid') {
+            return Response.json({ error: 'already_settled' }, { status: 409, headers: corsHeaders })
+          }
+          purchaseId = race.id
+        } else {
+          purchaseId = created.id
+        }
+      }
+
+      const checkout = await startCheckout(admin, {
+        orgId,
+        purpose: 'credit',
+        amount: Number(pack.price),
+        currency: 'GEL',
+        description: `${pack.credits} booking credits`,
+        referenceId: purchaseId,
+        returnBaseUrl,
+      })
+
+      await admin
+        .from('credit_purchases')
+        .update({ payment_provider: checkout.provider, payment_reference: checkout.providerReference })
+        .eq('id', purchaseId)
+
+      return Response.json({ checkoutUrl: checkout.checkoutUrl }, { headers: corsHeaders })
+    }
+
     return Response.json({ error: 'invalid_purpose' }, { status: 400, headers: corsHeaders })
   } catch (err) {
     console.error('[create-payment] unhandled:', err)

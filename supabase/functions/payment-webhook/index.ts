@@ -259,6 +259,38 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, outcome }, { headers: corsHeaders })
     }
 
+    if (purpose === 'credit') {
+      // A booking-credit top-up. The purchase is parked pending; a cleared charge
+      // grants the credits to the org's balance. Row-status makes it idempotent
+      // (a duplicate callback finds status already 'paid' and does nothing).
+      const { data: cp } = await admin
+        .from('credit_purchases')
+        .select('id, org_id, credits, status, payment_reference, amount, currency')
+        .eq('id', id)
+        .maybeSingle()
+      if (!cp || cp.payment_reference !== ref) {
+        return Response.json({ error: 'not_found' }, { status: 404, headers: corsHeaders })
+      }
+      if (cp.status === 'pending') {
+        if (outcome === 'paid') {
+          // Real gateway must have charged the recorded pack price.
+          if (isRealProvider && !amountMatches(Number(cp.amount), cp.currency ?? 'GEL')) {
+            await admin.from('credit_purchases').update({ status: 'failed' }).eq('id', id)
+            await finalizePaymentLog(admin, ref, 'failed', 'amount_mismatch')
+            return Response.json({ error: 'amount_mismatch' }, { status: 422, headers: corsHeaders })
+          }
+          await admin.from('credit_purchases').update({ status: 'paid' }).eq('id', id)
+          // Grant the credits atomically (single-statement increment) so two
+          // purchases settling for the same org can't lose an update.
+          await admin.rpc('grant_org_credits', { p_org_id: cp.org_id, p_delta: Number(cp.credits) })
+        } else {
+          await admin.from('credit_purchases').update({ status: 'failed' }).eq('id', id)
+        }
+      }
+      await finalizePaymentLog(admin, ref, outcome === 'paid' ? 'paid' : 'failed')
+      return Response.json({ ok: true, outcome }, { headers: corsHeaders })
+    }
+
     return Response.json({ error: 'invalid_purpose' }, { status: 400, headers: corsHeaders })
   } catch (err) {
     console.error('[payment-webhook] unhandled:', err)

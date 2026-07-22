@@ -22,8 +22,9 @@ import {
  * the seeded org (guests can't self-delete; same persistence as booking.spec).
  */
 test.describe('Refunds — cancel a paid online booking', () => {
-  // The Step-3 payment selector only offers "online" when the org has a
-  // gateway enabled; flip it on for this spec and restore the resting default.
+  // Priced services always pay online now; enabling a gateway is no longer
+  // required, but we flip it on (and restore it) to keep the org's config
+  // representative of a business that collects online payments.
   test.beforeAll(async () => { await setOnlinePayments(true) })
   test.afterAll(async () => { await setOnlinePayments(false) })
 
@@ -36,8 +37,8 @@ test.describe('Refunds — cancel a paid online booking', () => {
     expect(await bookToDetails(page), 'expected an open day with a free slot this week').toBeTruthy()
     await fillStable(page.getByTestId('book-first-name'), name)
     await fillStable(page.getByTestId('book-phone'), uniquePhone())
-    // Both in-person and online are enabled, so the method selector renders.
-    await page.getByTestId('book-pay-online').click()
+    // Pay-in-person was removed: a priced service is always charged online, so
+    // there's no method selector — the Book button proceeds straight to payment.
     await page.getByTestId('book-submit').click()
     await passBookingOtp(page)
 

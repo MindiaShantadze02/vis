@@ -38,7 +38,12 @@ interface Service {
   location_type: LocationType
   deposit_type: ServiceDepositType | null
   deposit_value: number | null
+  recurring_default: boolean
+  recurring_cadence: RecurringCadence | null
+  recurring_occurrence_count: number | null
 }
+
+type RecurringCadence = 'weekly' | 'biweekly' | 'monthly'
 
 interface BookableMember {
   id: string
@@ -58,6 +63,9 @@ interface ServiceForm {
   location_type: LocationType
   deposit_type: ServiceDepositType
   deposit_value: string
+  recurring_default: boolean
+  recurring_cadence: RecurringCadence
+  recurring_occurrence_count: string
 }
 
 const EMPTY: ServiceForm = {
@@ -69,6 +77,9 @@ const EMPTY: ServiceForm = {
   location_type: 'in_person',
   deposit_type: 'none',
   deposit_value: '',
+  recurring_default: false,
+  recurring_cadence: 'weekly',
+  recurring_occurrence_count: '8',
 }
 
 // A dialog gallery item. `id` present = a persisted service_images row (edit
@@ -179,6 +190,9 @@ export default function ServicesSettings() {
       // Legacy null (pre-091 services that inherited) reads as an explicit 'none'.
       deposit_type: s.deposit_type ?? 'none',
       deposit_value: s.deposit_value != null ? String(s.deposit_value) : '',
+      recurring_default: s.recurring_default ?? false,
+      recurring_cadence: s.recurring_cadence ?? 'weekly',
+      recurring_occurrence_count: s.recurring_occurrence_count != null ? String(s.recurring_occurrence_count) : '8',
     })
     setGallery((imagesByService[s.id] ?? []).map(img => ({ key: img.id, id: img.id, url: img.url })))
     const { data } = await supabase.from('service_staff').select('member_id').eq('service_id', s.id)
@@ -286,6 +300,19 @@ export default function ServicesSettings() {
     deposit_value: depositNeedsValue ? Number(form.deposit_value) : null,
   })
 
+  // Recurrence default: when off, the config columns are cleared. When on, the
+  // occurrence count must be a whole number in [1, 52] (matches the DB CHECK and
+  // create_recurrence_series' own cap).
+  const recurringCount = Number(form.recurring_occurrence_count)
+  const recurringCountInvalid =
+    form.recurring_default &&
+    (!Number.isInteger(recurringCount) || recurringCount < 1 || recurringCount > 52)
+  const recurrencePayload = () => ({
+    recurring_default: form.recurring_default,
+    recurring_cadence: form.recurring_default ? form.recurring_cadence : null,
+    recurring_occurrence_count: form.recurring_default ? recurringCount : null,
+  })
+
   async function handleSave() {
     if (!org) return
     // Every rule flagged inline on its field rather than a disabled button;
@@ -297,7 +324,8 @@ export default function ServicesSettings() {
       durationTooLong ||
       priceInvalid ||
       maxPerSlotInvalid ||
-      depositValueInvalid
+      depositValueInvalid ||
+      recurringCountInvalid
     if (invalid) {
       focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
       return
@@ -317,6 +345,7 @@ export default function ServicesSettings() {
           max_per_slot: Number(form.max_per_slot),
           location_type: form.location_type,
           ...depositPayload(),
+          ...recurrencePayload(),
         })
         .eq('id', editing.id)
       if (err) { setError(friendlyError(err.message, t)); setSaving(false); return }
@@ -334,6 +363,7 @@ export default function ServicesSettings() {
           max_per_slot: Number(form.max_per_slot),
           location_type: form.location_type,
           ...depositPayload(),
+          ...recurrencePayload(),
           sort_order: maxOrder + 1,
         })
         .select('id')
@@ -549,6 +579,55 @@ export default function ServicesSettings() {
                   }
                   slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-deposit-value' } }}
                 />
+              )}
+            </Box>
+            {/* Recurrence default — pre-fills/enables the repeat options in the
+                owner's Add-Appointment dialog when this service is picked. */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={form.recurring_default}
+                    onChange={e => setForm(f => ({ ...f, recurring_default: e.target.checked }))}
+                    data-testid="service-recurring-default"
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.recurringByDefault')}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {t('settings.recurringByDefaultHelp')}
+                    </Typography>
+                  </Box>
+                }
+              />
+              {form.recurring_default && (
+                <Box sx={{ mt: 1.5 }}>
+                  <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    size="small"
+                    value={form.recurring_cadence}
+                    onChange={(_, v: RecurringCadence | null) => {
+                      if (v) setForm(f => ({ ...f, recurring_cadence: v }))
+                    }}
+                  >
+                    <ToggleButton value="weekly" data-testid="service-cadence-weekly">{t('recurring.weekly')}</ToggleButton>
+                    <ToggleButton value="biweekly" data-testid="service-cadence-biweekly">{t('recurring.biweekly')}</ToggleButton>
+                    <ToggleButton value="monthly" data-testid="service-cadence-monthly">{t('recurring.monthly')}</ToggleButton>
+                  </ToggleButtonGroup>
+                  <TextField
+                    value={form.recurring_occurrence_count}
+                    onChange={e => setForm(f => ({ ...f, recurring_occurrence_count: onlyInt(e.target.value) }))}
+                    fullWidth
+                    size="small"
+                    sx={{ mt: 1.5 }}
+                    label={t('recurring.occurrences')}
+                    error={recurringCountInvalid}
+                    helperText={recurringCountInvalid ? t('recurring.occurrencesHelp') : undefined}
+                    slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'service-recurring-count' } }}
+                  />
+                </Box>
               )}
             </Box>
             <TextField

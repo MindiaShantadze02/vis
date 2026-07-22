@@ -13,25 +13,32 @@ async function openDateStep(page: import('@playwright/test').Page) {
 test.describe('Public booking', () => {
   // NOTE: a successful run creates a real appointment + customer on the
   // seeded org (guests can't self-delete). See e2e/README.md.
-  test('a guest books an in-person appointment end to end and it auto-approves', async ({ page }) => {
+  test('a guest books and pays online end to end and it auto-approves', async ({ page }) => {
     expect(await bookToDetails(page), 'expected an open day with a free slot this week').toBeTruthy()
 
     // The quiet "Powered by Vis" growth-loop footer is on every booking page.
     await expect(page.getByTestId('powered-by-vis')).toBeVisible()
 
-    // Step 3 — customer details (seeded org is in-person only, so no pay selector).
+    // Step 3 — customer details. Pay-in-person was removed: a priced service
+    // (the seeded Consultation is ₾50) is always charged online, so there's no
+    // payment selector — Book proceeds straight to payment after verification.
     // Name must be letters only (isValidPersonName rejects digits).
     await fillStable(page.getByTestId('book-first-name'), 'Nino')
     await fillStable(page.getByTestId('book-phone'), '599112233')
     await expect(page.getByTestId('book-submit')).toBeEnabled()
     await page.getByTestId('book-submit').click()
 
-    // Phone verification with the master OTP
+    // Phone verification with the master OTP.
     await passBookingOtp(page)
 
-    // Confirmation page — the seed org rests with auto-approve on
-    // (require_approval = false), so an unpaid guest booking lands already
-    // confirmed, not pending. (Approval-required is the column default since 080.)
+    // OTP verified → create-payment parks the booking and redirects to the mock
+    // gateway; a successful charge drives payment-webhook, which creates the
+    // appointment (auto-approved) and the return page routes to its confirmation.
+    await expect(page).toHaveURL(/\/pay\/mock/, { timeout: 20_000 })
+    await page.getByTestId('mock-pay-success').click()
+    await expect(page).toHaveURL(/\/payment-return/, { timeout: 20_000 })
+    await page.getByTestId('payment-return-primary').click()
+
     await expect(page).toHaveURL(/\/booking-confirmation\//, { timeout: 20_000 })
     await expect(page.getByRole('heading', { name: /ჯავშანი დადასტურებულია/ })).toBeVisible()
     await expect(page.getByTestId('confirm-book-another')).toBeVisible()

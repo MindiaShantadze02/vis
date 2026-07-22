@@ -22,24 +22,26 @@ export default function PaymentReturnPage() {
   const slug = params.get('slug') ?? ''
   const paid = outcome === 'paid'
   const isSubscription = purpose === 'subscription'
+  const isCredit = purpose === 'credit'
   const isStay = purpose === 'stay'
 
-  // A successful subscription payment changed the org's tier — refresh context
-  // so the dashboard reflects it immediately.
+  // A successful subscription or credit payment changed the org's billing state
+  // — refresh context so the dashboard reflects it immediately.
   useEffect(() => {
-    if (isSubscription && paid) refresh()
+    if ((isSubscription || isCredit) && paid) refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSubscription, paid])
+  }, [isSubscription, isCredit, paid])
 
   const title = paid ? t('payment.successTitle') : t('payment.failTitle')
   const message = paid
     ? (isSubscription ? t('payment.successSubscription')
+       : isCredit ? t('payment.successCredit')
        : isStay ? t('payment.successStay')
        : t('payment.successAppointment'))
     : t('payment.failMessage')
 
   function onPrimary() {
-    if (isSubscription) {
+    if (isSubscription || isCredit) {
       navigate('/dashboard/settings/subscription', { replace: true })
     } else if (paid && id && !isStay) {
       // Successful appointment — show its confirmation page (stays don't have one).
@@ -74,7 +76,7 @@ export default function PaymentReturnPage() {
 
           <Stack spacing={1}>
             <Button fullWidth variant="contained" onClick={onPrimary} data-testid="payment-return-primary">
-              {isSubscription
+              {isSubscription || isCredit
                 ? t('payment.backToSubscription')
                 : paid && !isStay ? t('payment.viewBooking') : t('payment.backToBooking')}
             </Button>

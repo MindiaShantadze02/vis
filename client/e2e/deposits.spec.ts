@@ -37,8 +37,8 @@ test.describe('Deposits — booking', () => {
     await fillStable(page.getByTestId('book-first-name'), name)
     await fillStable(page.getByTestId('book-phone'), uniquePhone())
 
-    // Deposit required → the deposit breakdown shows and pay-in-person is NOT
-    // offered (the method toggle is hidden; only online remains).
+    // Deposit required → the deposit breakdown shows. Pay-in-person was removed
+    // entirely, so the method toggle never renders (regression guard).
     await expect(page.getByTestId('book-deposit-breakdown')).toBeVisible()
     await expect(page.getByTestId('book-deposit-amount')).toBeVisible()
     await expect(page.getByTestId('book-pay-in_person')).toHaveCount(0)
@@ -168,14 +168,16 @@ test.describe('No-show', () => {
   test('owner marks an approved appointment as no-show', async ({ page }) => {
     const name = letterName()
 
-    // Resting default: in-person + auto-approve, so this books an approved
-    // appointment without any payment step.
+    // Pay-in-person was removed: the priced Consultation is charged online, so
+    // this books an approved appointment through the mock gateway.
     expect(await bookToDetails(page), 'expected an open day with a free slot this week').toBeTruthy()
     await fillStable(page.getByTestId('book-first-name'), name)
     await fillStable(page.getByTestId('book-phone'), uniquePhone())
     await page.getByTestId('book-submit').click()
     await passBookingOtp(page)
-    await expect(page).toHaveURL(/\/booking-confirmation\//, { timeout: 20_000 })
+    await expect(page).toHaveURL(/\/pay\/mock/, { timeout: 20_000 })
+    await page.getByTestId('mock-pay-success').click()
+    await expect(page).toHaveURL(/\/payment-return/, { timeout: 20_000 })
 
     await login(page)
     await openApptByName(page, name)

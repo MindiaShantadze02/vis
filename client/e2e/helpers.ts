@@ -154,7 +154,6 @@ export async function setOnlinePayments(on: boolean): Promise<void> {
   const payment_config = {
     bog: { merchantId: '', apiKey: '', enabled: on },
     tbc: { merchantId: '', apiKey: '', enabled: false },
-    inPerson: { enabled: true },
   }
   const update = await fetch(
     `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`,
