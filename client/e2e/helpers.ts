@@ -316,23 +316,50 @@ export function letterName(): string {
 }
 
 /**
- * Book a public in-person appointment end to end, leaving a real *pending*
- * appointment on the seeded org under `firstName`. Callers identify/clean it up
- * later via openApptByName. Asserts a bookable slot exists this week.
- * NOTE: since auto-approval (075) the booking is only pending if the caller
- * turned the org's approval requirement on first — see setRequireApproval.
+ * Set the seeded org's first active service (the one bookToDetails picks) to a
+ * price, returning its previous price so the caller can restore it. Straight
+ * PostgREST as the owner — same pattern as setOnlinePayments.
+ */
+export async function setFirstServicePrice(price: number): Promise<number> {
+  const { url, anonKey, accessToken } = await signInSeed()
+  const H = { apikey: anonKey, authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }
+  const org = (await (await fetch(`${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`, { headers: H })).json()) as { id: string }[]
+  const svc = (await (await fetch(`${url}/rest/v1/services?org_id=eq.${org[0].id}&is_active=eq.true&order=sort_order&limit=1&select=id,price`, { headers: H })).json()) as { id: string; price: string }[]
+  const previous = Number(svc[0].price)
+  const upd = await fetch(`${url}/rest/v1/services?id=eq.${svc[0].id}`, {
+    method: 'PATCH', headers: H, body: JSON.stringify({ price }),
+  })
+  if (!upd.ok) throw new Error(`service price update failed: ${upd.status} ${await upd.text()}`)
+  return previous
+}
+
+/**
+ * Book a public appointment end to end, leaving a real *pending* appointment on
+ * the seeded org under `firstName`. Callers identify/clean it up later via
+ * openApptByName. Asserts a bookable slot exists this week.
+ *
+ * Pay-in-person was removed (2026-07-22): a PRICED service now settles as
+ * *approved* through the online gateway, so it can't produce a pending row. We
+ * temporarily zero the first service's price so the booking takes the no-charge
+ * path — which honors the org's require_approval (the caller turns it on via
+ * setRequireApproval) and lands a pending appointment — then restore the price.
  */
 export async function bookPending(page: Page, firstName: string): Promise<void> {
-  const found = await bookToDetails(page)
-  expect(found, 'expected an open day with a free slot this week').toBeTruthy()
-  await fillStable(page.getByTestId('book-first-name'), firstName)
-  // A unique phone per booking so back-to-back bookings don't trip the per-phone
-  // OTP resend rate limit ('too_soon'), which would hide the verification step.
-  await fillStable(page.getByTestId('book-phone'), uniquePhone())
-  await expect(page.getByTestId('book-submit')).toBeEnabled()
-  await page.getByTestId('book-submit').click()
-  await passBookingOtp(page)
-  await expect(page).toHaveURL(/\/booking-confirmation\//, { timeout: 20_000 })
+  const originalPrice = await setFirstServicePrice(0)
+  try {
+    const found = await bookToDetails(page)
+    expect(found, 'expected an open day with a free slot this week').toBeTruthy()
+    await fillStable(page.getByTestId('book-first-name'), firstName)
+    // A unique phone per booking so back-to-back bookings don't trip the per-phone
+    // OTP resend rate limit ('too_soon'), which would hide the verification step.
+    await fillStable(page.getByTestId('book-phone'), uniquePhone())
+    await expect(page.getByTestId('book-submit')).toBeEnabled()
+    await page.getByTestId('book-submit').click()
+    await passBookingOtp(page)
+    await expect(page).toHaveURL(/\/booking-confirmation\//, { timeout: 20_000 })
+  } finally {
+    await setFirstServicePrice(originalPrice)
+  }
 }
 
 /**
