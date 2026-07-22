@@ -190,11 +190,17 @@ export default function SubscriptionPage() {
                 {t('subscription.nearLimit')}
               </Typography>
             )}
-            {/* Metered overage (active orgs only; trial is a soft allowance so
-                overageCount stays 0). Display only until billing is wired. */}
-            {entitlements && entitlements.overageCount > 0 && (
-              <Typography variant="caption" data-testid="subscription-overage" sx={{ color: 'warning.main', mt: 0.5, display: 'block', fontWeight: 600 }}>
-                {t('subscription.overageSummary', { count: entitlements.overageCount, cost: entitlements.overageCost })}
+            {/* Past the plan → spending extra appointments (see the panel below).
+                Show how many remain, or an out-of-appointments prompt. */}
+            {entitlements && limit !== null && used !== null && used >= limit && (
+              <Typography
+                variant="caption"
+                data-testid="subscription-extra"
+                sx={{ color: entitlements.creditBalance > 0 ? 'warning.main' : 'error.main', mt: 0.5, display: 'block', fontWeight: 600 }}
+              >
+                {entitlements.creditBalance > 0
+                  ? t('subscription.extraLeft', { count: entitlements.creditBalance })
+                  : t('subscription.outOfAppointments')}
               </Typography>
             )}
           </Box>

@@ -67,10 +67,17 @@ GRANT SELECT ON credit_consumption TO authenticated;
 ALTER TABLE platform_config
   ADD COLUMN IF NOT EXISTS credit_packs jsonb NOT NULL DEFAULT '[]'::jsonb;
 
+-- Pricing rationale: an extra appointment's marginal cost is dominated by SMS.
+-- A completed appointment fires ~3-4 Georgian (Unicode, 70-char) SMS segments
+-- (OTP + confirmation + reminder), and Georgian bulk SMS runs ~₾0.04-0.06 per
+-- segment → ~₾0.15-0.25 SMS + payment processing per appointment. Packs are
+-- priced above the base-tier per-appointment rate (Solo ₾0.24, Team ₾0.20) so
+-- heavy users upgrade tiers rather than stockpile extras, with a mild volume
+-- discount (₾0.35 → ₾0.30 each).
 UPDATE platform_config SET credit_packs = '[
-  {"id":"pack_20",  "credits":20,  "price":6},
-  {"id":"pack_50",  "credits":50,  "price":14},
-  {"id":"pack_100", "credits":100, "price":25}
+  {"id":"pack_20",  "credits":20,  "price":7},
+  {"id":"pack_50",  "credits":50,  "price":16},
+  {"id":"pack_100", "credits":100, "price":30}
 ]'::jsonb
 WHERE id = 1;
 

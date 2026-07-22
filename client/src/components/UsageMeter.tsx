@@ -8,9 +8,10 @@ import { usagePercent, overAllowance } from '@/lib/entitlements'
  * the same server-derived allowance the booking flow meters. Reads the org's
  * entitlements from context (get_org_entitlements) — no extra round-trip.
  *
- * Bookings beyond the included allowance are no longer blocked (2026-07-17):
- * once over, the bar fills and an "N over your plan · ₾Z" line shows the metered
- * overage (display only until billing is wired). 80% turns the bar amber.
+ * Hard-cap model (2026-07-22): the included allowance is free; past it, each
+ * booking spends one purchased EXTRA APPOINTMENT (credit_balance), and with none
+ * left new bookings are blocked. The meter surfaces the extra-appointment balance
+ * always, and the over-plan / out-of-appointments state when relevant. 80% amber.
  */
 export default function UsageMeter() {
   const { t } = useTranslation()
@@ -19,7 +20,7 @@ export default function UsageMeter() {
   // Unlimited tiers (null allowance) have nothing to meter.
   if (!ent || ent.included == null) return null
 
-  const { used, included, overageCount, overageCost } = ent
+  const { used, included, creditBalance } = ent
   const pct = usagePercent(used, included)
   const over = overAllowance(used, included)
 
@@ -45,8 +46,21 @@ export default function UsageMeter() {
           }}
         />
         {over > 0 ? (
-          <Typography variant="caption" data-testid="usage-overage" sx={{ color: 'warning.main', mt: 0.5, display: 'block', fontWeight: 600 }}>
-            {t('subscription.overageSummary', { count: overageCount, cost: overageCost })}
+          // Over the plan → spending extra appointments. Show how many remain,
+          // or an out-of-appointments prompt when the balance is exhausted.
+          creditBalance > 0 ? (
+            <Typography variant="caption" data-testid="usage-extra" sx={{ color: 'warning.main', mt: 0.5, display: 'block', fontWeight: 600 }}>
+              {t('subscription.extraLeft', { count: creditBalance })}
+            </Typography>
+          ) : (
+            <Typography variant="caption" data-testid="usage-blocked" sx={{ color: 'error.main', mt: 0.5, display: 'block', fontWeight: 600 }}>
+              {t('subscription.outOfAppointments')}
+            </Typography>
+          )
+        ) : creditBalance > 0 ? (
+          // Under the plan but holding a top-up balance → keep it visible.
+          <Typography variant="caption" data-testid="usage-extra" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
+            {t('subscription.extraAvailable', { count: creditBalance })}
           </Typography>
         ) : pct >= 80 && (
           <Typography variant="caption" sx={{ color: 'warning.main', mt: 0.5, display: 'block' }}>
