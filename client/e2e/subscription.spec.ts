@@ -21,9 +21,10 @@ test.describe('Subscription', () => {
     await expect(page.getByRole('heading', { name: 'მიმდინარე გეგმა' })).toBeVisible()
     await expect(page.getByTestId('trial-chip')).toHaveCount(0)
 
-    // Usage bar against the enforced monthly cap (80 for solo).
+    // Usage bar shows "used / total", where total folds any purchased extra
+    // appointments into the monthly allowance (so the denominator is dynamic).
     await expect(page.getByText('ჯავშნები ამ თვეში')).toBeVisible()
-    await expect(page.getByText(/\/\s*80/)).toBeVisible()
+    await expect(page.getByText(/\d+\s*\/\s*\d+/).first()).toBeVisible()
 
     // Both self-serve cards, Team flagged recommended; the removed Business
     // tier must not resurface anywhere.
@@ -33,17 +34,16 @@ test.describe('Subscription', () => {
     await expect(page.getByRole('heading', { name: 'ბიზნესი' })).toHaveCount(0)
   })
 
-  test('the dashboard usage meter is driven by entitlements (allowance, not blocked)', async ({ page }) => {
-    // Exercises get_org_entitlements (migration 088) end-to-end: OrgContext
-    // fetches it, useEntitlements feeds the meter. The seed org is active/solo
-    // and under its allowance, so it shows "used / 80" with no overage line
-    // and — critically — no "bookings blocked" copy (over-allowance is metered
-    // now, never blocked).
+  test('the dashboard usage meter is driven by entitlements (total folds in extras)', async ({ page }) => {
+    // Exercises get_org_entitlements end-to-end: OrgContext fetches it,
+    // useEntitlements feeds the meter. The seed org is active/solo and under its
+    // allowance, so it shows "used / total" (total = 80 + purchased extras) and,
+    // critically, no "out of appointments" blocked copy.
     await page.goto('/dashboard')
     const meter = page.getByTestId('usage-meter')
     await expect(meter).toBeVisible()
-    await expect(meter.getByText(/\/\s*80/)).toBeVisible()
-    await expect(page.getByTestId('usage-overage')).toHaveCount(0)
+    await expect(meter.getByText(/\d+\s*\/\s*\d+/)).toBeVisible()
+    await expect(page.getByTestId('usage-blocked')).toHaveCount(0)
   })
 
   test('an active org can buy booking credits through the mock gateway and the balance grows', async ({ page }) => {

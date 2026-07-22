@@ -101,8 +101,15 @@ export default function SubscriptionPage() {
     window.location.assign(data.checkoutUrl)
   }
 
-  const pct = limit && used !== null ? Math.min((used / limit) * 100, 100) : 0
-  const nearLimit = limit && used !== null && used >= limit * 0.8
+  // Fold purchased extra appointments into the total the bar meters against, so
+  // the denominator is the real number of appointments available this period.
+  const extra = entitlements?.creditBalance ?? 0
+  const capacity = limit !== null && used !== null ? Math.max(used, limit) + extra : null
+  const pct = capacity ? Math.min(((used ?? 0) / capacity) * 100, 100) : 0
+  // Hard cap (and the "out of appointments" prompt) applies to ACTIVE orgs only:
+  // trials are a soft allowance and expired orgs renew rather than buy extras.
+  const blocked = subscription === 'active' && limit !== null && used !== null && extra === 0 && used >= limit
+  const nearLimit = capacity !== null && pct >= 80
 
   return (
     <Box>
@@ -161,21 +168,20 @@ export default function SubscriptionPage() {
               {loading
                 ? <CircularProgress size={14} />
                 : (
-                  <Typography variant="body2" sx={{ color: nearLimit ? 'error.main' : 'text.secondary' }}>
-                    {used} / {limit ?? '∞'}
+                  <Typography variant="body2" sx={{ color: blocked ? 'error.main' : nearLimit ? 'warning.main' : 'text.secondary' }}>
+                    {used} / {capacity ?? '∞'}
                   </Typography>
                 )
               }
             </Box>
-            {limit && (
+            {capacity !== null && (
               <LinearProgress
                 variant="determinate"
                 value={pct}
-                aria-label={`${used ?? 0} / ${limit}`}
+                aria-label={`${used ?? 0} / ${capacity}`}
                 sx={{
-                  // Over-allowance is metered, not blocked → amber, never red.
                   '& .MuiLinearProgress-bar': {
-                    bgcolor: pct >= 80 ? 'warning.main' : 'primary.main',
+                    bgcolor: blocked ? 'error.main' : nearLimit ? 'warning.main' : 'primary.main',
                   },
                 }}
               />
@@ -185,24 +191,20 @@ export default function SubscriptionPage() {
                 {t('subscription.renews', { date: format(new Date(periodEnd), 'd MMMM yyyy', { locale: dateLocale() }) })}
               </Typography>
             )}
-            {nearLimit && limit && used !== null && used < limit && (
+            {/* Explain the total (extras folded in) or warn as it runs low. */}
+            {blocked ? (
+              <Typography variant="caption" data-testid="subscription-extra" sx={{ color: 'error.main', mt: 0.5, display: 'block', fontWeight: 600 }}>
+                {t('subscription.outOfAppointments')}
+              </Typography>
+            ) : nearLimit ? (
               <Typography variant="caption" sx={{ color: 'warning.main', mt: 0.5, display: 'block' }}>
                 {t('subscription.nearLimit')}
               </Typography>
-            )}
-            {/* Past the plan → spending extra appointments (see the panel below).
-                Show how many remain, or an out-of-appointments prompt. */}
-            {entitlements && limit !== null && used !== null && used >= limit && (
-              <Typography
-                variant="caption"
-                data-testid="subscription-extra"
-                sx={{ color: entitlements.creditBalance > 0 ? 'warning.main' : 'error.main', mt: 0.5, display: 'block', fontWeight: 600 }}
-              >
-                {entitlements.creditBalance > 0
-                  ? t('subscription.extraLeft', { count: entitlements.creditBalance })
-                  : t('subscription.outOfAppointments')}
+            ) : extra > 0 ? (
+              <Typography variant="caption" data-testid="subscription-extra" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
+                {t('subscription.extraIncluded', { count: extra })}
               </Typography>
-            )}
+            ) : null}
           </Box>
         </CardContent>
       </Card>
@@ -222,28 +224,36 @@ export default function SubscriptionPage() {
             {t('subscription.creditsHint')}
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            {packs.map(pack => (
-              <Card key={pack.id} variant="outlined" sx={{ flex: 1 }}>
-                <CardContent sx={{ p: 2, textAlign: 'center' }}>
-                  <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                    {t('subscription.creditPackCount', { count: pack.credits })}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-                    {t('subscription.creditPackPrice', { price: pack.price })}
-                  </Typography>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    onClick={() => handleBuyCredits(pack.id)}
-                    disabled={buying !== null}
-                    data-testid={`buy-credit-${pack.id}`}
-                  >
-                    {buying === pack.id ? <CircularProgress size={16} /> : t('subscription.buyCredits')}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {packs.map(pack => {
+              // Lead with the per-appointment price — the number that lets a user
+              // compare packs and judge value; the pack total sits underneath.
+              const perUnit = (pack.price / pack.credits).toFixed(2)
+              return (
+                <Card key={pack.id} variant="outlined" sx={{ flex: 1 }}>
+                  <CardContent sx={{ p: 2, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {t('subscription.creditPackCount', { count: pack.credits })}
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 800, color: 'primary.main', mt: 0.5 }} data-testid={`credit-perunit-${pack.id}`}>
+                      {t('subscription.creditPerUnit', { price: perUnit })}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1.5 }}>
+                      {t('subscription.creditPackTotal', { price: pack.price })}
+                    </Typography>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleBuyCredits(pack.id)}
+                      disabled={buying !== null}
+                      data-testid={`buy-credit-${pack.id}`}
+                    >
+                      {buying === pack.id ? <CircularProgress size={16} /> : t('subscription.buyCredits')}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </Stack>
         </CardContent>
       </Card>
