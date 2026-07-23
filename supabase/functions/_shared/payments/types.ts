@@ -5,7 +5,7 @@
 // getPaymentProvider).
 
 // Which flow the money belongs to. Mirrors payment_log.purpose.
-export type PaymentPurpose = 'appointment' | 'subscription' | 'credit' | 'package'
+export type PaymentPurpose = 'appointment' | 'subscription' | 'credit'
 
 export interface CreateCheckoutParams {
   purpose: PaymentPurpose

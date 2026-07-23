@@ -24,7 +24,7 @@ import {
   CodeIcon as Code, GlobeIcon as Globe,
   ImageIcon as ImageGlyph, ImagesIcon as Images,
   MapPinIcon as MapPin, LifebuoyIcon as Lifebuoy,
-  FadersIcon as Faders, TicketIcon as Ticket,
+  FadersIcon as Faders,
 } from '@phosphor-icons/react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -111,7 +111,6 @@ export const DeleteOutlined = adapt(Trash)
 export const DesignServicesOutlined = adapt(Sparkle)
 export const DoNotDisturbAltOutlined = adapt(Prohibit)
 export const TuneOutlined = adapt(Faders)
-export const ConfirmationNumberOutlined = adapt(Ticket)
 export const EditOutlined = adapt(PencilSimple)
 export const ErrorOutlineOutlined = adapt(WarningCircle)
 export const ErrorOutlined = adapt(WarningCircle)

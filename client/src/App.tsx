@@ -33,7 +33,6 @@ const ProfileSettings = lazy(() => import('@/pages/dashboard/settings/ProfileSet
 const BookingPageSettings = lazy(() => import('@/pages/dashboard/settings/BookingPageSettings'))
 const AccountSettings = lazy(() => import('@/pages/dashboard/settings/AccountSettings'))
 const ServicesSettings = lazy(() => import('@/pages/dashboard/settings/ServicesSettings'))
-const PackagesSettings = lazy(() => import('@/pages/dashboard/settings/PackagesSettings'))
 const WorkingHoursSettings = lazy(() => import('@/pages/dashboard/settings/WorkingHoursSettings'))
 const TeamSettings = lazy(() => import('@/pages/dashboard/settings/TeamSettings'))
 const PaymentSettings = lazy(() => import('@/pages/dashboard/settings/PaymentSettings'))
@@ -165,7 +164,6 @@ export default function App() {
           <Route path="settings/profile" element={<ProfileSettings />} />
           <Route path="settings/booking" element={<BookingPageSettings />} />
           <Route path="settings/services" element={<ServicesSettings />} />
-          <Route path="settings/packages" element={<PackagesSettings />} />
           <Route path="settings/hours" element={<WorkingHoursSettings />} />
           <Route path="settings/team" element={<TeamSettings />} />
           <Route path="settings/payment" element={<PaymentSettings />} />

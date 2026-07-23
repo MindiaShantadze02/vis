@@ -291,37 +291,6 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, outcome }, { headers: corsHeaders })
     }
 
-    if (purpose === 'package') {
-      // A session-package sale. Parked pending; a cleared charge flips it to
-      // 'paid' (settle_customer_package also stamps expiry). Row-status makes it
-      // idempotent (a duplicate callback finds 'paid' and does nothing).
-      const { data: cp } = await admin
-        .from('customer_packages')
-        .select('id, payment_status, payment_reference, packages(price)')
-        .eq('id', id)
-        .maybeSingle()
-      if (!cp || cp.payment_reference !== ref) {
-        return Response.json({ error: 'not_found' }, { status: 404, headers: corsHeaders })
-      }
-      if (cp.payment_status === 'pending') {
-        if (outcome === 'paid') {
-          // Real gateway must have charged the recorded pack price.
-          const expected = Number((cp.packages as { price: number } | null)?.price ?? 0)
-          if (isRealProvider && !amountMatches(expected, 'GEL')) {
-            await admin.from('customer_packages').update({ payment_status: 'failed' }).eq('id', id)
-            await finalizePaymentLog(admin, ref, 'failed', 'amount_mismatch')
-            return Response.json({ error: 'amount_mismatch' }, { status: 422, headers: corsHeaders })
-          }
-          // Atomic settle (flips to paid + stamps expiry from validity_days).
-          await admin.rpc('settle_customer_package', { p_id: id })
-        } else {
-          await admin.from('customer_packages').update({ payment_status: 'failed' }).eq('id', id)
-        }
-      }
-      await finalizePaymentLog(admin, ref, outcome === 'paid' ? 'paid' : 'failed')
-      return Response.json({ ok: true, outcome }, { headers: corsHeaders })
-    }
-
     return Response.json({ error: 'invalid_purpose' }, { status: 400, headers: corsHeaders })
   } catch (err) {
     console.error('[payment-webhook] unhandled:', err)
