@@ -12,6 +12,7 @@ import {
 } from '../../src/lib/validation'
 import authLogin from '../data/auth-login.json' with { type: 'json' }
 import bookingCustomer from '../data/booking-customer.json' with { type: 'json' }
+import packages from '../data/packages.json' with { type: 'json' }
 import profile from '../data/profile.json' with { type: 'json' }
 import services from '../data/services.json' with { type: 'json' }
 import team from '../data/team.json' with { type: 'json' }
@@ -37,6 +38,7 @@ const VALIDATORS: Record<string, (...args: never[]) => unknown> = {
 const FILES: { name: string; invariants: Invariant[] }[] = [
   { name: 'auth-login.json', invariants: authLogin.invariants as Invariant[] },
   { name: 'booking-customer.json', invariants: bookingCustomer.invariants as Invariant[] },
+  { name: 'packages.json', invariants: packages.invariants as Invariant[] },
   { name: 'services.json', invariants: services.invariants as Invariant[] },
   { name: 'team.json', invariants: team.invariants as Invariant[] },
   { name: 'working-hours.json', invariants: workingHours.invariants as Invariant[] },
@@ -46,6 +48,12 @@ test.describe('Data-driven — boundary-sync guard', () => {
   test('data-file constants match the app limits', async () => {
     expect(services.meta.maxPrice).toBe(MAX_PRICE)
     expect(bookingCustomer.meta.notesMax).toBe(FIELD_LIMITS.notes)
+    // Session-package boundaries mirror the packages CHECK constraints
+    // (session_count > 0 → min 1; price >= 0 → min 0) plus the shared MAX_PRICE
+    // ceiling. If migration 20260723120000's checks change, update packages.json.
+    expect(packages.meta.maxPrice).toBe(MAX_PRICE)
+    expect(packages.meta.sessionMin).toBe(1)
+    expect(packages.meta.priceMin).toBe(0)
     // 2 MB logo ceiling (MAX_LOGO_BYTES is module-private; the behavioural
     // check below pins the exact boundary).
     expect(profile.meta.maxLogoBytes).toBe(2 * 1024 * 1024)

@@ -16,6 +16,7 @@ import { computeAvailableSlots, getDayKey, businessDayWindow, BUSINESS_UTC_OFFSE
 import type { SlotApptRow, SlotOverride, WeekTemplate } from '@/lib/slots'
 import { FormErrorAlert, useToast, SideDrawer } from '@/components/ui'
 import { surface } from '@/theme/theme'
+import { packageRemaining, hasEnoughSessions, isRedeemable, type CustomerPackage } from '@/lib/packages'
 
 interface ServiceOption {
   id: string
@@ -29,6 +30,30 @@ interface ServiceOption {
 }
 
 interface StaffOption { id: string; display_name: string | null; sort_order: number; avatar_url: string | null }
+
+// A sold package the owner can redeem sessions from (get_org_customer_packages).
+interface RedeemablePackage {
+  id: string
+  customer_id: string
+  sessions_total: number
+  sessions_used: number
+  expires_at: string | null
+  payment_status: 'pending' | 'paid' | 'failed'
+  first_name: string
+  last_name: string | null
+  phone_number: string
+  package_name: string
+  service_id: string | null
+}
+
+const toCustomerPackage = (p: RedeemablePackage): CustomerPackage => ({
+  id: p.id,
+  sessionsTotal: p.sessions_total,
+  sessionsUsed: p.sessions_used,
+  expiresAt: p.expires_at,
+  paymentStatus: p.payment_status,
+  packageServiceId: p.service_id,
+})
 
 // Appointments + override fetched for one specific date. Keyed by dateKey so a
 // stale fetch from the previous date doesn't drive slot computation.
@@ -64,6 +89,9 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
 
   const [services, setServices] = useState<ServiceOption[]>([])
   const [staff, setStaff] = useState<StaffOption[]>([])
+  // Sold packages the owner can redeem a session from (owner-side only).
+  const [packages, setPackages] = useState<RedeemablePackage[]>([])
+  const [customerPackageId, setCustomerPackageId] = useState('')
   const [template, setTemplate] = useState<WeekTemplate | null>(null)
   const [templateLoaded, setTemplateLoaded] = useState(false)
   const [dayData, setDayData] = useState<DayData | null>(null)
@@ -115,6 +143,16 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
         const info = data as { used: number; appt_limit: number | null } | null
         setAtLimit(!!info && info.appt_limit != null && info.used >= info.appt_limit)
       })
+
+    // Sold packages available to redeem against (paid only; further filtered to
+    // still-redeemable in the derived option list below).
+    supabase
+      .rpc('get_org_customer_packages', { p_org_id: orgId })
+      .then(({ data }) => setPackages(
+        Array.isArray(data)
+          ? (data as RedeemablePackage[]).filter(p => p.payment_status === 'paid')
+          : [],
+      ))
   }, [orgId])
 
   // Load the people assignable to the chosen service. The prior staff choice is
@@ -180,6 +218,29 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
 
   const selectedService = services.find(s => s.id === serviceId)
   const dateKey = date && isValid(date) ? format(date, 'yyyy-MM-dd') : null
+
+  // Package redemption. The picker lists packages that are still redeemable for
+  // the chosen service (or any service when none is chosen yet). Selecting one
+  // pins the customer + (if the package is service-scoped) the service, so the
+  // owner can't book it against the wrong person or service.
+  const selectedPackage = packages.find(p => p.id === customerPackageId) ?? null
+  const redeemableOptions = packages.filter(p => isRedeemable(toCustomerPackage(p), serviceId || undefined))
+
+  function selectPackage(id: string) {
+    setCustomerPackageId(id)
+    const p = packages.find(x => x.id === id)
+    if (!p) return
+    // Pin the attendee/customer from the package.
+    setFirstName(p.first_name)
+    setLastName(p.last_name ?? '')
+    setPhone(p.phone_number)
+    // Service-scoped package forces its service (and resets dependent choices).
+    if (p.service_id && p.service_id !== serviceId) {
+      setServiceId(p.service_id)
+      setStaffId('')
+      setTimeStr('')
+    }
+  }
 
   // Predefined start times for the chosen date/service/staff — derived, so no
   // effect writes slot state. Computed from the org's working hours; if the day
@@ -262,6 +323,19 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       focusFirstInvalidFieldAfterRender(document.querySelector('[data-testid="add-appt-dialog"]') ?? document)
       return
     }
+    // Redeeming a package into a series is count-based and pre-checked for
+    // enough sessions (mirrors create_recurrence_series' own guard — surfaced
+    // here so the owner is told before the round-trip).
+    if (customerPackageId && repeat) {
+      if (endType !== 'count') {
+        setError(t('packages.seriesNeedsCount'))
+        return
+      }
+      if (selectedPackage && !hasEnoughSessions(toCustomerPackage(selectedPackage), Number(occCount), serviceId || undefined)) {
+        setError(t('packages.notEnoughSessions', { remaining: packageRemaining(toCustomerPackage(selectedPackage)) }))
+        return
+      }
+    }
     setSaving(true)
     setError(null)
 
@@ -282,6 +356,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
           p_occurrence_count: endType === 'count' ? Number(occCount) : null,
           p_until_date: endType === 'until' && untilDate ? format(untilDate, 'yyyy-MM-dd') : null,
           p_notes: notes.trim() || null,
+          p_customer_package_id: customerPackageId || null,
         })
         if (rpcErr) throw new Error(rpcErr.message)
         const res = data as { made: number; skipped: number }
@@ -295,18 +370,25 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
 
       // Generate IDs client-side to avoid needing SELECT after INSERT (the
       // customers RLS SELECT policy can't see a brand-new customer yet).
-      const customerId = crypto.randomUUID()
       const appointmentId = crypto.randomUUID()
 
-      const { error: custErr } = await supabase
-        .from('customers')
-        .insert({
-          id: customerId,
-          first_name: firstName.trim(),
-          last_name: lastName.trim() || null,
-          phone_number: formatGeorgianPhone(phone),
-        })
-      if (custErr) throw new Error(custErr.message)
+      // Redeeming a package books for that package's existing customer (no new
+      // customer row); otherwise create the customer from the typed details.
+      let customerId: string
+      if (selectedPackage) {
+        customerId = selectedPackage.customer_id
+      } else {
+        customerId = crypto.randomUUID()
+        const { error: custErr } = await supabase
+          .from('customers')
+          .insert({
+            id: customerId,
+            first_name: firstName.trim(),
+            last_name: lastName.trim() || null,
+            phone_number: formatGeorgianPhone(phone),
+          })
+        if (custErr) throw new Error(custErr.message)
+      }
 
       const { error: apptErr } = await supabase
         .from('appointments')
@@ -323,6 +405,8 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
           payment_method: 'in_person',
           payment_status: 'unpaid',
           notes: notes.trim() || null,
+          // Redeem a session when a package is selected (trigger consumes it).
+          customer_package_id: customerPackageId || null,
         })
       if (apptErr) throw new Error(apptErr.message)
 
@@ -336,6 +420,12 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       if (msg.includes('limit_reached')) {
         setAtLimit(true)
         setError(null)
+      } else if (msg.includes('package_exhausted') || msg.includes('package_insufficient_sessions')) {
+        setError(t('packages.errExhausted'))
+      } else if (msg.includes('package_expired')) {
+        setError(t('packages.errExpired'))
+      } else if (msg.includes('package_service_mismatch')) {
+        setError(t('packages.errServiceMismatch'))
       } else {
         setError(msg || t('validation.saveFailed'))
       }
@@ -383,7 +473,36 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
         <FormErrorAlert message={error} data-testid="add-appt-error" />
 
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <FormControl fullWidth required size="small" error={serviceMissing}>
+          {/* Redeem a session from a sold package. Selecting one pins the
+              customer (and, if the package is service-scoped, the service). */}
+          {redeemableOptions.length > 0 && (
+            <FormControl fullWidth size="small">
+              <InputLabel>{t('packages.redeemLabel')}</InputLabel>
+              <Select
+                value={customerPackageId}
+                label={t('packages.redeemLabel')}
+                data-testid="add-appt-package"
+                onChange={e => selectPackage(e.target.value)}
+              >
+                <MenuItem value=""><em>{t('packages.redeemNone')}</em></MenuItem>
+                {redeemableOptions.map(p => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.first_name} {p.last_name ?? ''} — {t('packages.remainingShort', { remaining: packageRemaining(toCustomerPackage(p)) })} · {p.package_name}
+                  </MenuItem>
+                ))}
+              </Select>
+              {selectedPackage && (
+                <FormHelperText data-testid="add-appt-package-remaining">
+                  {t('packages.remainingOf', {
+                    remaining: packageRemaining(toCustomerPackage(selectedPackage)),
+                    total: selectedPackage.sessions_total,
+                  })}
+                </FormHelperText>
+              )}
+            </FormControl>
+          )}
+
+          <FormControl fullWidth required size="small" error={serviceMissing} disabled={!!selectedPackage?.service_id}>
             <InputLabel>{t('calendar.service')}</InputLabel>
             <Select
               value={serviceId}
@@ -427,6 +546,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               fullWidth required size="small"
+              disabled={!!selectedPackage}
               error={firstNameTooShort || firstNameInvalid}
               helperText={
                 firstNameTooShort ? t('validation.minLength', { min: 2 })
@@ -440,6 +560,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               value={lastName}
               onChange={e => setLastName(e.target.value)}
               fullWidth size="small"
+              disabled={!!selectedPackage}
               error={lastNameInvalid}
               helperText={lastNameInvalid ? t('validation.lettersOnly') : undefined}
               slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName } }}
@@ -452,6 +573,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
             onChange={e => setPhone(e.target.value)}
             fullWidth required size="small"
             placeholder="599 123 456"
+            disabled={!!selectedPackage}
             error={phoneInvalid}
             helperText={phoneInvalid ? t('validation.invalidPhone') : ' '}
             slotProps={{ htmlInput: { inputMode: 'tel' as const, 'data-testid': 'add-appt-phone' } }}

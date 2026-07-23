@@ -54,6 +54,7 @@ const SETTINGS_GROUPS = [
     items: [
       { labelKey: 'settings.business',     path: '/dashboard/settings/profile' },
       { labelKey: 'settings.services',     path: '/dashboard/settings/services' },
+      { labelKey: 'settings.packages',     path: '/dashboard/settings/packages' },
       { labelKey: 'settings.workingHours', path: '/dashboard/settings/hours' },
       { labelKey: 'settings.team',         path: '/dashboard/settings/team' },
     ],
