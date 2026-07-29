@@ -5,13 +5,18 @@ import { EventNoteOutlined as EventNoteOutlinedIcon } from '@/components/icons'
 import { PersonAddAltOutlined as PersonAddAltOutlinedIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, StatCard } from '@/components/ui'
-import { TIERS, tierColor } from '@/lib/tiers'
+
+const BILLING_STATUSES: { key: string; label: string; color: 'success' | 'warning' | 'error' }[] = [
+  { key: 'active', label: 'აქტიური', color: 'success' },
+  { key: 'past_due', label: 'ვადაგადაცილებული', color: 'warning' },
+  { key: 'suspended', label: 'შეჩერებული', color: 'error' },
+]
 
 interface Stats {
   total_orgs: number
   total_appointments: number
   signups_last_30d: number
-  orgs_by_tier: Record<string, number>
+  orgs_by_billing_status: Record<string, number>
 }
 
 export default function PlatformOverviewPage() {
@@ -60,29 +65,25 @@ export default function PlatformOverviewPage() {
         </Grid>
       </Grid>
 
-      {/* Orgs by tier */}
+      {/* Orgs by billing status */}
       <Card>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-            ორგანიზაციები გეგმის მიხედვით
+            ორგანიზაციები სტატუსის მიხედვით
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-            {TIERS.map(tier => (
+            {BILLING_STATUSES.map(s => (
               <Box
-                key={tier.key}
+                key={s.key}
                 sx={{
                   display: 'flex', alignItems: 'center', gap: 1.5,
                   px: 2, py: 1.5, borderRadius: 2,
                   border: '1px solid', borderColor: 'divider', minWidth: 140,
                 }}
               >
-                <Chip
-                  label={tier.label}
-                  size="small"
-                  sx={{ bgcolor: tierColor(theme, tier.colorKey), color: 'white', fontWeight: 700 }}
-                />
+                <Chip label={s.label} size="small" color={s.color} sx={{ fontWeight: 700 }} />
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  {stats?.orgs_by_tier?.[tier.key] ?? 0}
+                  {stats?.orgs_by_billing_status?.[s.key] ?? 0}
                 </Typography>
               </Box>
             ))}

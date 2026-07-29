@@ -2,24 +2,23 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { startCheckout } from '../_shared/payments/index.ts'
 import { resolveDeposit, computeDeposit, depositKind } from '../_shared/deposit.ts'
 
-// Starts a payment checkout for one of two flows and returns a checkoutUrl the
-// browser is redirected to. The active provider (mock for now) is resolved
-// inside startCheckout; the gateway later calls payment-webhook to settle.
+// Starts a payment checkout and returns a checkoutUrl the browser is redirected
+// to. The active provider (mock for now) is resolved inside startCheckout; the
+// gateway later calls payment-webhook to settle.
 //
-//   * appointment  — public/guest call. Pays the business for an online booking
-//                    that was just inserted as pending/unpaid.
-//   * subscription — authenticated org admin call. Upgrades the org's tier.
+//   * appointment — public/guest call. Pays the business for an online booking
+//                   that was just inserted as pending/unpaid.
 //
-// Amounts are ALWAYS recomputed server-side (services.price / tier_prices) — a
-// client-sent amount is never trusted. verify_jwt = false so guests can reach
-// the appointment flow; the subscription flow re-checks the caller's JWT here.
+// (Post-paid usage billing charges the business monthly via a separate 'usage'
+// purpose added in T1.3; the old tier/credit purchases are gone.)
+//
+// Amounts are ALWAYS recomputed server-side (services.price) — a client-sent
+// amount is never trusted. verify_jwt = false so guests can reach the flow.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-
-const VALID_TIERS = ['solo', 'team']
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -63,7 +62,7 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'invalid_phone' }, { status: 400, headers: corsHeaders })
       }
 
-      // Org must still be within its plan limit.
+      // Org must not be billing-suspended.
       const { data: canAccept } = await admin.rpc('org_can_accept_appointment', { p_org_id: org_id })
       if (canAccept === null) {
         return Response.json({ error: 'org_not_found' }, { status: 404, headers: corsHeaders })
@@ -164,226 +163,6 @@ Deno.serve(async (req) => {
         .from('pending_bookings')
         .update({ payment_provider: checkout.provider, payment_reference: checkout.providerReference })
         .eq('id', intent.id)
-
-      return Response.json({ checkoutUrl: checkout.checkoutUrl }, { headers: corsHeaders })
-    }
-
-    // -------------------------------------------------------------------
-    // Subscription: business upgrades its vis tier (authenticated).
-    // -------------------------------------------------------------------
-    if (purpose === 'subscription') {
-      const orgId = body.org_id as string
-      const tier = body.tier as string
-      if (!orgId || !VALID_TIERS.includes(tier)) {
-        return Response.json({ error: 'invalid_request' }, { status: 400, headers: corsHeaders })
-      }
-
-      // Authenticate the caller and confirm they belong to the org.
-      const authHeader = req.headers.get('Authorization')
-      if (!authHeader) {
-        return Response.json({ error: 'unauthorized' }, { status: 401, headers: corsHeaders })
-      }
-      const authClient = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_ANON_KEY')!,
-        { global: { headers: { Authorization: authHeader } } },
-      )
-      const { data: { user }, error: userErr } = await authClient.auth.getUser()
-      if (userErr || !user) {
-        return Response.json({ error: 'unauthorized' }, { status: 401, headers: corsHeaders })
-      }
-      const { data: membership } = await admin
-        .from('org_members')
-        .select('role')
-        .eq('org_id', orgId)
-        .eq('user_id', user.id)
-        .maybeSingle()
-      if (!membership) {
-        return Response.json({ error: 'forbidden' }, { status: 403, headers: corsHeaders })
-      }
-
-      // Price comes from platform_config, never the client.
-      const { data: cfg } = await admin
-        .from('platform_config')
-        .select('tier_prices')
-        .eq('id', 1)
-        .maybeSingle()
-      const amount = Number((cfg?.tier_prices as Record<string, number> | null)?.[tier] ?? 0)
-      if (!(amount > 0)) {
-        return Response.json({ error: 'invalid_amount' }, { status: 422, headers: corsHeaders })
-      }
-
-      // One monthly billing period from today.
-      const start = new Date()
-      const end = new Date(start)
-      end.setMonth(end.getMonth() + 1)
-      const periodStart = start.toISOString().slice(0, 10)
-      const periodEnd = end.toISOString().slice(0, 10)
-
-      const { data: subPay, error: subErr } = await admin
-        .from('subscription_payments')
-        .insert({
-          org_id: orgId,
-          tier,
-          amount,
-          currency: 'GEL',
-          status: 'pending',
-          period_start: periodStart,
-          period_end: periodEnd,
-        })
-        .select('id')
-        .single()
-      if (subErr || !subPay) {
-        console.error('[create-payment] subscription_payments insert:', subErr)
-        return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
-      }
-
-      const checkout = await startCheckout(admin, {
-        orgId,
-        purpose: 'subscription',
-        subscriptionPaymentId: subPay.id,
-        amount,
-        currency: 'GEL',
-        description: `vis ${tier}`,
-        referenceId: subPay.id,
-        returnBaseUrl,
-      })
-
-      await admin
-        .from('subscription_payments')
-        .update({ payment_provider: checkout.provider, payment_reference: checkout.providerReference })
-        .eq('id', subPay.id)
-
-      return Response.json({ checkoutUrl: checkout.checkoutUrl }, { headers: corsHeaders })
-    }
-
-    // -------------------------------------------------------------------
-    // Credit: business buys additional booking credit (authenticated).
-    // Hardened against an attacker charging a card via repeated requests:
-    //   * auth-gated (must be a member of the org),
-    //   * price comes from platform_config.credit_packs, never the client,
-    //   * an idempotency_key (UNIQUE per org) makes a resubmit reuse the same
-    //     purchase row instead of starting a second charge,
-    //   * a short rate window blocks rapid-fire distinct-key spam.
-    // -------------------------------------------------------------------
-    if (purpose === 'credit') {
-      const orgId = body.org_id as string
-      const packId = body.pack_id as string
-      const idempotencyKey = typeof body.idempotency_key === 'string' ? body.idempotency_key.trim() : ''
-      if (!orgId || !packId || !idempotencyKey || idempotencyKey.length > 100) {
-        return Response.json({ error: 'invalid_request' }, { status: 400, headers: corsHeaders })
-      }
-
-      // Authenticate the caller and confirm org membership.
-      const authHeader = req.headers.get('Authorization')
-      if (!authHeader) {
-        return Response.json({ error: 'unauthorized' }, { status: 401, headers: corsHeaders })
-      }
-      const authClient = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_ANON_KEY')!,
-        { global: { headers: { Authorization: authHeader } } },
-      )
-      const { data: { user }, error: userErr } = await authClient.auth.getUser()
-      if (userErr || !user) {
-        return Response.json({ error: 'unauthorized' }, { status: 401, headers: corsHeaders })
-      }
-      const { data: membership } = await admin
-        .from('org_members')
-        .select('role')
-        .eq('org_id', orgId)
-        .eq('user_id', user.id)
-        .maybeSingle()
-      if (!membership) {
-        return Response.json({ error: 'forbidden' }, { status: 403, headers: corsHeaders })
-      }
-
-      // Resolve the pack (price + credits) SERVER-SIDE. The client never sends
-      // an amount, so it can't be tampered with.
-      const { data: cfg } = await admin
-        .from('platform_config')
-        .select('credit_packs')
-        .eq('id', 1)
-        .maybeSingle()
-      const packs = (cfg?.credit_packs as Array<{ id: string; credits: number; price: number }> | null) ?? []
-      const pack = packs.find(p => p.id === packId)
-      if (!pack || !(Number(pack.price) > 0) || !(Number(pack.credits) > 0)) {
-        return Response.json({ error: 'invalid_pack' }, { status: 422, headers: corsHeaders })
-      }
-
-      // Idempotency: a repeat of the SAME key reuses the existing purchase row
-      // (no second charge). A key that already settled must not be reused.
-      const { data: existing } = await admin
-        .from('credit_purchases')
-        .select('id, status')
-        .eq('org_id', orgId)
-        .eq('idempotency_key', idempotencyKey)
-        .maybeSingle()
-      if (existing && existing.status === 'paid') {
-        return Response.json({ error: 'already_settled' }, { status: 409, headers: corsHeaders })
-      }
-
-      let purchaseId = existing?.id ?? null
-      if (!purchaseId) {
-        // New intent — rate-limit rapid-fire purchases (distinct keys) so a
-        // script can't spin up many pending charges at once.
-        const { count: recent } = await admin
-          .from('credit_purchases')
-          .select('id', { count: 'exact', head: true })
-          .eq('org_id', orgId)
-          .eq('status', 'pending')
-          .gt('created_at', new Date(Date.now() - 15_000).toISOString())
-        if ((recent ?? 0) >= 2) {
-          return Response.json({ error: 'too_many_requests' }, { status: 429, headers: corsHeaders })
-        }
-
-        const { data: created, error: insErr } = await admin
-          .from('credit_purchases')
-          .insert({
-            org_id: orgId,
-            credits: pack.credits,
-            amount: pack.price,
-            currency: 'GEL',
-            status: 'pending',
-            idempotency_key: idempotencyKey,
-          })
-          .select('id')
-          .single()
-        if (insErr || !created) {
-          // A concurrent request may have inserted the same key first — fetch it.
-          const { data: race } = await admin
-            .from('credit_purchases')
-            .select('id, status')
-            .eq('org_id', orgId)
-            .eq('idempotency_key', idempotencyKey)
-            .maybeSingle()
-          if (!race) {
-            console.error('[create-payment] credit_purchases insert:', insErr)
-            return Response.json({ error: 'server_error' }, { status: 500, headers: corsHeaders })
-          }
-          if (race.status === 'paid') {
-            return Response.json({ error: 'already_settled' }, { status: 409, headers: corsHeaders })
-          }
-          purchaseId = race.id
-        } else {
-          purchaseId = created.id
-        }
-      }
-
-      const checkout = await startCheckout(admin, {
-        orgId,
-        purpose: 'credit',
-        amount: Number(pack.price),
-        currency: 'GEL',
-        description: `${pack.credits} booking credits`,
-        referenceId: purchaseId,
-        returnBaseUrl,
-      })
-
-      await admin
-        .from('credit_purchases')
-        .update({ payment_provider: checkout.provider, payment_reference: checkout.providerReference })
-        .eq('id', purchaseId)
 
       return Response.json({ checkoutUrl: checkout.checkoutUrl }, { headers: corsHeaders })
     }

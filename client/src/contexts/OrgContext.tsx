@@ -2,8 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { subscriptionState, type SubscriptionState, type Tier } from '@/lib/tiers'
-import { parseEntitlements, type Entitlements } from '@/lib/entitlements'
+import { parseBillingStatus, type BillingStatus, type BillingState } from '@/lib/billing'
 
 export interface Organisation {
   id: string
@@ -16,10 +15,9 @@ export interface Organisation {
   business_id_number: string | null
   address: string | null
   logo_url: string | null
-  subscription_tier: Tier
-  subscription_expires_at: string | null
-  trial_ends_at: string
-  trial_expiry_ack_at: string | null
+  // Post-paid billing state (active / past_due / suspended). Suspended blocks
+  // new bookings; data and the booking page stay alive.
+  billing_status: BillingState
   link_share_done_at: string | null
   checklist_dismissed_at: string | null
   booking_theme: string | null
@@ -36,51 +34,47 @@ export interface Organisation {
 interface OrgContextValue {
   org: Organisation | null
   role: 'owner' | 'admin' | null
-  /** trial | active | expired, derived the same way as the DB's org_subscription_state. */
-  subscription: SubscriptionState | null
   /**
-   * Tier entitlements from get_org_entitlements (allowance, overage, seats,
-   * feature map). Null until loaded / when signed out. Feature gates should
-   * read this via useEntitlement; usage widgets read the allowance fields.
+   * Post-paid billing snapshot from get_org_billing_status (running bill,
+   * rolled-forward balance, card on file). Null until loaded / when signed out.
    */
-  entitlements: Entitlements | null
+  billing: BillingStatus | null
   loading: boolean
   refresh: () => Promise<void>
-  /** Re-fetch just the entitlements (e.g. after a booking changes usage). */
-  refreshEntitlements: () => Promise<void>
+  /** Re-fetch just the billing snapshot (e.g. after a booking changes the count). */
+  refreshBilling: () => Promise<void>
 }
 
 const OrgContext = createContext<OrgContextValue>({
   org: null,
   role: null,
-  subscription: null,
-  entitlements: null,
+  billing: null,
   loading: true,
   refresh: async () => {},
-  refreshEntitlements: async () => {},
+  refreshBilling: async () => {},
 })
 
 export function OrgProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth()
   const [org, setOrg] = useState<Organisation | null>(null)
   const [role, setRole] = useState<'owner' | 'admin' | null>(null)
-  const [entitlements, setEntitlements] = useState<Entitlements | null>(null)
+  const [billing, setBilling] = useState<BillingStatus | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Fetch the org's entitlements (allowance/overage/seats/features) in one
-  // round-trip. Best-effort: a failure just leaves gates/usage widgets to
-  // no-op rather than blocking the dashboard.
-  async function loadEntitlements(orgId: string) {
-    const { data, error } = await supabase.rpc('get_org_entitlements', { p_org_id: orgId })
-    if (error) { console.error('[OrgContext] get_org_entitlements failed:', error); return }
-    setEntitlements(parseEntitlements(data))
+  // Fetch the org's post-paid billing snapshot in one round-trip. Best-effort:
+  // a failure just leaves the running-bill widget to no-op rather than blocking
+  // the dashboard.
+  async function loadBilling(orgId: string) {
+    const { data, error } = await supabase.rpc('get_org_billing_status', { p_org_id: orgId })
+    if (error) { console.error('[OrgContext] get_org_billing_status failed:', error); return }
+    setBilling(parseBillingStatus(data))
   }
 
   async function loadOrg() {
     if (!user) {
       setOrg(null)
       setRole(null)
-      setEntitlements(null)
+      setBilling(null)
       setLoading(false)
       return
     }
@@ -103,32 +97,27 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         const loaded = data.organisations as unknown as Organisation
         setOrg(loaded)
         setRole(data.role as 'owner' | 'admin')
-        void loadEntitlements(loaded.id)
+        void loadBilling(loaded.id)
       } else {
         setOrg(null)
         setRole(null)
-        setEntitlements(null)
+        setBilling(null)
       }
     } finally {
       setLoading(false)
     }
   }
 
-  async function refreshEntitlements() {
-    if (org) await loadEntitlements(org.id)
+  async function refreshBilling() {
+    if (org) await loadBilling(org.id)
   }
 
   useEffect(() => {
     if (!authLoading) loadOrg()
   }, [user, authLoading])
 
-  // Derived once here so banners / gates all agree on the state.
-  const subscription = org
-    ? subscriptionState(org.trial_ends_at, org.subscription_expires_at)
-    : null
-
   return (
-    <OrgContext.Provider value={{ org, role, subscription, entitlements, loading, refresh: loadOrg, refreshEntitlements }}>
+    <OrgContext.Provider value={{ org, role, billing, loading, refresh: loadOrg, refreshBilling }}>
       {children}
     </OrgContext.Provider>
   )

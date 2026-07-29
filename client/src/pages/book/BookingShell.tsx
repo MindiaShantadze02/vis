@@ -254,7 +254,7 @@ export default function BookingShell({
         >
           <Typography
             component="a"
-            href="https://vis.ge"
+            href="https://vis.ge/?ref=badge"
             target="_blank"
             rel="noopener"
             variant="caption"

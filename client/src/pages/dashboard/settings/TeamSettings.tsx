@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { tierInfo } from '@/lib/tiers'
 import {
   Box, Typography, Card, Button, TextField, Avatar,
   Stack, Divider, Alert, CircularProgress, Chip,
@@ -98,7 +96,6 @@ export default function TeamSettings() {
   const { org, role } = useOrg()
   const { user } = useAuth()
   const toast = useToast()
-  const navigate = useNavigate()
 
   const [members, setMembers] = useState<Member[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
@@ -135,14 +132,10 @@ export default function TeamSettings() {
   const teamMembers = members.filter(m => m.role !== 'staff')
   const professionals = members.filter(m => m.role === 'staff')
 
-  // The DB trigger (enforce_staff_limit) rejects making one more member
-  // bookable than the tier allows — turn that into an upgrade prompt instead
-  // of a raw Postgres error.
-  const staffLimitHit = error === t('settings.staffLimitReached', { limit: tierInfo(org?.subscription_tier).staffLimit })
+  // Seats are unlimited under post-paid billing (no tiers). Kept as a plain
+  // pass-through so any raw DB error still surfaces.
   function memberErrorMessage(raw: string): string {
-    return raw.includes('staff_limit_reached')
-      ? t('settings.staffLimitReached', { limit: tierInfo(org?.subscription_tier).staffLimit })
-      : raw
+    return raw
   }
 
   const MEMBER_COLS = 'id, user_id, role, joined_at, display_name, title, is_bookable, sort_order, avatar_url'
@@ -366,11 +359,6 @@ export default function TeamSettings() {
           severity="error"
           sx={{ mb: 2 }}
           data-testid="team-error"
-          action={staffLimitHit ? (
-            <Button color="inherit" size="small" sx={{ fontWeight: 700 }} onClick={() => navigate('/dashboard/settings/subscription')}>
-              {t('subscription.upgrade')}
-            </Button>
-          ) : undefined}
         >
           {error}
         </Alert>

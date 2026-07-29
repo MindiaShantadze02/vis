@@ -272,7 +272,9 @@
     "failMessage": "No charge was made. You can try again.",
     "viewBooking": "View booking",
     "backToBooking": "Back",
-    "backToSubscription": "Back to subscription"
+    "backToSubscription": "Back to subscription",
+    "successUsage": "Your monthly payment was received. Thank you!",
+    "backToBilling": "Back to billing"
   },
   "dashboard": {
     "overview": "Overview",
@@ -495,7 +497,8 @@
     "cancellationWindowInvalid": "Enter a whole number of hours (0 or more).",
     "depositRefundable": "Refund deposit on cancel",
     "depositRefundableHelp": "When off, deposits are never returned on cancellation.",
-    "depositExceedsPrice": "Deposit can't exceed the price"
+    "depositExceedsPrice": "Deposit can't exceed the price",
+    "billing": "Billing"
   },
   "days": {
     "monday": "Monday",
@@ -681,14 +684,16 @@
       }
     },
     "pricingTitle": "Simple, honest pricing",
-    "pricingNote": "Start with a 30-day free trial — no card required.",
+    "pricingNote": "Free to start — no card required. Pay only for the appointments you receive.",
     "devTitle": "Build on the Vis API",
     "devDesc": "Integrate booking into your own website or app with our REST API and per-business keys.",
     "devCta": "Get an API key",
     "apiDocs": "API docs",
     "widgetDocs": "Widget docs",
     "footerRights": "All rights reserved.",
-    "overageNote": "then ₾{{price}} per extra booking"
+    "overageNote": "then ₾{{price}} per extra booking",
+    "freeToStart": "Free to start",
+    "perAppointment": "Pay only ₾1 per appointment — billed once a month, only for the appointments you receive. No appointments, no charge."
   },
   "manage": {
     "otpRequestFailed": "Couldn't send the code. Please try again.",
@@ -791,5 +796,45 @@
     "friday": "Fri",
     "saturday": "Sat",
     "sunday": "Sun"
+  },
+  "billing": {
+    "intro": "You're charged once a month for the appointments you received — nothing more. No appointments in a month, no charge.",
+    "thisMonthSoFar": "This month so far",
+    "apptsAndAmount_one": "{{count}} appointment · ₾{{amount}}",
+    "apptsAndAmount_other": "{{count}} appointments · ₾{{amount}}",
+    "rolledForward": "Carried over from last month: ₾{{amount}}",
+    "pastDue": "Payment past due",
+    "suspended": "Bookings paused — settle the balance to resume",
+    "cardOnFile": "Card on file",
+    "card": "Card",
+    "noCard": "No card on file yet",
+    "goToBilling": "Go to Billing",
+    "suspendedBlocked": "Bookings are paused — settle the outstanding balance to resume taking bookings.",
+    "addCard": "Add card",
+    "replaceCard": "Replace card",
+    "saveCard": "Save card",
+    "cardSaved": "Card saved",
+    "cardSaveFailed": "Could not save the card. Please try again.",
+    "cardNumber": "Card number",
+    "cardNumberInvalid": "Enter a valid card number",
+    "cardExpiry": "Expiry",
+    "cardExpiryInvalid": "Enter a valid future expiry (MM/YY)",
+    "cardDisclaimer": "Adding a card does not charge you now. You are charged once a month only for the appointments you received, at ₾{{price}} per appointment. Months with no appointments are never charged. Watch your running total above.",
+    "cardExpired": "Your card has expired — add a new one to keep taking bookings.",
+    "cardExpiringSoon": "Your card expires soon — add a new one to avoid interruption.",
+    "seriesCostWarning_one": "This creates {{count}} appointment — about ₾{{amount}}, billed monthly as it occurs.",
+    "seriesCostWarning_other": "This creates {{count}} appointments — about ₾{{amount}} total, billed monthly as they occur.",
+    "invoices": "Past invoices",
+    "invoiceAppts_one": "{{count}} appointment",
+    "invoiceAppts_other": "{{count}} appointments",
+    "status_pending": "Pending",
+    "status_charged": "Charged",
+    "status_failed": "Failed",
+    "status_waived": "No charge",
+    "payNow": "Pay now",
+    "paid": "Payment received — thank you!",
+    "payFailed": "Payment could not be completed. Please try again.",
+    "pastDueBanner": "A payment is past due. Pay now to avoid your booking page being paused.",
+    "suspendedBanner": "Bookings are paused for an unpaid balance. Pay now to resume taking bookings."
   }
 }

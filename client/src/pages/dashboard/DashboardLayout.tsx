@@ -31,7 +31,6 @@ import { useOrg } from '@/contexts/OrgContext'
 import { useSuperadmin } from '@/hooks/useSuperadmin'
 import { useNotifications } from '@/hooks/useNotifications'
 import { LanguageSwitcher, AnimatedOutlet, LoadingState } from '@/components/ui'
-import SubscriptionBanner from '@/components/SubscriptionBanner'
 import { dateLocale } from '@/lib/dateLocale'
 import { anim } from '@/theme/animations'
 import { gradient, tint } from '@/theme/theme'
@@ -69,7 +68,7 @@ const SETTINGS_GROUPS = [
     headerKey: 'settings.groupBilling',
     items: [
       { labelKey: 'settings.payment',      path: '/dashboard/settings/payment' },
-      { labelKey: 'settings.subscription', path: '/dashboard/settings/subscription' },
+      { labelKey: 'settings.billing', path: '/dashboard/settings/billing' },
     ],
   },
   {
@@ -418,7 +417,6 @@ export default function DashboardLayout() {
             instead of the top-level full-screen fallback that blanked the whole
             dashboard on a page's first visit. */}
         <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 } }}>
-          <SubscriptionBanner />
           <Suspense fallback={<LoadingState />}>
             <AnimatedOutlet context={{ refreshSignal } satisfies DashboardOutletContext} />
           </Suspense>

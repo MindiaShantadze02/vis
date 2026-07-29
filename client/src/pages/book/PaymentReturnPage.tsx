@@ -21,30 +21,26 @@ export default function PaymentReturnPage() {
   const outcome = params.get('outcome') ?? ''
   const slug = params.get('slug') ?? ''
   const paid = outcome === 'paid'
-  const isSubscription = purpose === 'subscription'
-  const isCredit = purpose === 'credit'
-  const isStay = purpose === 'stay'
+  // 'usage' = the business's monthly post-paid charge (settled by the webhook).
+  const isUsage = purpose === 'usage'
 
-  // A successful subscription or credit payment changed the org's billing state
-  // — refresh context so the dashboard reflects it immediately.
+  // A settled usage charge changed the org's billing state — refresh context so
+  // the dashboard reflects it immediately.
   useEffect(() => {
-    if ((isSubscription || isCredit) && paid) refresh()
+    if (isUsage && paid) refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSubscription, isCredit, paid])
+  }, [isUsage, paid])
 
   const title = paid ? t('payment.successTitle') : t('payment.failTitle')
   const message = paid
-    ? (isSubscription ? t('payment.successSubscription')
-       : isCredit ? t('payment.successCredit')
-       : isStay ? t('payment.successStay')
-       : t('payment.successAppointment'))
+    ? (isUsage ? t('payment.successUsage') : t('payment.successAppointment'))
     : t('payment.failMessage')
 
   function onPrimary() {
-    if (isSubscription || isCredit) {
-      navigate('/dashboard/settings/subscription', { replace: true })
-    } else if (paid && id && !isStay) {
-      // Successful appointment — show its confirmation page (stays don't have one).
+    if (isUsage) {
+      navigate('/dashboard/settings/billing', { replace: true })
+    } else if (paid && id) {
+      // Successful appointment — show its confirmation page.
       navigate(`/booking-confirmation/${id}`, { replace: true })
     } else if (slug) {
       // Failed/abandoned online payment created no booking — back to booking.
@@ -76,9 +72,9 @@ export default function PaymentReturnPage() {
 
           <Stack spacing={1}>
             <Button fullWidth variant="contained" onClick={onPrimary} data-testid="payment-return-primary">
-              {isSubscription || isCredit
-                ? t('payment.backToSubscription')
-                : paid && !isStay ? t('payment.viewBooking') : t('payment.backToBooking')}
+              {isUsage
+                ? t('payment.backToBilling')
+                : paid ? t('payment.viewBooking') : t('payment.backToBooking')}
             </Button>
           </Stack>
         </CardContent>

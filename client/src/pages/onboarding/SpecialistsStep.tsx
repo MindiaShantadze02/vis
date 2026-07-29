@@ -10,7 +10,6 @@ import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
 import { PersonAddOutlined as PersonAddOutlinedIcon } from '@/components/icons'
 import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
-import { tierInfo } from '@/lib/tiers'
 import { imageFileError, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { ActionIconButton, EmptyState, useToast } from '@/components/ui'
@@ -79,13 +78,8 @@ export default function SpecialistsStep() {
   // name inline. Reset with the draft.
   const [submitted, setSubmitted] = useState(false)
 
-  // A new org is on the Solo-level trial, so the enforce_staff_limit trigger
-  // allows that tier's bookable count. Gate the toggle here instead of failing
-  // the whole finish insert later.
-  const staffLimit = tierInfo('solo').staffLimit
-  const bookableCount = data.specialists.filter(s => s.is_bookable).length
-  const bookableLimitHit = staffLimit !== null && bookableCount >= staffLimit
-  const effectiveBookable = bookable && !bookableLimitHit
+  // Seats are unlimited under post-paid billing (no tiers) — nothing to gate.
+  const effectiveBookable = bookable
 
   function pickPhoto(file: File) {
     const fileErr = imageFileError(file)
@@ -237,20 +231,10 @@ export default function SpecialistsStep() {
                   <Switch
                     checked={effectiveBookable}
                     onChange={e => setBookable(e.target.checked)}
-                    disabled={bookableLimitHit}
                     data-testid="onb-specialist-bookable"
                   />
                 )}
-                label={(
-                  <Box>
-                    <Typography variant="body2">{t('settings.bookable')}</Typography>
-                    {bookableLimitHit && (
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {t('settings.staffLimitReached', { limit: staffLimit })}
-                      </Typography>
-                    )}
-                  </Box>
-                )}
+                label={<Typography variant="body2">{t('settings.bookable')}</Typography>}
               />
               {/* Inside the fields column so it reads as this form's action. */}
               <Stack direction="row" spacing={1} sx={{ mt: 2.5 }}>

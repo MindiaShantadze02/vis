@@ -36,7 +36,7 @@ const ServicesSettings = lazy(() => import('@/pages/dashboard/settings/ServicesS
 const WorkingHoursSettings = lazy(() => import('@/pages/dashboard/settings/WorkingHoursSettings'))
 const TeamSettings = lazy(() => import('@/pages/dashboard/settings/TeamSettings'))
 const PaymentSettings = lazy(() => import('@/pages/dashboard/settings/PaymentSettings'))
-const SubscriptionPage = lazy(() => import('@/pages/dashboard/settings/SubscriptionPage'))
+const BillingPage = lazy(() => import('@/pages/dashboard/settings/BillingPage'))
 const ApiKeysSettings = lazy(() => import('@/pages/dashboard/settings/ApiKeysSettings'))
 
 // Public booking
@@ -168,7 +168,7 @@ export default function App() {
           <Route path="settings/team" element={<TeamSettings />} />
           <Route path="settings/payment" element={<PaymentSettings />} />
           <Route path="settings/api" element={<ApiKeysSettings />} />
-          <Route path="settings/subscription" element={<SubscriptionPage />} />
+          <Route path="settings/billing" element={<BillingPage />} />
           <Route path="settings/account" element={<AccountSettings />} />
         </Route>
       </Route>

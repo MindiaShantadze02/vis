@@ -21,6 +21,7 @@ import { useOrg } from '@/contexts/OrgContext'
 import { ActionIconButton, FormErrorAlert } from '@/components/ui'
 import { supabase } from '@/lib/supabase'
 import { slugify } from '@/lib/slug'
+import { getAcquisitionSource } from '@/lib/acquisition'
 import { uploadServiceImage } from '@/lib/serviceImages'
 import StepHeader from './StepHeader'
 import type { OnboardingData } from './OnboardingLayout'
@@ -165,8 +166,9 @@ export default function WorkingHoursStep() {
         contact_email: data.contact_email.trim() || null,
         business_id_number: data.business_id_number.trim() || null,
         owner_id: user.id,
-        // Tier and trial_ends_at come from the column defaults: every new org
-        // starts a 30-day Starter-level trial (no free tier since 072).
+        // First-touch signup source (?src / utm_source / ?ref badge), if any.
+        acquisition_source: getAcquisitionSource(),
+        // billing_status defaults to 'active' — post-paid: free to start, no card.
       }
 
       let attempt = await supabase.from('organisations').insert(orgRow).select('id').single()

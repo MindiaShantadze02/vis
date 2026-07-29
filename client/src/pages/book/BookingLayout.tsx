@@ -262,7 +262,7 @@ export default function BookingLayout() {
 
   if (atCapacity) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <Box data-testid="booking-unavailable" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <EmptyState
           icon={<EventBusyOutlinedIcon />}
           title={t('booking.unavailable')}

@@ -5,6 +5,18 @@ import {
   signInSeed, restApi, SEED, eraseClientByName, readSupabaseEnv,
 } from './helpers'
 
+// A far-future Monday at 10:07 Tbilisi (06:07 UTC) — within the seed org's
+// Mon 09:00–18:00 hours — so booking_time_available() is true regardless of
+// what weekday "now" happens to be. (Booking at now+24h is date-fragile: it
+// lands on a closed Sat/Sun on some days, which raises slot_taken before the
+// deposit guard under test ever runs.)
+function openWeekdaySlot(): string {
+  const d = new Date(Date.now() + 40 * 86_400_000)
+  while (d.getUTCDay() !== 1) d.setUTCDate(d.getUTCDate() + 1) // 1 = Monday
+  d.setUTCHours(6, 7, 0, 0)
+  return d.toISOString()
+}
+
 /**
  * Deposits (Phase 2, migrations 089/090) end to end against the MOCK payment
  * provider: a service with a deposit forces the online path on the booking page
@@ -146,7 +158,7 @@ test.describe('Deposit bypass guard', () => {
       body: JSON.stringify({
         p_org_id: org[0].id,
         p_service_id: svc[0].id,
-        p_scheduled_at: new Date(Date.now() + 24 * 3_600_000).toISOString(),
+        p_scheduled_at: openWeekdaySlot(),
         p_first_name: 'Bypasser',
         p_last_name: null,
         p_phone: uniquePhone(),

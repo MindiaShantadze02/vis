@@ -2,17 +2,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { executeRefund, finalizePaymentLog, getPaymentProvider } from '../_shared/payments/index.ts'
 import { sendSms, refundUpdateBody } from '../_shared/sms/index.ts'
 
-// v10: fulfilment failure after a cleared charge now AUTO-REFUNDS (see below).
-//
 // Settles a payment and applies its side effects:
 //   * appointment  paid  → payment_status='paid', status='approved'
 //                          (the pending→approved UPDATE fires the approval SMS)
-//   * appointment  paid but unfulfillable (slot conflict / tier limit during
-//     checkout) → automatic refund via the provider seam + customer SMS. This
-//     is a system fault, so no human decision is involved — money taken for a
-//     booking that never existed must go straight back.
-//   * subscription paid  → subscription_payments='paid' + org tier/expiry updated
-//                          (the tier change resets the usage anchor via trigger)
+//   * appointment  paid but unfulfillable (slot conflict / billing-suspended
+//     during checkout) → automatic refund via the provider seam + customer SMS.
+//     This is a system fault, so no human decision is involved — money taken for
+//     a booking that never existed must go straight back.
+//
+// (Post-paid usage billing settles the monthly business charge via a separate
+// 'usage' purpose, added in T1.3.)
 //
 // Real gateways call this with a signed callback (verified against
 // PAYMENT_WEBHOOK_SECRET). The mock checkout page calls the mock branch below.
@@ -220,75 +219,6 @@ Deno.serve(async (req) => {
       await admin.from('payment_log').update({ appointment_id: apptId }).eq('provider_reference', ref)
       await finalizePaymentLog(admin, ref, 'paid')
       return Response.json({ ok: true, outcome: 'paid', appointment_id: apptId }, { headers: corsHeaders })
-    }
-
-    if (purpose === 'subscription') {
-      const { data: sub } = await admin
-        .from('subscription_payments')
-        .select('id, org_id, tier, status, period_end, payment_reference, amount, currency')
-        .eq('id', id)
-        .maybeSingle()
-      if (!sub || sub.payment_reference !== ref) {
-        return Response.json({ error: 'not_found' }, { status: 404, headers: corsHeaders })
-      }
-      if (sub.status === 'pending') {
-        if (outcome === 'paid') {
-          // Real gateway must have charged the recorded tier price.
-          if (isRealProvider && !amountMatches(Number(sub.amount), sub.currency ?? 'GEL')) {
-            await admin.from('subscription_payments').update({ status: 'failed' }).eq('id', id)
-            await finalizePaymentLog(admin, ref, 'failed', 'amount_mismatch')
-            return Response.json({ error: 'amount_mismatch' }, { status: 422, headers: corsHeaders })
-          }
-          await admin
-            .from('subscription_payments')
-            .update({ status: 'paid' })
-            .eq('id', id)
-          // Apply the upgrade. The tier-change trigger resets the usage anchor.
-          await admin
-            .from('organisations')
-            .update({ subscription_tier: sub.tier, subscription_expires_at: sub.period_end })
-            .eq('id', sub.org_id)
-        } else {
-          await admin
-            .from('subscription_payments')
-            .update({ status: 'failed' })
-            .eq('id', id)
-        }
-      }
-      await finalizePaymentLog(admin, ref, outcome === 'paid' ? 'paid' : 'failed')
-      return Response.json({ ok: true, outcome }, { headers: corsHeaders })
-    }
-
-    if (purpose === 'credit') {
-      // A booking-credit top-up. The purchase is parked pending; a cleared charge
-      // grants the credits to the org's balance. Row-status makes it idempotent
-      // (a duplicate callback finds status already 'paid' and does nothing).
-      const { data: cp } = await admin
-        .from('credit_purchases')
-        .select('id, org_id, credits, status, payment_reference, amount, currency')
-        .eq('id', id)
-        .maybeSingle()
-      if (!cp || cp.payment_reference !== ref) {
-        return Response.json({ error: 'not_found' }, { status: 404, headers: corsHeaders })
-      }
-      if (cp.status === 'pending') {
-        if (outcome === 'paid') {
-          // Real gateway must have charged the recorded pack price.
-          if (isRealProvider && !amountMatches(Number(cp.amount), cp.currency ?? 'GEL')) {
-            await admin.from('credit_purchases').update({ status: 'failed' }).eq('id', id)
-            await finalizePaymentLog(admin, ref, 'failed', 'amount_mismatch')
-            return Response.json({ error: 'amount_mismatch' }, { status: 422, headers: corsHeaders })
-          }
-          await admin.from('credit_purchases').update({ status: 'paid' }).eq('id', id)
-          // Grant the credits atomically (single-statement increment) so two
-          // purchases settling for the same org can't lose an update.
-          await admin.rpc('grant_org_credits', { p_org_id: cp.org_id, p_delta: Number(cp.credits) })
-        } else {
-          await admin.from('credit_purchases').update({ status: 'failed' }).eq('id', id)
-        }
-      }
-      await finalizePaymentLog(admin, ref, outcome === 'paid' ? 'paid' : 'failed')
-      return Response.json({ ok: true, outcome }, { headers: corsHeaders })
     }
 
     return Response.json({ error: 'invalid_purpose' }, { status: 400, headers: corsHeaders })

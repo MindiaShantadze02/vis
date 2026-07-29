@@ -10,6 +10,7 @@ import { format, isValid } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { useOrg } from '@/contexts/OrgContext'
 import { isValidGeorgianPhone, formatGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { computeAvailableSlots, getDayKey, businessDayWindow, BUSINESS_UTC_OFFSET } from '@/lib/slots'
@@ -56,11 +57,12 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
   const { t } = useTranslation()
   const toast = useToast()
   const navigate = useNavigate()
+  const { org, billing } = useOrg()
 
-  // Whether the org has hit its monthly tier limit. Manual entries count
-  // toward usage and are blocked by the same DB trigger as guest bookings, so
-  // we surface an upgrade prompt and disable Save rather than fail on insert.
-  const [atLimit, setAtLimit] = useState(false)
+  // A billing-suspended org (unpaid past grace) can't take new bookings — the
+  // same DB guard blocks guest bookings. Surface it and block Save rather than
+  // failing on insert. (Post-paid usage billing has no monthly appointment cap.)
+  const suspended = org?.billing_status === 'suspended'
 
   const [services, setServices] = useState<ServiceOption[]>([])
   const [staff, setStaff] = useState<StaffOption[]>([])
@@ -106,15 +108,6 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       // (onboarding skipped). We fall back to free time entry in that case
       // rather than leaving the time field stuck disabled.
       .then(({ data }) => { setTemplate((data as WeekTemplate) ?? null); setTemplateLoaded(true) })
-
-    // Same derived usage the Subscription page reads. appt_limit null = unlimited.
-    supabase
-      .rpc('org_usage_info', { p_org_id: orgId })
-      .maybeSingle()
-      .then(({ data }) => {
-        const info = data as { used: number; appt_limit: number | null } | null
-        setAtLimit(!!info && info.appt_limit != null && info.used >= info.appt_limit)
-      })
   }, [orgId])
 
   // Load the people assignable to the chosen service. The prior staff choice is
@@ -240,8 +233,8 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
   async function handleSave() {
     // Flag every missing/invalid field inline instead of a disabled button,
     // and pull the first one into view (scoped to this dialog).
-    // (atLimit already shows its own persistent warning above the form.)
-    if (atLimit) return
+    // (suspended already shows its own persistent warning above the form.)
+    if (suspended) return
     setSubmitted(true)
     const invalid =
       !serviceId ||
@@ -330,12 +323,11 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       onCreated()
       onClose()
     } catch (err) {
-      // The DB trigger rejects with 'limit_reached' if the org hit its quota
-      // between opening the dialog and saving — reflect the at-limit state.
+      // The DB guard rejects with 'limit_reached' if the org became billing-
+      // suspended between opening the dialog and saving.
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('limit_reached')) {
-        setAtLimit(true)
-        setError(null)
+        setError(t('billing.suspendedBlocked'))
       } else {
         setError(msg || t('validation.saveFailed'))
       }
@@ -362,7 +354,7 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
       }
     >
       <Box>
-        {atLimit && (
+        {suspended && (
           <Alert
             severity="warning"
             sx={{ mb: 2 }}
@@ -371,13 +363,13 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
               <Button
                 color="inherit"
                 size="small"
-                onClick={() => { onClose(); navigate('/dashboard/settings/subscription') }}
+                onClick={() => { onClose(); navigate('/dashboard/settings/billing') }}
               >
-                {t('subscription.upgrade')}
+                {t('billing.goToBilling')}
               </Button>
             }
           >
-            {t('subscription.expiredStrip')}
+            {t('billing.suspendedBlocked')}
           </Alert>
         )}
         <FormErrorAlert message={error} data-testid="add-appt-error" />
@@ -545,6 +537,16 @@ export default function AddAppointmentDialog({ orgId, onClose, onCreated }: Prop
                     label={t('recurring.untilDate')} value={untilDate} onChange={setUntilDate}
                     disablePast slotProps={{ textField: { size: 'small', sx: { maxWidth: 240 } } }}
                   />
+                )}
+                {/* Cost surprise guard (T2.4): a series is billed per occurrence
+                    as each appointment happens — say so before generating it. */}
+                {endType === 'count' && Number(occCount) >= 1 && (
+                  <Alert severity="info" data-testid="series-cost-warning" sx={{ py: 0.25 }}>
+                    {t('billing.seriesCostWarning', {
+                      count: Number(occCount),
+                      amount: Number(occCount) * (billing?.appointmentPrice ?? 1),
+                    })}
+                  </Alert>
                 )}
               </Stack>
             )}

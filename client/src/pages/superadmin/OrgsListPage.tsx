@@ -8,13 +8,20 @@ import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, EmptyState } from '@/components/ui'
-import { tierInfo, tierColor } from '@/lib/tiers'
+
+// Post-paid billing status → chip label (ka) + MUI colour.
+const BILLING_CHIP: Record<string, { label: string; color: 'success' | 'warning' | 'error' }> = {
+  active: { label: 'აქტიური', color: 'success' },
+  past_due: { label: 'ვადაგადაცილებული', color: 'warning' },
+  suspended: { label: 'შეჩერებული', color: 'error' },
+}
 
 interface OrgRow {
   id: string
   name: string
   slug: string
-  subscription_tier: string
+  billing_status: string
+  acquisition_source: string | null
   created_at: string
   owner_email: string | null
   owner_phone: string | null
@@ -83,7 +90,7 @@ export default function OrgsListPage() {
               borderBottom: '1px solid', borderColor: 'divider',
             }}
           >
-            {['ორგანიზაცია', 'მფლობელი', 'გეგმა', 'წევრები', 'გამოყენება'].map(h => (
+            {['ორგანიზაცია', 'მფლობელი', 'სტატუსი', 'წევრები', 'გამოყენება'].map(h => (
               <Typography key={h} variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>{h}</Typography>
             ))}
           </Box>
@@ -98,7 +105,7 @@ export default function OrgsListPage() {
           : filtered.length === 0
           ? <EmptyState icon={<StorefrontOutlinedIcon />} title="ორგანიზაცია ვერ მოიძებნა" />
           : filtered.map((o, i) => {
-            const info = tierInfo(o.subscription_tier)
+            const b = BILLING_CHIP[o.billing_status] ?? BILLING_CHIP.active
             const rowSx = {
               px: 2, py: 1.5,
               borderBottom: i < filtered.length - 1 ? '1px solid' : 'none',
@@ -106,7 +113,7 @@ export default function OrgsListPage() {
               '&:hover': { bgcolor: 'action.hover' },
             }
             const tierChip = (
-              <Chip label={info.label} size="small" sx={{ bgcolor: tierColor(theme, info.colorKey), color: 'white', fontWeight: 600, justifySelf: 'start' }} />
+              <Chip label={b.label} size="small" color={b.color} sx={{ fontWeight: 600, justifySelf: 'start' }} />
             )
 
             if (isMobile) {
@@ -135,6 +142,7 @@ export default function OrgsListPage() {
                   <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>{o.name}</Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     /{o.slug} · {format(new Date(o.created_at), 'dd MMM yyyy')}
+                    {o.acquisition_source ? ` · ${o.acquisition_source}` : ''}
                   </Typography>
                 </Box>
                 <Typography variant="body2" noWrap sx={{ color: 'text.secondary', pr: 1 }}>

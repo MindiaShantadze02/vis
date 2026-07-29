@@ -62,11 +62,10 @@ export interface StartCheckoutParams {
   orgId: string | null
   purpose: PaymentPurpose
   appointmentId?: string | null
-  subscriptionPaymentId?: string | null
   amount: number
   currency: string
   description: string
-  // Id of the row this payment settles (pending_booking id or subscription_payments id).
+  // Id of the row this payment settles (e.g. the pending_booking id).
   referenceId: string
   returnBaseUrl: string
   slug?: string
@@ -96,7 +95,6 @@ export async function startCheckout(
       org_id: params.orgId ?? null,
       purpose: params.purpose,
       appointment_id: params.appointmentId ?? null,
-      subscription_payment_id: params.subscriptionPaymentId ?? null,
       amount: params.amount,
       currency: params.currency,
       provider: provider.name,

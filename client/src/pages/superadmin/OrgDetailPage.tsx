@@ -2,46 +2,41 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Box, Card, CardContent, Typography, Button, Chip, Divider, Stack,
-  Select, MenuItem, FormControl, InputLabel, useTheme,
+  Select, MenuItem, FormControl, InputLabel,
 } from '@mui/material'
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, LoadingState, ConfirmDialog, EmptyState, useToast } from '@/components/ui'
-import { TIERS, TIER_KEYS, tierInfo, tierColor, subscriptionState, type Tier } from '@/lib/tiers'
+import { parseBillingStatus, type BillingStatus, type BillingState } from '@/lib/billing'
 import OrgSetupPanel from './OrgSetupPanel'
 
 interface Org {
   id: string
   name: string
   slug: string
-  subscription_tier: string
-  subscription_expires_at: string | null
-  trial_ends_at: string
+  billing_status: BillingState
   created_at: string
   contact_phone: string | null
 }
 
-// Derived state → Georgian label + chip colour (matches the DB's
-// org_subscription_state).
-const STATE_LABELS: Record<string, { label: string; color: 'warning' | 'success' | 'error' }> = {
-  trial: { label: 'საცდელი', color: 'warning' },
+// Billing status → Georgian label + chip colour.
+const STATUS_LABELS: Record<BillingState, { label: string; color: 'warning' | 'success' | 'error' }> = {
   active: { label: 'აქტიური', color: 'success' },
-  expired: { label: 'ვადაგასული', color: 'error' },
+  past_due: { label: 'ვადაგადაცილებული', color: 'warning' },
+  suspended: { label: 'შეჩერებული', color: 'error' },
 }
-
-interface Usage { used: number; appt_limit: number | null; period_end: string | null }
+const STATUS_KEYS: BillingState[] = ['active', 'past_due', 'suspended']
 
 export default function OrgDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const theme = useTheme()
   const toast = useToast()
 
   const [org, setOrg] = useState<Org | null>(null)
-  const [usage, setUsage] = useState<Usage | null>(null)
+  const [billing, setBilling] = useState<BillingStatus | null>(null)
   const [loading, setLoading] = useState(true)
-  const [pendingTier, setPendingTier] = useState<Tier | null>(null)
+  const [pendingStatus, setPendingStatus] = useState<BillingState | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -51,34 +46,29 @@ export default function OrgDetailPage() {
 
   async function load() {
     setLoading(true)
-    const [orgRes, usageRes] = await Promise.all([
-      supabase.from('organisations').select('id, name, slug, subscription_tier, subscription_expires_at, trial_ends_at, created_at, contact_phone').eq('id', id).maybeSingle(),
-      supabase.rpc('org_usage_info', { p_org_id: id }).maybeSingle(),
+    const [orgRes, billingRes] = await Promise.all([
+      supabase.from('organisations').select('id, name, slug, billing_status, created_at, contact_phone').eq('id', id).maybeSingle(),
+      supabase.rpc('get_org_billing_status', { p_org_id: id }),
     ])
     setOrg((orgRes.data ?? null) as Org | null)
-    const u = usageRes.data as { used?: number; appt_limit?: number | null; period_end?: string | null } | null
-    setUsage(u ? { used: u.used ?? 0, appt_limit: u.appt_limit ?? null, period_end: u.period_end ?? null } : null)
+    setBilling(parseBillingStatus(billingRes.data))
     setLoading(false)
   }
 
-  async function changeTier() {
-    if (!org || !pendingTier) return
+  async function changeBillingStatus() {
+    if (!org || !pendingStatus) return
     setSaving(true)
-    // Manual assignment = one paid month: "active" means subscription_expires_at
-    // is in the future (org_subscription_state), so the expiry must be set here
-    // too — a bare tier change would leave the org in its trial/expired state.
+    // Superadmin override (the guard permits is_superadmin). Charge/dunning
+    // normally drives this; here it's a manual reset (e.g. lift a suspension).
     const { error } = await supabase
       .from('organisations')
-      .update({
-        subscription_tier: pendingTier,
-        subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      })
+      .update({ billing_status: pendingStatus })
       .eq('id', org.id)
     setSaving(false)
     if (error) { toast.error(error.message); return }
-    toast.success('გეგმა შეიცვალა')
-    setPendingTier(null)
-    load() // usage_anchor was reset by the trigger — refresh the period
+    toast.success('სტატუსი შეიცვალა')
+    setPendingStatus(null)
+    load()
   }
 
   if (loading) return <LoadingState />
@@ -91,7 +81,7 @@ export default function OrgDetailPage() {
     )
   }
 
-  const info = tierInfo(org.subscription_tier)
+  const s = STATUS_LABELS[org.billing_status] ?? STATUS_LABELS.active
 
   return (
     <Box sx={{ maxWidth: 720 }}>
@@ -106,25 +96,24 @@ export default function OrgDetailPage() {
 
       <PageHeader title={org.name} subtitle={`/${org.slug}`} />
 
-      {/* Info + usage */}
+      {/* Info + running bill */}
       <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Stack spacing={1.5}>
-            <Row label="გეგმა" value={
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Chip label={info.label} size="small" sx={{ bgcolor: tierColor(theme, info.colorKey), color: 'white', fontWeight: 700 }} />
-                {(() => {
-                  const s = STATE_LABELS[subscriptionState(org.trial_ends_at, org.subscription_expires_at)]
-                  return <Chip label={s.label} size="small" color={s.color} variant="outlined" sx={{ fontWeight: 600 }} />
-                })()}
-              </Box>
+            <Row label="სტატუსი" value={
+              <Chip label={s.label} size="small" color={s.color} sx={{ fontWeight: 700 }} />
             } />
             <Row label="ჯავშნები ამ პერიოდში" value={
-              <Typography variant="body2">{usage?.used ?? 0} / {usage?.appt_limit ?? '∞'}</Typography>
+              <Typography variant="body2">{billing?.appointmentCount ?? 0} · ₾{billing?.runningAmount ?? 0}</Typography>
             } />
-            {usage?.period_end && (
+            {(billing?.rolledForward ?? 0) > 0 && (
+              <Row label="გადმოტანილი ნაშთი" value={
+                <Typography variant="body2">₾{billing?.rolledForward}</Typography>
+              } />
+            )}
+            {billing?.periodEnd && (
               <Row label="პერიოდი ახლდება" value={
-                <Typography variant="body2">{new Date(usage.period_end).toLocaleDateString('ka-GE')}</Typography>
+                <Typography variant="body2">{new Date(billing.periodEnd).toLocaleDateString('ka-GE')}</Typography>
               } />
             )}
             <Row label="რეგისტრაცია" value={
@@ -133,43 +122,31 @@ export default function OrgDetailPage() {
             {org.contact_phone && (
               <Row label="ტელეფონი" value={<Typography variant="body2">{org.contact_phone}</Typography>} />
             )}
-            {org.subscription_expires_at && (
-              <Row label="გეგმის ვადა" value={
-                <Typography variant="body2">{new Date(org.subscription_expires_at).toLocaleDateString('ka-GE')}</Typography>
-              } />
-            )}
-            {!org.subscription_expires_at && (
-              <Row label="საცდელი პერიოდის ვადა" value={
-                <Typography variant="body2">{new Date(org.trial_ends_at).toLocaleDateString('ka-GE')}</Typography>
-              } />
-            )}
           </Stack>
         </CardContent>
       </Card>
 
-      {/* Change tier */}
+      {/* Change billing status */}
       <Card>
         <CardContent sx={{ p: 3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>გეგმის შეცვლა</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>ბილინგის სტატუსი</Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            გეგმის შეცვლა გადათვლის ბილინგის პერიოდს (გამოყენება იწყება ნულიდან)
-            და გეგმას 1 თვით ააქტიურებს.
+            ხელით შეცვლა — მაგ. გადახდის შემდეგ შეჩერების მოხსნა.
           </Typography>
           <Divider sx={{ mb: 2 }} />
           <FormControl size="small" sx={{ minWidth: 220 }}>
-            <InputLabel>გეგმა</InputLabel>
+            <InputLabel>სტატუსი</InputLabel>
             <Select
-              label="გეგმა"
-              value={org.subscription_tier}
+              label="სტატუსი"
+              value={org.billing_status}
               onChange={e => {
-                const next = e.target.value as Tier
-                if (next !== org.subscription_tier) setPendingTier(next)
+                const next = e.target.value as BillingState
+                if (next !== org.billing_status) setPendingStatus(next)
               }}
             >
-              {TIER_KEYS.map(key => {
-                const ti = TIERS.find(t => t.key === key)!
-                return <MenuItem key={key} value={key}>{ti.label} — {ti.price}</MenuItem>
-              })}
+              {STATUS_KEYS.map(key => (
+                <MenuItem key={key} value={key}>{STATUS_LABELS[key].label}</MenuItem>
+              ))}
             </Select>
           </FormControl>
         </CardContent>
@@ -179,14 +156,14 @@ export default function OrgDetailPage() {
       <OrgSetupPanel orgId={org.id} />
 
       <ConfirmDialog
-        open={!!pendingTier}
-        title="გეგმის შეცვლა"
-        message={pendingTier ? `დარწმუნებული ხართ, რომ გსურთ გეგმის შეცვლა „${tierInfo(pendingTier).label}“-ზე? ბილინგის პერიოდი გადაითვლება.` : ''}
+        open={!!pendingStatus}
+        title="სტატუსის შეცვლა"
+        message={pendingStatus ? `შეიცვალოს ბილინგის სტატუსი „${STATUS_LABELS[pendingStatus].label}“-ზე?` : ''}
         confirmLabel="შეცვლა"
         destructive={false}
         loading={saving}
-        onConfirm={changeTier}
-        onClose={() => setPendingTier(null)}
+        onConfirm={changeBillingStatus}
+        onClose={() => setPendingStatus(null)}
       />
     </Box>
   )

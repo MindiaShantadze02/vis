@@ -77,7 +77,7 @@ const isOnlineAppt = (a: Appointment) => a.services?.location_type === 'online'
 
 export default function OverviewPage() {
   const { t } = useTranslation()
-  const { org } = useOrg()
+  const { org, refreshBilling } = useOrg()
   const theme = useTheme()
   const toast = useToast()
   const navigate = useNavigate()
@@ -330,6 +330,7 @@ export default function OverviewPage() {
       setAppointments(prev => prev.map(a =>
         a.id === id ? { ...a, status: 'cancelled', payment_status: 'refunded' } : a))
       loadStats()
+      refreshBilling()  // running bill drops when a billable appt is cancelled
       toast.success(t('dashboard.refundDone'))
       setSelected(null)
       setAdminNote('')
@@ -350,6 +351,7 @@ export default function OverviewPage() {
       // Any status change can shift the stat cards (pending count, today's
       // count, weekly revenue), so refresh them from the server.
       loadStats()
+      refreshBilling()  // a status change can shift the current-period billable count
       toast.success(t(`dashboard.${status}`))
       setSelected(null)
       setAdminNote('')
@@ -370,6 +372,7 @@ export default function OverviewPage() {
     setSelected(null)
     loadAppointments()
     loadStats()
+    refreshBilling()
   }
 
   // Save the per-appointment join link and text it to the customer in one
@@ -1051,7 +1054,7 @@ export default function OverviewPage() {
         <AddAppointmentDialog
           orgId={org.id}
           onClose={() => setAddOpen(false)}
-          onCreated={() => { loadAppointments(); loadStats() }}
+          onCreated={() => { loadAppointments(); loadStats(); refreshBilling() }}
         />
       )}
     </Box>

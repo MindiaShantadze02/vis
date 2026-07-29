@@ -6,7 +6,6 @@ import { LanguageSwitcher } from '@/components/ui'
 import VisLogo from '@/components/VisLogo'
 import { displayFont, radii } from '@/theme/theme'
 import { anim } from '@/theme/animations'
-import { TIERS } from '@/lib/tiers'
 import { useDocumentMeta } from '@/lib/seo'
 import {
   StorefrontOutlined, GroupOutlined, ScheduleOutlined, StarRounded,
@@ -166,56 +165,18 @@ export default function HomePage() {
           <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1, mb: 3, textAlign: 'center' }}>
             {t('home.pricingNote')}
           </Typography>
-          <Box
-            sx={{
-              display: 'grid', gap: 2,
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-              alignItems: 'stretch',
-              maxWidth: 680, mx: 'auto',
-            }}
-          >
-            {TIERS.map(tier => (
-              <Panel
-                key={tier.key}
-                sx={{
-                  borderColor: tier.recommended ? 'primary.main' : 'divider',
-                  ...(tier.recommended && { borderWidth: 2 }),
-                  height: '100%', display: 'flex', flexDirection: 'column',
-                }}
-              >
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    {t(`tiers.${tier.key}.label`)}
-                  </Typography>
-                  {tier.recommended && (
-                    <Chip label={t('subscription.recommended')} size="small" color="primary" sx={{ fontWeight: 600 }} />
-                  )}
-                </Stack>
-                <Typography sx={{ fontFamily: displayFont, fontWeight: 700, fontSize: 26 }}>
-                  {t(`tiers.${tier.key}.price`)}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {t('home.overageNote', { price: tier.overagePrice.toFixed(2) })}
-                </Typography>
-                <Stack spacing={1} sx={{ mt: 2, mb: 3, flexGrow: 1 }}>
-                  {(t(`tiers.${tier.key}.features`, { returnObjects: true }) as string[]).map(f => (
-                    <Stack key={f} direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-                      <Check sx={{ fontSize: 18, color: 'primary.main', mt: '2px' }} />
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>{f}</Typography>
-                    </Stack>
-                  ))}
-                </Stack>
-                <Button
-                  component={RouterLink}
-                  to="/register"
-                  fullWidth
-                  variant={tier.recommended ? 'contained' : 'outlined'}
-                  sx={{ mt: 'auto' }}
-                >
-                  {t('home.getStarted')}
-                </Button>
-              </Panel>
-            ))}
+          <Box sx={{ maxWidth: 480, mx: 'auto' }}>
+            <Panel sx={{ p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
+              <Typography sx={{ fontFamily: displayFont, fontWeight: 700, fontSize: 28 }}>
+                {t('home.freeToStart')}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1, mb: 3 }}>
+                {t('home.perAppointment')}
+              </Typography>
+              <Button component={RouterLink} to="/register" variant="contained" size="large">
+                {t('home.getStarted')}
+              </Button>
+            </Panel>
           </Box>
         </Container>
       </Box>

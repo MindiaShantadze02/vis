@@ -4,8 +4,9 @@
 // file implementing this interface and one line in the factory (./index.ts →
 // getPaymentProvider).
 
-// Which flow the money belongs to. Mirrors payment_log.purpose.
-export type PaymentPurpose = 'appointment' | 'subscription' | 'credit'
+// Which flow the money belongs to. Mirrors payment_log.purpose. 'usage' (the
+// monthly post-paid business charge) is wired in T1.3.
+export type PaymentPurpose = 'appointment' | 'usage'
 
 export interface CreateCheckoutParams {
   purpose: PaymentPurpose

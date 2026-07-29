@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { captureAcquisitionSource } from '@/lib/acquisition'
 import { BrowserRouter } from 'react-router-dom'
 // Subset-scoped font imports: the bare `<weight>.css` entries pull EVERY
 // script subset (Ethiopic, Bengali, Thai…) into the build — hundreds of
@@ -43,6 +44,9 @@ import App from './App.tsx'
 
 // No-op without VITE_SENTRY_DSN (see lib/sentry.ts).
 initSentry()
+
+// First-touch signup attribution: remember ?src=/utm_source/?ref before routing.
+captureAcquisitionSource()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
