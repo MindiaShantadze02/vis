@@ -50,10 +50,9 @@ export default function BusinessProfileStep() {
   const phoneInvalid =
     (submitted || data.contact_phone.trim().length > 0) && !isValidGeorgianPhone(data.contact_phone)
   const nameTooShort = (submitted || data.name.trim().length > 0) && data.name.trim().length < 2
-  // Email + business ID are legally required merchant-disclosure fields.
+  // Email is a legally required merchant-disclosure field.
   const emailInvalid =
     (submitted || data.contact_email.trim().length > 0) && !isValidEmail(data.contact_email.trim())
-  const businessIdMissing = submitted && data.business_id_number.trim().length === 0
 
   // Validate on click with inline field errors rather than a silently disabled
   // Next button. On failure, bring the first offending field into view + focus it.
@@ -62,8 +61,7 @@ export default function BusinessProfileStep() {
     if (
       data.name.trim().length < 2 ||
       !isValidGeorgianPhone(data.contact_phone) ||
-      !isValidEmail(data.contact_email.trim()) ||
-      data.business_id_number.trim().length === 0
+      !isValidEmail(data.contact_email.trim())
     ) {
       focusFirstInvalidFieldAfterRender()
       return
@@ -163,18 +161,6 @@ export default function BusinessProfileStep() {
         error={emailInvalid}
         helperText={emailInvalid ? t('validation.invalidEmail') : ' '}
         slotProps={{ htmlInput: { inputMode: 'email' as const, maxLength: FIELD_LIMITS.email, 'data-testid': 'biz-email' } }}
-        sx={{ mb: 2 }}
-      />
-
-      <TextField
-        fullWidth
-        required
-        label={t('settings.businessId')}
-        value={data.business_id_number}
-        onChange={e => update({ business_id_number: e.target.value })}
-        error={businessIdMissing}
-        helperText={businessIdMissing ? t('validation.required') : t('settings.businessIdHint')}
-        slotProps={{ htmlInput: { maxLength: 30, 'data-testid': 'biz-business-id' } }}
         sx={{ mb: 4 }}
       />
 

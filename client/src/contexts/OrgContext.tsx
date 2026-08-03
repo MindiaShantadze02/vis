@@ -12,7 +12,6 @@ export interface Organisation {
   contact_phone: string | null
   // Merchant legal disclosure fields (E-Commerce Law Art. 4 / Consumer Law Art. 5).
   contact_email: string | null
-  business_id_number: string | null
   address: string | null
   logo_url: string | null
   // Post-paid billing state (active / past_due / suspended). Suspended blocks

@@ -43,7 +43,6 @@ export interface OnboardingData {
   // Merchant legal disclosure — required at onboarding (E-Commerce Law Art. 4 /
   // Consumer Law Art. 5), shown on the public booking page.
   contact_email: string
-  business_id_number: string
   // Logo is staged as a File until finish — the storage path needs the org id.
   logoFile: File | null
   logoPreview: string | null
@@ -79,7 +78,7 @@ interface OnboardingContextValue {
 const OnboardingContext = createContext<OnboardingContextValue>({
   data: {
     name: '', description: '', slug: '', contact_phone: '',
-    contact_email: '', business_id_number: '',
+    contact_email: '',
     logoFile: null, logoPreview: null,
     services: [],
     specialists: [],
@@ -123,7 +122,7 @@ export default function OnboardingLayout() {
     // Pre-fill the business contact phone from the account they registered
     // with seconds ago (editable — it's just the overwhelmingly common case).
     contact_phone: user?.phone ? formatGeorgianPhone(user.phone) : '',
-    contact_email: '', business_id_number: '',
+    contact_email: '',
     logoFile: null, logoPreview: null,
     services: [],
     specialists: [],

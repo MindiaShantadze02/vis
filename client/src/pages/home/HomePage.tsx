@@ -1,6 +1,6 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Box, Button, Chip, Container, Stack, Typography } from '@mui/material'
+import { Box, Button, Container, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 import { LanguageSwitcher } from '@/components/ui'
 import VisLogo from '@/components/VisLogo'
@@ -9,7 +9,7 @@ import { anim } from '@/theme/animations'
 import { useDocumentMeta } from '@/lib/seo'
 import {
   StorefrontOutlined, GroupOutlined, ScheduleOutlined, StarRounded,
-  LanguageOutlined, CodeOutlined, Check,
+  LanguageOutlined, CodeOutlined,
 } from '@/components/icons'
 
 // Landing page shown at "/". Deliberately built from the same primitives as the

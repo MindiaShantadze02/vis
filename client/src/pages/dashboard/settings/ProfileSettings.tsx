@@ -26,7 +26,6 @@ export default function ProfileSettings() {
   const [description, setDescription] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [contactEmail, setContactEmail] = useState('')
-  const [businessId, setBusinessId] = useState('')
   const [address, setAddress] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
@@ -41,7 +40,6 @@ export default function ProfileSettings() {
       setDescription((org as unknown as Record<string, string>).description ?? '')
       setContactPhone((org as unknown as Record<string, string>).contact_phone ?? '')
       setContactEmail((org as unknown as Record<string, string>).contact_email ?? '')
-      setBusinessId((org as unknown as Record<string, string>).business_id_number ?? '')
       setAddress((org as unknown as Record<string, string>).address ?? '')
       setLogoUrl((org as unknown as Record<string, string>).logo_url ?? null)
     }
@@ -114,7 +112,6 @@ export default function ProfileSettings() {
         description: description.trim() || null,
         contact_phone: formatGeorgianPhone(contactPhone),
         contact_email: contactEmail.trim() || null,
-        business_id_number: businessId.trim() || null,
         address: address.trim() || null,
       })
       .eq('id', org.id)
@@ -229,14 +226,6 @@ export default function ProfileSettings() {
               error={emailInvalid}
               helperText={emailInvalid ? t('validation.invalidEmail') : t('settings.contactEmailHint')}
               slotProps={{ htmlInput: { inputMode: 'email', maxLength: FIELD_LIMITS.email, 'data-testid': 'profile-email' } }}
-            />
-            <TextField
-              label={t('settings.businessId')}
-              value={businessId}
-              onChange={e => setBusinessId(e.target.value)}
-              fullWidth
-              helperText={t('settings.businessIdHint')}
-              slotProps={{ htmlInput: { maxLength: 30, 'data-testid': 'profile-business-id' } }}
             />
           </Stack>
 

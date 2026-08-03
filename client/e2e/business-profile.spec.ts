@@ -41,35 +41,29 @@ test.describe('Settings — Business info', () => {
   })
 
   // Merchant legal disclosure (E-Commerce Law Art. 4 / Consumer Law Art. 5): the
-  // business email + ID number persist and surface on the public booking page.
-  test('email + business ID save, show on the booking page, and clear again', async ({ page }) => {
+  // business email persists and surfaces on the public booking page.
+  test('email saves, shows on the booking page, and clears again', async ({ page }) => {
     const email = 'e2e-legal@example.com'
-    const bizId = '405123456'
 
     await fillStable(page.getByTestId('profile-email'), email)
-    await fillStable(page.getByTestId('profile-business-id'), bizId)
     await page.getByTestId('profile-save').click()
     await expect(page.getByTestId('toast')).toBeVisible()
 
     await page.reload()
     await expect(page.getByTestId('profile-email')).toHaveValue(email)
-    await expect(page.getByTestId('profile-business-id')).toHaveValue(bizId)
 
-    // Public booking page shows both in the branded sidebar (get_public_org).
+    // Public booking page shows it in the branded sidebar (get_public_org).
     await page.goto(`/book/${SEED.slug}`)
     await expect(page.getByTestId('booking-email')).toContainText(email)
-    await expect(page.getByTestId('booking-business-id')).toContainText(bizId)
 
     // Restore the empty seed state (empty ⇒ NULL).
     await page.goto('/dashboard/settings/profile')
     await expect(page.getByTestId('profile-save')).toBeVisible()
     await fillStable(page.getByTestId('profile-email'), '')
-    await fillStable(page.getByTestId('profile-business-id'), '')
     await page.getByTestId('profile-save').click()
     await expect(page.getByTestId('toast')).toBeVisible()
     await page.reload()
     await expect(page.getByTestId('profile-email')).toHaveValue('')
-    await expect(page.getByTestId('profile-business-id')).toHaveValue('')
   })
 
   test('an invalid email is flagged inline and blocks save', async ({ page }) => {

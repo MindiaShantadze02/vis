@@ -126,12 +126,6 @@ export default function BookingShell({
               </Typography>
             </Box>
           )}
-          {/* Merchant identification number (E-Commerce Law Art. 4). */}
-          {org.business_id_number && (
-            <Typography variant="caption" data-testid="booking-business-id" sx={{ display: 'block', opacity: 0.7, mt: 0.25 }}>
-              {t('booking.businessId')}: {org.business_id_number}
-            </Typography>
-          )}
         </Box>
       </Box>
 

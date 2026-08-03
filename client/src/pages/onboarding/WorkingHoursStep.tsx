@@ -164,7 +164,6 @@ export default function WorkingHoursStep() {
         slug,
         contact_phone: data.contact_phone.trim() ? formatGeorgianPhone(data.contact_phone) : null,
         contact_email: data.contact_email.trim() || null,
-        business_id_number: data.business_id_number.trim() || null,
         owner_id: user.id,
         // First-touch signup source (?src / utm_source / ?ref badge), if any.
         acquisition_source: getAcquisitionSource(),

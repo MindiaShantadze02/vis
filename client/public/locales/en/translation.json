@@ -177,7 +177,6 @@
   },
   "booking": {
     "title": "Online Booking",
-    "businessId": "ID",
     "selectService": "Select a service:",
     "serviceHeading": "What can we book you in for?",
     "serviceSubtext": "Pick a service — you'll choose a time next.",
@@ -414,8 +413,6 @@
     "addressHint": "Included in the booking confirmation SMS so customers know where to come",
     "contactEmail": "Email",
     "contactEmailHint": "Shown on your booking page as legal contact information",
-    "businessId": "Business ID number",
-    "businessIdHint": "Your business identification / registration number — shown on the booking page",
     "bookingPageColor": "Booking page color",
     "bookingPageColorHelp": "The color customers see when booking",
     "autoApproveTitle": "Automatic approval",
