@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Box, Typography, Card, CardContent, Button, TextField,
-  Switch, FormControlLabel, Stack, Alert, CircularProgress,
+  Switch, Stack, Alert, CircularProgress,
   Divider, Accordion, AccordionSummary, AccordionDetails,
   InputAdornment, IconButton,
 } from '@mui/material'
@@ -34,11 +34,9 @@ export default function PaymentSettings() {
   const [showBogKey, setShowBogKey] = useState(false)
   const [showTbcKey, setShowTbcKey] = useState(false)
 
-  // Cancellation / deposit-refund policy (migration 089). Deposits themselves
-  // are configured per service (ServicesSettings); this policy governs whether a
-  // cancel refunds the deposit and is consumed by self-service cancel (Phase 3).
+  // Cancellation policy: the free-cancel window (hours). A self-service cancel
+  // within this window refunds an online payment; outside it, no refund.
   const [cancelWindow, setCancelWindow] = useState('24')
-  const [depositRefundable, setDepositRefundable] = useState(true)
   const cancelWindowInvalid = !(Number(cancelWindow) >= 0) || !Number.isInteger(Number(cancelWindow))
   // Accordions are controlled so we can auto-expand a provider when it's
   // enabled — otherwise its required credential fields stay hidden behind a
@@ -58,7 +56,6 @@ export default function PaymentSettings() {
         if (pc.tbc?.enabled) setTbcExpanded(true)
       }
       setCancelWindow(String(org.cancellation_window_hours ?? 24))
-      setDepositRefundable(org.deposit_refundable ?? true)
     }
   }, [org])
 
@@ -112,7 +109,6 @@ export default function PaymentSettings() {
       .update({
         payment_config: config,
         cancellation_window_hours: Number(cancelWindow),
-        deposit_refundable: depositRefundable,
       })
       .eq('id', org.id)
 
@@ -132,8 +128,8 @@ export default function PaymentSettings() {
       </Alert>
 
       <Stack spacing={2}>
-        {/* Cancellation / deposit-refund policy. Deposits are set per service
-            (Services settings); this governs what a cancellation refunds. */}
+        {/* Cancellation policy: the free-cancel window that governs whether a
+            self-service cancellation refunds an online payment. */}
         <Card>
           <CardContent sx={{ p: 3 }}>
             <Typography variant="body2" sx={{ fontWeight: 600, mb: 1.5 }}>{t('settings.cancellationTitle')}</Typography>
@@ -146,22 +142,6 @@ export default function PaymentSettings() {
               helperText={cancelWindowInvalid ? t('settings.cancellationWindowInvalid') : t('settings.cancellationWindowHelp')}
               slotProps={{ htmlInput: { inputMode: 'numeric', 'data-testid': 'org-cancel-window' } }}
               sx={{ maxWidth: 240 }}
-            />
-            <FormControlLabel
-              sx={{ mt: 1.5, display: 'block' }}
-              control={
-                <Switch
-                  checked={depositRefundable}
-                  onChange={e => setDepositRefundable(e.target.checked)}
-                  data-testid="org-deposit-refundable"
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.depositRefundable')}</Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('settings.depositRefundableHelp')}</Typography>
-                </Box>
-              }
             />
           </CardContent>
         </Card>

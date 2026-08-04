@@ -8,7 +8,7 @@
 // Placeholders in [BRACKETS] are filled once the legal entity is registered.
 
 /** Version tag stored with each consent (customers.consent_version). Bump on change. */
-export const CONSENT_VERSION = '2026-08-03'
+export const CONSENT_VERSION = '2026-08-04'
 
 export type LegalDocType = 'privacy' | 'terms'
 
@@ -200,7 +200,7 @@ const TERMS: Record<Lang, LegalDoc> = {
       { heading: '3. Accounts', body: ['Business users register with a phone number and password and are responsible for safeguarding their credentials and for all activity under their account. You must provide accurate information and keep it current.'] },
       { heading: '4. Client bookings', body: ['Booking requires a valid phone number and one-time SMS verification. A booking may be pending until the business approves it. Cancellations and changes are handled by the business directly, whose contact details are shown on the booking confirmation.'] },
       { heading: '5. Payments and billing', body: [
-        'Appointments with a price are paid online at the time of booking; payment is processed by a third-party provider (e.g. BOG / TBC), whose terms apply to the transaction. Appointments offered free of charge require no payment. Where a service sets a deposit, only the deposit is collected online and any balance is settled directly between the client and the business.',
+        'Appointments with a price are paid online at the time of booking; payment is processed by a third-party provider (e.g. BOG / TBC), whose terms apply to the transaction. Appointments offered free of charge require no payment.',
         'Business accounts are free to open and require no card to start. Businesses are billed once a month for the appointments they received that month, at a per-appointment rate charged to a card kept on file; months with no appointments are not charged. The current rate is shown in the app under Settings → Billing, where the running total for the month is also visible. We give advance notice of the amount before each monthly charge and announce rate changes in advance. If a charge is not settled, we may pause the booking page from accepting new bookings until the outstanding balance is paid; the account and its data are always retained.',
       ] },
       { heading: '6. Acceptable use', body: ['Do not misuse the platform: no unlawful, fraudulent, infringing, or abusive content; no attempts to breach security, scrape data, or overload the service; and no uploading of another person’s personal data without a lawful basis.'] },

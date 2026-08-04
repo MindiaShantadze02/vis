@@ -16,7 +16,6 @@ import { format } from "date-fns";
 import { dateLocale } from "@/lib/dateLocale";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
-import { resolveDeposit, computeDeposit } from "@/lib/deposit";
 import {
   isValidGeorgianPhone,
   formatGeorgianPhone,
@@ -97,19 +96,9 @@ export default function Step3CustomerForm({
   // while the same 6 digits sit in the field.
   const autoSubmitted = useRef<string | null>(null);
 
-  // Deposit: a service's own deposit overrides the org default. Paid services
-  // are always collected online (create-payment charges the deposit or full
-  // price server-side). The balance, if any, is settled at the venue.
+  // A priced service is charged online in full (create-payment charges the
+  // full price server-side); a free service is booked with no charge.
   const price = booking.service?.price ?? 0;
-  const depositAmount = computeDeposit(
-    price,
-    resolveDeposit(
-      { type: booking.service?.deposit_type ?? null, value: booking.service?.deposit_value ?? null },
-      { type: org.deposit_type, value: org.deposit_value },
-    ),
-  );
-  const depositRequired = depositAmount > 0;
-  const depositBalance = Math.max(0, price - depositAmount);
 
   // Payment method is no longer a customer choice (pay-in-person was removed):
   // a priced service is charged online; a free service (price 0) is booked with
@@ -539,9 +528,7 @@ export default function Step3CustomerForm({
                   sx={{ fontSize: 16, color: "primary.main" }}
                 />
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  {depositRequired
-                    ? t("booking.depositHint", { amount: depositAmount })
-                    : t("booking.payOnlineHint")}
+                  {t("booking.payOnlineHint")}
                 </Typography>
               </Box>
             )}
@@ -633,27 +620,6 @@ export default function Step3CustomerForm({
                   {booking.service?.price} ₾
                 </Typography>
               </Box>
-              {/* Deposit breakdown — what's charged online now vs. due in person. */}
-              {depositRequired && (
-                <Box sx={{ mt: 1 }} data-testid="book-deposit-breakdown">
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                      {t("booking.depositNow")}
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }} data-testid="book-deposit-amount">
-                      {depositAmount} ₾
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                      {t("booking.depositBalance")}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                      {depositBalance} ₾
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
             </Box>
 
             <Button

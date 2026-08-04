@@ -37,12 +37,8 @@ export interface BookingOrg {
   reviews_enabled: boolean
   review_avg: number | null
   review_count: number
-  // Org-level deposit default + cancellation policy (migration 089/090). A
-  // service's own deposit overrides this default; see lib/deposit resolveDeposit.
-  deposit_type: 'none' | 'fixed' | 'percent'
-  deposit_value: number | null
+  // Cancellation policy (migration 090): the free-cancel/refund window.
   cancellation_window_hours: number
-  deposit_refundable: boolean
   // Whether new bookings wait for owner approval. Auto-approve (false) is the
   // default since migration 075; the Step-3 hint copy branches on this.
   require_approval: boolean
@@ -63,10 +59,7 @@ interface PublicOrg {
   reviews_enabled: boolean
   review_avg: number | null
   review_count: number
-  deposit_type: 'none' | 'fixed' | 'percent' | null
-  deposit_value: number | null
   cancellation_window_hours: number | null
-  deposit_refundable: boolean | null
   require_approval: boolean | null
 }
 
@@ -76,9 +69,6 @@ export interface BookingService {
   duration_minutes: number
   price: number
   max_per_slot: number
-  // Per-service deposit (migration 089): null type inherits the org default.
-  deposit_type: 'none' | 'fixed' | 'percent' | null
-  deposit_value: number | null
   // Gallery image URLs in display order; shown in the sidebar once selected.
   images: string[]
 }
@@ -213,10 +203,7 @@ export default function BookingLayout() {
         // PostgREST returns numeric as a string; coerce for display/math.
         review_avg: pub.review_avg != null ? Number(pub.review_avg) : null,
         review_count: Number(pub.review_count ?? 0),
-        deposit_type: pub.deposit_type ?? 'none',
-        deposit_value: pub.deposit_value != null ? Number(pub.deposit_value) : null,
         cancellation_window_hours: Number(pub.cancellation_window_hours ?? 24),
-        deposit_refundable: pub.deposit_refundable ?? true,
         // Default to auto-approve when the flag is absent (older cached RPC),
         // matching the DB default since migration 075.
         require_approval: pub.require_approval ?? false,

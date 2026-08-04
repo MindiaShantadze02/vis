@@ -28,7 +28,7 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
       const [svcRes, imgRes] = await Promise.all([
         supabase
           .from('services')
-          .select('id, name, duration_minutes, price, max_per_slot, deposit_type, deposit_value')
+          .select('id, name, duration_minutes, price, max_per_slot')
           .eq('org_id', orgId)
           .eq('is_active', true)
           .order('sort_order'),

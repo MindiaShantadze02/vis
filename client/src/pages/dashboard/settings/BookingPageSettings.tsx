@@ -30,7 +30,7 @@ export default function BookingPageSettings() {
   const [reviewsEnabled, setReviewsEnabled] = useState(true)
   // Non-paid guest bookings need manual approval by default (require_approval
   // defaults to true, migration 080); turning automatic approval ON opts out.
-  // Paid bookings (deposit/online) always auto-confirm via the webhook.
+  // Paid (online) bookings always auto-confirm via the webhook.
   const [requireApproval, setRequireApproval] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)

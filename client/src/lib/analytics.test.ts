@@ -5,7 +5,7 @@ describe('parseAnalytics', () => {
   it('coerces string numerics and shapes the arrays', () => {
     const a = parseAnalytics({
       revenue: '1250.5', bookings: '40', completed: '28', cancelled: '10', no_show: '2',
-      deposits_collected: '5', no_show_rate: '0.067', cancellation_rate: '0.25', repeat_rate: '0.5',
+      no_show_rate: '0.067', cancellation_rate: '0.25', repeat_rate: '0.5',
       revenue_by_staff: [{ name: 'Ana', revenue: '800' }, { name: '—', revenue: '450.5' }],
       by_weekday: [22, 17, 5, 9, 11, 1, 1], by_hour: Array(24).fill(0),
     })!

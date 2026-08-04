@@ -513,7 +513,6 @@ export default function OverviewPage() {
           <MenuItem value="all">{t('dashboard.allPayments')}</MenuItem>
           <MenuItem value="unpaid">{t('dashboard.payUnpaid')}</MenuItem>
           <MenuItem value="paid">{t('dashboard.payPaid')}</MenuItem>
-          <MenuItem value="deposit_paid">{t('dashboard.payDeposit')}</MenuItem>
           <MenuItem value="refunded">{t('dashboard.payRefunded')}</MenuItem>
         </Select>
       </FormControl>
@@ -879,7 +878,7 @@ export default function OverviewPage() {
               ) : (
                 <>
                   {/* No-show: the slot was consumed (still counts toward usage)
-                      and any deposit is kept per policy — distinct from a cancel. */}
+                      — distinct from a cancel. */}
                   <Button variant="outlined" color="warning" data-testid="appt-no-show"
                     onClick={() => changeStatus(selected.id, 'no_show')} disabled={!!actionLoading}>
                     {t('dashboard.markNoShow')}

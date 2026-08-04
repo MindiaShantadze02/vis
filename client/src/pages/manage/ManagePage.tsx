@@ -37,7 +37,6 @@ interface ManageContext {
   payment_status: string
   phone_masked: string
   cancellation_window_hours: number
-  deposit_refundable: boolean
   can_manage: boolean
   refund_on_cancel: boolean
 }
@@ -82,7 +81,7 @@ export default function ManagePage() {
     // The reschedule picker needs the full service row (capacity etc.).
     const { data: svc } = await supabase
       .from('services')
-      .select('id, name, duration_minutes, price, max_per_slot, deposit_type, deposit_value')
+      .select('id, name, duration_minutes, price, max_per_slot')
       .eq('id', c.service_id)
       .maybeSingle()
     if (svc) setService({ ...(svc as Omit<BookingService, 'images'>), images: [] })

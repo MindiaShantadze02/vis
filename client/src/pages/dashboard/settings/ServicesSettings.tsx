@@ -23,10 +23,6 @@ import {
 
 type LocationType = 'in_person' | 'online'
 
-// A service's deposit: null type = inherit the org default; 'none' = override
-// to no deposit; 'fixed'/'percent' = a service-specific deposit.
-type ServiceDepositType = 'none' | 'fixed' | 'percent'
-
 interface Service {
   id: string
   name: string
@@ -36,8 +32,6 @@ interface Service {
   sort_order: number
   max_per_slot: number
   location_type: LocationType
-  deposit_type: ServiceDepositType | null
-  deposit_value: number | null
   recurring_default: boolean
   recurring_cadence: RecurringCadence | null
   recurring_occurrence_count: number | null
@@ -61,8 +55,6 @@ interface ServiceForm {
   is_active: boolean
   max_per_slot: string
   location_type: LocationType
-  deposit_type: ServiceDepositType
-  deposit_value: string
   recurring_default: boolean
   recurring_cadence: RecurringCadence
   recurring_occurrence_count: string
@@ -75,8 +67,6 @@ const EMPTY: ServiceForm = {
   is_active: true,
   max_per_slot: '1',
   location_type: 'in_person',
-  deposit_type: 'none',
-  deposit_value: '',
   recurring_default: false,
   recurring_cadence: 'weekly',
   recurring_occurrence_count: '8',
@@ -187,9 +177,6 @@ export default function ServicesSettings() {
       is_active: s.is_active,
       max_per_slot: String(s.max_per_slot),
       location_type: s.location_type,
-      // Legacy null (pre-091 services that inherited) reads as an explicit 'none'.
-      deposit_type: s.deposit_type ?? 'none',
-      deposit_value: s.deposit_value != null ? String(s.deposit_value) : '',
       recurring_default: s.recurring_default ?? false,
       recurring_cadence: s.recurring_cadence ?? 'weekly',
       recurring_occurrence_count: s.recurring_occurrence_count != null ? String(s.recurring_occurrence_count) : '8',
@@ -284,21 +271,6 @@ export default function ServicesSettings() {
   const priceInvalid = form.price.trim().length > 0 &&
     (!isNonNegativeNumber(Number(form.price)) || Number(form.price) > MAX_PRICE)
   const maxPerSlotInvalid = !(Number(form.max_per_slot) >= 1)
-  // A fixed/percent deposit needs a positive value; a percent can't exceed 100
-  // and a fixed deposit can't exceed the service price (it's a share of it).
-  const depositNeedsValue = form.deposit_type === 'fixed' || form.deposit_type === 'percent'
-  const depositExceedsPrice = form.deposit_type === 'fixed' && Number(form.deposit_value) > Number(form.price || 0)
-  const depositValueInvalid = depositNeedsValue && (
-    !(Number(form.deposit_value) > 0) ||
-    (form.deposit_type === 'percent' && Number(form.deposit_value) > 100) ||
-    depositExceedsPrice
-  )
-
-  // 'none' → no deposit (value cleared); fixed/percent carry a value.
-  const depositPayload = () => ({
-    deposit_type: form.deposit_type,
-    deposit_value: depositNeedsValue ? Number(form.deposit_value) : null,
-  })
 
   // Recurrence default: when off, the config columns are cleared. When on, the
   // occurrence count must be a whole number in [1, 52] (matches the DB CHECK and
@@ -324,7 +296,6 @@ export default function ServicesSettings() {
       durationTooLong ||
       priceInvalid ||
       maxPerSlotInvalid ||
-      depositValueInvalid ||
       recurringCountInvalid
     if (invalid) {
       focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
@@ -344,7 +315,6 @@ export default function ServicesSettings() {
           is_active: form.is_active,
           max_per_slot: Number(form.max_per_slot),
           location_type: form.location_type,
-          ...depositPayload(),
           ...recurrencePayload(),
         })
         .eq('id', editing.id)
@@ -362,7 +332,6 @@ export default function ServicesSettings() {
           is_active: form.is_active,
           max_per_slot: Number(form.max_per_slot),
           location_type: form.location_type,
-          ...depositPayload(),
           ...recurrencePayload(),
           sort_order: maxOrder + 1,
         })
@@ -544,43 +513,6 @@ export default function ServicesSettings() {
               helperText={priceInvalid ? t('validation.priceTooLarge', { max: MAX_PRICE }) : undefined}
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-price' } }}
             />
-            {/* Deposit — per-service override of the org default. Requiring an
-                upfront deposit forces the online-payment path on the booking page. */}
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                {t('settings.depositLabel')}
-              </Typography>
-              <ToggleButtonGroup
-                exclusive
-                fullWidth
-                size="small"
-                value={form.deposit_type}
-                onChange={(_, v: ServiceDepositType | null) => {
-                  if (v) setForm(f => ({ ...f, deposit_type: v }))
-                }}
-              >
-                <ToggleButton value="none" data-testid="service-deposit-none">{t('settings.depositNone')}</ToggleButton>
-                <ToggleButton value="fixed" data-testid="service-deposit-fixed">{t('settings.depositFixed')}</ToggleButton>
-                <ToggleButton value="percent" data-testid="service-deposit-percent">{t('settings.depositPercent')}</ToggleButton>
-              </ToggleButtonGroup>
-              {depositNeedsValue && (
-                <TextField
-                  value={form.deposit_value}
-                  onChange={e => setForm(f => ({ ...f, deposit_value: onlyDecimal(e.target.value) }))}
-                  fullWidth
-                  size="small"
-                  sx={{ mt: 1.5 }}
-                  label={form.deposit_type === 'percent' ? t('settings.depositPercentValue') : t('settings.depositFixedValue')}
-                  error={depositValueInvalid}
-                  helperText={
-                    depositExceedsPrice ? t('settings.depositExceedsPrice')
-                    : depositValueInvalid ? t('settings.depositValueInvalid')
-                    : undefined
-                  }
-                  slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-deposit-value' } }}
-                />
-              )}
-            </Box>
             {/* Recurrence default — pre-fills/enables the repeat options in the
                 owner's Add-Appointment dialog when this service is picked. */}
             <Box>

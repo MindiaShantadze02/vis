@@ -85,7 +85,6 @@ export default function AnalyticsPage() {
             <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.revenue')} value={money(data.revenue)} accent /></Grid>
             <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.bookings')} value={String(data.bookings)} /></Grid>
             <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.completed')} value={String(data.completed)} /></Grid>
-            <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.deposits')} value={String(data.deposits_collected)} /></Grid>
             <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.noShowRate')} value={pct(data.no_show_rate)} /></Grid>
             <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.cancelRate')} value={pct(data.cancellation_rate)} /></Grid>
             <Grid size={{ xs: 6, md: 3 }}><Stat label={t('analytics.repeatRate')} value={pct(data.repeat_rate)} /></Grid>

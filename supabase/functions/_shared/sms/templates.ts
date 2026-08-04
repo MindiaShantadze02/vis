@@ -195,7 +195,7 @@ export interface CancellationUpdateData {
   serviceName: string
   // Already-formatted, human-readable local date/time of the cancelled slot.
   when: string
-  // When true, the deposit/payment is being returned — say so in the same SMS.
+  // When true, the payment is being returned — say so in the same SMS.
   refunded: boolean
   amount: number
   currency: string
