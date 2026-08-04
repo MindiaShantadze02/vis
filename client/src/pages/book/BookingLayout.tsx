@@ -31,6 +31,8 @@ export interface BookingOrg {
   contact_email: string | null
   address: string | null
   logo_url: string | null
+  // Optional wide banner shown across the top of the booking page.
+  cover_url: string | null
   slug: string
   payment_config: Record<string, { enabled?: boolean }> | null
   booking_theme: string | null
@@ -53,6 +55,7 @@ interface PublicOrg {
   contact_email: string | null
   address: string | null
   logo_url: string | null
+  cover_url: string | null
   slug: string
   booking_theme: string | null
   payment_methods: Record<string, { enabled?: boolean }> | null
@@ -196,6 +199,7 @@ export default function BookingLayout() {
         contact_email: pub.contact_email,
         address: pub.address,
         logo_url: pub.logo_url,
+        cover_url: pub.cover_url ?? null,
         slug: pub.slug,
         booking_theme: pub.booking_theme,
         payment_config: pub.payment_methods,

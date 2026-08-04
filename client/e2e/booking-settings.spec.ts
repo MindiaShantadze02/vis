@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { login } from './helpers'
+import { login, SEED } from './helpers'
+
+// A tiny valid 1x1 PNG used as the uploaded cover, kept inline (no fixture file).
+const PNG_1x1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+)
 
 /**
  * Booking-page settings — the customer-facing page controls (colour theme,
@@ -46,5 +52,26 @@ test.describe('Settings — Booking page', () => {
     await expect(toggle).not.toBeChecked()
     // Not saved — the org keeps auto-approving; the pending workflow itself is
     // exercised (via setRequireApproval) in appointment-status/calendar specs.
+  })
+
+  test('upload a cover image, see it on the booking page, then remove it', async ({ page }) => {
+    // Empty state before any cover is set.
+    await expect(page.getByTestId('cover-upload')).toBeVisible()
+
+    // Uploading persists immediately (like the logo) — a preview + remove appear.
+    await page.getByTestId('cover-input').setInputFiles({ name: 'cover.png', mimeType: 'image/png', buffer: PNG_1x1 })
+    await expect(page.getByTestId('cover-preview')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByTestId('cover-remove')).toBeVisible()
+
+    // The public booking page shows the cover as a hero band across the top.
+    await page.goto(`/book/${SEED.slug}`)
+    await expect(page.getByTestId('booking-cover')).toBeVisible({ timeout: 30_000 })
+
+    // Remove it so the seeded org is left clean; the hero is gone afterwards.
+    await page.goto('/dashboard/settings/booking')
+    await page.getByTestId('cover-remove').click()
+    await expect(page.getByTestId('cover-remove')).toHaveCount(0, { timeout: 20_000 })
+    await page.goto(`/book/${SEED.slug}`)
+    await expect(page.getByTestId('booking-cover')).toHaveCount(0)
   })
 })

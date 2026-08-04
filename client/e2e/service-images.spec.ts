@@ -38,25 +38,42 @@ test.describe('Service images', () => {
     // The list row shows the persisted image thumbnail (proves upload + row insert).
     await expect(row.getByTestId('service-row-thumb')).toBeVisible({ timeout: 20_000 })
 
-    // On the customer booking page the cards stay compact; selecting the
-    // service shows its photos in the branded sidebar, which open a lightbox.
+    // On the customer booking page the service card now shows a lead-photo
+    // banner and a "view photos" badge right on the selection step.
     await page.goto(`/book/${SEED.slug}`)
-    const card = page.getByTestId('book-service').filter({ hasText: name })
+    const card = page.getByTestId('service-card').filter({ hasText: name })
     await expect(card).toBeVisible({ timeout: 30_000 })
-    await card.click()
+    // The banner image is rendered inline on the card.
+    await expect(card.locator('img').first()).toBeVisible()
+
+    // Photos are visible on mobile too — the old sidebar-only gallery never was.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(card.locator('img').first()).toBeVisible()
+    await page.setViewportSize({ width: 1280, height: 800 })
+
+    // Tapping the badge browses the gallery WITHOUT selecting/advancing — the
+    // service list is still shown after the lightbox closes.
+    await card.getByTestId('view-photos').click()
+    await expect(page.getByTestId('gallery-close')).toBeVisible()
+    await page.getByTestId('gallery-close').click()
+    await expect(page.getByTestId('service-card').first()).toBeVisible()
+
+    // Tapping the card body selects the service and advances; its photos then
+    // also appear in the branded sidebar (desktop) with the same lightbox.
+    await card.getByTestId('book-service').click()
     const gallery = page.getByTestId('sidebar-gallery')
     await expect(gallery).toBeVisible()
     await gallery.getByTestId('gallery-thumb').first().click()
     await expect(page.getByTestId('gallery-close')).toBeVisible()
     await page.getByTestId('gallery-close').click()
 
-    // Going back to the service list hides the gallery — the previous choice's
-    // photos must not linger next to a fresh selection (regression).
+    // Going back to the service list hides the sidebar gallery — the previous
+    // choice's photos must not linger next to a fresh selection (regression).
     await page.getByTestId('book-back').click()
     await expect(page.getByTestId('book-service').first()).toBeVisible()
     await expect(page.getByTestId('sidebar-gallery')).toHaveCount(0)
     // Re-selecting brings it straight back on the date step.
-    await card.click()
+    await card.getByTestId('book-service').click()
     await expect(page.getByTestId('sidebar-gallery')).toBeVisible()
 
     // Clean up: delete the service (cascades the image row; the component also

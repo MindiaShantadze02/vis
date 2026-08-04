@@ -49,6 +49,9 @@ export default function SkeletonImage({
         component="img"
         src={src}
         alt={alt}
+        // Below-the-fold thumbnails/banners shouldn't block first paint.
+        loading="lazy"
+        decoding="async"
         // Cached images can be complete before React attaches onLoad.
         ref={(el: HTMLImageElement | null) => { if (el?.complete && !loaded) setLoaded(true) }}
         onLoad={() => setLoaded(true)}

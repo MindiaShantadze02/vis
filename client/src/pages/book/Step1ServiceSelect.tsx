@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { Box, Typography, Card, CardActionArea, CardContent } from '@mui/material'
 import { AccessTimeOutlined as AccessTimeOutlinedIcon } from '@/components/icons'
 import { ChevronRight as ChevronRightIcon } from '@/components/icons'
+import { CollectionsOutlined as CollectionsOutlinedIcon } from '@/components/icons'
 import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useTheme, alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
 import { staggerContainer, listItem, baseTransition } from '@/theme/motion'
-import { LoadingState, EmptyState } from '@/components/ui'
+import { LoadingState, EmptyState, SkeletonImage, ImageLightbox } from '@/components/ui'
 import type { BookingService } from './BookingLayout'
 
 interface Props {
@@ -20,6 +21,8 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
   const { t } = useTranslation()
   const [services, setServices] = useState<BookingService[]>([])
   const [loading, setLoading] = useState(true)
+  // The service whose photos are open in the lightbox (browse without selecting).
+  const [gallery, setGallery] = useState<{ images: string[]; name: string } | null>(null)
 
   useEffect(() => {
     async function loadServices() {
@@ -79,56 +82,104 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
         animate="visible"
         sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
       >
-        {services.map((s) => (
-          <Card
-            key={s.id}
-            component={motion.div}
-            variants={listItem}
-            whileHover={{ y: -2, boxShadow: cardHover }}
-            whileTap={{ scale: 0.98 }}
-            transition={baseTransition}
-            sx={{
-              position: 'relative',
-              overflow: 'hidden',
-              border: '1px solid',
-              borderColor: 'divider',
-              // A citrus rail down the left edge — the ticket-stub edge, carried
-              // onto the service cards so they read as branded, not generic rows.
-              '&::before': {
-                content: '""', position: 'absolute', left: 0, top: 0, bottom: 0,
-                width: 4, bgcolor: 'primary.main',
-                transition: 'width 0.18s ease',
-              },
-              '&:hover': { borderColor: 'primary.main' },
-              '&:hover::before': { width: 6 },
-            }}
-          >
-            <CardActionArea onClick={() => onSelect(s)} data-testid="book-service">
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2.25, pl: 2.75 }}>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{s.name}</Typography>
-                  <Box
-                    sx={{
-                      display: 'inline-flex', alignItems: 'center', gap: 0.5, mt: 0.75,
-                      px: 1, py: 0.25, borderRadius: 1.5,
-                      bgcolor: 'secondary.main', color: 'secondary.contrastText',
-                    }}
-                  >
-                    <AccessTimeOutlinedIcon sx={{ fontSize: 14 }} />
-                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                      {s.duration_minutes} {t('common.minutesShort')}
-                    </Typography>
-                  </Box>
+        {services.map((s) => {
+          const hasImages = s.images.length > 0
+          return (
+            <Card
+              key={s.id}
+              data-testid="service-card"
+              component={motion.div}
+              variants={listItem}
+              whileHover={{ y: -2, boxShadow: cardHover }}
+              whileTap={{ scale: 0.98 }}
+              transition={baseTransition}
+              sx={{
+                position: 'relative',
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: 'divider',
+                // A citrus rail down the left edge — the ticket-stub edge, carried
+                // onto the service cards so they read as branded, not generic rows.
+                '&::before': {
+                  content: '""', position: 'absolute', left: 0, top: 0, bottom: 0,
+                  width: 4, bgcolor: 'primary.main',
+                  transition: 'width 0.18s ease', zIndex: 1,
+                },
+                '&:hover': { borderColor: 'primary.main' },
+                '&:hover::before': { width: 6 },
+              }}
+            >
+              {/* "View photos" badge — a sibling of the CardActionArea (not nested
+                  inside it, which would be a button in a button), sat above it so
+                  a tap browses the gallery instead of selecting the service. */}
+              {hasImages && (
+                <Box
+                  component="button"
+                  type="button"
+                  aria-label={t('booking.viewGallery')}
+                  data-testid="view-photos"
+                  onClick={() => setGallery({ images: s.images, name: s.name })}
+                  sx={{
+                    position: 'absolute', top: 10, right: 10, zIndex: 2,
+                    display: 'inline-flex', alignItems: 'center', gap: 0.5,
+                    px: 1, py: 0.4, border: 0, borderRadius: 5, cursor: 'pointer',
+                    color: '#fff', bgcolor: 'rgba(0,0,0,0.55)',
+                    backdropFilter: 'blur(2px)',
+                    transition: 'background-color 0.15s ease',
+                    '&:hover': { bgcolor: 'rgba(0,0,0,0.72)' },
+                  }}
+                >
+                  <CollectionsOutlinedIcon sx={{ fontSize: 15 }} />
+                  <Typography component="span" variant="caption" sx={{ fontWeight: 700, lineHeight: 1 }}>
+                    {s.images.length}
+                  </Typography>
                 </Box>
-                <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: 'text.primary', whiteSpace: 'nowrap' }}>
-                  {s.price} ₾
-                </Typography>
-                <ChevronRightIcon sx={{ color: 'text.disabled', flexShrink: 0 }} />
-              </CardContent>
-            </CardActionArea>
-          </Card>
-        ))}
+              )}
+
+              <CardActionArea onClick={() => onSelect(s)} data-testid="book-service">
+                {/* Lead photo banner — only for services that have photos. */}
+                {hasImages && (
+                  <SkeletonImage
+                    src={s.images[0]}
+                    alt={s.name}
+                    sx={{ width: '100%', height: 160 }}
+                  />
+                )}
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2.25, pl: 2.75 }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{s.name}</Typography>
+                    <Box
+                      sx={{
+                        display: 'inline-flex', alignItems: 'center', gap: 0.5, mt: 0.75,
+                        px: 1, py: 0.25, borderRadius: 1.5,
+                        bgcolor: 'secondary.main', color: 'secondary.contrastText',
+                      }}
+                    >
+                      <AccessTimeOutlinedIcon sx={{ fontSize: 14 }} />
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        {s.duration_minutes} {t('common.minutesShort')}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: 'text.primary', whiteSpace: 'nowrap' }}>
+                    {s.price} ₾
+                  </Typography>
+                  <ChevronRightIcon sx={{ color: 'text.disabled', flexShrink: 0 }} />
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          )
+        })}
       </Box>
+
+      {gallery && (
+        <ImageLightbox
+          images={gallery.images}
+          startIndex={0}
+          alt={gallery.name}
+          onClose={() => setGallery(null)}
+        />
+      )}
     </Box>
   )
 }

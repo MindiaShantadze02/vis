@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Box, Typography, Card, CardContent, Button, Divider, CircularProgress,
   Stack, Switch, FormControlLabel, Link as MuiLink,
 } from '@mui/material'
 import { OpenInNewOutlined as OpenInNewOutlinedIcon } from '@/components/icons'
+import { PhotoCameraOutlined as PhotoCameraOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
-import { PageHeader, CopyableText, FormErrorAlert, useToast } from '@/components/ui'
+import { imageFileError } from '@/lib/validation'
+import { PageHeader, CopyableText, FormErrorAlert, SkeletonImage, useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import {
   BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, getBookingTheme, isCustomBookingColor,
@@ -32,6 +34,11 @@ export default function BookingPageSettings() {
   // defaults to true, migration 080); turning automatic approval ON opts out.
   // Paid (online) bookings always auto-confirm via the webhook.
   const [requireApproval, setRequireApproval] = useState(true)
+  // Optional wide banner for the top of the booking page. Persisted immediately
+  // on upload/remove (like the logo), independent of the Save button below.
+  const [coverUrl, setCoverUrl] = useState<string | null>(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const coverFileRef = useRef<HTMLInputElement>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,8 +47,57 @@ export default function BookingPageSettings() {
       setBookingTheme(getBookingTheme(org.booking_theme).key)
       setReviewsEnabled(org.reviews_enabled)
       setRequireApproval(org.require_approval)
+      setCoverUrl(org.cover_url ?? null)
     }
   }, [org])
+
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !org) return
+    // Reject non-images / oversized files before hitting storage (2 MB cap on
+    // the shared `logos` bucket).
+    const fileErr = imageFileError(file)
+    if (fileErr) {
+      setError(fileErr === 'fileTooLarge' ? t('validation.fileTooLarge', { max: 2 }) : t('validation.invalidImage'))
+      e.target.value = ''
+      return
+    }
+    setUploadingCover(true)
+    setError(null)
+
+    const ext = file.name.split('.').pop()
+    const path = `${org.id}/cover.${ext}`
+
+    const { error: uploadErr } = await supabase.storage
+      .from('logos')
+      .upload(path, file, { upsert: true })
+
+    if (uploadErr) {
+      setError(uploadErr.message)
+      setUploadingCover(false)
+      return
+    }
+
+    // Stable path → append a cache-busting version so each upload is a fresh URL.
+    const { data } = supabase.storage.from('logos').getPublicUrl(path)
+    const url = `${data.publicUrl}?v=${Date.now()}`
+
+    await supabase.from('organisations').update({ cover_url: url }).eq('id', org.id)
+    setCoverUrl(url)
+    await refresh()
+    setUploadingCover(false)
+    e.target.value = ''
+  }
+
+  async function handleCoverRemove() {
+    if (!org) return
+    setUploadingCover(true)
+    setError(null)
+    await supabase.from('organisations').update({ cover_url: null }).eq('id', org.id)
+    setCoverUrl(null)
+    await refresh()
+    setUploadingCover(false)
+  }
 
   async function handleSave() {
     if (!org) return
@@ -99,6 +155,77 @@ export default function BookingPageSettings() {
           </CardContent>
         </Card>
       )}
+
+      {/* Cover image — optional wide banner shown across the top of the booking
+          page. Uploaded/removed immediately (not tied to the Save button). */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+            {t('settings.coverImage')}
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
+            {t('settings.coverImageHelp')}
+          </Typography>
+
+          <input
+            ref={coverFileRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={handleCoverUpload}
+            data-testid="cover-input"
+          />
+
+          {coverUrl ? (
+            <Box
+              data-testid="cover-preview"
+              sx={{
+                width: '100%', aspectRatio: '16 / 5', borderRadius: 2, overflow: 'hidden',
+                border: '1px solid', borderColor: 'divider', mb: 2,
+              }}
+            >
+              <SkeletonImage src={coverUrl} alt={t('settings.coverImage')} sx={{ width: '100%', height: '100%' }} />
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                width: '100%', aspectRatio: '16 / 5', borderRadius: 2, mb: 2,
+                border: '1px dashed', borderColor: 'divider',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                color: 'text.disabled', gap: 0.5,
+              }}
+            >
+              <PhotoCameraOutlinedIcon />
+              <Typography variant="caption">{t('settings.coverImageEmpty')}</Typography>
+            </Box>
+          )}
+
+          <Stack direction="row" spacing={1.5}>
+            <Button
+              variant="outlined"
+              startIcon={<PhotoCameraOutlinedIcon />}
+              onClick={() => coverFileRef.current?.click()}
+              disabled={uploadingCover}
+              data-testid="cover-upload"
+            >
+              {uploadingCover
+                ? <CircularProgress size={20} color="inherit" />
+                : coverUrl ? t('settings.coverImageReplace') : t('settings.coverImageUpload')}
+            </Button>
+            {coverUrl && (
+              <Button
+                variant="text"
+                color="error"
+                onClick={handleCoverRemove}
+                disabled={uploadingCover}
+                data-testid="cover-remove"
+              >
+                {t('common.remove')}
+              </Button>
+            )}
+          </Stack>
+        </CardContent>
+      </Card>
 
       {/* Appearance + reviews */}
       <Card>

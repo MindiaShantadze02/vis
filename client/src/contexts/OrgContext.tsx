@@ -14,6 +14,9 @@ export interface Organisation {
   contact_email: string | null
   address: string | null
   logo_url: string | null
+  // Optional wide banner for the public booking page (uploaded in Booking-page
+  // settings; stored in the `logos` bucket at {org_id}/cover.{ext}).
+  cover_url: string | null
   // Post-paid billing state (active / past_due / suspended). Suspended blocks
   // new bookings; data and the booking page stay alive.
   billing_status: BillingState

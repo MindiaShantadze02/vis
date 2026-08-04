@@ -9,7 +9,7 @@ import { PlaceOutlined as PlaceOutlinedIcon } from '@/components/icons'
 import { MailOutlined as MailOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { stepVariants } from '@/theme/motion'
-import { LanguageSwitcher } from '@/components/ui'
+import { LanguageSwitcher, SkeletonImage } from '@/components/ui'
 import { displayGeorgianPhone } from '@/lib/validation'
 import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
@@ -155,7 +155,20 @@ export default function BookingShell({
   )
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: embed ? 'auto' : '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: embed ? 'auto' : '100vh' }}>
+      {/* Optional full-width cover banner across the top of the booking page.
+          Owner-uploaded (Booking-page settings); hidden in embed mode, where the
+          host site provides its own branding. */}
+      {org.cover_url && !embed && (
+        <SkeletonImage
+          src={org.cover_url}
+          alt={org.name}
+          data-testid="booking-cover"
+          sx={{ width: '100%', height: { xs: 120, md: 180 }, flexShrink: 0 }}
+        />
+      )}
+
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flex: 1, minWidth: 0 }}>
       {/* Branded sidebar — hidden in embed mode (the host site provides branding). */}
       {!isMobile && !embed && sidebar}
 
@@ -266,6 +279,7 @@ export default function BookingShell({
       {/* Hosts cap the iframe height, which clips tall steps — cue the visitor
           that more content (e.g. afternoon slots) is below the fold. */}
       {embed && <EmbedScrollHint />}
+      </Box>
     </Box>
   )
 }
