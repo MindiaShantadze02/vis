@@ -25,8 +25,10 @@ export interface BillingStatus {
   appointmentCount: number
   /** ₾ per billable appointment. */
   appointmentPrice: number
-  /** appointmentCount × appointmentPrice, in ₾. */
+  /** appointmentCount × appointmentPrice, in ₾ (the Vis commission). */
   runningAmount: number
+  /** Gross revenue over the same billable appointments this period, in ₾. */
+  earned: number
   /** Below-floor balance carried from the previous period (0 when none). */
   rolledForward: number
   /** Saved card metadata, or null when none on file. */
@@ -60,6 +62,7 @@ export function parseBillingStatus(raw: unknown): BillingStatus | null {
     appointmentCount: num(r.appointment_count),
     appointmentPrice: num(r.appointment_price),
     runningAmount: num(r.running_amount),
+    earned: num(r.earned),
     rolledForward: num(r.rolled_forward),
     card,
   }

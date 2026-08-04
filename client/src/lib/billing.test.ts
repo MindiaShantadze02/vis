@@ -10,6 +10,7 @@ describe('parseBillingStatus', () => {
       appointment_count: '34',
       appointment_price: '1',
       running_amount: '34',
+      earned: '1250.5',
       rolled_forward: '6',
       card: { last4: '4242', brand: 'visa', expires_at: '2027-05-01' },
     })
@@ -20,6 +21,7 @@ describe('parseBillingStatus', () => {
       appointmentCount: 34,
       appointmentPrice: 1,
       runningAmount: 34,
+      earned: 1250.5,
       rolledForward: 6,
       card: { last4: '4242', brand: 'visa', expiresAt: '2027-05-01' },
     })
