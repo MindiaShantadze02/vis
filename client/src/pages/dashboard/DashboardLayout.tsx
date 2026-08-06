@@ -46,7 +46,11 @@ const NAV_ITEMS = [
 ]
 
 // Dashboard settings, grouped by concern so the submenu teaches the mental
-// model: business setup, the public booking page, billing, then the account.
+// model: your business, the customer-facing booking + payments, then your Vis
+// account + billing. "Payment" (money IN from customers) sits with the booking
+// page; "Billing" (money OUT to Vis) sits with the account — they used to share
+// a "Billing" header and read as the same thing. API keys (a niche developer
+// feature) is demoted to the bottom of the account group.
 const SETTINGS_GROUPS = [
   {
     headerKey: 'settings.groupBusiness',
@@ -61,20 +65,15 @@ const SETTINGS_GROUPS = [
     headerKey: 'settings.groupBookingPage',
     items: [
       { labelKey: 'settings.bookingPage',  path: '/dashboard/settings/booking' },
-      { labelKey: 'settings.apiKeys',      path: '/dashboard/settings/api' },
-    ],
-  },
-  {
-    headerKey: 'settings.groupBilling',
-    items: [
       { labelKey: 'settings.payment',      path: '/dashboard/settings/payment' },
-      { labelKey: 'settings.billing', path: '/dashboard/settings/billing' },
     ],
   },
   {
     headerKey: 'settings.groupAccount',
     items: [
+      { labelKey: 'settings.billing',      path: '/dashboard/settings/billing' },
       { labelKey: 'settings.account',      path: '/dashboard/settings/account' },
+      { labelKey: 'settings.apiKeys',      path: '/dashboard/settings/api' },
     ],
   },
 ]
