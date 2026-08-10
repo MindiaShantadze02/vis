@@ -35,9 +35,16 @@ interface Service {
   recurring_default: boolean
   recurring_cadence: RecurringCadence | null
   recurring_occurrence_count: number | null
+  // Per-service deposit override; NULL deposit_type inherits the org default.
+  deposit_type: 'none' | 'fixed' | 'percent' | null
+  deposit_value: number | null
 }
 
 type RecurringCadence = 'weekly' | 'biweekly' | 'monthly'
+
+// UI mode for the deposit control: 'inherit' persists a NULL deposit_type (use
+// the org default); the others map straight to deposit_type.
+type DepositMode = 'inherit' | 'none' | 'fixed' | 'percent'
 
 interface BookableMember {
   id: string
@@ -58,6 +65,8 @@ interface ServiceForm {
   recurring_default: boolean
   recurring_cadence: RecurringCadence
   recurring_occurrence_count: string
+  deposit_mode: DepositMode
+  deposit_value: string
 }
 
 const EMPTY: ServiceForm = {
@@ -70,6 +79,8 @@ const EMPTY: ServiceForm = {
   recurring_default: false,
   recurring_cadence: 'weekly',
   recurring_occurrence_count: '8',
+  deposit_mode: 'inherit',
+  deposit_value: '',
 }
 
 // A dialog gallery item. `id` present = a persisted service_images row (edit
@@ -180,6 +191,9 @@ export default function ServicesSettings() {
       recurring_default: s.recurring_default ?? false,
       recurring_cadence: s.recurring_cadence ?? 'weekly',
       recurring_occurrence_count: s.recurring_occurrence_count != null ? String(s.recurring_occurrence_count) : '8',
+      // NULL deposit_type = inherit the org default.
+      deposit_mode: s.deposit_type == null ? 'inherit' : s.deposit_type,
+      deposit_value: s.deposit_value != null ? String(s.deposit_value) : '',
     })
     setGallery((imagesByService[s.id] ?? []).map(img => ({ key: img.id, id: img.id, url: img.url })))
     const { data } = await supabase.from('service_staff').select('member_id').eq('service_id', s.id)
@@ -285,6 +299,22 @@ export default function ServicesSettings() {
     recurring_occurrence_count: form.recurring_default ? recurringCount : null,
   })
 
+  // Deposit: 'inherit' → NULL type (use org default); 'none' → no deposit;
+  // 'fixed'/'percent' carry a value. Fixed must be ≥ 0 (and ≤ price at config
+  // time); percent must be 0–100.
+  const depositValue = Number(form.deposit_value)
+  const depositNeedsValue = form.deposit_mode === 'fixed' || form.deposit_mode === 'percent'
+  const depositValueInvalid =
+    depositNeedsValue &&
+    (form.deposit_value.trim().length === 0 ||
+      !isNonNegativeNumber(depositValue) ||
+      (form.deposit_mode === 'percent' && depositValue > 100) ||
+      (form.deposit_mode === 'fixed' && depositValue > Number(form.price)))
+  const depositPayload = () => ({
+    deposit_type: form.deposit_mode === 'inherit' ? null : form.deposit_mode,
+    deposit_value: depositNeedsValue ? depositValue : null,
+  })
+
   async function handleSave() {
     if (!org) return
     // Every rule flagged inline on its field rather than a disabled button;
@@ -296,7 +326,8 @@ export default function ServicesSettings() {
       durationTooLong ||
       priceInvalid ||
       maxPerSlotInvalid ||
-      recurringCountInvalid
+      recurringCountInvalid ||
+      depositValueInvalid
     if (invalid) {
       focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDialog-root') ?? document)
       return
@@ -316,6 +347,7 @@ export default function ServicesSettings() {
           max_per_slot: Number(form.max_per_slot),
           location_type: form.location_type,
           ...recurrencePayload(),
+          ...depositPayload(),
         })
         .eq('id', editing.id)
       if (err) { setError(friendlyError(err.message, t)); setSaving(false); return }
@@ -333,6 +365,7 @@ export default function ServicesSettings() {
           max_per_slot: Number(form.max_per_slot),
           location_type: form.location_type,
           ...recurrencePayload(),
+          ...depositPayload(),
           sort_order: maxOrder + 1,
         })
         .select('id')
@@ -513,6 +546,44 @@ export default function ServicesSettings() {
               helperText={priceInvalid ? t('validation.priceTooLarge', { max: MAX_PRICE }) : undefined}
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-price' } }}
             />
+            {/* Deposit — an upfront prepayment that confirms the booking (the
+                strongest no-show killer). "Inherit" uses the org default; "None"
+                overrides it to no deposit for this service. */}
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                {t('settings.deposit')}
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                size="small"
+                value={form.deposit_mode}
+                onChange={(_, v: DepositMode | null) => { if (v) setForm(f => ({ ...f, deposit_mode: v })) }}
+              >
+                <ToggleButton value="inherit" data-testid="deposit-mode-inherit">{t('settings.depositInherit')}</ToggleButton>
+                <ToggleButton value="none" data-testid="deposit-mode-none">{t('settings.depositNone')}</ToggleButton>
+                <ToggleButton value="fixed" data-testid="deposit-mode-fixed">{t('settings.depositFixed')}</ToggleButton>
+                <ToggleButton value="percent" data-testid="deposit-mode-percent">{t('settings.depositPercent')}</ToggleButton>
+              </ToggleButtonGroup>
+              {depositNeedsValue && (
+                <TextField
+                  value={form.deposit_value}
+                  onChange={e => setForm(f => ({ ...f, deposit_value: onlyDecimal(e.target.value) }))}
+                  fullWidth
+                  size="small"
+                  sx={{ mt: 1.5 }}
+                  label={form.deposit_mode === 'percent' ? t('settings.depositPercentLabel') : t('settings.depositFixedLabel')}
+                  error={depositValueInvalid}
+                  helperText={depositValueInvalid ? t('settings.depositValueHelp') : t('settings.depositHelp')}
+                  slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'deposit-value' } }}
+                />
+              )}
+              {form.deposit_mode === 'inherit' && (
+                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+                  {t('settings.depositInheritHelp')}
+                </Typography>
+              )}
+            </Box>
             {/* Recurrence default — pre-fills/enables the repeat options in the
                 owner's Add-Appointment dialog when this service is picked. */}
             <Box>

@@ -250,7 +250,11 @@
     "poweredBy": "Работает на Vis",
     "contactToCancel": "Позвоните нам, чтобы отменить или изменить запись",
     "orgNotFoundTitle": "Бизнес не найден",
-    "orgNotFoundCaption": "Проверьте ссылку и попробуйте снова"
+    "orgNotFoundCaption": "Проверьте ссылку и попробуйте снова",
+    "payDepositHint": "Внесите депозит {{deposit}} ₾ сейчас — {{balance}} ₾ на месте",
+    "payDeposit": "Внести депозит",
+    "payNowDeposit": "К оплате сейчас (депозит)",
+    "dueInPerson": "Оплата на месте"
   },
   "payment": {
     "sandbox": "Тест",
@@ -482,7 +486,21 @@
     "cancellationWindowHours": "Окно бесплатной отмены (часы)",
     "cancellationWindowHelp": "Отмена не менее чем за столько часов возвращает онлайн-оплату.",
     "cancellationWindowInvalid": "Введите целое число часов (0 или больше).",
-    "billing": "Биллинг"
+    "billing": "Биллинг",
+    "deposit": "Депозит",
+    "depositInherit": "По умолчанию",
+    "depositNone": "Нет",
+    "depositFixed": "Фиксированный",
+    "depositPercent": "Процент",
+    "depositFixedLabel": "Сумма депозита (₾)",
+    "depositPercentLabel": "Депозит (% от цены)",
+    "depositHelp": "Оплачивается онлайн для подтверждения записи; остаток — на месте.",
+    "depositValueHelp": "Введите корректное значение (фиксированный ≤ цены; процент 0–100).",
+    "depositInheritHelp": "Используется депозит по умолчанию для бизнеса.",
+    "depositTitle": "Депозит",
+    "depositOrgHelp": "Применяется ко всем услугам без собственного депозита.",
+    "depositRefundable": "Возврат депозита при своевременной отмене",
+    "depositRefundableHelp": "Если выключено, депозит не возвращается даже в окне отмены."
   },
   "days": {
     "monday": "Понедельник",
@@ -748,7 +766,8 @@
     "busiestHours": "Загруженные часы",
     "noData": "Нет данных",
     "footer": "Все показатели за выбранный период (время Грузии).",
-    "nav": "Аналитика"
+    "nav": "Аналитика",
+    "depositsCollected": "Предоплаченные записи"
   },
   "invites": {
     "errAlreadyInOrg": "Вы уже являетесь участником организации",

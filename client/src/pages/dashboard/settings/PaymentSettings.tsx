@@ -3,7 +3,7 @@ import {
   Box, Typography, Card, CardContent, Button, TextField,
   Switch, Stack, Alert, CircularProgress,
   Divider, Accordion, AccordionSummary, AccordionDetails,
-  InputAdornment, IconButton,
+  InputAdornment, IconButton, ToggleButtonGroup, ToggleButton, FormControlLabel,
 } from '@mui/material'
 import { ExpandMore as ExpandMoreIcon } from '@/components/icons'
 import { VisibilityOutlined as VisibilityOutlinedIcon } from '@/components/icons'
@@ -38,6 +38,19 @@ export default function PaymentSettings() {
   // within this window refunds an online payment; outside it, no refund.
   const [cancelWindow, setCancelWindow] = useState('24')
   const cancelWindowInvalid = !(Number(cancelWindow) >= 0) || !Number.isInteger(Number(cancelWindow))
+
+  // Org-default deposit (services with no override inherit it) + whether an
+  // in-window cancel returns the deposit.
+  const [depositMode, setDepositMode] = useState<'none' | 'fixed' | 'percent'>('none')
+  const [depositValue, setDepositValue] = useState('')
+  const [depositRefundable, setDepositRefundable] = useState(true)
+  const depositNeedsValue = depositMode === 'fixed' || depositMode === 'percent'
+  const depositNum = Number(depositValue)
+  const depositValueInvalid =
+    depositNeedsValue &&
+    (depositValue.trim().length === 0 ||
+      !(depositNum >= 0) ||
+      (depositMode === 'percent' && depositNum > 100))
   // Accordions are controlled so we can auto-expand a provider when it's
   // enabled — otherwise its required credential fields stay hidden behind a
   // collapsed panel and the disabled Save button has no visible explanation.
@@ -56,6 +69,9 @@ export default function PaymentSettings() {
         if (pc.tbc?.enabled) setTbcExpanded(true)
       }
       setCancelWindow(String(org.cancellation_window_hours ?? 24))
+      setDepositMode(org.deposit_type ?? 'none')
+      setDepositValue(org.deposit_value != null ? String(org.deposit_value) : '')
+      setDepositRefundable(org.deposit_refundable ?? true)
     }
   }, [org])
 
@@ -97,7 +113,7 @@ export default function PaymentSettings() {
       focusFirstInvalidFieldAfterRender()
       return
     }
-    if (cancelWindowInvalid) {
+    if (cancelWindowInvalid || depositValueInvalid) {
       focusFirstInvalidFieldAfterRender()
       return
     }
@@ -109,6 +125,9 @@ export default function PaymentSettings() {
       .update({
         payment_config: config,
         cancellation_window_hours: Number(cancelWindow),
+        deposit_type: depositMode,
+        deposit_value: depositNeedsValue ? depositNum : null,
+        deposit_refundable: depositRefundable,
       })
       .eq('id', org.id)
 
@@ -128,6 +147,60 @@ export default function PaymentSettings() {
       </Alert>
 
       <Stack spacing={2}>
+        {/* Org-default deposit: the upfront prepayment that confirms a booking,
+            applied to every service that doesn't set its own. The strongest
+            no-show killer. */}
+        <Card>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{t('settings.depositTitle')}</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1.5 }}>
+              {t('settings.depositOrgHelp')}
+            </Typography>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={depositMode}
+              onChange={(_, v: 'none' | 'fixed' | 'percent' | null) => { if (v) setDepositMode(v) }}
+            >
+              <ToggleButton value="none" data-testid="org-deposit-none">{t('settings.depositNone')}</ToggleButton>
+              <ToggleButton value="fixed" data-testid="org-deposit-fixed">{t('settings.depositFixed')}</ToggleButton>
+              <ToggleButton value="percent" data-testid="org-deposit-percent">{t('settings.depositPercent')}</ToggleButton>
+            </ToggleButtonGroup>
+            {depositNeedsValue && (
+              <TextField
+                value={depositValue}
+                onChange={e => setDepositValue(e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))}
+                size="small"
+                sx={{ mt: 1.5, maxWidth: 240, display: 'block' }}
+                label={depositMode === 'percent' ? t('settings.depositPercentLabel') : t('settings.depositFixedLabel')}
+                error={depositValueInvalid}
+                helperText={depositValueInvalid ? t('settings.depositValueHelp') : undefined}
+                slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'org-deposit-value' } }}
+              />
+            )}
+            {depositMode !== 'none' && (
+              <FormControlLabel
+                sx={{ mt: 1.5, ml: 0, display: 'flex' }}
+                control={
+                  <Switch
+                    checked={depositRefundable}
+                    onChange={e => setDepositRefundable(e.target.checked)}
+                    data-testid="org-deposit-refundable"
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.depositRefundable')}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {t('settings.depositRefundableHelp')}
+                    </Typography>
+                  </Box>
+                }
+              />
+            )}
+          </CardContent>
+        </Card>
+
         {/* Cancellation policy: the free-cancel window that governs whether a
             self-service cancellation refunds an online payment. */}
         <Card>

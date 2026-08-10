@@ -30,6 +30,7 @@ import {
   toBusinessWallClock,
 } from "@/lib/slots";
 import { CONSENT_VERSION } from "@/pages/legal/legalContent";
+import { depositFor } from "@/lib/deposit";
 import { postToParent } from "./useEmbedBridge";
 import { elevation } from "@/theme/theme";
 import type { BookingOrg, BookingState } from "./BookingLayout";
@@ -96,14 +97,27 @@ export default function Step3CustomerForm({
   // while the same 6 digits sit in the field.
   const autoSubmitted = useRef<string | null>(null);
 
-  // A priced service is charged online in full (create-payment charges the
-  // full price server-side); a free service is booked with no charge.
-  const price = booking.service?.price ?? 0;
+  // A priced service is charged online; a free service is booked with no charge.
+  const price = Number(booking.service?.price ?? 0);
 
   // Payment method is no longer a customer choice (pay-in-person was removed):
   // a priced service is charged online; a free service (price 0) is booked with
   // no charge. 'in_person' survives only as the internal no-charge marker.
   const paymentMethod: "online" | "in_person" = price > 0 ? "online" : "in_person";
+
+  // Deposit preview (create-payment computes the real charge server-side with the
+  // identical helper). A deposit strictly below the price is a partial charge —
+  // the customer pays it now and settles the balance in person.
+  const deposit = booking.service
+    ? depositFor(
+        { deposit_type: booking.service.deposit_type ?? null, deposit_value: booking.service.deposit_value ?? null },
+        { deposit_type: org.deposit_type ?? null, deposit_value: org.deposit_value ?? null },
+        price,
+      )
+    : 0;
+  const isDeposit = deposit > 0 && deposit < price;
+  const balanceDue = Math.round((price - deposit) * 100) / 100;
+  const money = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
   // The chosen slot is business (Georgia) wall-clock time — pin the stored
   // instant to the business offset so it doesn't shift with the viewer's zone.
@@ -519,16 +533,18 @@ export default function Step3CustomerForm({
               />
             </Box>
 
-            {/* Payment: priced services are always paid online now (the
-                pay-in-person choice was removed). A free service shows no
-                payment hint. */}
+            {/* Payment hint: a deposit-configured service prepays the deposit
+                online (balance in person); otherwise the full price is charged
+                online. A free service shows no payment hint. */}
             {price > 0 && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <CreditCardOutlinedIcon
                   sx={{ fontSize: 16, color: "primary.main" }}
                 />
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  {t("booking.payOnlineHint")}
+                <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid="book-payment-hint">
+                  {isDeposit
+                    ? t("booking.payDepositHint", { deposit: money(deposit), balance: money(balanceDue) })
+                    : t("booking.payOnlineHint")}
                 </Typography>
               </Box>
             )}
@@ -617,9 +633,31 @@ export default function Step3CustomerForm({
                   variant="h6"
                   sx={{ fontWeight: 800, color: priceColor ?? "primary.dark" }}
                 >
-                  {booking.service?.price} ₾
+                  {money(price)} ₾
                 </Typography>
               </Box>
+
+              {/* Deposit split — pay now vs settle in person. */}
+              {isDeposit && (
+                <Box sx={{ mt: 1.25 }} data-testid="book-deposit-split">
+                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      {t("booking.payNowDeposit")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: priceColor ?? "primary.dark" }}>
+                      {money(deposit)} ₾
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.25 }}>
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      {t("booking.dueInPerson")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {money(balanceDue)} ₾
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
             </Box>
 
             <Button
@@ -633,7 +671,7 @@ export default function Step3CustomerForm({
               {loading ? (
                 <CircularProgress size={22} color="inherit" />
               ) : paymentMethod === "online" ? (
-                t("booking.proceedToPayment")
+                isDeposit ? t("booking.payDeposit") : t("booking.proceedToPayment")
               ) : (
                 t("booking.book")
               )}

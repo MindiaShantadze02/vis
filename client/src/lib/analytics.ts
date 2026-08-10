@@ -15,6 +15,8 @@ export interface OrgAnalytics {
   completed: number
   cancelled: number
   no_show: number
+  // Count of bookings prepaid online (full payment or deposit) in the range.
+  deposits_collected: number
   no_show_rate: number | null
   cancellation_rate: number | null
   repeat_rate: number | null
@@ -35,6 +37,7 @@ export function parseAnalytics(raw: unknown): OrgAnalytics | null {
     completed: num(r.completed),
     cancelled: num(r.cancelled),
     no_show: num(r.no_show),
+    deposits_collected: num(r.deposits_collected),
     no_show_rate: rate(r.no_show_rate),
     cancellation_rate: rate(r.cancellation_rate),
     repeat_rate: rate(r.repeat_rate),

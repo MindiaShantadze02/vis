@@ -28,6 +28,11 @@ export interface Organisation {
   // Cancellation policy (migration 090): the free-cancel/refund window,
   // consumed by self-service cancel-with-refund.
   cancellation_window_hours: number
+  // Org-default deposit (services with NULL deposit_type inherit it) + whether
+  // an in-window cancel refunds the deposit.
+  deposit_type: 'none' | 'fixed' | 'percent'
+  deposit_value: number | null
+  deposit_refundable: boolean
 }
 
 interface OrgContextValue {

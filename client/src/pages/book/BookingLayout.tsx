@@ -44,6 +44,11 @@ export interface BookingOrg {
   // Whether new bookings wait for owner approval. Auto-approve (false) is the
   // default since migration 075; the Step-3 hint copy branches on this.
   require_approval: boolean
+  // Org-default deposit (services with a NULL deposit_type inherit it) +
+  // whether an in-window cancel refunds the deposit. Drives the Step-3 preview.
+  deposit_type: 'none' | 'fixed' | 'percent' | null
+  deposit_value: number | null
+  deposit_refundable: boolean
 }
 
 // Shape returned by the get_public_org RPC (secrets stripped server-side).
@@ -64,6 +69,9 @@ interface PublicOrg {
   review_count: number
   cancellation_window_hours: number | null
   require_approval: boolean | null
+  deposit_type: 'none' | 'fixed' | 'percent' | null
+  deposit_value: number | null
+  deposit_refundable: boolean | null
 }
 
 export interface BookingService {
@@ -72,6 +80,9 @@ export interface BookingService {
   duration_minutes: number
   price: number
   max_per_slot: number
+  // Per-service deposit override; NULL deposit_type inherits the org default.
+  deposit_type: 'none' | 'fixed' | 'percent' | null
+  deposit_value: number | null
   // Gallery image URLs in display order; shown in the sidebar once selected.
   images: string[]
 }
@@ -211,6 +222,10 @@ export default function BookingLayout() {
         // Default to auto-approve when the flag is absent (older cached RPC),
         // matching the DB default since migration 075.
         require_approval: pub.require_approval ?? false,
+        // Deposit config for the Step-3 preview (numeric comes back as string).
+        deposit_type: pub.deposit_type ?? 'none',
+        deposit_value: pub.deposit_value != null ? Number(pub.deposit_value) : null,
+        deposit_refundable: pub.deposit_refundable ?? true,
       })
     }
     if (slug) loadOrg()

@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { startCheckout } from '../_shared/payments/index.ts'
+import { depositFor } from '../_shared/deposit.ts'
 
 // Starts a payment checkout and returns a checkoutUrl the browser is redirected
 // to. The active provider (mock for now) is resolved inside startCheckout; the
@@ -70,11 +71,12 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'limit_reached' }, { status: 422, headers: corsHeaders })
       }
 
-      // Price + duration from the service (server-side; never trust the client).
-      // A priced service is charged online in full.
+      // Price + duration + deposit config from the service (server-side; never
+      // trust the client). A priced service is charged online: the full price,
+      // or just the deposit when one is configured (balance then due in person).
       const { data: service } = await admin
         .from('services')
-        .select('name, price, duration_minutes')
+        .select('name, price, duration_minutes, deposit_type, deposit_value')
         .eq('id', service_id)
         .eq('org_id', org_id)
         .eq('is_active', true)
@@ -82,10 +84,26 @@ Deno.serve(async (req) => {
       if (!service) {
         return Response.json({ error: 'service_not_found' }, { status: 404, headers: corsHeaders })
       }
-      const amount = Number(service.price ?? 0)
-      if (!(amount > 0)) {
+      const price = Number(service.price ?? 0)
+      if (!(price > 0)) {
         return Response.json({ error: 'invalid_amount' }, { status: 422, headers: corsHeaders })
       }
+
+      // Resolve the deposit (service override wins; NULL service type inherits
+      // the org default). A deposit strictly below the price is a partial charge
+      // — the balance is settled in person; otherwise the full price is charged.
+      const { data: orgDeposit } = await admin
+        .from('organisations')
+        .select('deposit_type, deposit_value')
+        .eq('id', org_id)
+        .maybeSingle()
+      const deposit = depositFor(
+        { deposit_type: service.deposit_type ?? null, deposit_value: service.deposit_value ?? null },
+        { deposit_type: orgDeposit?.deposit_type ?? null, deposit_value: orgDeposit?.deposit_value ?? null },
+        price,
+      )
+      const isDeposit = deposit > 0 && deposit < price
+      const amount = isDeposit ? deposit : price
 
       // Require a verified, unconsumed, unexpired OTP for this phone BEFORE
       // charging — the appointment insert (in the webhook) consumes it.
@@ -117,6 +135,7 @@ Deno.serve(async (req) => {
           phone: phoneLocal,
           notes: notes ? String(notes).trim() : null,
           amount,
+          is_deposit: isDeposit,
           currency: 'GEL',
           consent_accepted_at: consentVersion ? new Date().toISOString() : null,
           consent_version: consentVersion,

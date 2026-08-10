@@ -153,8 +153,9 @@ Deno.serve(async (req) => {
             staff_id: pb.staff_id,
             status: 'approved',
             payment_method: 'online',
-            // Priced bookings are always charged online in full.
-            payment_status: 'paid',
+            // A partial deposit charge lands as deposit_paid (balance due in
+            // person); a full charge lands as paid.
+            payment_status: pb.is_deposit ? 'deposit_paid' : 'paid',
             payment_provider: pb.payment_provider,
             payment_reference: pb.payment_reference,
             notes: pb.notes,

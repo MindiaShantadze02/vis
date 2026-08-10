@@ -250,7 +250,11 @@
     "poweredBy": "Powered by Vis",
     "contactToCancel": "Call us to cancel or change your booking",
     "orgNotFoundTitle": "Business not found",
-    "orgNotFoundCaption": "Check the link and try again"
+    "orgNotFoundCaption": "Check the link and try again",
+    "payDepositHint": "Pay a {{deposit}} ₾ deposit now — {{balance}} ₾ due in person",
+    "payDeposit": "Pay deposit",
+    "payNowDeposit": "Pay now (deposit)",
+    "dueInPerson": "Due in person"
   },
   "payment": {
     "sandbox": "Sandbox",
@@ -482,7 +486,21 @@
     "cancellationWindowHours": "Free-cancel window (hours)",
     "cancellationWindowHelp": "Cancelling at least this many hours ahead refunds an online payment.",
     "cancellationWindowInvalid": "Enter a whole number of hours (0 or more).",
-    "billing": "Billing"
+    "billing": "Billing",
+    "deposit": "Deposit",
+    "depositInherit": "Default",
+    "depositNone": "None",
+    "depositFixed": "Fixed",
+    "depositPercent": "Percent",
+    "depositFixedLabel": "Deposit amount (₾)",
+    "depositPercentLabel": "Deposit (% of price)",
+    "depositHelp": "Charged online to confirm the booking; the balance is paid in person.",
+    "depositValueHelp": "Enter a valid amount (fixed ≤ price; percent 0–100).",
+    "depositInheritHelp": "Uses your business-wide deposit default.",
+    "depositTitle": "Deposit",
+    "depositOrgHelp": "Applied to every service that doesn't set its own deposit.",
+    "depositRefundable": "Refund deposits on early cancellations",
+    "depositRefundableHelp": "When off, deposits are never returned, even within the cancellation window."
   },
   "days": {
     "monday": "Monday",
@@ -744,7 +762,8 @@
     "busiestHours": "Busiest hours",
     "noData": "No data yet",
     "footer": "All figures for the selected period (Georgia time).",
-    "nav": "Analytics"
+    "nav": "Analytics",
+    "depositsCollected": "Prepaid bookings"
   },
   "invites": {
     "errAlreadyInOrg": "You are already a member of this organisation",

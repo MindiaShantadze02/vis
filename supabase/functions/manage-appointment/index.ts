@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
         payment_status, payment_reference, payment_method,
         customer:customers(first_name, phone_number),
         service:services(name),
-        org:organisations(name, cancellation_window_hours)
+        org:organisations(name, cancellation_window_hours, deposit_refundable)
       `)
       .eq('id', appointmentId)
       .maybeSingle()
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
 
     const customer = one(appt.customer as { first_name: string; phone_number: string } | null)
     const service = one(appt.service as { name: string } | null)
-    const org = one(appt.org as { name: string; cancellation_window_hours: number } | null)
+    const org = one(appt.org as { name: string; cancellation_window_hours: number; deposit_refundable: boolean } | null)
     const phone = customer?.phone_number
     if (!phone || !org) return err('not_found', 404)
 
@@ -141,12 +141,14 @@ Deno.serve(async (req) => {
     }
 
     // ── cancel (+ refund per policy) ────────────────────────────────────────
-    // An online payment is refunded when the cancellation lands within the
-    // free-cancel window; outside it, the booking cancels without a refund.
+    // An online payment (full or deposit) is refunded when the cancellation
+    // lands within the free-cancel window AND the org allows deposit refunds;
+    // otherwise the booking cancels without a refund.
     const withinWindow =
       new Date(appt.scheduled_at).getTime() - Date.now() >= (org.cancellation_window_hours ?? 0) * 3_600_000
+    const isPaidOnline = appt.payment_status === 'paid' || appt.payment_status === 'deposit_paid'
     const refundEligible =
-      appt.payment_status === 'paid' && !!appt.payment_reference && withinWindow
+      isPaidOnline && !!appt.payment_reference && withinWindow && org.deposit_refundable !== false
 
     let refunded = false, refundAmount = 0, refundCurrency = 'GEL'
 
@@ -158,7 +160,7 @@ Deno.serve(async (req) => {
         .from('appointments')
         .update({ payment_status: 'refunded', status: 'cancelled', updated_at: new Date().toISOString() })
         .eq('id', appointmentId)
-        .eq('payment_status', 'paid')
+        .in('payment_status', ['paid', 'deposit_paid'])
         .in('status', ['pending', 'approved'])
         .select('id')
       if (!claimed || claimed.length === 0) return err('not_manageable', 409)
