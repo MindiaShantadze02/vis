@@ -45,12 +45,6 @@ const SCAN_MAX_DAYS = 365
 // Show a "N left" scarcity cue once a multi-capacity slot drops to this few.
 const SCARCITY_THRESHOLD = 2
 // Emoji per part-of-day, prepended to the slot-group headers (matches the
-// booking redesign — sunrise / midday sun / moon for morning/afternoon/evening).
-const PART_OF_DAY_EMOJI: Record<'morning' | 'afternoon' | 'evening', string> = {
-  morning: '🌅',
-  afternoon: '☀️',
-  evening: '🌙',
-}
 
 export default function Step2DateTimeSelect({ orgId, service, initialDate, initialStaffId, onSelect, onBack }: Props) {
   const { t } = useTranslation()
@@ -408,7 +402,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
   }, [slots])
 
   return (
-    <Box sx={{ maxWidth: 640, mx: 'auto' }}>
+    <Box>
       <Button
         startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 14 }} />}
         onClick={onBack}
@@ -419,7 +413,7 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
         {t('common.back')}
       </Button>
 
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>{t('booking.chooseDate')}</Typography>
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{t('booking.chooseDate')}</Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
         {service.name} · {service.duration_minutes} {t('common.minutesShort')}
       </Typography>
@@ -685,7 +679,6 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                 {slotGroups.map(group => (
                   <Box key={group.key}>
                     <Typography variant="overline" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary', fontWeight: 600, letterSpacing: 0.5, mb: 0.75 }}>
-                      <Box component="span" aria-hidden sx={{ fontSize: 14, lineHeight: 1 }}>{PART_OF_DAY_EMOJI[group.key]}</Box>
                       {t(`booking.partOfDay.${group.key}`)}
                     </Typography>
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 1 }}>
