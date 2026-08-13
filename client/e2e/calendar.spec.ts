@@ -1,18 +1,13 @@
 import { test, expect, type Page } from '@playwright/test'
-import { login, bookPending, cancelAppt, letterName, setRequireApproval } from './helpers'
+import { login, seedPendingAppointment, cancelAppt, letterName } from './helpers'
 
 /**
  * Calendar page — the pending→approved transition driven from the calendar
- * drawer (a distinct code path from the overview list). Books a real pending
+ * drawer (a distinct code path from the overview list). Seeds a real pending
  * appointment, approves it on the calendar, verifies the new status on the
  * overview, then self-cleans (cancel + erase).
  */
 test.describe('Calendar', () => {
-  // Bookings auto-approve by default (075); the drawer's approve path needs a
-  // real pending row, so require approval for this spec and restore after.
-  test.beforeAll(async () => { await setRequireApproval(true) })
-  test.afterAll(async () => { await setRequireApproval(false) })
-
   // Locate the appointment's pill in the current calendar week and open its
   // drawer. Handles both a standalone pill and one merged into a same-service
   // group.
@@ -50,7 +45,7 @@ test.describe('Calendar', () => {
 
   test('a pending booking can be approved from the calendar', async ({ page }) => {
     const name = letterName()
-    await bookPending(page, name)
+    await seedPendingAppointment(name)
     await login(page)
 
     await page.goto('/dashboard/calendar')

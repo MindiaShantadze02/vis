@@ -93,7 +93,14 @@ export async function bookToDetails(page: Page, slug = SEED.slug): Promise<boole
   const service = page.getByTestId('book-service').first()
   await service.waitFor({ state: 'visible', timeout: 30_000 })
   await service.click()
+  return pickFirstAvailableSlot(page)
+}
 
+/**
+ * From the date step, walk the visible week until a day has a free slot and
+ * click it, landing on the step-3 details form. Returns true if one was found.
+ */
+export async function pickFirstAvailableSlot(page: Page): Promise<boolean> {
   const days = page.locator('[data-testid^="book-day-"][data-disabled="false"]')
   await expect(days.first()).toBeVisible()
   for (let i = 0, n = await days.count(); i < n; i++) {
@@ -110,42 +117,11 @@ export async function bookToDetails(page: Page, slug = SEED.slug): Promise<boole
 }
 
 /**
- * Flip the seeded org's "require booking approval" setting (migration 075) by
- * talking straight to the hosted GoTrue + PostgREST endpoints (client/.env) as
- * the seeded owner — supabase-js won't construct on Node 20 (realtime needs a
- * native WebSocket), and the UI route would cost a full login+settings journey.
- * The app's login OTP gate is UI-only; phone+password sign-in works directly.
- * Off (auto-approve) is the seed's resting default — a spec that turns it on
- * to get pending bookings MUST turn it back off in afterAll, or later specs
- * (and the next run) see the wrong booking behavior.
- */
-export async function setRequireApproval(on: boolean): Promise<void> {
-  const { url, anonKey, accessToken } = await signInSeed()
-
-  const update = await fetch(
-    `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`,
-    {
-      method: 'PATCH',
-      headers: {
-        apikey: anonKey,
-        authorization: `Bearer ${accessToken}`,
-        'content-type': 'application/json',
-        prefer: 'return=representation',
-      },
-      body: JSON.stringify({ require_approval: on }),
-    },
-  )
-  if (!update.ok) throw new Error(`require_approval update failed: ${update.status} ${await update.text()}`)
-  const rows = (await update.json()) as { id: string }[]
-  if (!rows.length) throw new Error('require_approval update matched no org')
-}
-
-/**
  * Enable/disable the ONLINE payment option on the seeded org by flipping
  * payment_config.bog.enabled (the Step-3 payment selector shows "online" when
  * bog or tbc is enabled; the actual checkout still goes through the
- * platform-level MOCK provider, so no real gateway is touched). Same direct
- * PostgREST pattern as setRequireApproval. Off is the seed's resting default —
+ * platform-level MOCK provider, so no real gateway is touched). Straight
+ * PostgREST as the seeded owner. Off is the seed's resting default —
  * a spec that turns it on MUST restore it in afterAll, or later specs see an
  * unexpected payment-method selector in the booking flow.
  */
@@ -184,6 +160,7 @@ export async function createSeedAppointment(opts: {
   firstName: string
   phone: string
   scheduledAt: string
+  status?: 'pending' | 'approved'
   paymentMethod?: 'in_person' | 'online'
   paymentStatus?: 'unpaid' | 'paid'
 }): Promise<string> {
@@ -208,7 +185,7 @@ export async function createSeedAppointment(opts: {
     body: JSON.stringify({
       id: appointmentId, org_id: orgId, service_id: svc[0].id, customer_id: customerId,
       scheduled_at: opts.scheduledAt, duration_minutes: svc[0].duration_minutes,
-      status: 'approved',
+      status: opts.status ?? 'approved',
       payment_method: opts.paymentMethod ?? 'in_person',
       payment_status: opts.paymentStatus ?? 'unpaid',
     }),
@@ -220,7 +197,7 @@ export async function createSeedAppointment(opts: {
 /**
  * Read the hosted project's URL + anon key from client/.env — for Node-side
  * specs that talk straight to the GoTrue / PostgREST / Edge-Function HTTP
- * endpoints (supabase-js won't construct on Node 20; see setRequireApproval).
+ * endpoints (supabase-js won't construct on Node 20).
  */
 export function readSupabaseEnv(): { url: string; anonKey: string } {
   const env = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '.env'), 'utf8')
@@ -284,50 +261,29 @@ export function letterName(): string {
 }
 
 /**
- * Set the seeded org's first active service (the one bookToDetails picks) to a
- * price, returning its previous price so the caller can restore it. Straight
- * PostgREST as the owner — same pattern as setOnlinePayments.
- */
-export async function setFirstServicePrice(price: number): Promise<number> {
-  const { url, anonKey, accessToken } = await signInSeed()
-  const H = { apikey: anonKey, authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }
-  const org = (await (await fetch(`${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`, { headers: H })).json()) as { id: string }[]
-  const svc = (await (await fetch(`${url}/rest/v1/services?org_id=eq.${org[0].id}&is_active=eq.true&order=sort_order&limit=1&select=id,price`, { headers: H })).json()) as { id: string; price: string }[]
-  const previous = Number(svc[0].price)
-  const upd = await fetch(`${url}/rest/v1/services?id=eq.${svc[0].id}`, {
-    method: 'PATCH', headers: H, body: JSON.stringify({ price }),
-  })
-  if (!upd.ok) throw new Error(`service price update failed: ${upd.status} ${await upd.text()}`)
-  return previous
-}
-
-/**
- * Book a public appointment end to end, leaving a real *pending* appointment on
- * the seeded org under `firstName`. Callers identify/clean it up later via
- * openApptByName. Asserts a bookable slot exists this week.
+ * Leave a real *pending* appointment on the seeded org under `firstName`, for
+ * the dashboard specs that drive the pending→approved/rejected transitions.
+ * Callers identify/clean it up later via openApptByName.
  *
- * Pay-in-person was removed (2026-07-22): a PRICED service now settles as
- * *approved* through the online gateway, so it can't produce a pending row. We
- * temporarily zero the first service's price so the booking takes the no-charge
- * path — which honors the org's require_approval (the caller turns it on via
- * setRequireApproval) and lands a pending appointment — then restore the price.
+ * Inserted straight through PostgREST rather than booked through the UI: free
+ * services were removed (2026-08-12), so every public booking pays online and
+ * payment-webhook creates it already 'approved' — the guest flow can no longer
+ * produce a pending row at all. (The old helper forced one by temporarily
+ * zeroing the service price, which the services_price_min CHECK now rejects.)
+ *
+ * Scheduled 8 days out at 10:00 business time, like manage.spec's futureSlotIso
+ * — far enough ahead to stay upcoming, and inside the calendar's forward scan.
  */
-export async function bookPending(page: Page, firstName: string): Promise<void> {
-  const originalPrice = await setFirstServicePrice(0)
-  try {
-    const found = await bookToDetails(page)
-    expect(found, 'expected an open day with a free slot this week').toBeTruthy()
-    await fillStable(page.getByTestId('book-first-name'), firstName)
-    // A unique phone per booking so back-to-back bookings don't trip the per-phone
-    // OTP resend rate limit ('too_soon'), which would hide the verification step.
-    await fillStable(page.getByTestId('book-phone'), uniquePhone())
-    await expect(page.getByTestId('book-submit')).toBeEnabled()
-    await page.getByTestId('book-submit').click()
-    await passBookingOtp(page)
-    await expect(page).toHaveURL(/\/booking-confirmation\//, { timeout: 20_000 })
-  } finally {
-    await setFirstServicePrice(originalPrice)
-  }
+export async function seedPendingAppointment(firstName: string): Promise<string> {
+  const at = new Date(Date.now() + 8 * 86_400_000)
+  at.setUTCHours(6, 0, 0, 0)
+  return createSeedAppointment({
+    firstName,
+    // A unique phone per row so specs never collide on customer lookup.
+    phone: uniquePhone(),
+    scheduledAt: at.toISOString(),
+    status: 'pending',
+  })
 }
 
 /**

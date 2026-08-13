@@ -30,10 +30,6 @@ export default function BookingPageSettings() {
   const [bookingTheme, setBookingTheme] = useState<string>(DEFAULT_BOOKING_THEME)
   // Whole-feature on/off for customer reviews (badge on the booking page).
   const [reviewsEnabled, setReviewsEnabled] = useState(true)
-  // Non-paid guest bookings need manual approval by default (require_approval
-  // defaults to true, migration 080); turning automatic approval ON opts out.
-  // Paid (online) bookings always auto-confirm via the webhook.
-  const [requireApproval, setRequireApproval] = useState(true)
   // Optional wide banner for the top of the booking page. Persisted immediately
   // on upload/remove (like the logo), independent of the Save button below.
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
@@ -46,7 +42,6 @@ export default function BookingPageSettings() {
     if (org) {
       setBookingTheme(getBookingTheme(org.booking_theme).key)
       setReviewsEnabled(org.reviews_enabled)
-      setRequireApproval(org.require_approval)
       setCoverUrl(org.cover_url ?? null)
     }
   }, [org])
@@ -105,7 +100,7 @@ export default function BookingPageSettings() {
     setError(null)
     const { error: err } = await supabase
       .from('organisations')
-      .update({ booking_theme: bookingTheme, reviews_enabled: reviewsEnabled, require_approval: requireApproval })
+      .update({ booking_theme: bookingTheme, reviews_enabled: reviewsEnabled })
       .eq('id', org.id)
     setSaving(false)
     if (err) { setError(err.message); return }
@@ -339,30 +334,6 @@ export default function BookingPageSettings() {
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('reviews.settingTitle')}</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {t('reviews.settingHelp')}
-                </Typography>
-              </Box>
-            }
-          />
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* Automatic approval — off by default, so non-paid guest bookings
-              arrive 'pending' until approved; on lets them auto-confirm. Paid
-              bookings auto-confirm regardless (handled by the webhook). */}
-          <FormControlLabel
-            sx={{ ml: 0 }}
-            control={
-              <Switch
-                checked={!requireApproval}
-                onChange={e => setRequireApproval(!e.target.checked)}
-                data-testid="auto-approve-toggle"
-              />
-            }
-            label={
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.autoApproveTitle')}</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {t('settings.autoApproveHelp')}
                 </Typography>
               </Box>
             }

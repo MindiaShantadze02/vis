@@ -76,10 +76,12 @@ its active service + Mon–Fri hours intact, or the booking/dashboard specs will
 - **`booking.spec.ts`** creates a real appointment (auto-approved since 075) +
   customer on the seeded org each successful run (a guest can't self-delete).
   Cancel/prune them from the dashboard periodically.
-- The seed org's **resting state is auto-approve** (`require_approval = false`).
-  `appointment-status.spec.ts` / `calendar.spec.ts` flip it on via
-  `setRequireApproval` and restore it in `afterAll`; if a run dies mid-spec, flip
-  it back off in Settings → Booking page or later booking/api assertions fail.
+- Public bookings **always auto-approve**: free services were removed
+  (2026-08-12), so every guest booking pays online and `payment-webhook` creates
+  it already `approved`. `appointment-status.spec.ts` / `calendar.spec.ts` need
+  pending rows, so they insert them directly via `seedPendingAppointment` rather
+  than booking through the UI. `require_approval` is now DB-only configuration
+  (still honoured by the public REST API) with no settings toggle.
 - **`api.spec.ts`** leaves one *revoked* API key row on the seeded org per run
   (revoked keys stay listed by design; `delete from api_keys where revoked_at is
   not null and org_id = <seed org>` to prune). Its booking is rejected in-test;

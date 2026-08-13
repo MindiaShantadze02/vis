@@ -13,7 +13,7 @@ import {
  * appointment — which is what we seed here.
  *
  * Setup/teardown talk straight to PostgREST as the seeded owner (restApi;
- * supabase-js won't construct on Node 20 — same approach as setRequireApproval).
+ * supabase-js won't construct on Node 20).
  * The appointment can't be hard-deleted (no DELETE policy), so teardown cancels
  * it (drops it from the tier count) and deactivates the throwaway service.
  */
@@ -39,7 +39,8 @@ test.describe('Meeting link — per-appointment online link', () => {
         org_id: orgId,
         name: tag('Online consult'),
         duration_minutes: 30,
-        price: 0,
+        // At/above services_price_min — the fixture just needs a valid service.
+        price: 5,
         location_type: 'online',
       }),
     })

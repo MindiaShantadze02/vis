@@ -2,9 +2,11 @@ import { test, expect } from '@playwright/test'
 import {
   FIELD_LIMITS,
   MAX_PRICE,
+  MIN_PRICE,
   dayScheduleIssue,
   imageFileError,
   isNonNegativeNumber,
+  isValidServicePrice,
   isValidGeorgianPhone,
   isValidPersonName,
   isValidUrl,
@@ -31,6 +33,7 @@ const VALIDATORS: Record<string, (...args: never[]) => unknown> = {
   isValidPersonName,
   isValidUrl,
   isNonNegativeNumber,
+  isValidServicePrice,
   dayScheduleIssue: dayScheduleIssue as (...args: never[]) => unknown,
 }
 
@@ -45,6 +48,7 @@ const FILES: { name: string; invariants: Invariant[] }[] = [
 test.describe('Data-driven — boundary-sync guard', () => {
   test('data-file constants match the app limits', async () => {
     expect(services.meta.maxPrice).toBe(MAX_PRICE)
+    expect(services.meta.minPrice).toBe(MIN_PRICE)
     expect(bookingCustomer.meta.notesMax).toBe(FIELD_LIMITS.notes)
     // 2 MB logo ceiling (MAX_LOGO_BYTES is module-private; the behavioural
     // check below pins the exact boundary).

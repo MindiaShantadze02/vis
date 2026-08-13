@@ -11,6 +11,8 @@ import {
   isNonNegativeNumber,
   imageFileError,
   MAX_PRICE,
+  MIN_PRICE,
+  isValidServicePrice,
   timeToMinutes,
   minutesToTime,
   isEndAfterStart,
@@ -198,7 +200,26 @@ describe('isUuid', () => {
   })
 })
 
+describe('isValidServicePrice', () => {
+  // BVA around both ends of [MIN_PRICE, MAX_PRICE]. Free services were removed
+  // 2026-08-12, so 0 — long the lower boundary — is now firmly invalid.
+  it.each([
+    ['zero (was the old floor)', 0, false],
+    ['just below MIN_PRICE', 4.99, false],
+    ['MIN_PRICE (boundary)', MIN_PRICE, true],
+    ['just above MIN_PRICE', 5.01, true],
+    ['MAX_PRICE (boundary)', MAX_PRICE, true],
+    ['just above MAX_PRICE', 100000000, false],
+    ['negative', -1, false],
+    ['NaN', NaN, false],
+    ['Infinity', Infinity, false],
+  ])('%s → %s', (_label, value, expected) => {
+    expect(isValidServicePrice(value as number)).toBe(expected)
+  })
+})
+
 describe('isNonNegativeNumber', () => {
+  // Still the deposit-value validator (deposits may legitimately be 0).
   // BVA around the 0 boundary and the MAX_PRICE ceiling; plus non-finite rejects.
   it.each([
     ['just below zero', -0.01, false],

@@ -1,6 +1,6 @@
 {
-  "_doc": "Service editor save gating (ServicesSettings: name >= 2, duration in (0, 1440], price in [0, MAX_PRICE], capacity >= 1). The online/in_person toggle no longer reveals a per-service meeting link — links are per-appointment now (see appointments.meeting_link / OverviewPage). Driven by e2e/data-driven/services.spec.ts. The spec fills `base`, then per case applies `fields` (deltas), asserts service-save enabled === valid, and restores the touched base fields. Nothing is ever saved — the create/edit/delete flow test in settings-services.spec.ts is the representative submit.",
-  "meta": { "nameMin": 2, "durationMax": 1440, "maxPrice": 99999999.99, "capacityMin": 1 },
+  "_doc": "Service editor save gating (ServicesSettings: name >= 2, duration in (0, 1440], price in [MIN_PRICE, MAX_PRICE], capacity >= 1). The online/in_person toggle no longer reveals a per-service meeting link — links are per-appointment now (see appointments.meeting_link / OverviewPage). Driven by e2e/data-driven/services.spec.ts. The spec fills `base`, then per case applies `fields` (deltas), asserts service-save enabled === valid, and restores the touched base fields. Nothing is ever saved — the create/edit/delete flow test in settings-services.spec.ts is the representative submit.",
+  "meta": { "nameMin": 2, "durationMax": 1440, "minPrice": 5, "maxPrice": 99999999.99, "capacityMin": 1 },
   "base": { "name": "Boundary Svc", "duration": "60", "price": "10", "capacity": "1" },
   "cases": [
     { "id": "name-bva-1", "technique": "BVA", "target": "name", "fields": { "name": "A" }, "valid": false, "note": "1 char = minimum 2 − 1" },
@@ -11,11 +11,16 @@
     { "id": "duration-bva-1441", "technique": "BVA", "target": "duration", "fields": { "duration": "1441" }, "valid": false, "note": "1441 = upper bound + 1" },
     { "id": "capacity-bva-0", "technique": "BVA", "target": "capacity", "fields": { "capacity": "0" }, "valid": false, "note": "0 = minimum 1 − 1" },
     { "id": "capacity-bva-1", "technique": "BVA", "target": "capacity", "fields": { "capacity": "1" }, "valid": true, "note": "1 = minimum boundary" },
-    { "id": "price-bva-0", "technique": "BVA", "target": "price", "fields": { "price": "0" }, "valid": true, "note": "0 = lower boundary (free service allowed). The negative partition can't be typed — the price input filters it — so it's covered logically via the isNonNegativeNumber invariant." },
+    { "id": "price-bva-below-min", "technique": "BVA", "target": "price", "fields": { "price": "4.99" }, "valid": false, "note": "MIN_PRICE − 0.01. Free services were removed 2026-08-12; 0 is no longer a valid price. The negative partition can't be typed — the price input filters it — so it's covered logically via the isValidServicePrice invariants." },
+    { "id": "price-bva-min", "technique": "BVA", "target": "price", "fields": { "price": "5" }, "valid": true, "note": "MIN_PRICE = lower boundary (mirrors the services_price_min CHECK)" },
     { "id": "price-bva-max", "technique": "BVA", "target": "price", "fields": { "price": "99999999.99" }, "valid": true, "note": "MAX_PRICE = numeric(10,2) ceiling" },
     { "id": "price-bva-over-max", "technique": "BVA", "target": "price", "fields": { "price": "100000000" }, "valid": false, "note": "MAX_PRICE + 0.01 partition (next representable value up)" }
   ],
   "invariants": [
+    { "fn": "isValidServicePrice", "input": -1, "expect": false },
+    { "fn": "isValidServicePrice", "input": 0, "expect": false },
+    { "fn": "isValidServicePrice", "input": 4.99, "expect": false },
+    { "fn": "isValidServicePrice", "input": 5, "expect": true },
     { "fn": "isNonNegativeNumber", "input": -1, "expect": false },
     { "fn": "isNonNegativeNumber", "input": 0, "expect": true }
   ]

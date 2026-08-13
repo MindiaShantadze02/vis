@@ -12,7 +12,7 @@ import { Add as AddIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { ActionIconButton, EmptyState, SkeletonImage, useToast } from '@/components/ui'
 import { HONEY } from '@/theme/theme'
-import { isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
+import { isValidServicePrice, MAX_PRICE, MIN_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import ServiceImagesEditor from '@/components/ServiceImagesEditor'
 import { serviceImageFileError, MAX_IMAGES_PER_SERVICE, MAX_SERVICE_IMAGE_MB } from '@/lib/serviceImages'
@@ -43,7 +43,7 @@ interface DraftService {
 }
 
 const empty: DraftService = {
-  name: '', duration_minutes: '30', price: '0',
+  name: '', duration_minutes: '30', price: String(MIN_PRICE),
   location_type: 'in_person', images: [],
 }
 
@@ -71,13 +71,15 @@ export default function ServicesStep() {
   const durationTooLong = Number(draft.duration_minutes) > MAX_DURATION_MINUTES
   const durationMissing = submitted && !(Number(draft.duration_minutes) > 0)
   const nameTooShort = (submitted || draft.name.trim().length > 0) && draft.name.trim().length < 2
-  const priceInvalid = draft.price.trim().length > 0 &&
-    (!isNonNegativeNumber(Number(draft.price)) || Number(draft.price) > MAX_PRICE)
+  // Free services were removed — a price below MIN_PRICE is invalid, and so is
+  // an empty field (Number('') is 0, which used to save silently as free).
+  const priceValid = isValidServicePrice(Number(draft.price))
+  const priceInvalid = (submitted || draft.price.trim().length > 0) && !priceValid
   const draftValid =
     draft.name.trim().length >= 2 &&
     Number(draft.duration_minutes) > 0 &&
     !durationTooLong &&
-    !priceInvalid
+    priceValid
   const isEditing = editingIndex !== null
 
   function resetForm() {
@@ -114,7 +116,7 @@ export default function ServicesStep() {
     const svc = {
       name: draft.name.trim(),
       duration_minutes: Number(draft.duration_minutes),
-      price: Number(draft.price) || 0,
+      price: Number(draft.price),
       location_type: draft.location_type,
       imageFiles: draft.images.map(i => i.file),
       imagePreviews: draft.images.map(i => i.url),
@@ -273,7 +275,11 @@ export default function ServicesStep() {
               value={draft.price}
               onChange={e => setDraft(d => ({ ...d, price: onlyDecimal(e.target.value) }))}
               error={priceInvalid}
-              helperText={priceInvalid ? t('validation.priceTooLarge', { max: MAX_PRICE }) : undefined}
+              helperText={
+                !priceInvalid ? undefined
+                : Number(draft.price) > MAX_PRICE ? t('validation.priceTooLarge', { max: MAX_PRICE })
+                : t('validation.priceTooLow', { min: MIN_PRICE })
+              }
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'onb-service-price' } }}
             />
           </Stack>

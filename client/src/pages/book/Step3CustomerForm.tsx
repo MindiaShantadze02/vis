@@ -18,7 +18,6 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import {
   isValidGeorgianPhone,
-  formatGeorgianPhone,
   displayGeorgianPhone,
   isValidPersonName,
   FIELD_LIMITS,
@@ -41,7 +40,6 @@ interface Props {
   booking: BookingState;
   onChange: (p: Partial<BookingState>) => void;
   onBack: () => void;
-  onDone: (appointmentId: string) => void;
   /** Booking-theme "deep" accent for the price/total (e.g. brass on the charcoal theme). */
   priceColor?: string;
   /** Running inside an embed iframe — payment must break out to the top window. */
@@ -78,7 +76,6 @@ export default function Step3CustomerForm({
   booking,
   onChange,
   onBack,
-  onDone,
   priceColor,
   embed,
 }: Props) {
@@ -97,13 +94,10 @@ export default function Step3CustomerForm({
   // while the same 6 digits sit in the field.
   const autoSubmitted = useRef<string | null>(null);
 
-  // A priced service is charged online; a free service is booked with no charge.
+  // Every service carries a price of at least MIN_PRICE (free services were
+  // removed 2026-08-12), so every booking is charged online — there is no
+  // no-charge path and no payment method to choose.
   const price = Number(booking.service?.price ?? 0);
-
-  // Payment method is no longer a customer choice (pay-in-person was removed):
-  // a priced service is charged online; a free service (price 0) is booked with
-  // no charge. 'in_person' survives only as the internal no-charge marker.
-  const paymentMethod: "online" | "in_person" = price > 0 ? "online" : "in_person";
 
   // Deposit preview (create-payment computes the real charge server-side with the
   // identical helper). A deposit strictly below the price is a partial charge —
@@ -137,14 +131,6 @@ export default function Step3CustomerForm({
     const id = setTimeout(() => setResendIn((s) => s - 1), 1000);
     return () => clearTimeout(id);
   }, [resendIn]);
-
-  // Keep the booking state's method in sync with the derived value so any
-  // downstream consumer (and confirmBooking) sees the right one.
-  useEffect(() => {
-    if (booking.paymentMethod !== paymentMethod) {
-      onChange({ paymentMethod });
-    }
-  }, [paymentMethod, booking.paymentMethod, onChange]);
 
   // Step 1: text a verification code to the customer's phone, then switch to the
   // code-entry view. The booking itself is only created after the code checks out.
@@ -227,159 +213,112 @@ export default function Step3CustomerForm({
     setError(null);
 
     try {
-      // Online (pay now): create NOTHING yet. Hand the booking details to the
-      // payment flow — the appointment is created by payment-webhook only once
-      // the charge clears, so a failed or abandoned payment leaves nothing on
-      // the business's dashboard.
-      if (paymentMethod === "online") {
-        // Best-effort availability re-check before sending the customer to the
-        // gateway (the webhook insert itself is exempt from the 084 capacity
-        // trigger — a cleared charge must not be dropped).
-        const { from: dayStart, to: dayEnd } = businessDayWindow(booking.date);
-        // Org-scoped busy slots via SECURITY DEFINER RPC — anon has no direct
-        // read on the appointments table (066 hardening).
-        const { data: existing } = (await supabase.rpc("get_org_busy_slots", {
-          p_org_id: org.id,
-          p_from: dayStart,
-          p_to: dayEnd,
-        })) as {
-          data: Array<{
-            scheduled_at: string;
-            duration_minutes: number;
-            service_id: string;
-            staff_id: string | null;
-          }> | null;
-        };
+      // Create NOTHING yet. Hand the booking details to the payment flow — the
+      // appointment is created by payment-webhook only once the charge clears,
+      // so a failed or abandoned payment leaves nothing on the business's
+      // dashboard.
+      //
+      // Best-effort availability re-check before sending the customer to the
+      // gateway (the webhook insert itself is exempt from the 084 capacity
+      // trigger — a cleared charge must not be dropped).
+      const { from: dayStart, to: dayEnd } = businessDayWindow(booking.date);
+      // Org-scoped busy slots via SECURITY DEFINER RPC — anon has no direct
+      // read on the appointments table (066 hardening).
+      const { data: existing } = (await supabase.rpc("get_org_busy_slots", {
+        p_org_id: org.id,
+        p_from: dayStart,
+        p_to: dayEnd,
+      })) as {
+        data: Array<{
+          scheduled_at: string;
+          duration_minutes: number;
+          service_id: string;
+          staff_id: string | null;
+        }> | null;
+      };
 
-        const slotStart = scheduledAt.getTime();
-        const slotEnd = slotStart + booking.service.duration_minutes * 60000;
-        const overlapping = (existing ?? []).filter((a) => {
-          const aStart = new Date(a.scheduled_at).getTime();
-          const aEnd = aStart + a.duration_minutes * 60000;
-          return slotStart < aEnd && slotEnd > aStart;
-        });
+      const slotStart = scheduledAt.getTime();
+      const slotEnd = slotStart + booking.service.duration_minutes * 60000;
+      const overlapping = (existing ?? []).filter((a) => {
+        const aStart = new Date(a.scheduled_at).getTime();
+        const aEnd = aStart + a.duration_minutes * 60000;
+        return slotStart < aEnd && slotEnd > aStart;
+      });
 
-        // Per-service capacity cap.
-        const serviceCount = overlapping.filter(
-          (a) => a.service_id === booking.service!.id
-        ).length;
-        if (serviceCount >= booking.service.max_per_slot) {
-          setError(t("booking.slotTaken"));
-          setLoading(false);
-          return;
-        }
-
-        // Resolve the assigned person. "Any available" auto-assigns a free
-        // member so per-person availability stays correct afterwards.
-        let staffId: string | null = null;
-        if (booking.assignedStaff.length > 0) {
-          const busyIds = new Set(
-            overlapping
-              .map((a) => a.staff_id)
-              .filter((id): id is string => !!id)
-          );
-          if (booking.staffId) {
-            if (busyIds.has(booking.staffId)) {
-              setError(t("booking.slotTaken"));
-              setLoading(false);
-              return;
-            }
-            staffId = booking.staffId;
-          } else {
-            const free = booking.assignedStaff
-              .filter((m) => !busyIds.has(m.id))
-              .sort((a, b) => a.sort_order - b.sort_order);
-            if (free.length === 0) {
-              setError(t("booking.slotTaken"));
-              setLoading(false);
-              return;
-            }
-            staffId = free[0].id;
-          }
-        }
-
-        const { data: pay, error: payErr } = await supabase.functions.invoke(
-          "create-payment",
-          {
-            body: {
-              purpose: "appointment",
-              org_id: org.id,
-              service_id: booking.service.id,
-              scheduled_at: scheduledAt.toISOString(),
-              staff_id: staffId,
-              first_name: booking.firstName.trim(),
-              last_name: booking.lastName.trim() || null,
-              phone: booking.phone,
-              notes: booking.notes.trim() || null,
-              consent_version: CONSENT_VERSION,
-              slug: org.slug,
-              returnBaseUrl: window.location.origin,
-            },
-          }
-        );
-        if (payErr || !pay?.checkoutUrl) {
-          setError(t("booking.paymentStartFailed"));
-          setLoading(false);
-          return;
-        }
-        if (embed) {
-          // Payment gateways refuse to load inside an iframe. Hand the URL to the
-          // host page (embed.js) to navigate the top window out to the gateway.
-          postToParent({ type: "vis:redirect", url: pay.checkoutUrl });
-        } else {
-          window.location.assign(pay.checkoutUrl);
-        }
+      // Per-service capacity cap.
+      const serviceCount = overlapping.filter(
+        (a) => a.service_id === booking.service!.id
+      ).length;
+      if (serviceCount >= booking.service.max_per_slot) {
+        setError(t("booking.slotTaken"));
+        setLoading(false);
         return;
       }
 
-      // No-charge (free service, price 0): one atomic RPC (migration 084).
-      // Capacity, the staff pick ("any available" is resolved under the per-org
-      // lock) and the customer + appointment inserts all happen server-side in
-      // one transaction, closing the check-then-insert double-booking race the
-      // old client-side re-check could not. The row is stored unpaid.
-      const { data: created, error: rpcErr } = (await supabase.rpc(
-        "create_guest_booking",
-        {
-          p_org_id: org.id,
-          p_service_id: booking.service.id,
-          p_scheduled_at: scheduledAt.toISOString(),
-          p_first_name: booking.firstName.trim(),
-          p_last_name: booking.lastName.trim() || null,
-          p_phone: formatGeorgianPhone(booking.phone),
-          p_notes: booking.notes.trim() || null,
-          p_staff_id: booking.staffId || null,
-          p_auto_assign: !booking.staffId && booking.assignedStaff.length > 0,
-          p_consent_version: CONSENT_VERSION,
+      // Resolve the assigned person. "Any available" auto-assigns a free
+      // member so per-person availability stays correct afterwards.
+      let staffId: string | null = null;
+      if (booking.assignedStaff.length > 0) {
+        const busyIds = new Set(
+          overlapping.map((a) => a.staff_id).filter((id): id is string => !!id)
+        );
+        if (booking.staffId) {
+          if (busyIds.has(booking.staffId)) {
+            setError(t("booking.slotTaken"));
+            setLoading(false);
+            return;
+          }
+          staffId = booking.staffId;
+        } else {
+          const free = booking.assignedStaff
+            .filter((m) => !busyIds.has(m.id))
+            .sort((a, b) => a.sort_order - b.sort_order);
+          if (free.length === 0) {
+            setError(t("booking.slotTaken"));
+            setLoading(false);
+            return;
+          }
+          staffId = free[0].id;
         }
-      )) as {
-        data: Array<{ appointment_id: string; status: string }> | null;
-        error: { message: string } | null;
-      };
-
-      if (rpcErr) throw new Error(rpcErr.message);
-      const appointmentId = created?.[0]?.appointment_id;
-      if (!appointmentId) throw new Error(t("booking.bookFailed"));
-
-      onDone(appointmentId);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      // The org may have hit its monthly tier limit since the page loaded —
-      // the DB trigger (enforce_appointment_limit) rejects with 'limit_reached'.
-      // Show the same friendly unavailable copy; a guest can't upgrade.
-      if (msg.includes("limit_reached")) {
-        setError(t("booking.unavailable"));
-      } else if (msg.includes("slot_taken")) {
-        // Someone took the slot between Step 2 and now — the 084 capacity
-        // trigger rejected the insert.
-        setError(t("booking.slotTaken"));
-      } else if (msg.includes("verification_required")) {
-        // The verified code lapsed or was already used — send a fresh one.
-        setError(t("booking.otpExpired"));
-        setCode("");
-        setPhase("form");
-      } else {
-        setError(msg || t("booking.bookFailed"));
       }
+
+      const { data: pay, error: payErr } = await supabase.functions.invoke(
+        "create-payment",
+        {
+          body: {
+            purpose: "appointment",
+            org_id: org.id,
+            service_id: booking.service.id,
+            scheduled_at: scheduledAt.toISOString(),
+            staff_id: staffId,
+            first_name: booking.firstName.trim(),
+            last_name: booking.lastName.trim() || null,
+            phone: booking.phone,
+            notes: booking.notes.trim() || null,
+            consent_version: CONSENT_VERSION,
+            slug: org.slug,
+            returnBaseUrl: window.location.origin,
+          },
+        }
+      );
+      if (payErr || !pay?.checkoutUrl) {
+        setError(t("booking.paymentStartFailed"));
+        setLoading(false);
+        return;
+      }
+      if (embed) {
+        // Payment gateways refuse to load inside an iframe. Hand the URL to the
+        // host page (embed.js) to navigate the top window out to the gateway.
+        postToParent({ type: "vis:redirect", url: pay.checkoutUrl });
+      } else {
+        window.location.assign(pay.checkoutUrl);
+      }
+    } catch (err) {
+      // Nothing above throws by design — supabase-js returns errors rather than
+      // raising — so this is the net for genuinely unexpected failures. Its job
+      // is to surface something and release the button.
+      const msg = err instanceof Error ? err.message : "";
+      setError(msg || t("booking.bookFailed"));
       setLoading(false);
     }
   }
@@ -535,19 +474,17 @@ export default function Step3CustomerForm({
 
             {/* Payment hint: a deposit-configured service prepays the deposit
                 online (balance in person); otherwise the full price is charged
-                online. A free service shows no payment hint. */}
-            {price > 0 && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <CreditCardOutlinedIcon
-                  sx={{ fontSize: 16, color: "primary.main" }}
-                />
-                <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid="book-payment-hint">
-                  {isDeposit
-                    ? t("booking.payDepositHint", { deposit: money(deposit), balance: money(balanceDue) })
-                    : t("booking.payOnlineHint")}
-                </Typography>
-              </Box>
-            )}
+                online. Always shown — every service is priced. */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <CreditCardOutlinedIcon
+                sx={{ fontSize: 16, color: "primary.main" }}
+              />
+              <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid="book-payment-hint">
+                {isDeposit
+                  ? t("booking.payDepositHint", { deposit: money(deposit), balance: money(balanceDue) })
+                  : t("booking.payOnlineHint")}
+              </Typography>
+            </Box>
 
             {/* Summary card — styled as the booking ticket (perforated total). */}
             <Box
@@ -670,10 +607,10 @@ export default function Step3CustomerForm({
             >
               {loading ? (
                 <CircularProgress size={22} color="inherit" />
-              ) : paymentMethod === "online" ? (
-                isDeposit ? t("booking.payDeposit") : t("booking.proceedToPayment")
+              ) : isDeposit ? (
+                t("booking.payDeposit")
               ) : (
-                t("booking.book")
+                t("booking.proceedToPayment")
               )}
             </Button>
 

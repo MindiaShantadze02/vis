@@ -133,9 +133,23 @@ export const PASSWORD_MIN = 8
 /** Largest value the numeric(10,2) price column can hold. */
 export const MAX_PRICE = 99999999.99
 
+/**
+ * Smallest price a service may charge, in ₾. Free services were removed on
+ * 2026-08-12 — every public booking now pays online — so the floor is a real
+ * amount, not 0. PLACEHOLDER pending the business number: when it changes,
+ * update the `services_price_min` CHECK (migration 20260812120000) to match.
+ * consistency.spec.ts guards this constant against e2e/data/services.json.
+ */
+export const MIN_PRICE = 5
+
 /** True for a finite number ≥ 0 (rejects negatives and NaN). */
 export function isNonNegativeNumber(value: number): boolean {
   return Number.isFinite(value) && value >= 0
+}
+
+/** True for a service price within [MIN_PRICE, MAX_PRICE] (rejects NaN). */
+export function isValidServicePrice(value: number): boolean {
+  return Number.isFinite(value) && value >= MIN_PRICE && value <= MAX_PRICE
 }
 
 /** Logos must be an image no larger than this. */

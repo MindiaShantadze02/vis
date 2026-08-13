@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, SkeletonImage, FormErrorAlert, useToast, SideDrawer } from '@/components/ui'
-import { isNonNegativeNumber, MAX_PRICE, FIELD_LIMITS } from '@/lib/validation'
+import { isNonNegativeNumber, isValidServicePrice, MAX_PRICE, MIN_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import ServiceImagesEditor, { type EditorImage } from '@/components/ServiceImagesEditor'
 import {
@@ -72,7 +72,7 @@ interface ServiceForm {
 const EMPTY: ServiceForm = {
   name: '',
   duration_minutes: '60',
-  price: '0',
+  price: String(MIN_PRICE),
   is_active: true,
   max_per_slot: '1',
   location_type: 'in_person',
@@ -282,8 +282,10 @@ export default function ServicesSettings() {
   const durationTooLong = Number(form.duration_minutes) > MAX_DURATION_MINUTES
   const durationMissing = submitted && !(Number(form.duration_minutes) > 0)
   const nameTooShort = (submitted || form.name.trim().length > 0) && form.name.trim().length < 2
-  const priceInvalid = form.price.trim().length > 0 &&
-    (!isNonNegativeNumber(Number(form.price)) || Number(form.price) > MAX_PRICE)
+  // Free services were removed — a price below MIN_PRICE is invalid, and so is
+  // an empty field (Number('') is 0, which used to save silently as free).
+  const priceValid = isValidServicePrice(Number(form.price))
+  const priceInvalid = (submitted || form.price.trim().length > 0) && !priceValid
   const maxPerSlotInvalid = !(Number(form.max_per_slot) >= 1)
 
   // Recurrence default: when off, the config columns are cleared. When on, the
@@ -324,7 +326,7 @@ export default function ServicesSettings() {
       form.name.trim().length < 2 ||
       !(Number(form.duration_minutes) > 0) ||
       durationTooLong ||
-      priceInvalid ||
+      !priceValid ||
       maxPerSlotInvalid ||
       recurringCountInvalid ||
       depositValueInvalid
@@ -543,7 +545,11 @@ export default function ServicesSettings() {
               onChange={e => setForm(f => ({ ...f, price: onlyDecimal(e.target.value) }))}
               fullWidth
               error={priceInvalid}
-              helperText={priceInvalid ? t('validation.priceTooLarge', { max: MAX_PRICE }) : undefined}
+              helperText={
+                !priceInvalid ? undefined
+                : Number(form.price) > MAX_PRICE ? t('validation.priceTooLarge', { max: MAX_PRICE })
+                : t('validation.priceTooLow', { min: MIN_PRICE })
+              }
               slotProps={{ htmlInput: { inputMode: 'decimal', 'data-testid': 'service-price' } }}
             />
             {/* Deposit — an upfront prepayment that confirms the booking (the

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { passBookingOtp, fillStable, bookToDetails, SEED } from './helpers'
+import { passBookingOtp, fillStable, bookToDetails, pickFirstAvailableSlot, SEED } from './helpers'
 
 /** Open the booking wizard on the date step (service selected, week strip visible). */
 async function openDateStep(page: import('@playwright/test').Page) {
@@ -41,7 +41,21 @@ test.describe('Public booking', () => {
 
     await expect(page).toHaveURL(/\/booking-confirmation\//, { timeout: 20_000 })
     await expect(page.getByRole('heading', { name: /ჯავშანი დადასტურებულია/ })).toBeVisible()
-    await expect(page.getByTestId('confirm-book-another')).toBeVisible()
+
+    // "Book another" rewinds the saved draft: the customer's details and service
+    // survive, but the slot they just took is cleared and the flow reopens on
+    // the date/time step — resuming on the details form would resubmit the same
+    // slot and fail with 'slot_taken'.
+    await page.getByTestId('confirm-book-another').click()
+    await expect(page).toHaveURL(new RegExp(`/book/${SEED.slug}`))
+    await expect(page.getByTestId('book-week-strip')).toBeVisible()
+    await expect(page.getByTestId('book-first-name')).toHaveCount(0)
+
+    // Picking a new slot returns to step 3 with the details still filled in.
+    // Stop here — submitting would create a second real appointment on the seed.
+    expect(await pickFirstAvailableSlot(page)).toBeTruthy()
+    await expect(page.getByTestId('book-first-name')).toHaveValue('Nino')
+    await expect(page.getByTestId('book-phone')).toHaveValue('599112233')
   })
 
   test('an unknown org slug shows a not-found state', async ({ page }) => {

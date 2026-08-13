@@ -19,6 +19,7 @@ import { motion } from 'framer-motion'
 import { listItem } from '@/theme/motion'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { inIframe, postToParent } from './useEmbedBridge'
+import { prepareRebookDraft } from './bookingDraft'
 import type { AppointmentStatus } from '@/components/ui'
 
 interface AppointmentDetail {
@@ -77,6 +78,15 @@ export default function BookingConfirmationPage() {
   // thank-you). No-op when not embedded.
   useEffect(() => {
     if (appt) postToParent({ type: 'vis:booked', appointmentId: appt.id, status: appt.status })
+  }, [appt])
+
+  // The booking is done, so rewind its saved draft: "Book another" (and browser
+  // back, and any later visit to /book/:slug in this tab) must land on the
+  // date/time step with the slot they just took cleared, instead of resuming on
+  // the details step and failing the resubmit with 'slot_taken'. Their details
+  // and service are kept — only the time goes.
+  useEffect(() => {
+    if (appt) prepareRebookDraft(appt.organisations?.slug)
   }, [appt])
 
   if (loading) {

@@ -41,18 +41,10 @@ test.describe('Settings — Booking page', () => {
     // Not saved — the org's reviews flag is left unchanged.
   })
 
-  test('the automatic-approval toggle is present, on for the seed org, and switchable', async ({ page }) => {
-    const toggle = page.getByTestId('auto-approve-toggle').locator('input')
-    // The control is framed as "Automatic approval" (opt-in): OFF means the
-    // approval-required default (the column default for new orgs since 080),
-    // ON means auto-confirm. The seed org rests with auto-approve on
-    // (require_approval = false), so the toggle reads checked.
-    await expect(toggle).toBeChecked()
-    await toggle.uncheck()
-    await expect(toggle).not.toBeChecked()
-    // Not saved — the org keeps auto-approving; the pending workflow itself is
-    // exercised (via setRequireApproval) in appointment-status/calendar specs.
-  })
+  // The automatic-approval toggle was removed with free services (2026-08-12):
+  // every public booking now pays online and payment-webhook creates it already
+  // approved, so require_approval no longer affects this page. It survives as
+  // DB-only configuration for the public REST API.
 
   test('upload a cover image, see it on the booking page, then remove it', async ({ page }) => {
     // Empty state before any cover is set.

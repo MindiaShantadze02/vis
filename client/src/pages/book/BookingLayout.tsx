@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDocumentMeta } from '@/lib/seo'
 import { format } from 'date-fns'
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n'
 import { dateLocale } from '@/lib/dateLocale'
 import { inIframe } from './useEmbedBridge'
+import { storageKey, loadPersisted } from './bookingDraft'
 import { Box, Typography } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
 import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
@@ -41,9 +42,6 @@ export interface BookingOrg {
   review_count: number
   // Cancellation policy (migration 090): the free-cancel/refund window.
   cancellation_window_hours: number
-  // Whether new bookings wait for owner approval. Auto-approve (false) is the
-  // default since migration 075; the Step-3 hint copy branches on this.
-  require_approval: boolean
   // Org-default deposit (services with a NULL deposit_type inherit it) +
   // whether an in-window cancel refunds the deposit. Drives the Step-3 preview.
   deposit_type: 'none' | 'fixed' | 'percent' | null
@@ -68,7 +66,6 @@ interface PublicOrg {
   review_avg: number | null
   review_count: number
   cancellation_window_hours: number | null
-  require_approval: boolean | null
   deposit_type: 'none' | 'fixed' | 'percent' | null
   deposit_value: number | null
   deposit_refundable: boolean | null
@@ -105,36 +102,16 @@ export interface BookingState {
   lastName: string
   phone: string
   notes: string
-  paymentMethod: 'online' | 'in_person'
 }
 
 const DEFAULT_BOOKING: BookingState = {
   service: null, date: '', time: '',
   staffId: null, assignedStaff: [],
   firstName: '', lastName: '', phone: '', notes: '',
-  paymentMethod: 'in_person',
-}
-
-// In-progress booking is kept in sessionStorage (per tab, per business) so an
-// accidental refresh — or returning from the payment gateway redirect — restores
-// the customer's place instead of dumping them back at step 1.
-const storageKey = (slug: string) => `vis_booking_${slug}`
-
-interface PersistedBooking { booking: BookingState; step: number }
-
-function loadPersisted(slug: string | undefined): PersistedBooking | null {
-  if (!slug) return null
-  try {
-    const raw = sessionStorage.getItem(storageKey(slug))
-    return raw ? (JSON.parse(raw) as PersistedBooking) : null
-  } catch {
-    return null
-  }
 }
 
 export default function BookingLayout() {
   const { slug } = useParams<{ slug: string }>()
-  const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const [searchParams] = useSearchParams()
 
@@ -221,7 +198,6 @@ export default function BookingLayout() {
         cancellation_window_hours: Number(pub.cancellation_window_hours ?? 24),
         // Default to auto-approve when the flag is absent (older cached RPC),
         // matching the DB default since migration 075.
-        require_approval: pub.require_approval ?? false,
         // Deposit config for the Step-3 preview (numeric comes back as string).
         deposit_type: pub.deposit_type ?? 'none',
         deposit_value: pub.deposit_value != null ? Number(pub.deposit_value) : null,
@@ -382,11 +358,6 @@ export default function BookingLayout() {
             embed={embed}
             onChange={patch}
             onBack={() => goToStep(1)}
-            onDone={(appointmentId) => {
-              // Booking is done — drop the saved draft so a later visit starts fresh.
-              if (slug) { try { sessionStorage.removeItem(storageKey(slug)) } catch { /* ignore */ } }
-              navigate(`/booking-confirmation/${appointmentId}`)
-            }}
           />
         )}
       </BookingShell>

@@ -53,7 +53,9 @@ describe('computeDeposit', () => {
     expect(computeDeposit(50, 'fixed', -10)).toBe(0)
   })
 
-  it('a zero-price (free) service has no deposit', () => {
+  // Free services were removed (services_price_min), so a 0 price should never
+  // reach here — the clamp is kept as a defensive floor and pinned as one.
+  it('clamps to 0 for a price that is somehow zero', () => {
     expect(computeDeposit(0, 'percent', 50)).toBe(0)
     expect(computeDeposit(0, 'fixed', 20)).toBe(0)
   })

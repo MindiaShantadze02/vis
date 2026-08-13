@@ -6,7 +6,7 @@ import {
 import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { useToast, EmptyState } from '@/components/ui'
-import { FIELD_LIMITS } from '@/lib/validation'
+import { FIELD_LIMITS, isValidServicePrice } from '@/lib/validation'
 import {
   BOOKING_THEME_LIST, DEFAULT_BOOKING_THEME, getBookingTheme, isCustomBookingColor,
 } from '@/theme/bookingThemes'
@@ -48,7 +48,6 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
   // ── Booking-page settings ──────────────────────────────────
   const [bookingTheme, setBookingTheme] = useState<string>(DEFAULT_BOOKING_THEME)
   const [reviewsEnabled, setReviewsEnabled] = useState(true)
-  const [requireApproval, setRequireApproval] = useState(true)
   const [savingBooking, setSavingBooking] = useState(false)
 
   // ── Services ───────────────────────────────────────────────
@@ -75,21 +74,20 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
     async function load() {
       setLoading(true)
       const [orgRes, svcRes, staffRes, hoursRes] = await Promise.all([
-        supabase.from('organisations').select('name, description, address, booking_theme, reviews_enabled, require_approval').eq('id', orgId).maybeSingle(),
+        supabase.from('organisations').select('name, description, address, booking_theme, reviews_enabled').eq('id', orgId).maybeSingle(),
         supabase.from('services').select('id, name, duration_minutes, price').eq('org_id', orgId).eq('is_active', true).order('sort_order'),
         supabase.from('org_members').select('id, display_name, title, is_bookable').eq('org_id', orgId).eq('role', 'staff').order('sort_order'),
         supabase.from('working_hours_template').select('*').eq('org_id', orgId).maybeSingle(),
       ])
       const org = orgRes.data as {
         name?: string; description?: string | null; address?: string | null
-        booking_theme?: string | null; reviews_enabled?: boolean; require_approval?: boolean
+        booking_theme?: string | null; reviews_enabled?: boolean
       } | null
       setName(org?.name ?? '')
       setDescription(org?.description ?? '')
       setAddress(org?.address ?? '')
       setBookingTheme(getBookingTheme(org?.booking_theme ?? null).key)
       setReviewsEnabled(org?.reviews_enabled ?? true)
-      setRequireApproval(org?.require_approval ?? true)
       setServices((svcRes.data ?? []) as ServiceRow[])
       setStaff((staffRes.data ?? []) as StaffRow[])
 
@@ -129,7 +127,6 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
       .update({
         booking_theme: bookingTheme,
         reviews_enabled: reviewsEnabled,
-        require_approval: requireApproval,
       }).eq('id', orgId)
     setSavingBooking(false)
     if (error) { toast.error(error.message); return }
@@ -138,8 +135,10 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
 
   async function addService() {
     const duration = Number(svcDuration)
-    const price = Number(svcPrice || 0)
-    if (svcName.trim().length < 2 || !Number.isFinite(duration) || duration <= 0 || duration > 1440 || price < 0) {
+    // Free services were removed — the DB CHECK would reject anything under
+    // MIN_PRICE, so flag it here rather than surfacing a raw constraint error.
+    const price = Number(svcPrice)
+    if (svcName.trim().length < 2 || !Number.isFinite(duration) || duration <= 0 || duration > 1440 || !isValidServicePrice(price)) {
       toast.error('შეავსეთ სერვისის ველები სწორად'); return
     }
     setAddingSvc(true)
@@ -321,18 +320,6 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
             sx={{ ml: 0, display: 'flex' }}
             control={<Switch checked={reviewsEnabled} onChange={e => setReviewsEnabled(e.target.checked)} data-testid="sa-reviews-toggle" />}
             label={<Typography variant="body2">შეფასებები ჩართულია</Typography>}
-          />
-          <FormControlLabel
-            sx={{ ml: 0, display: 'flex' }}
-            control={<Switch checked={!requireApproval} onChange={e => setRequireApproval(!e.target.checked)} data-testid="sa-auto-approve-toggle" />}
-            label={
-              <Box>
-                <Typography variant="body2">ავტომატური დადასტურება</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  გამორთვისას ჯავშნები დადასტურებას დაელოდება (ნაგულისხმევი)
-                </Typography>
-              </Box>
-            }
           />
 
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
