@@ -7,7 +7,6 @@ import {
   useMediaQuery, useTheme, FormControlLabel, Checkbox, Badge,
 } from '@mui/material'
 import { AppDatePicker } from '@/components/AppDatePicker'
-import { Add as AddIcon } from '@/components/icons'
 import { TuneOutlined as TuneOutlinedIcon } from '@/components/icons'
 import { TrendingUp as TrendingUpIcon } from '@/components/icons'
 import { CalendarToday as CalendarTodayIcon } from '@/components/icons'
@@ -27,7 +26,6 @@ import type { AppointmentStatus } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import { isValidUrl, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
-import AddAppointmentDialog from './AddAppointmentDialog'
 import PendingInvites from './PendingInvites'
 import OnboardingChecklist from '@/components/OnboardingChecklist'
 import UsageMeter from '@/components/UsageMeter'
@@ -110,14 +108,6 @@ export default function OverviewPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const [selected, setSelected] = useState<Appointment | null>(null)
-  // Look up whether the opened appointment belongs to a recurring series.
-  useEffect(() => {
-    if (!selected) { setSeriesId(null); return }
-    let cancelled = false
-    supabase.from('appointments').select('series_id').eq('id', selected.id).maybeSingle()
-      .then(({ data }) => { if (!cancelled) setSeriesId((data as { series_id: string | null } | null)?.series_id ?? null) })
-    return () => { cancelled = true }
-  }, [selected])
   const [adminNote, setAdminNote] = useState('')
   // Per-appointment online meeting link, edited in the detail dialog.
   const [meetingLink, setMeetingLink] = useState('')
@@ -125,14 +115,10 @@ export default function OverviewPage() {
   const [sendingLink, setSendingLink] = useState(false)
   // Inline two-step guard for cancelling an already-approved appointment.
   const [confirmingCancel, setConfirmingCancel] = useState(false)
-  // Recurring-series id of the selected appointment (fetched on open), so we can
-  // offer "cancel the whole series" alongside the single-occurrence cancel.
-  const [seriesId, setSeriesId] = useState<string | null>(null)
   // Cancel-with-refund choice for PAID online appointments (Fresha model: the
   // business decides at cancel time — default is to give the money back, but
   // e.g. a late cancellation may deliberately keep it).
   const [refundOnCancel, setRefundOnCancel] = useState(true)
-  const [addOpen, setAddOpen] = useState(false)
 
   const [bookableMembers, setBookableMembers] = useState<StaffRef[]>([])
   const [assignableIds, setAssignableIds] = useState<string[]>([])
@@ -358,21 +344,6 @@ export default function OverviewPage() {
       setConfirmingCancel(false)
     }
     setActionLoading(null)
-  }
-
-  // Cancel the whole recurring series this appointment belongs to (all future
-  // occurrences).
-  async function cancelSeries(id: string) {
-    if (!seriesId) return
-    setActionLoading(id)
-    const { data, error } = await supabase.rpc('cancel_recurrence_series', { p_series_id: seriesId })
-    setActionLoading(null)
-    if (error) { toast.error(error.message); return }
-    toast.success(t('recurring.seriesCancelled', { count: (data as number) ?? 0 }))
-    setSelected(null)
-    loadAppointments()
-    loadStats()
-    refreshBilling()
   }
 
   // Save the per-appointment join link and text it to the customer in one
@@ -608,12 +579,7 @@ export default function OverviewPage() {
       />
 
       {/* Appointments — header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>{t('dashboard.appointments')}</Typography>
-        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setAddOpen(true)} data-testid="appt-add-btn">
-          {t('calendar.addAppointment')}
-        </Button>
-      </Box>
+      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>{t('dashboard.appointments')}</Typography>
 
       {/* Filters. On desktop: two aligned rows (search + attribute dropdowns,
           then the date range). On mobile everything except the search collapses
@@ -887,12 +853,6 @@ export default function OverviewPage() {
                     onClick={() => { setRefundOnCancel(true); setConfirmingCancel(true) }} disabled={!!actionLoading}>
                     {t('dashboard.cancelAppointment')}
                   </Button>
-                  {seriesId && (
-                    <Button variant="outlined" color="error" data-testid="appt-cancel-series"
-                      onClick={() => cancelSeries(selected.id)} disabled={!!actionLoading}>
-                      {t('recurring.cancelSeries')}
-                    </Button>
-                  )}
                 </>
               )
             )}
@@ -1047,15 +1007,6 @@ export default function OverviewPage() {
           </>
         )}
       </SideDrawer>
-
-      {/* Manual appointment entry (e.g. logging a booking taken over the phone) */}
-      {addOpen && (
-        <AddAppointmentDialog
-          orgId={org.id}
-          onClose={() => setAddOpen(false)}
-          onCreated={() => { loadAppointments(); loadStats(); refreshBilling() }}
-        />
-      )}
     </Box>
   )
 }

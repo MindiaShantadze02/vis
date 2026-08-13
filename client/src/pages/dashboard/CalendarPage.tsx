@@ -4,7 +4,6 @@ import {
   Stack, Button, CircularProgress, useTheme,
   Select, MenuItem, FormControl, InputLabel, TextField,
 } from '@mui/material'
-import { Add as AddIcon } from '@/components/icons'
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
 import { ArrowForwardIos as ArrowForwardIosIcon } from '@/components/icons'
 import { Today as TodayIcon } from '@/components/icons'
@@ -18,7 +17,6 @@ import { useBreakpoints } from '@/hooks/useBreakpoints'
 import { anim } from '@/theme/animations'
 import { StatusChip, ConfirmDialog, LoadingState, useToast, SideDrawer } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
-import AddAppointmentDialog from './AddAppointmentDialog'
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -283,7 +281,6 @@ export default function CalendarPage() {
   }, [appointments])
 
   // Rest period dialog
-  const [addOpen, setAddOpen] = useState(false)
   const [restDialog, setRestDialog] = useState(false)
   const [restDate, setRestDate] = useState('')
   const [restStart, setRestStart] = useState('13:00')
@@ -532,16 +529,6 @@ export default function CalendarPage() {
           {t('dashboard.calendar')}
         </Typography>
         <Button
-          variant="contained"
-          size="small"
-          startIcon={<AddIcon />}
-          onClick={() => setAddOpen(true)}
-          sx={{ borderRadius: 2 }}
-          data-testid="cal-add-btn"
-        >
-          {t('calendar.addAppointment')}
-        </Button>
-        <Button
           variant="outlined"
           size="small"
           startIcon={<EventBusyOutlinedIcon />}
@@ -586,13 +573,6 @@ export default function CalendarPage() {
               <EventBusyOutlinedIcon />
             </IconButton>
           </Tooltip>
-          <IconButton
-            onClick={() => setAddOpen(true)}
-            data-testid="cal-add-btn"
-            sx={{ bgcolor: 'primary.main', color: '#fff', '&:hover': { bgcolor: 'primary.dark' } }}
-          >
-            <AddIcon />
-          </IconButton>
         </Box>
 
         {/* Month nav — arrows step one day; today resets to now. */}
@@ -1226,16 +1206,6 @@ export default function CalendarPage() {
           setRestToRemove(null)
         }}
       />
-
-      {/* Manual appointment entry, same dialog as the overview — admins log
-          phone bookings from wherever they're looking at the schedule. */}
-      {addOpen && org && (
-        <AddAppointmentDialog
-          orgId={org.id}
-          onClose={() => setAddOpen(false)}
-          onCreated={loadWeek}
-        />
-      )}
     </Box>
   )
 }

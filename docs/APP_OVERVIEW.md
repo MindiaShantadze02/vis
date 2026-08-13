@@ -1,7 +1,8 @@
 # Vis — Appointment Booking SaaS
 
 > Product name **Vis**. Hosted Supabase project ref `dnmecnpugjxkjonqsfxx`.
-> Migrations applied through `20260722130000_service_recurrence_defaults.sql` (2026-07-22).
+> Migration files run through `20260813120000_remove_recurring.sql` (2026-08-13) — that last one is
+> **written but not yet pushed**; check `supabase migration list --linked` for what prod actually has.
 
 ## What it is
 A multi-tenant SaaS platform for the **Georgian market** that lets small service businesses
@@ -16,6 +17,12 @@ developer strip, footer links to docs and legal pages).
 > 044–058) but those were **fully removed** in migration `059_appointments_only.sql` (2026-07-02).
 > There is one product: appointment booking. Ignore any lingering "multi-vertical" references in
 > older docs.
+
+> **Bookings come from customers only.** The owner-side *manual add-appointment* dialog and
+> **recurring appointments** (095 + the per-service recurrence defaults) were **removed**
+> 2026-08-13 (`20260813120000_remove_recurring.sql`): Vis is positioned as a pure online-booking
+> platform, so every appointment originates from the public booking flow or the REST API. Owners
+> still approve/reject, cancel, reschedule-by-cancel, mark no-show and block time ("Rest").
 
 ## Tech stack
 - **Frontend:** React 19 + TypeScript + Vite, MUI v9 + MUI X (DataGrid, Date Pickers), React Router v7, framer-motion, Phosphor icons
@@ -87,11 +94,11 @@ developer strip, footer links to docs and legal pages).
      (`pending`); a business can opt into auto-approve (`approved` immediately) from Settings →
      Booking page. The price is still shown to the customer even when it's 0.
    - Lands on `/booking-confirmation/:id` (data via the `get_booking_confirmation` RPC).
-   - `in_person` remains a valid **internal** `payment_method` (owner walk-ins, recurring series,
-     and the free no-charge path all write it); only the customer-facing *choice* and the Settings
-     in-person toggle were removed.
-- The confirmation/approval SMS includes the business's **street address** when set
-  (`organisations.address`, migration 077).
+   - `in_person` remains a valid **internal** `payment_method` (the free no-charge path writes it);
+     only the customer-facing *choice* and the Settings in-person toggle were removed.
+- The confirmation SMS includes the business's **street address** when set
+  (`organisations.address`, migration 077). It is sent **once**, when the booking reaches
+  `approved`; the only other automatic customer message is the morning-of reminder (see SMS below).
 - **Online services:** the meeting link is **per-appointment**, not per-service (migration 082 —
   `appointments.meeting_link`; `services.meeting_link` is dead). The owner attaches a link to an
   online appointment on the dashboard and sends it by SMS via the `request_meeting_link_sms` RPC —
@@ -143,8 +150,9 @@ developer strip, footer links to docs and legal pages).
 
 ### Admin dashboard
 - **Overview** — stats + revenue totals; copy-review-link on completed appointments; mark no-show.
-- **Weekly calendar** — view/manage bookings, add manually (incl. recurring series), approve/reject/
-  cancel pending; attach and SMS-send a meeting link on online appointments.
+- **Weekly calendar** — view/manage bookings, approve/reject/cancel pending, block time ("Rest");
+  attach and SMS-send a meeting link on online appointments. No manual entry — bookings arrive
+  from the public flow / API.
 - **Analytics** (migration 096) — a money-first dashboard for a chosen range (30/90/365 days) from
   the pre-aggregated `get_org_analytics` RPC: revenue + revenue-per-staff, booking/completion counts,
   **no-show / cancellation / repeat-customer rates**, busiest-weekday & busiest-hour histograms
@@ -202,7 +210,7 @@ developer strip, footer links to docs and legal pages).
   `subscription_expires_at` — no cron. The **monthly free allowance also resets automatically**
   (time-derived: `org_usage` counts only appointments since `current_period_start(usage_anchor)`) —
   no cron, no app restart. An expired org is never disabled: dashboard, data and the booking page
-  stay alive, but new bookings are blocked and day-before reminders stop.
+  stay alive, but new bookings are blocked and reminders stop.
 - Config lives in `platform_config.tier_limits` / `tier_prices` / `credit_packs` / `tier_features` /
   `tier_staff_limits` JSON (superadmin-editable, no deploy). Enforced **in the database**:
   `enforce_appointment_limit` (via `org_can_accept_appointment`, which now blocks an active org that's
@@ -235,7 +243,7 @@ developer strip, footer links to docs and legal pages).
   "unavailable" state instead of the form; the hard-block surfaces the trigger's `limit_reached`
   error gracefully. The public API returns 403 `quota_exceeded` in the same cases.
 
-## Booking add-ons: deposits, self-service, recurring
+## Booking add-ons: deposits, self-service
 
 ### Deposits / prepayment (migrations 089/090/091)
 - A business can require an **upfront deposit** (or full prepayment) to confirm a booking — the
@@ -262,21 +270,12 @@ developer strip, footer links to docs and legal pages).
   `cancellation_window_hours` and `deposit_refundable`, via the payments seam, atomic-claim-then-
   refund like the owner cancel).
 
-### Recurring appointments (migration 095)
-- Owner/staff-created **standing bookings** (weekly / biweekly / monthly) for trainers, clinics and
-  regular clients — a "Repeat" option in the manual add-appointment dialog. Each occurrence is a
-  **real appointment row** carrying a `series_id` (materialized, so reminders/capacity/calendar see
-  them). The series is **bounded** (end after N occurrences, or on a date; capped at 52) and all
-  occurrences are generated at creation (`create_recurrence_series`, owner context) — colliding
-  slots are **skipped and reported** (`{made, skipped}`), never silently dropped; each occurrence
-  meters against the tier allowance. Per-occurrence confirmation SMS is suppressed for series rows.
-- Edits: "this occurrence" is the normal single cancel/reschedule; **`cancel_recurrence_series`**
-  ends the series and cancels all future occurrences.
-- **Per-service recurrence defaults** (migration `20260722130000`): a service can be marked
-  *recurring by default* with a default cadence + occurrence count in **Settings → Services**
-  (`services.recurring_default` / `recurring_cadence` / `recurring_occurrence_count`). Picking such a
-  service in the add-appointment dialog pre-fills and enables the Repeat options. Owner-side only —
-  no change to occurrence generation or the guest booking flow.
+### Recurring appointments — REMOVED (was migration 095)
+- Owner-created weekly/biweekly/monthly series (`recurrence_series`, `appointments.series_id`,
+  `create_recurrence_series` / `cancel_recurrence_series`) and the per-service recurrence defaults
+  (`20260722130000`) were **dropped** in `20260813120000_remove_recurring.sql` (2026-08-13) together
+  with the manual add-appointment dialog that created them. Past occurrences survive as ordinary
+  appointments (only their series link is gone). Ignore references to series in older docs.
 
 ## Data protection & privacy (Georgian Law on Personal Data Protection, No. 3144)
 - **Privacy Policy + Terms** (canonical markdown in `docs/legal/`, in-app pages at `/privacy`,
@@ -299,12 +298,11 @@ developer strip, footer links to docs and legal pages).
 - `org_members` + `invitations` (team; phone-based invites; `staff` = non-login bookable profile
   with optional photo)
 - `services` (name, duration, price, `max_per_slot` capacity, in-person/online location type,
-  per-service deposit config, and per-service recurrence defaults `recurring_default` /
-  `recurring_cadence` / `recurring_occurrence_count`), `service_staff` (who performs what),
+  per-service deposit config), `service_staff` (who performs what),
   `service_images` (per-service gallery, composite-FK tenant-integrity pattern; `service-images` bucket)
 - `appointments` (+ `meeting_link` for online ones; `payment_status` incl. `deposit_paid`; status
   incl. `no_show`; `payment_method` is `online` for public priced bookings, `in_person` internally
-  for walk-ins / recurring / the free no-charge path) + shared `customers` (name + phone; consent
+  for the free no-charge path) + shared `customers` (name + phone; consent
   fields; `anonymized_at`)
 - Entitlements & credits (088 + credit system 20260722120000): `organisations.credit_balance`;
   `credit_purchases` (purchase audit, UNIQUE `(org_id, idempotency_key)`); `credit_consumption`
@@ -321,12 +319,24 @@ developer strip, footer links to docs and legal pages).
 - Payments: pluggable providers in `_shared/payments/` (mock-first; BOG/TBC scaffolded),
   `pending_bookings` for online-pay intents, payment columns on `appointments`
 - SMS: event-driven — a DB trigger (or RPC) enqueues, the `send-sms` edge function dispatches
-  through a pluggable `SmsProvider` (`_shared/sms/`); currently a **mock** provider. Message types
-  include booking confirmation, approval updates, day-before appointment reminders
-  (`dispatch_appointment_reminders` cron), meeting links, invitations, verification codes,
-  setup-complete, and refund/reschedule/cancellation updates. Go-live
-  checklist for a real gateway: `docs/SMS_PROVIDER_READINESS.md` (note: `to` numbers need `+995`
-  prefixing). The customer-facing `manage-appointment` edge fn sends directly.
+  through a pluggable `SmsProvider` (`_shared/sms/`); currently a **mock** provider. Customer SMS
+  arrives by **two independent routes** — know both before changing either:
+  - **DB-driven** (trigger/cron → `net.http_post` → `send-sms`): `booking_confirmation` **once**, when
+    a booking reaches `approved` (at insert for auto-approved bookings, at the approving update
+    otherwise), and `appointment_reminder` on the **morning of** the appointment
+    (`dispatch_appointment_reminders` cron, window opens 08:00 business time; same-day bookings
+    skipped, and moving a booking re-arms its reminder via `trg_clear_reminder_on_reschedule`). Both
+    pinned by migration `20260813130000`. Every other appointment write — cancel, no-show, notes,
+    auto-complete — is silent on this route.
+  - **Edge functions calling `sendSms` directly** (never touch the trigger): `manage-appointment`
+    sends `reschedule_update` on a self-service move and `cancellation_update` on a self-service
+    cancel (the refund note folds into that one message); `refund-payment` and `payment-webhook`
+    send `refund_update`; `request-booking-otp` / `request-password-reset` send `verification_code`;
+    `send-sms` itself sends the owner-facing `setup_complete`. `meeting_link` is owner-triggered via
+    `request_meeting_link_sms`.
+
+  Go-live checklist for a real gateway: `docs/SMS_PROVIDER_READINESS.md` (note: `to` numbers need
+  `+995` prefixing).
 - `pg_cron`: auto-complete past appointments; booking notifications & reminders; retention purge
 - Account deletion cascades all org data (+ best-effort storage cleanup)
 
@@ -386,7 +396,7 @@ developer strip, footer links to docs and legal pages).
   tiers, `get_org_entitlements` + FeatureGate.
 - **Online-only customer payments** (2026-07-22): pay-in-person removed from the booking UI + Payment
   settings; method derived from price (priced → online gateway, free → no-charge path, price still
-  shown); `in_person` kept as an internal value for walk-ins/recurring.
+  shown); `in_person` kept as an internal value for the free no-charge path.
 - **Purchasable extra appointments / hard cap** (credit system 20260722120000): active orgs hard-block
   past the included allowance unless they buy extras; per-appointment consume/refund, packs priced
   from Georgian SMS cost, `create-payment` purpose `'credit'` + atomic webhook grant (idempotency +
@@ -394,9 +404,8 @@ developer strip, footer links to docs and legal pages).
 - **Deposits / prepayment** (089–091): per-service deposit config, `deposit_paid` + `no_show`
   statuses; a priced booking is collected online (a deposit just charges less).
 - **Customer self-service** (092): `/manage/:appointmentId` OTP-gated reschedule/cancel-with-refund.
-- **Recurring appointments** (095): owner-created weekly/biweekly/monthly series (bounded,
-  materialized occurrences); `create_recurrence_series` / `cancel_recurrence_series`. **Per-service
-  recurrence defaults** (20260722130000) pre-fill the add-appointment Repeat options.
+- ~~**Recurring appointments** (095)~~ — removed 2026-08-13 with the manual add-appointment dialog
+  (`20260813120000_remove_recurring.sql`); bookings now come only from customers.
 - **Owner analytics** (096): `get_org_analytics` RPC + a money-first dashboard (Dashboard →
   Analytics) with CSS-bar charts.
 - Themed booking pages incl. custom brand color; business-timezone (+04:00) slot logic; regrouped

@@ -26,7 +26,7 @@ Happy paths + edge cases (validation gating, route guards, error states):
 | `auth.spec.ts` | login, logout, phone signup → onboarding | bad password, unknown phone, duplicate-phone signup, mismatch/invalid-phone gating, protected-route redirect, logged-in `/login` redirect, forgot-password gating |
 | `onboarding.spec.ts` | full 3-step onboarding → org (self-cleans) | step-1 "next" gating, a typed-but-not-added service is kept on Next, skip → dashboard, org-guard bounce |
 | `booking.spec.ts` | public in-person booking + OTP → auto-approved confirmation (075 default) | unknown slug, invalid name/phone gating, **wrong OTP rejected** |
-| `dashboard.spec.ts` | overview stats + link, add-appt dialog, calendar nav | add-appt save gating |
+| `dashboard.spec.ts` | overview stats + link, clients list, calendar nav | no manual add-appointment action (bookings come from the public flow only) |
 | `settings-services.spec.ts` | service create → edit → delete (self-cleans) | save gating (empty name / out-of-range price / bad duration); **BVA** on duration/capacity/price |
 | `meeting-link.spec.ts` | per-appointment online link: owner pastes a link on an online-service appointment and sends it via SMS (seeds an approved online appt over PostgREST; cancels + deactivates in teardown) | invalid-link inline flag, "link needed" cue clears + link round-trips through `search_appointments` |
 | `settings-team.spec.ts` | add/delete professional; invite by phone + cancel (self-clean) | invite-send gating, add-professional name gating |

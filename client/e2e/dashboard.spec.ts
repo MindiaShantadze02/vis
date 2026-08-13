@@ -13,11 +13,10 @@ test.describe('Dashboard', () => {
     await expect(page.getByText(new RegExp(`vis\\.ge/book/${SEED.slug}`))).toBeVisible()
   })
 
-  test('the add-appointment dialog opens and closes', async ({ page }) => {
-    await page.getByTestId('appt-add-btn').click()
-    await expect(page.getByTestId('add-appt-dialog')).toBeVisible()
-    await page.getByTestId('add-appt-cancel').click()
-    await expect(page.getByTestId('add-appt-dialog')).toHaveCount(0)
+  // Appointments are created by clients through the public booking flow only —
+  // the dashboard has no manual-entry affordance.
+  test('the overview offers no manual add-appointment action', async ({ page }) => {
+    await expect(page.getByTestId('appt-add-btn')).toHaveCount(0)
   })
 
   test('the clients page lists customers and filters by search', async ({ page }) => {
@@ -119,27 +118,5 @@ test.describe('Dashboard', () => {
     await page.getByTestId('reset-filters').click()
     await page.getByTestId('appt-filters-done').click()
     await expect(badge).not.toBeVisible()
-  })
-
-  // --- edge cases ---
-
-  test('add-appointment flags missing fields inline on save instead of disabling it', async ({ page }) => {
-    await page.getByTestId('appt-add-btn').click()
-    const dialog = page.getByTestId('add-appt-dialog')
-    const save = page.getByTestId('add-appt-save')
-    // Enabled by design; clicking an incomplete form flags the invalid fields
-    // inline and keeps the dialog open (nothing is created).
-    await expect(save).toBeEnabled()
-    await save.click()
-    await expect(dialog.locator('[aria-invalid="true"]').first()).toBeVisible()
-    await expect(dialog).toBeVisible()
-
-    // A name with digits is rejected too (isValidPersonName), still no create.
-    await page.getByTestId('add-appt-first-name').fill('Ana2')
-    await page.getByTestId('add-appt-phone').fill('599112233')
-    await save.click()
-    await expect(page.getByTestId('add-appt-first-name')).toHaveAttribute('aria-invalid', 'true')
-    await expect(dialog).toBeVisible()
-    await page.getByTestId('add-appt-cancel').click()
   })
 })
