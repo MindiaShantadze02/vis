@@ -142,7 +142,10 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
                   <SkeletonImage
                     src={s.images[0]}
                     alt={s.name}
-                    sx={{ width: '100%', height: 160 }}
+                    // A near-3:2 frame: tall enough that portrait uploads still
+                    // show their subject instead of a thin horizontal slice.
+                    sx={{ width: '100%', height: { xs: 200, md: 280 } }}
+                    imgSx={{ objectPosition: 'center' }}
                   />
                 )}
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2.25, pl: 2.75 }}>

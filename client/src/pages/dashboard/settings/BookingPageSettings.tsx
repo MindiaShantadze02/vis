@@ -177,6 +177,7 @@ export default function BookingPageSettings() {
               sx={{
                 width: '100%', aspectRatio: '16 / 5', borderRadius: 2, overflow: 'hidden',
                 border: '1px solid', borderColor: 'divider', mb: 2,
+                height: 'auto'
               }}
             >
               <SkeletonImage src={coverUrl} alt={t('settings.coverImage')} sx={{ width: '100%', height: '100%' }} />

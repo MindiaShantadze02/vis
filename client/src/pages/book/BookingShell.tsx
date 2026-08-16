@@ -162,7 +162,10 @@ export default function BookingShell({
           src={org.cover_url}
           alt={org.name}
           data-testid="booking-cover"
-          sx={{ width: '100%', height: { xs: 120, md: 180 }, flexShrink: 0 }}
+          // Full-bleed hero. Tall enough that a wide upload isn't reduced to a
+          // thin band — the old 180px strip cropped out most of the photo.
+          sx={{ width: '100%', height: { xs: 200, md: 380 }, flexShrink: 0 }}
+          imgSx={{ objectPosition: 'center' }}
         />
       )}
 
@@ -195,7 +198,7 @@ export default function BookingShell({
 
         {/* Progress bar — segmented, one segment per step. */}
         <Box sx={{ bgcolor: 'background.paper', px: { xs: 2, md: 5 }, py: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Box sx={{ width: { xs: '100%', md: '85%' }, mx: 'auto' }}>
+          <Box sx={{ width: { xs: '100%', md: '85%' }, maxWidth: 1040, mx: 'auto' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
               <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: '0.5px', color: 'text.secondary' }}>
                 {t('booking.stepCounter', { n: step + 1 })}
@@ -230,7 +233,9 @@ export default function BookingShell({
               initial="enter"
               animate="center"
               exit="exit"
-              sx={{ px: { xs: 2, md: 5 }, py: 4, width: { xs: '100%', md: '85%' }, mx: 'auto' }}
+              // Capped so the column stays a readable, centred card stack on wide
+              // screens — service photos otherwise stretch into thin letterboxes.
+              sx={{ px: { xs: 2, md: 5 }, py: 4, width: { xs: '100%', md: '85%' }, maxWidth: 1040, mx: 'auto' }}
             >
               {children}
               {/* When the branded sidebar isn't shown (embed / mobile), fall back
