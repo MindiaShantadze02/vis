@@ -60,9 +60,6 @@ test.describe('Business onboarding', () => {
     await expect(page.getByText(bizName)).toBeVisible()
     await expect(page.getByText(/vis\.ge\/book\//)).toBeVisible()
 
-    // The new-org onboarding checklist is up (nothing dismissed yet).
-    await expect(page.getByTestId('onboarding-checklist')).toBeVisible()
-
     // Post-paid billing: a brand-new org is free (no trial, no plan). The
     // Billing page shows the running-bill meter — ₾0 with no appointments yet.
     await page.goto('/dashboard/settings/billing')

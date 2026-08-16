@@ -41,10 +41,10 @@ test.describe('Settings — Booking page', () => {
     // Not saved — the org's reviews flag is left unchanged.
   })
 
-  // The automatic-approval toggle was removed with free services (2026-08-12):
-  // every public booking now pays online and payment-webhook creates it already
-  // approved, so require_approval no longer affects this page. It survives as
-  // DB-only configuration for the public REST API.
+  // The automatic-approval toggle was removed with free services (2026-08-12);
+  // the pending-approval workflow and organisations.require_approval followed
+  // (2026-08-14). Every appointment is created approved, so there is nothing
+  // left to configure here.
 
   test('upload a cover image, see it on the booking page, then remove it', async ({ page }) => {
     // Empty state before any cover is set.

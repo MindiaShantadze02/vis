@@ -110,7 +110,6 @@ export default function BookingConfirmationPage() {
   // Render in the business's (Georgia) wall clock, not the viewer's zone —
   // the appointment happens at the salon, wherever the customer is browsing.
   const scheduledAt = toBusinessWallClock(appt.scheduled_at)
-  const isPending = appt.status === 'pending'
   const bookingTheme = getBookingTheme(appt.organisations?.booking_theme)
 
   return (
@@ -135,21 +134,19 @@ export default function BookingConfirmationPage() {
             transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
             sx={{
               width: 72, height: 72, borderRadius: '50%',
-              bgcolor: isPending ? 'warning.light' : 'success.light',
+              bgcolor: 'success.light',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               mx: 'auto', mb: 2,
             }}
           >
-            <CheckCircleOutlinedIcon
-              sx={{ fontSize: 38, color: isPending ? 'warning.main' : 'success.main' }}
-            />
+            <CheckCircleOutlinedIcon sx={{ fontSize: 38, color: 'success.main' }} />
           </Box>
 
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {isPending ? t('booking.confirmPendingTitle') : t('booking.confirmApprovedTitle')}
+            {t('booking.confirmApprovedTitle')}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-            {isPending ? t('booking.confirmPendingSub') : t('booking.confirmApprovedSub')}
+            {t('booking.confirmApprovedSub')}
           </Typography>
 
           {/* Details — rendered as a tear-off ticket stub (the signature). */}

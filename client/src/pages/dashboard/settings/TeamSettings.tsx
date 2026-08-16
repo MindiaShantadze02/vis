@@ -486,7 +486,6 @@ export default function TeamSettings() {
                       </Typography>
                     )}
                   </Box>
-                  <Chip label={t('dashboard.pending')} size="small" color="warning" variant="outlined" data-testid="invite-row" />
                   <ActionIconButton tone="danger" aria-label={t('common.cancel')} data-testid="invite-cancel" onClick={() => cancelInvite(inv.id)}>
                     <DeleteOutlinedIcon fontSize="small" />
                   </ActionIconButton>

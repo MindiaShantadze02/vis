@@ -1,7 +1,6 @@
 /**
- * Shared availability-slot computation used by both the public booking flow
- * (Step2DateTimeSelect) and the admin manual-entry dialog (AddAppointmentDialog),
- * so the two stay in sync. All functions here are pure — callers pass in the
+ * Shared availability-slot computation for the public booking flow
+ * (Step2DateTimeSelect). All functions here are pure — callers pass in the
  * working-hours template, the date's override, and the existing appointments.
  *
  * KEEP IN SYNC with supabase/functions/_shared/slots.ts — the public REST API

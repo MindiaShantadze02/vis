@@ -104,7 +104,7 @@ const theme = createTheme({
       paper:   '#FFFFFF',
     },
     // Status palette — muted, semantic (StatusChip: approved→success,
-    // pending→warning, rejected→error, completed→info).
+    // rejected/no_show→error, completed→info, cancelled→default).
     success: {
       main:         '#0E9F6E',
       light:        '#D6F3E7',

@@ -105,39 +105,14 @@ test.describe('Public REST API', () => {
     })
     expect(create.status()).toBe(201)
     const booking = (await create.json()).booking
-    // Omitted status follows the org's approval setting (075): the seed org
-    // rests with auto-approve on (require_approval = false), so it lands approved.
+    // Bookings are always created approved — the pending-approval workflow and
+    // the `status` request field were removed (2026-08-14).
     expect(booking.status).toBe('approved')
 
     // capacity is consumed: the slot shrank or disappeared
     const after = await getJson(request, `${API}/v1/slots?service_id=${service.id}&date=${date}`, key)
     const slotAfter = after.body.slots.find((s: { time: string }) => s.time === slot.time)
     if (slotAfter) expect(slotAfter.remaining).toBe(slot.remaining - 1)
-
-    // an explicit status still overrides the org default: force the approval queue
-    const pendingCustomer = letterName()
-    let explicitPending: { status: number; body: { booking: { status: string } } } | null = null
-    for (let off = 1; off <= 14 && !explicitPending; off++) {
-      const day = businessDate(off)
-      const free = await getJson(request, `${API}/v1/slots?service_id=${service.id}&date=${day}`, key)
-      const freeSlot = free.body.slots.at(-1)
-      if (!freeSlot) continue
-      const res = await request.post(`${API}/v1/bookings`, {
-        headers: { 'x-api-key': key },
-        data: {
-          service_id: service.id,
-          date: day,
-          time: freeSlot.time,
-          status: 'pending',
-          customer: { first_name: pendingCustomer, phone: uniquePhone() },
-          notes: 'created by api.spec.ts (explicit pending)',
-        },
-      })
-      explicitPending = { status: res.status(), body: await res.json() }
-    }
-    expect(explicitPending, 'expected a free slot within 14 days for the explicit-pending booking').toBeTruthy()
-    expect(explicitPending!.status).toBe(201)
-    expect(explicitPending!.body.booking.status).toBe('pending')
 
     // validation failures surface as clean 422s (never 500s that leak internals)
     const badPhone = await request.post(`${API}/v1/bookings`, {
@@ -162,9 +137,8 @@ test.describe('Public REST API', () => {
     expect(longNotes.status()).toBe(422)
     expect((await longNotes.json()).error).toBe('invalid_notes')
 
-    // --- the bookings are real appointments in the dashboard --------------
+    // --- the booking is a real appointment in the dashboard ----------------
     await cancelAppt(page, customer) // asserts visibility, then cleans up
-    await cancelAppt(page, pendingCustomer) // rejects the explicit-pending one
 
     // --- revocation cuts access immediately --------------------------------
     await page.goto('/dashboard/settings/api')

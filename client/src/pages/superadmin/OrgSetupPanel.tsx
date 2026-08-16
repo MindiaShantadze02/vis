@@ -169,8 +169,6 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
       .select('id, display_name, title, is_bookable')
       .single()
     setAddingStaff(false)
-    // The per-tier bookable-seat trigger (072) applies to superadmins too — its
-    // error surfaces here if the org's tier has no seats left.
     if (error) { toast.error(error.message); return }
     setStaff(prev => [...prev, data as StaffRow])
     setStName(''); setStTitle('')

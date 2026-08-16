@@ -36,14 +36,12 @@ interface Props {
 }
 
 /**
- * The shared frame for every public booking flow: a branded sidebar (org header +
+ * The shared frame for the public booking flow: a branded sidebar (org header +
  * description + live summary), a segmented progress bar, and a motion step
- * container. Appointments, restaurants and hotels all render their steps inside
- * this so the three verticals look identical apart from their domain-specific
- * step content.
+ * container. Every step renders inside this so the flow reads as one screen.
  *
  * Assumes it is already wrapped in the booking `ThemeProvider`
- * (makeBookingTheme) — BookingLayout provides that for every vertical.
+ * (makeBookingTheme) — BookingLayout provides that.
  */
 export default function BookingShell({
   org, bookingTheme, step, direction, stepTitles, summary, mobileAside, embed, children,

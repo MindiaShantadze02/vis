@@ -30,21 +30,21 @@ Happy paths + edge cases (validation gating, route guards, error states):
 | `settings-services.spec.ts` | service create → edit → delete (self-cleans) | save gating (empty name / out-of-range price / bad duration); **BVA** on duration/capacity/price |
 | `meeting-link.spec.ts` | per-appointment online link: owner pastes a link on an online-service appointment and sends it via SMS (seeds an approved online appt over PostgREST; cancels + deactivates in teardown) | invalid-link inline flag, "link needed" cue clears + link round-trips through `search_appointments` |
 | `settings-team.spec.ts` | add/delete professional; invite by phone + cancel (self-clean) | invite-send gating, add-professional name gating |
-| `appointment-status.spec.ts` | **state-transition** of the status machine (pending→approved→cancelled, pending→rejected); flips the org to require-approval for the spec (restored after) | terminal-state & illegal-transition guardrails, status-filter **ECP** — self-cleans (cancel + erase) |
-| `calendar.spec.ts` | approve a pending booking from the calendar drawer (flips the org to require-approval, restored after) | resilient pill/group locate — self-cleans |
+| `appointment-status.spec.ts` | **state-transition** of the status machine (approved→cancelled, approved→no_show) | terminal-state guardrails, status-filter **ECP** — self-cleans (cancel + erase) |
+| `calendar.spec.ts` | locate a booking on the week grid and open its detail drawer | resilient pill/group locate, no approval actions offered — self-cleans |
 | `forgot-password.spec.ts` | phase transition (`phone`→`reset`), neutral messaging | wrong-code rejected, resend cooldown, submit-gating **BVA** (throwaway phone — never touches the seed password) |
 | `working-hours.spec.ts` | override add → delete (self-clean state cycle) | **decision** (endBeforeStart) + **BVA** (advance days 0/731) rejects — non-persisting |
 | `profile-settings.spec.ts` | Business settings — | name/phone save-gating, logo image **BVA** (>2 MB / non-image) |
-| `booking-settings.spec.ts` | Booking-page settings — share link/embed + preview link | custom booking colour, reviews + require-approval toggles switchable (non-persisting) |
+| `booking-settings.spec.ts` | Booking-page settings — share link/embed + preview link | custom booking colour, reviews toggle switchable (non-persisting) |
 | `account-settings.spec.ts` | Account settings — | delete-account confirm-word guard (never confirmed) |
 | `superadmin.spec.ts` | — | role **ECP**: a normal owner is redirected off `/superadmin` and its sub-routes |
-| `api.spec.ts` | public REST API: mint key in Settings → API keys, call organisation/services/slots, book (default → approved, explicit `pending` honored), see both in the dashboard, revoke | 401 for missing/malformed/unknown/revoked keys, 422 date & phone rejects, capacity decrement after booking — bookings self-clean (cancel/reject), the revoked key row persists |
+| `api.spec.ts` | public REST API: mint key in Settings → API keys, call organisation/services/slots, book (always → approved), see it in the dashboard, revoke | 401 for missing/malformed/unknown/revoked keys, 422 date & phone rejects, capacity decrement after booking — the booking self-cleans (cancel), the revoked key row persists |
 
 ### Design techniques applied
 
 - **ECP / BVA / statement / decision / path / data-flow** — the bulk lives in the
   Vitest unit layer (`src/lib/*.test.ts`, run with `npm run test`): 100% stmt/branch
-  on `validation.ts`, `slug.ts`, `tiers.ts`. Boundary cases too numerous or slow to
+  on `validation.ts` and `slug.ts`. Boundary cases too numerous or slow to
   drive through the live UI (every phone length, price/duration/advance-day edge, the
   60-char slug cut, the 2 MB image edge) live there.
 - **State-transition** — appointment status machine, forgot-password phases.
@@ -76,28 +76,28 @@ its active service + Mon–Fri hours intact, or the booking/dashboard specs will
 - **`booking.spec.ts`** creates a real appointment (auto-approved since 075) +
   customer on the seeded org each successful run (a guest can't self-delete).
   Cancel/prune them from the dashboard periodically.
-- Public bookings **always auto-approve**: free services were removed
-  (2026-08-12), so every guest booking pays online and `payment-webhook` creates
-  it already `approved`. `appointment-status.spec.ts` / `calendar.spec.ts` need
-  pending rows, so they insert them directly via `seedPendingAppointment` rather
-  than booking through the UI. `require_approval` is now DB-only configuration
-  (still honoured by the public REST API) with no settings toggle.
+- The pending-approval workflow is **gone** (2026-08-14): every appointment is
+  created `approved`, `organisations.require_approval` was dropped, and the
+  public REST API no longer accepts a `status` field. `appointment-status.spec.ts`
+  / `calendar.spec.ts` insert their rows directly via `seedUpcomingAppointment`
+  rather than paying through the public booking flow.
 - **`api.spec.ts`** leaves one *revoked* API key row on the seeded org per run
   (revoked keys stay listed by design; `delete from api_keys where revoked_at is
-  not null and org_id = <seed org>` to prune). Its booking is rejected in-test;
+  not null and org_id = <seed org>` to prune). Its booking is cancelled in-test;
   the customer row persists like booking.spec's.
 - Register-based tests (`auth` signup, `onboarding` "next"-gating and skip) each
   leave a throwaway auth user with **no org**. Only the full `onboarding` happy
   path self-deletes its account. Prune the rest with:
   `delete from auth.users u where u.created_at > now() - interval '1 hour'
    and not exists (select 1 from org_members m where m.user_id = u.id);`
-- `appointment-status.spec.ts` and `calendar.spec.ts` each book real appointments
-  but **self-clean**: they cancel (so the row drops out of the monthly tier count)
-  and then erase the client's PII. The rows remain as anonymized/cancelled records.
+- `appointment-status.spec.ts` and `calendar.spec.ts` each seed real appointments
+  but **self-clean**: they cancel (so the row drops out of the billable count) and
+  then erase the client's PII. The rows remain as anonymized/cancelled records.
+  The `approved→no_show` case is terminal and stays billable by design.
 
 ## Not yet covered (follow-ups)
 
-- **Superadmin privileged flows** (tier change, add/remove superadmin) need a
+- **Superadmin privileged flows** (billing-status change, add/remove superadmin) need a
   superadmin test account — not provisioned here. `superadmin.spec.ts` covers only
   the access guard.
 - ~~Online-payment booking path~~ — now covered by `refund.spec.ts`, which

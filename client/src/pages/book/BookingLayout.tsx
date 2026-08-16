@@ -169,10 +169,10 @@ export default function BookingLayout() {
       const pub = data as PublicOrg | null
       if (error || !pub) { console.error('org load error', error); setNotFound(true); return }
 
-      // Block the whole flow up front if the business is at its monthly tier
-      // limit — same derived usage the dashboard enforces against. A guest
-      // can't upgrade, so we just show a friendly unavailable state rather
-      // than letting them fill the form and fail on insert.
+      // Block the whole flow up front if the business can't currently accept
+      // bookings (post-paid billing suspended). A guest can't fix that, so we
+      // show a friendly unavailable state rather than letting them fill the
+      // form and fail on insert.
       const { data: canAccept } = await supabase
         .rpc('org_can_accept_appointment', { p_org_id: pub.id })
       if (canAccept === false) { setAtCapacity(true); return }

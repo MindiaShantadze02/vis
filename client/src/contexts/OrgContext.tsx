@@ -20,11 +20,8 @@ export interface Organisation {
   // Post-paid billing state (active / past_due / suspended). Suspended blocks
   // new bookings; data and the booking page stay alive.
   billing_status: BillingState
-  link_share_done_at: string | null
-  checklist_dismissed_at: string | null
   booking_theme: string | null
   reviews_enabled: boolean
-  require_approval: boolean
   // Cancellation policy (migration 090): the free-cancel/refund window,
   // consumed by self-service cancel-with-refund.
   cancellation_window_hours: number

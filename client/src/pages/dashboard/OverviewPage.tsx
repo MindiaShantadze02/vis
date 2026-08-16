@@ -10,7 +10,6 @@ import { AppDatePicker } from '@/components/AppDatePicker'
 import { TuneOutlined as TuneOutlinedIcon } from '@/components/icons'
 import { TrendingUp as TrendingUpIcon } from '@/components/icons'
 import { CalendarToday as CalendarTodayIcon } from '@/components/icons'
-import { AccessTime as AccessTimeIcon } from '@/components/icons'
 import { Search as SearchIcon } from '@/components/icons'
 import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
 import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
@@ -27,47 +26,28 @@ import { surface } from '@/theme/theme'
 import { isValidUrl, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import PendingInvites from './PendingInvites'
-import OnboardingChecklist from '@/components/OnboardingChecklist'
-import UsageMeter from '@/components/UsageMeter'
+import AppointmentDetails from '@/components/AppointmentDetails'
+import { useStaffAssignment } from '@/hooks/useStaffAssignment'
+import type { Appointment, StaffRef } from '@/types/appointment'
 import type { DashboardOutletContext } from './DashboardLayout'
 
 // ── Types ─────────────────────────────────────────────────────
-
-interface StaffRef { id: string; display_name: string | null; title: string | null }
-
-interface Appointment {
-  id: string
-  scheduled_at: string
-  duration_minutes: number
-  service_id: string
-  staff_id: string | null
-  status: AppointmentStatus
-  payment_method: string
-  payment_status: string
-  notes: string | null
-  admin_notes: string | null
-  meeting_link: string | null
-  customers: { first_name: string; last_name: string | null; phone_number: string } | null
-  services: { name: string; price: number; duration_minutes: number; location_type: string } | null
-  staff: StaffRef | null
-}
 
 interface Stats {
   revenueThisWeek: number
   revenueThisMonth: number
   appointmentsToday: number
-  pendingCount: number
 }
 
-const ALL_STATUSES: AppointmentStatus[] = ['pending', 'approved', 'rejected', 'cancelled', 'completed', 'no_show']
+const ALL_STATUSES: AppointmentStatus[] = ['approved', 'rejected', 'cancelled', 'completed', 'no_show']
 const GRID_COLS = '140px 1fr 1fr 100px 90px 140px'
 
-// An online-service appointment that's still live (pending/approved) but has no
-// join link yet — the owner needs to attach and send one. Drives the list cue
-// and the dialog's meeting-link section.
+// An approved online-service appointment with no join link yet — the owner
+// needs to attach and send one. Drives the list cue and the drawer's
+// meeting-link section.
 const needsMeetingLink = (a: Appointment) =>
   a.services?.location_type === 'online' && !a.meeting_link &&
-  (a.status === 'pending' || a.status === 'approved')
+  a.status === 'approved'
 
 const isOnlineAppt = (a: Appointment) => a.services?.location_type === 'online'
 
@@ -121,7 +101,6 @@ export default function OverviewPage() {
   const [refundOnCancel, setRefundOnCancel] = useState(true)
 
   const [bookableMembers, setBookableMembers] = useState<StaffRef[]>([])
-  const [assignableIds, setAssignableIds] = useState<string[]>([])
 
   useEffect(() => {
     if (!org) return
@@ -166,23 +145,14 @@ export default function OverviewPage() {
     loadStats()
   }, [refreshSignal])
 
-  // Which members are assignable to the opened appointment's service.
-  useEffect(() => {
-    if (!selected) { setAssignableIds([]); return }
-    supabase
-      .from('service_staff')
-      .select('member_id')
-      .eq('service_id', selected.service_id)
-      .then(({ data }) => setAssignableIds((data ?? []).map(r => (r as { member_id: string }).member_id)))
-  }, [selected])
-
-  async function reassignStaff(staffId: string | null) {
-    if (!selected) return
-    await supabase.from('appointments').update({ staff_id: staffId, updated_at: new Date().toISOString() }).eq('id', selected.id)
-    const staff = staffId ? bookableMembers.find(m => m.id === staffId) ?? null : null
-    setAppointments(prev => prev.map(a => a.id === selected.id ? { ...a, staff_id: staffId, staff } : a))
-    setSelected(prev => prev ? { ...prev, staff_id: staffId, staff } : prev)
-  }
+  const { assignableMembers, reassignStaff } = useStaffAssignment(
+    selected,
+    bookableMembers,
+    (id, staffId, staff) => {
+      setAppointments(prev => prev.map(a => a.id === id ? { ...a, staff_id: staffId, staff } : a))
+      setSelected(prev => prev ? { ...prev, staff_id: staffId, staff } : prev)
+    },
+  )
 
   async function loadStats() {
     if (!org) return
@@ -196,7 +166,7 @@ export default function OverviewPage() {
     const monthStart = startOfMonth(now).toISOString()
     const monthEnd = endOfMonth(now).toISOString()
 
-    const [todayRes, weekRes, monthRes, pendingRes] = await Promise.all([
+    const [todayRes, weekRes, monthRes] = await Promise.all([
       supabase
         .from('appointments').select('id', { count: 'exact', head: true })
         .eq('org_id', org.id).gte('scheduled_at', todayStart).lte('scheduled_at', todayEnd)
@@ -211,10 +181,6 @@ export default function OverviewPage() {
         .from('appointments').select('id, services(price)')
         .eq('org_id', org.id).gte('scheduled_at', monthStart).lte('scheduled_at', monthEnd)
         .in('status', ['approved', 'completed']),
-
-      supabase
-        .from('appointments').select('id', { count: 'exact', head: true })
-        .eq('org_id', org.id).eq('status', 'pending'),
     ])
 
     // price is a numeric(10,2) column, which PostgREST returns as a string
@@ -230,7 +196,6 @@ export default function OverviewPage() {
       revenueThisWeek: weekRevenue,
       revenueThisMonth: monthRevenue,
       appointmentsToday: todayRes.count ?? 0,
-      pendingCount: pendingRes.count ?? 0,
     })
     setStatsLoading(false)
   }
@@ -291,7 +256,7 @@ export default function OverviewPage() {
     setDateFrom(null); setDateTo(null); setDatePreset(null); setPage(0)
   }
 
-  async function changeStatus(id: string, status: 'approved' | 'rejected' | 'cancelled' | 'no_show') {
+  async function changeStatus(id: string, status: 'cancelled' | 'no_show') {
     setActionLoading(id)
 
     // Cancelling a PAID online appointment with the refund box ticked routes
@@ -334,8 +299,8 @@ export default function OverviewPage() {
       toast.error(error.message)
     } else {
       setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a))
-      // Any status change can shift the stat cards (pending count, today's
-      // count, weekly revenue), so refresh them from the server.
+      // Any status change can shift the stat cards (today's count, weekly
+      // revenue), so refresh them from the server.
       loadStats()
       refreshBilling()  // a status change can shift the current-period billable count
       toast.success(t(`dashboard.${status}`))
@@ -541,11 +506,6 @@ export default function OverviewPage() {
     <Box>
       <PageHeader title={t('dashboard.overview')} />
 
-      {/* New-org checklist (self-hides once dismissed) + always-visible usage
-          meter against the enforced monthly cap. */}
-      <OnboardingChecklist />
-      <UsageMeter />
-
       {/* Booking link + website embed code — copy & share / paste into a site.
           Available on every plan. */}
       {org?.slug && (
@@ -573,8 +533,7 @@ export default function OverviewPage() {
         items={[
           { label: t('dashboard.revenueThisWeek'), value: `${stats?.revenueThisWeek ?? 0} ₾`, icon: <TrendingUpIcon />, color: theme.palette.primary.main },
           { label: t('dashboard.revenueThisMonth'), value: `${stats?.revenueThisMonth ?? 0} ₾`, icon: <TrendingUpIcon />, color: theme.palette.success.main },
-          { label: t('dashboard.todayAppointments'), value: stats?.appointmentsToday ?? 0, icon: <CalendarTodayIcon />, color: theme.palette.primary.main },
-          { label: t('dashboard.pendingApprovals'), value: stats?.pendingCount ?? 0, icon: <AccessTimeIcon />, color: theme.palette.warning.main },
+          { label: t('dashboard.todayAppointments'), value: stats?.appointmentsToday ?? 0, icon: <CalendarTodayIcon />, color: theme.palette.primary.main }
         ]}
       />
 
@@ -816,105 +775,39 @@ export default function OverviewPage() {
         open={!!selected}
         onClose={() => { setSelected(null); setConfirmingCancel(false) }}
         title={selected ? `${selected.customers?.first_name ?? ''} ${selected.customers?.last_name ?? ''}` : ''}
-        actions={selected && (selected.status === 'pending' || selected.status === 'approved') ? (
-          <>
-            {selected.status === 'pending' && (
-              <>
-                <Button variant="outlined" color="error" data-testid="appt-reject"
-                  onClick={() => changeStatus(selected.id, 'rejected')} disabled={!!actionLoading}>
-                  {t('dashboard.reject')}
-                </Button>
-                <Button variant="contained" color="success" data-testid="appt-approve"
-                  onClick={() => changeStatus(selected.id, 'approved')} disabled={!!actionLoading}>
-                  {t('dashboard.approve')}
-                </Button>
-              </>
-            )}
-            {selected.status === 'approved' && (
-              confirmingCancel ? (
-                <>
-                  <Button onClick={() => setConfirmingCancel(false)} disabled={!!actionLoading} data-testid="appt-keep">
-                    {t('dashboard.keepAppointment')}
-                  </Button>
-                  <Button variant="contained" color="error" data-testid="appt-confirm-cancel"
-                    onClick={() => changeStatus(selected.id, 'cancelled')} disabled={!!actionLoading}>
-                    {t('dashboard.confirmCancel')}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {/* No-show: the slot was consumed (still counts toward usage)
-                      — distinct from a cancel. */}
-                  <Button variant="outlined" color="warning" data-testid="appt-no-show"
-                    onClick={() => changeStatus(selected.id, 'no_show')} disabled={!!actionLoading}>
-                    {t('dashboard.markNoShow')}
-                  </Button>
-                  <Button variant="outlined" color="error" data-testid="appt-cancel"
-                    onClick={() => { setRefundOnCancel(true); setConfirmingCancel(true) }} disabled={!!actionLoading}>
-                    {t('dashboard.cancelAppointment')}
-                  </Button>
-                </>
-              )
-            )}
-          </>
+        actions={selected && selected.status === 'approved' ? (
+          confirmingCancel ? (
+            <>
+              <Button onClick={() => setConfirmingCancel(false)} disabled={!!actionLoading} data-testid="appt-keep">
+                {t('dashboard.keepAppointment')}
+              </Button>
+              <Button variant="contained" color="error" data-testid="appt-confirm-cancel"
+                onClick={() => changeStatus(selected.id, 'cancelled')} disabled={!!actionLoading}>
+                {t('dashboard.confirmCancel')}
+              </Button>
+            </>
+          ) : (
+            <>
+              {/* No-show: the slot was consumed (still counts toward usage)
+                  — distinct from a cancel. */}
+              <Button variant="outlined" color="warning" data-testid="appt-no-show"
+                onClick={() => changeStatus(selected.id, 'no_show')} disabled={!!actionLoading}>
+                {t('dashboard.markNoShow')}
+              </Button>
+              <Button variant="outlined" color="error" data-testid="appt-cancel"
+                onClick={() => { setRefundOnCancel(true); setConfirmingCancel(true) }} disabled={!!actionLoading}>
+                {t('dashboard.cancelAppointment')}
+              </Button>
+            </>
+          )
         ) : undefined}
       >
         {selected && (
-          <>
-            <Stack spacing={1.5}>
-                <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.service')}</Typography>
-                  <Typography variant="body2">{selected.services?.name} — {selected.services?.price} ₾</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.dateTime')}</Typography>
-                  <Typography variant="body2">
-                    {format(new Date(selected.scheduled_at), 'd MMMM yyyy, HH:mm', { locale: dateLocale() })}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.phone')}</Typography>
-                  <Typography variant="body2">{selected.customers?.phone_number}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.status')}</Typography>
-                  <Box sx={{ mt: 0.25 }}><StatusChip status={selected.status} /></Box>
-                </Box>
-                {(() => {
-                  const options = bookableMembers.filter(m => assignableIds.includes(m.id))
-                  if (options.length === 0) return null
-                  return (
-                    <FormControl fullWidth size="small">
-                      <InputLabel>{t('dashboard.staff')}</InputLabel>
-                      <Select
-                        value={selected.staff_id ?? ''}
-                        label={t('dashboard.staff')}
-                        data-testid="appt-staff-select"
-                        onChange={e => reassignStaff(e.target.value === '' ? null : e.target.value)}
-                      >
-                        <MenuItem value=""><em>{t('dashboard.unassigned')}</em></MenuItem>
-                        {options.map(m => (
-                          <MenuItem key={m.id} value={m.id}>{m.display_name || '—'}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )
-                })()}
-                {selected.notes && (
-                  <Box>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.note')}</Typography>
-                    <Typography variant="body2">{selected.notes}</Typography>
-                  </Box>
-                )}
-                <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.payment')}</Typography>
-                  <Typography variant="body2">
-                    {selected.payment_method === 'online' ? t('settings.locationOnline') : t('settings.locationInPerson')} ·{' '}
-                    {selected.payment_status === 'refunded'
-                      ? `↩ ${t('dashboard.refunded')}`
-                      : selected.payment_status === 'paid' ? t('calendar.paid') : t('calendar.unpaid')}
-                  </Typography>
-                </Box>
+          <AppointmentDetails
+            appt={selected}
+            assignableMembers={assignableMembers}
+            onReassign={reassignStaff}
+          >
                 {/* A completed visit can be reviewed: share this capability link with
                     the client (via the owner's own Viber/WhatsApp). Gated by the
                     org-level reviews toggle. */}
@@ -925,20 +818,10 @@ export default function OverviewPage() {
                     value={`${window.location.origin}/review/${selected.id}`}
                   />
                 )}
-                {(selected.status === 'pending' || selected.status === 'approved') && (
-                  <TextField
-                    fullWidth size="small"
-                    label={t('calendar.internalNoteOptional')}
-                    value={adminNote}
-                    onChange={e => setAdminNote(e.target.value)}
-                    multiline rows={2}
-                    slotProps={{ htmlInput: { 'data-testid': 'appt-admin-note' } }}
-                  />
-                )}
                 {/* Online services get a per-appointment join link the owner
                     sends to the customer by SMS. Not on the confirmation SMS,
                     so it works for paid bookings auto-approved before this. */}
-                {isOnlineAppt(selected) && (selected.status === 'pending' || selected.status === 'approved') && (
+                {isOnlineAppt(selected) && selected.status === 'approved' && (
                   <Box>
                     <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.75 }}>
                       {t('dashboard.meetingLinkTitle')}
@@ -1003,8 +886,7 @@ export default function OverviewPage() {
                     </Typography>
                   </Box>
                 )}
-              </Stack>
-          </>
+          </AppointmentDetails>
         )}
       </SideDrawer>
     </Box>

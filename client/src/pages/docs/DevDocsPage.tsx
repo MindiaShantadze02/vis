@@ -174,18 +174,17 @@ const CODE = {
     "time": "11:00",
     "customer": { "first_name": "Nino", "last_name": "K.", "phone": "555123456" },
     "staff_id": null,
-    "notes": "prefers window seat",
-    "status": "pending"
+    "notes": "prefers window seat"
   }' \\
   "${API_BASE}/v1/bookings"`,
-  bookingResponse: `{ "booking": { "id": "…", "status": "pending",
+  bookingResponse: `{ "booking": { "id": "…", "status": "approved",
                "scheduled_at": "2026-07-15T07:00:00+00:00", "staff_id": "…" } }`,
   embedSnippet: `<iframe data-vis src="https://vis.ge/book/YOUR-SLUG?embed=1&lang=ka"
         style="width:100%;border:0"></iframe>
 <script src="https://vis.ge/embed.js" async></script>`,
   bookedEvent: `document.querySelector('iframe[data-vis]')
   .addEventListener('vis:booked', (e) => {
-    // e.detail = { appointmentId: "…", status: "pending" | "approved" }
+    // e.detail = { appointmentId: "…", status: "approved" }
     console.log('booked', e.detail)
   })`,
 }
@@ -300,9 +299,9 @@ const API_BLOCKS: Block[] = [
       ru: '`staff_id` — необязателен; отсутствие/null означает «любой свободный» (API сам закрепляет конкретного свободного сотрудника, как и страница записи).',
     },
     {
-      en: '`status` — `pending` (default; appears in your approval queue) or `approved` (skips approval — you are booking on your own behalf).',
-      ka: '`status` — `pending` (ნაგულისხმევი; ხვდება დასადასტურებელ რიგში) ან `approved` (დადასტურება აღარ სჭირდება — ჯავშანს საკუთარი სახელით აკეთებ).',
-      ru: '`status` — `pending` (по умолчанию; попадает в очередь на подтверждение) или `approved` (без подтверждения — вы бронируете от своего имени).',
+      en: 'Bookings are always created `approved` — there is no approval queue. Sending a `status` field returns **422**.',
+      ka: 'ჯავშანი ყოველთვის იქმნება `approved` სტატუსით — დასადასტურებელი რიგი აღარ არსებობს. `status` ველის გაგზავნა აბრუნებს **422**-ს.',
+      ru: 'Записи всегда создаются со статусом `approved` — очереди на подтверждение больше нет. Передача поля `status` возвращает **422**.',
     },
     {
       en: 'The requested time is re-validated server-side against live availability just before insert; a taken slot returns **409**.',
@@ -319,9 +318,9 @@ const API_BLOCKS: Block[] = [
       ru: '**OTP клиента не требуется** на этом пути — доверенным учётным данным является ваш API-ключ. Вызывая этот endpoint, вы подтверждаете, что клиент согласился на запись и с условиями конфиденциальности Vis (время/версия согласия сохраняются в записи клиента).',
     },
     {
-      en: 'SMS behaviour matches the booking page: a `pending` booking texts the customer when you approve it; an `approved` booking texts immediately.',
-      ka: 'SMS-ქცევა ჯავშნის გვერდის იდენტურია: `pending` ჯავშანზე კლიენტი SMS-ს იღებს დადასტურებისას; `approved` ჯავშანზე — მაშინვე.',
-      ru: 'SMS работает как на странице записи: при `pending` клиент получает SMS после вашего подтверждения; при `approved` — сразу.',
+      en: 'SMS behaviour matches the booking page: the customer is texted a confirmation immediately.',
+      ka: 'SMS-ქცევა ჯავშნის გვერდის იდენტურია: კლიენტი დადასტურების SMS-ს იღებს მაშინვე.',
+      ru: 'SMS работает как на странице записи: клиент сразу получает подтверждение по SMS.',
     },
     {
       en: "Bookings count against your plan's monthly appointment quota (403 when full).",

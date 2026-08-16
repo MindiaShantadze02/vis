@@ -109,8 +109,8 @@ export default function DashboardLayout() {
 
   function openAppointment(appointmentId: string | null) {
     setAnchorEl(null)
-    // The overview lists pending requests first; that's where an admin acts on
-    // a booking. (We don't deep-link to a single appointment yet.)
+    // The overview is where an admin acts on a booking. (We don't deep-link to
+    // a single appointment yet.)
     navigate('/dashboard')
     // Force the overview to refetch even when we're already on it, so it
     // reflects the request that triggered this notification.

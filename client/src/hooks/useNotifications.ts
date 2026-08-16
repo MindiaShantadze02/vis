@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 export interface Notification {
   id: string
   created_at: string
-  type: 'new_appointment' | 'pending_approval' | 'appointment_cancelled'
+  type: 'new_appointment' | 'appointment_cancelled'
   appointment_id: string | null
   title: string
   body: string | null

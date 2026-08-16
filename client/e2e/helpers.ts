@@ -160,14 +160,13 @@ export async function createSeedAppointment(opts: {
   firstName: string
   phone: string
   scheduledAt: string
-  status?: 'pending' | 'approved'
   paymentMethod?: 'in_person' | 'online'
   paymentStatus?: 'unpaid' | 'paid'
 }): Promise<string> {
   const { url, anonKey, accessToken } = await signInSeed()
   // Read headers (SELECT own org/services works for the owner); write headers
-  // omit return=representation — like AddAppointmentDialog, we mint the ids
-  // client-side and don't read customers back (no member SELECT policy on it).
+  // omit return=representation — we mint the ids client-side and don't read
+  // customers back (no member SELECT policy on it).
   const H = { apikey: anonKey, authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }
   const org = (await (await fetch(`${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`, { headers: H })).json()) as { id: string }[]
   const orgId = org[0].id
@@ -185,7 +184,7 @@ export async function createSeedAppointment(opts: {
     body: JSON.stringify({
       id: appointmentId, org_id: orgId, service_id: svc[0].id, customer_id: customerId,
       scheduled_at: opts.scheduledAt, duration_minutes: svc[0].duration_minutes,
-      status: opts.status ?? 'approved',
+      status: 'approved',
       payment_method: opts.paymentMethod ?? 'in_person',
       payment_status: opts.paymentStatus ?? 'unpaid',
     }),
@@ -261,20 +260,18 @@ export function letterName(): string {
 }
 
 /**
- * Leave a real *pending* appointment on the seeded org under `firstName`, for
- * the dashboard specs that drive the pending→approved/rejected transitions.
+ * Leave a real upcoming appointment on the seeded org under `firstName`, for the
+ * dashboard specs that drive the approved→cancelled/no_show transitions.
  * Callers identify/clean it up later via openApptByName.
  *
  * Inserted straight through PostgREST rather than booked through the UI: free
  * services were removed (2026-08-12), so every public booking pays online and
- * payment-webhook creates it already 'approved' — the guest flow can no longer
- * produce a pending row at all. (The old helper forced one by temporarily
- * zeroing the service price, which the services_price_min CHECK now rejects.)
+ * payment-webhook creates it 'approved'.
  *
  * Scheduled 8 days out at 10:00 business time, like manage.spec's futureSlotIso
  * — far enough ahead to stay upcoming, and inside the calendar's forward scan.
  */
-export async function seedPendingAppointment(firstName: string): Promise<string> {
+export async function seedUpcomingAppointment(firstName: string): Promise<string> {
   const at = new Date(Date.now() + 8 * 86_400_000)
   at.setUTCHours(6, 0, 0, 0)
   return createSeedAppointment({
@@ -282,7 +279,6 @@ export async function seedPendingAppointment(firstName: string): Promise<string>
     // A unique phone per row so specs never collide on customer lookup.
     phone: uniquePhone(),
     scheduledAt: at.toISOString(),
-    status: 'pending',
   })
 }
 
@@ -321,22 +317,17 @@ export async function eraseClientByName(page: Page, name: string): Promise<void>
 }
 
 /**
- * Clean up a test appointment by driving it to a terminal state, so it drops out
- * of the org's monthly tier count (cancelled/rejected are excluded). Cancels an
- * approved one or rejects a pending one — whichever action the dialog offers.
- * The row itself remains (a guest booking can't be hard-deleted client-side),
- * matching booking.spec's documented persistence.
+ * Clean up a test appointment by cancelling it, so it drops out of the org's
+ * billable count (cancelled is excluded). The row itself remains (a guest
+ * booking can't be hard-deleted client-side), matching booking.spec's
+ * documented persistence. A no-op when the appointment is already terminal.
  */
 export async function cancelAppt(page: Page, name: string): Promise<void> {
   await openApptByName(page, name)
   const cancel = page.getByTestId('appt-cancel')
-  const reject = page.getByTestId('appt-reject')
   if (await cancel.count()) {
     await cancel.click()
     await page.getByTestId('appt-confirm-cancel').click()
-    await expect(page.getByRole('dialog')).toBeHidden({ timeout: 20_000 })
-  } else if (await reject.count()) {
-    await reject.click()
     await expect(page.getByRole('dialog')).toBeHidden({ timeout: 20_000 })
   }
 }

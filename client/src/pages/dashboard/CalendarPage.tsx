@@ -16,32 +16,14 @@ import { useOrg } from '@/contexts/OrgContext'
 import { useBreakpoints } from '@/hooks/useBreakpoints'
 import { anim } from '@/theme/animations'
 import { StatusChip, ConfirmDialog, LoadingState, useToast, SideDrawer } from '@/components/ui'
+import AppointmentDetails from '@/components/AppointmentDetails'
 import { dateLocale } from '@/lib/dateLocale'
+import { getDayKey, type DayConfig, type WeekTemplate } from '@/lib/slots'
+import { timeToMinutes } from '@/lib/validation'
+import { useStaffAssignment } from '@/hooks/useStaffAssignment'
+import { APPOINTMENT_SELECT, pickOne, type Appointment, type StaffRef } from '@/types/appointment'
 
 // ── Types ─────────────────────────────────────────────────────
-
-interface StaffRef { id: string; display_name: string | null; title: string | null }
-
-interface Appointment {
-  id: string
-  scheduled_at: string
-  duration_minutes: number
-  service_id: string
-  staff_id: string | null
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed'
-  payment_method: string
-  payment_status: string
-  notes: string | null
-  customers: { first_name: string; last_name: string | null; phone_number: string } | null
-  services: { name: string; price: number } | null
-  staff: StaffRef | null
-}
-
-/** PostgREST may type a to-one relation as an array; normalize to one object. */
-function pickOne<T>(rel: T | T[] | null | undefined): T | null {
-  if (Array.isArray(rel)) return rel[0] ?? null
-  return rel ?? null
-}
 
 /** A bucket of appointments of the SAME service whose times overlap, collapsed
  *  into one counted calendar pill so simultaneous bookings of one type don't
@@ -148,9 +130,6 @@ interface DayOverride {
   rest_periods: RestPeriod[]
 }
 
-type TemplateDay = { open: boolean; ranges: Array<{ start: string; end: string }> }
-type Template = Record<string, TemplateDay>
-
 // ── Constants ─────────────────────────────────────────────────
 
 // Distinct, evenly-spread hues for appointment types (services). Each entry
@@ -171,7 +150,6 @@ const SERVICE_PALETTE: ReadonlyArray<{ main: string; light: string }> = [
   { main: '#3b82f6', light: '#eff6ff' }, // blue
 ]
 
-const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8)
 
 // Height of one hour row in px. Appointment pills are positioned and sized
@@ -213,9 +191,7 @@ function applyRestPeriods(
 }
 
 function isHourRested(hour: number, rest: RestPeriod): boolean {
-  const [sh, sm] = rest.start.split(':').map(Number)
-  const [eh, em] = rest.end.split(':').map(Number)
-  return hour * 60 < eh * 60 + em && (hour + 1) * 60 > sh * 60 + sm
+  return hour * 60 < timeToMinutes(rest.end) && (hour + 1) * 60 > timeToMinutes(rest.start)
 }
 
 // ── Component ─────────────────────────────────────────────────
@@ -245,14 +221,11 @@ export default function CalendarPage() {
   // When a multi-appointment pill is opened, the drawer first shows this list;
   // picking one sets `selected` and the back arrow returns here.
   const [group, setGroup] = useState<Appointment[] | null>(null)
-  const [actionLoading, setActionLoading] = useState(false)
 
-  const [template, setTemplate] = useState<Template | null>(null)
+  const [template, setTemplate] = useState<WeekTemplate | null>(null)
   const [overrides, setOverrides] = useState<Record<string, DayOverride>>({})
 
-  // Bookable members + the ones assignable to the selected appointment's service
   const [bookableMembers, setBookableMembers] = useState<StaffRef[]>([])
-  const [assignableIds, setAssignableIds] = useState<string[]>([])
 
   // Org services, in their stable display order, used to assign a consistent
   // color per appointment type.
@@ -323,28 +296,19 @@ export default function CalendarPage() {
         .eq('org_id', org.id)
         .order('sort_order'),
     ])
-    if (tplRes.data) setTemplate(tplRes.data as unknown as Template)
+    if (tplRes.data) setTemplate(tplRes.data as unknown as WeekTemplate)
     setBookableMembers((memRes.data ?? []) as StaffRef[])
     setServices((svcRes.data ?? []) as Array<{ id: string; name: string }>)
   }
 
-  // When an appointment is opened, load which members are assignable to its service.
-  useEffect(() => {
-    if (!selected) { setAssignableIds([]); return }
-    supabase
-      .from('service_staff')
-      .select('member_id')
-      .eq('service_id', selected.service_id)
-      .then(({ data }) => setAssignableIds((data ?? []).map(r => (r as { member_id: string }).member_id)))
-  }, [selected])
-
-  async function reassignStaff(staffId: string | null) {
-    if (!selected) return
-    await supabase.from('appointments').update({ staff_id: staffId, updated_at: new Date().toISOString() }).eq('id', selected.id)
-    const staff = staffId ? bookableMembers.find(m => m.id === staffId) ?? null : null
-    setAppointments(prev => prev.map(a => a.id === selected.id ? { ...a, staff_id: staffId, staff } : a))
-    setSelected(prev => prev ? { ...prev, staff_id: staffId, staff } : prev)
-  }
+  const { assignableMembers, reassignStaff } = useStaffAssignment(
+    selected,
+    bookableMembers,
+    (id, staffId, staff) => {
+      setAppointments(prev => prev.map(a => a.id === id ? { ...a, staff_id: staffId, staff } : a))
+      setSelected(prev => prev ? { ...prev, staff_id: staffId, staff } : prev)
+    },
+  )
 
   async function loadWeek() {
     if (!org) return
@@ -354,7 +318,7 @@ export default function CalendarPage() {
     const [apptRes, overrideRes] = await Promise.all([
       supabase
         .from('appointments')
-        .select('id, scheduled_at, duration_minutes, service_id, staff_id, status, payment_method, payment_status, notes, customers(first_name, last_name, phone_number), services(name, price), staff:org_members!appointments_staff_id_fkey(id, display_name, title)')
+        .select(APPOINTMENT_SELECT)
         .eq('org_id', org.id)
         .gte('scheduled_at', loadStart.toISOString())
         .lt('scheduled_at', weekEnd.toISOString())
@@ -389,18 +353,6 @@ export default function CalendarPage() {
     setLoading(false)
   }
 
-  async function changeStatus(id: string, status: 'approved' | 'rejected') {
-    setActionLoading(true)
-    await supabase
-      .from('appointments')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id)
-    setActionLoading(false)
-    setSelected(null)
-    setGroup(null)
-    loadWeek()
-  }
-
   function openRestDialog() {
     const todayKey = format(new Date(), 'yyyy-MM-dd')
     const isInWeek = days.some(d => format(d, 'yyyy-MM-dd') === todayKey)
@@ -417,8 +369,7 @@ export default function CalendarPage() {
     if (restStart >= restEnd) { toast.error(t('validation.endBeforeStart')); return }
     setSavingRest(true)
 
-    const dateObj = new Date(restDate + 'T12:00:00')
-    const dayKey = DAY_KEYS[dateObj.getDay()]
+    const dayKey = getDayKey(new Date(restDate + 'T12:00:00'))
     const existing = overrides[restDate]
     const baseRanges = existing?.ranges ?? template[dayKey]?.ranges ?? []
     const existingRests = existing?.rest_periods ?? []
@@ -445,8 +396,7 @@ export default function CalendarPage() {
     const existing = overrides[dateKey]
     if (!existing) return
 
-    const dateObj = new Date(dateKey + 'T12:00:00')
-    const dayKey = DAY_KEYS[dateObj.getDay()]
+    const dayKey = getDayKey(new Date(dateKey + 'T12:00:00'))
     const templateRanges = template[dayKey]?.ranges ?? []
     const remainingRests = existing.rest_periods.filter((_, i) => i !== idx)
 
@@ -509,15 +459,11 @@ export default function CalendarPage() {
     if (!template) return false
     const ov = overrides[format(day, 'yyyy-MM-dd')]
     if (ov?.is_closed) return true
-    const dayCfg = template[DAY_KEYS[day.getDay()]]
+    const dayCfg: DayConfig | undefined = template[getDayKey(day)]
     const ranges = ov?.ranges ?? (dayCfg?.open ? dayCfg.ranges : [])
     const hStart = hour * 60
     const hEnd = hStart + 60
-    return !ranges.some(r => {
-      const [sh, sm] = r.start.split(':').map(Number)
-      const [eh, em] = r.end.split(':').map(Number)
-      return sh * 60 + sm < hEnd && eh * 60 + em > hStart
-    })
+    return !ranges.some(r => timeToMinutes(r.start) < hEnd && timeToMinutes(r.end) > hStart)
   }
 
   return (
@@ -631,8 +577,8 @@ export default function CalendarPage() {
       )}
 
       {/* Legend — one swatch per appointment type present this week, plus the
-          pending accent (left bar) and rest period. Desktop only; on mobile the
-          single-day pills already carry their labels. */}
+          rest period. Desktop only; on mobile the single-day pills already
+          carry their labels. */}
       {!isMobile && (
       <Stack direction="row" spacing={1.5} sx={{ mb: 2, flexWrap: 'wrap', rowGap: 1 }}>
         {weekServices.map(s => {
@@ -644,10 +590,6 @@ export default function CalendarPage() {
             </Box>
           )
         })}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          <Box sx={{ width: 16, height: 12, borderRadius: '3px', borderLeft: `3px solid ${theme.palette.warning.main}`, bgcolor: 'grey.50' }} />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('dashboard.pending')} ({t('calendar.toApprove')})</Typography>
-        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
           <Box sx={{ width: 16, height: 12, borderRadius: '3px', borderLeft: '3px solid', borderLeftColor: 'grey.400', bgcolor: 'grey.100' }} />
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.rest')}</Typography>
@@ -749,15 +691,13 @@ export default function CalendarPage() {
                         pill; overlap-packed columns keep distinct/parallel
                         bookings side by side without cramping the rest. */}
                     {slotGroups.map((g) => {
-                      // Background reflects the appointment type (service); the
-                      // left bar turns orange when any booking in the group is
-                      // pending so the ones needing action still stand out.
+                      // Background and left bar both reflect the appointment
+                      // type (service), so a week reads as coloured lanes.
                       const first = g.appts[0]
                       const count = g.appts.length
                       const isGroup = count > 1
                       const c = serviceColors(g.service_id)
-                      const hasPending = g.appts.some(a => a.status === 'pending')
-                      const accent = hasPending ? theme.palette.warning.main : c.main
+                      const accent = c.main
                       const start = g.start
                       const top = (start.getMinutes() / 60) * HOUR_HEIGHT
                       const height = Math.max(16, (g.durationMin / 60) * HOUR_HEIGHT - 2)
@@ -916,10 +856,8 @@ export default function CalendarPage() {
               <Box sx={{ position: 'absolute', top: 8, left: GUTTER, right: 8, bottom: 8 }}>
                 {/* Rest periods (behind appointments). */}
                 {dayRests.map((rest, idx) => {
-                  const [sh, sm] = rest.start.split(':').map(Number)
-                  const [eh, em] = rest.end.split(':').map(Number)
-                  const startMin = sh * 60 + sm - DAY_START * 60
-                  const endMin = eh * 60 + em - DAY_START * 60
+                  const startMin = timeToMinutes(rest.start) - DAY_START * 60
+                  const endMin = timeToMinutes(rest.end) - DAY_START * 60
                   const top = Math.max(0, (startMin / 60) * HOUR_HEIGHT)
                   const height = Math.max(20, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2)
                   return (
@@ -956,8 +894,7 @@ export default function CalendarPage() {
                   const count = g.appts.length
                   const isGroup = count > 1
                   const c = serviceColors(g.service_id)
-                  const hasPending = g.appts.some(a => a.status === 'pending')
-                  const accent = hasPending ? theme.palette.warning.main : c.main
+                  const accent = c.main
                   const startMin = (g.start.getHours() - DAY_START) * 60 + g.start.getMinutes()
                   const top = Math.max(0, (startMin / 60) * HOUR_HEIGHT)
                   const height = Math.max(26, (g.durationMin / 60) * HOUR_HEIGHT - 2)
@@ -1034,16 +971,6 @@ export default function CalendarPage() {
             <ArrowBackIosNewIcon fontSize="small" />
           </IconButton>
         ) : undefined}
-        actions={selected && selected.status === 'pending' ? (
-          <>
-            <Button variant="outlined" color="error" onClick={() => changeStatus(selected.id, 'rejected')} disabled={actionLoading} data-testid="cal-reject">
-              {t('dashboard.reject')}
-            </Button>
-            <Button variant="contained" color="success" onClick={() => changeStatus(selected.id, 'approved')} disabled={actionLoading} data-testid="cal-approve">
-              {actionLoading ? <CircularProgress size={20} color="inherit" /> : t('dashboard.approve')}
-            </Button>
-          </>
-        ) : undefined}
       >
         {/* Group list — shown for a multi-appointment slot until one is picked. */}
         {group && !selected && (
@@ -1080,65 +1007,12 @@ export default function CalendarPage() {
         )}
 
         {selected && (
-          <Box>
-            <Stack spacing={2}>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.service')}</Typography>
-                <Typography variant="body2">{selected.services?.name} — {selected.services?.price} ₾</Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.time')}</Typography>
-                <Typography variant="body2">
-                  {format(new Date(selected.scheduled_at), 'dd MMM yyyy, HH:mm', { locale: dateLocale() })}
-                  {' · '}{selected.duration_minutes} {t('common.minutesShort')}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.phone')}</Typography>
-                <Typography variant="body2">{selected.customers?.phone_number}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.payment')}</Typography>
-                <Typography variant="body2">
-                  {selected.payment_method === 'online' ? t('settings.locationOnline') : t('settings.locationInPerson')} ·{' '}
-                  {selected.payment_status === 'refunded'
-                    ? t('calendar.refunded')
-                    : selected.payment_status === 'paid' ? t('calendar.paid') : t('calendar.unpaid')}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.status')}</Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  <StatusChip status={selected.status} />
-                </Box>
-              </Box>
-              {(() => {
-                const options = bookableMembers.filter(m => assignableIds.includes(m.id))
-                if (options.length === 0) return null
-                return (
-                  <FormControl fullWidth size="small">
-                    <InputLabel>{t('dashboard.staff')}</InputLabel>
-                    <Select
-                      value={selected.staff_id ?? ''}
-                      label={t('dashboard.staff')}
-                      onChange={e => reassignStaff(e.target.value === '' ? null : e.target.value)}
-                    >
-                      <MenuItem value=""><em>{t('dashboard.unassigned')}</em></MenuItem>
-                      {options.map(m => (
-                        <MenuItem key={m.id} value={m.id}>{m.display_name || '—'}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )
-              })()}
-              {selected.notes && (
-                <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('calendar.note')}</Typography>
-                  <Typography variant="body2">{selected.notes}</Typography>
-                </Box>
-              )}
-            </Stack>
-          </Box>
+          <AppointmentDetails
+            appt={selected}
+            assignableMembers={assignableMembers}
+            onReassign={reassignStaff}
+            showDuration
+          />
         )}
       </SideDrawer>
 

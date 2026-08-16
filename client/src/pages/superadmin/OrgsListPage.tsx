@@ -112,7 +112,7 @@ export default function OrgsListPage() {
               borderColor: 'divider', cursor: 'pointer',
               '&:hover': { bgcolor: 'action.hover' },
             }
-            const tierChip = (
+            const billingChip = (
               <Chip label={b.label} size="small" color={b.color} sx={{ fontWeight: 600, justifySelf: 'start' }} />
             )
 
@@ -126,7 +126,7 @@ export default function OrgsListPage() {
                         {o.owner_phone ?? o.owner_email ?? '—'} · {o.member_count} წევრი · {o.usage} ჯავშანი
                       </Typography>
                     </Box>
-                    {tierChip}
+                    {billingChip}
                   </Box>
                 </Box>
               )
@@ -149,7 +149,7 @@ export default function OrgsListPage() {
                   {/* Login is phone-based, so the phone is the useful identifier. */}
                   {o.owner_phone ?? o.owner_email ?? '—'}
                 </Typography>
-                {tierChip}
+                {billingChip}
                 <Typography variant="body2">{o.member_count}</Typography>
                 <Typography variant="body2">{o.usage}</Typography>
               </Box>

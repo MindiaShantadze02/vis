@@ -13,16 +13,16 @@ import {
   CoffeeIcon as Coffee, CopyIcon as Copy, CreditCardIcon as CreditCard,
   SquaresFourIcon as SquaresFour, TrashIcon as Trash, SparkleIcon as Sparkle,
   ProhibitIcon as Prohibit, PencilSimpleIcon as PencilSimple, WarningCircleIcon as WarningCircle,
-  ArmchairIcon as Armchair, UsersThreeIcon as UsersThree, BedIcon as Bed,
-  ChartLineUpIcon as ChartLineUp, SignInIcon as SignIn, SignOutIcon as SignOut,
+  UsersThreeIcon as UsersThree,
+  ChartLineUpIcon as ChartLineUp, SignOutIcon as SignOut,
   EnvelopeIcon as Envelope, ListIcon, BellIcon as Bell, ArrowSquareOutIcon as ArrowSquareOut,
-  UserPlusIcon as UserPlus, UserIcon as User, PhoneIcon as Phone, CameraIcon as Camera,
+  UserPlusIcon as UserPlus, PhoneIcon as Phone, CameraIcon as Camera,
   MagnifyingGlassIcon as MagnifyingGlass, GearSixIcon as GearSix, ChatCircleTextIcon as ChatCircleText,
-  StarIcon as Star, StorefrontIcon as Storefront, ForkKnifeIcon as ForkKnife,
+  StarIcon as Star, StorefrontIcon as Storefront,
   SealCheckIcon as SealCheck, TrendUpIcon as TrendUp, EyeSlashIcon as EyeSlash,
-  EyeIcon as Eye, BriefcaseIcon as Briefcase, CircleIcon as Circle,
+  EyeIcon as Eye, BriefcaseIcon as Briefcase,
   CodeIcon as Code, GlobeIcon as Globe,
-  ImageIcon as ImageGlyph, ImagesIcon as Images,
+  ImagesIcon as Images,
   MapPinIcon as MapPin, LifebuoyIcon as Lifebuoy,
   FadersIcon as Faders,
 } from '@phosphor-icons/react'
@@ -117,21 +117,16 @@ export const ErrorOutlined = adapt(WarningCircle)
 export const EventAvailableOutlined = adapt(CalendarCheck)
 export const EventBusyOutlined = adapt(CalendarX)
 export const EventNoteOutlined = adapt(CalendarDots)
-export const EventSeatOutlined = adapt(Armchair)
 export const ExpandMore = adapt(CaretDown)
 export const GroupOutlined = adapt(UsersThree)
-export const ImageOutlined = adapt(ImageGlyph)
 export const CollectionsOutlined = adapt(Images)
-export const HotelOutlined = adapt(Bed)
 export const InsightsOutlined = adapt(ChartLineUp)
 export const KeyboardArrowDown = adapt(CaretDown)
-export const LoginOutlined = adapt(SignIn)
 export const Logout = adapt(SignOut)
 export const MailOutlined = adapt(Envelope)
 export const Menu = adapt(ListIcon)
 export const NotificationsOutlined = adapt(Bell)
 export const OpenInNewOutlined = adapt(ArrowSquareOut)
-export const Person2Outlined = adapt(User)
 export const PersonAddAltOutlined = adapt(UserPlus)
 export const PersonAddOutlined = adapt(UserPlus)
 export const PhoneOutlined = adapt(Phone)
@@ -141,10 +136,8 @@ export const Search = adapt(MagnifyingGlass)
 export const SearchOffOutlined = adapt(MagnifyingGlass)
 export const SettingsOutlined = adapt(GearSix)
 export const SmsOutlined = adapt(ChatCircleText)
-export const RadioButtonUnchecked = adapt(Circle)
 export const StarRounded = adapt(Star)
 export const StorefrontOutlined = adapt(Storefront)
-export const TableRestaurantOutlined = adapt(ForkKnife)
 export const TaskAltOutlined = adapt(SealCheck)
 export const Today = adapt(CalendarDots)
 export const TrendingUp = adapt(TrendUp)
