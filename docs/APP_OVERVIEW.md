@@ -1,7 +1,7 @@
 # Vis — Appointment Booking SaaS
 
 > Product name **Vis**. Hosted Supabase project ref `dnmecnpugjxkjonqsfxx`.
-> Migrations run through `20260816130000_remove_price_floor_and_onsite.sql` (2026-08-16); everything
+> Migrations run through `20260817120000_superadmin_billing_exempt.sql` (2026-08-17); everything
 > through that is **pushed to prod**. Verify with `supabase migration list --linked` (remote
 > versions are re-timestamped on push, so match by *name*, not number).
 
@@ -42,7 +42,7 @@ dashboard. The product front door is a **marketing landing page** at `/`.
   consent to the Privacy Policy + Terms.
 - **Timezone:** all customer-facing booking logic is pinned to **business time (Georgia, fixed `+04:00`)** via helpers in `client/src/lib/slots.ts` (`businessDayWindow`, `businessDayKey`, `toBusinessWallClock`, …) so slots don't shift with the viewer's browser zone. The `api` edge function keeps a Deno copy of `slots.ts` that must stay in sync. The admin dashboard intentionally stays viewer-local.
 - **Testing:**
-  - **Playwright e2e** — 34 spec files / 95 tests; 92 pass and 3 skip without a service-role key
+  - **Playwright e2e** — 34 spec files / 96 tests; 93 pass and 3 skip without a service-role key
     (`cd client && ./node_modules/.bin/playwright test`), run against the hosted project via the
     dev server; booking OTP master code `000000`. Includes a
     **data-driven layer**: BVA/ECP rows live in `e2e/data/*.json`, executed by
@@ -51,7 +51,7 @@ dashboard. The product front door is a **marketing landing page** at `/`.
     ⚠️ **Run it in batches, not one invocation** — ~90 logins from one IP crosses the `ip_burst`
     OTP cap (070) and every later test then fails waiting for the OTP field. Use the local binary;
     `npx playwright` pulls a mismatched version.
-  - **Vitest unit layer** — 8 files / 184 tests (`cd client && npm run test`) for pure logic:
+  - **Vitest unit layer** — 8 files / 186 tests (`cd client && npm run test`) for pure logic:
     `validation`, `slug`, `slots` (+ a parity suite run under foreign TZs to prove viewer-zone
     independence), `billing`, `deposit`, `analytics`, `acquisition`.
 - **Validation UX conventions:** submit buttons are **never disabled for validation** — validate on
@@ -215,8 +215,22 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
 - **Owner UI:** Settings → Billing shows the running bill (`get_org_billing_status` → `UsageMeter`),
   card on file, past invoices, and **Pay now** (`pay_org_outstanding`, shared with the blocking
   modal via `useBillingPayment`). Adding a card **never charges**.
-- Owners cannot touch their own `billing_status` — `prevent_billing_self_update` rejects it
-  (service role, superadmin or the `app.internal_billing` GUC only).
+- Owners cannot touch their own `billing_status` **or `billing_exempt`** —
+  `prevent_billing_self_update` rejects both (service role, superadmin or the
+  `app.internal_billing` GUC only).
+
+### Superadmin orgs are never billed (2026-08-17, `20260817120000`)
+- `organisations.billing_exempt` → no invoice (`close_billing_period_for_org` returns
+  early), no charge attempt, and `org_can_accept_appointment` returns true regardless of
+  `billing_status`, so no block and no pay-now modal. The dashboard hides the running
+  bill and the Billing page shows a short "not billed" notice instead.
+- **It is a guarded column, not a derived check.** "Exempt if the owner is a superadmin"
+  would be self-grantable: `organisations_update` covers the whole row (an owner can
+  PATCH `owner_id` — verified exploitable), `org_members_insert` accepts any `user_id`
+  with `role='owner'`, and the superadmin uuid ships in the browser bundle via
+  `VITE_SUPERADMIN_USER_ID`. Instead `pin_org_billing_exempt` **overwrites** the value on
+  INSERT with the server's own `is_superadmin()` answer, and updates are frozen.
+  `billing.spec.ts` covers the three self-grant attempts.
 
 ### Unpaid businesses are blocked (2026-08-16, `20260816120000`)
 - **`org_can_accept_appointment` requires `billing_status = 'active'`** — both `past_due` **and**
@@ -275,7 +289,8 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
 - **Erasure**: `erase_customer_data(appointment_id)` RPC (org-scoped), surfaced on the Clients page.
 
 ## Key domain model
-- `organisations` (one per owner; `billing_status` active/past_due/suspended, `usage_anchor`,
+- `organisations` (one per owner; `billing_status` active/past_due/suspended, `billing_exempt`
+  (platform-set, not tenant-writable), `usage_anchor`,
   `payment_config` (`{method: {enabled, …}}`; `in_person` is flag-only and drives the on-site
   option, gateways also carry credentials), `booking_theme` — preset key or custom `#RRGGBB`; `reviews_enabled`,
   `contact_email`, `address`, `cover_url`, org-default deposit config)

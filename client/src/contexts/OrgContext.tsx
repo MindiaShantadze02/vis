@@ -20,6 +20,9 @@ export interface Organisation {
   // Post-paid billing state (active / past_due / suspended). Suspended blocks
   // new bookings; data and the booking page stay alive.
   billing_status: BillingState
+  /** Platform-set: superadmin-owned orgs are never invoiced or blocked. Read-only
+   *  to the client — the DB pins it on insert and freezes it on update. */
+  billing_exempt: boolean
   booking_theme: string | null
   reviews_enabled: boolean
   // Cancellation policy (migration 090): the free-cancel/refund window,

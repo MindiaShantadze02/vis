@@ -114,6 +114,20 @@ export default function BillingPage() {
 
   const expiryState = cardExpiryState(billing?.card?.expiresAt ?? null)
 
+  // Superadmin-owned orgs are never invoiced (organisations.billing_exempt,
+  // platform-set and not tenant-writable), so the whole money side of this page
+  // — running bill, dunning banner, card, invoices — has nothing to show.
+  if (org?.billing_exempt) {
+    return (
+      <Box>
+        <PageHeader title={t('settings.billing')} />
+        <Alert severity="info" data-testid="billing-exempt" sx={{ maxWidth: 480 }}>
+          {t('billing.exempt')}
+        </Alert>
+      </Box>
+    )
+  }
+
   return (
     <Box>
       <PageHeader title={t('settings.billing')} />

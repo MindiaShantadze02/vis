@@ -92,7 +92,14 @@ export function currentBillTotal(b: Pick<BillingStatus, 'runningAmount' | 'rolle
 export function isBookingBlocked(
   billing: Pick<BillingStatus, 'status'> | null,
   orgStatus: BillingState | null,
+  billingExempt = false,
 ): boolean {
+  // Superadmin-owned orgs are never invoiced, so there is nothing to block on.
+  // This mirrors the DB (org_can_accept_appointment ORs organisations.billing_exempt)
+  // — it is a UI convenience, NOT the enforcement: billing_exempt is pinned on
+  // insert and frozen on update server-side, so a tampered client value here
+  // cannot buy anyone a free booking.
+  if (billingExempt) return false
   const status = billing?.status ?? orgStatus
   if (!status) return false
   return status !== 'active'

@@ -436,7 +436,7 @@ export default function DashboardLayout() {
       <BillingBlockedDialog
         open={
           !!org
-          && isBookingBlocked(billing, org.billing_status)
+          && isBookingBlocked(billing, org.billing_status, org.billing_exempt)
           && !BILLING_EXEMPT_PATHS.includes(location.pathname)
         }
       />

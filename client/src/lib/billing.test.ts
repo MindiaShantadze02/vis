@@ -70,6 +70,19 @@ describe('isBookingBlocked — both past_due and suspended block (20260816120000
   it('nothing known (signed out / no org) blocks nothing', () => {
     expect(isBookingBlocked(null, null)).toBe(false)
   })
+
+  it('a billing-exempt org is never blocked, whatever the status says', () => {
+    // Superadmin-owned. Mirrors org_can_accept_appointment, which ORs
+    // organisations.billing_exempt ahead of the status check.
+    expect(isBookingBlocked(b('past_due'), 'past_due', true)).toBe(false)
+    expect(isBookingBlocked(b('suspended'), 'suspended', true)).toBe(false)
+    expect(isBookingBlocked(null, 'suspended', true)).toBe(false)
+  })
+
+  it('exemption defaults to false, so omitting it cannot accidentally unblock', () => {
+    expect(isBookingBlocked(b('suspended'), null)).toBe(true)
+    expect(isBookingBlocked(b('suspended'), null, false)).toBe(true)
+  })
 })
 
 describe('cardExpiryState — valid through the END of the expiry month', () => {

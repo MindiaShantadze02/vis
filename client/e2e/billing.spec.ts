@@ -56,6 +56,73 @@ test.describe('Billing core — guard + RLS', () => {
     expect(ins.ok).toBeFalsy()
   })
 
+  /**
+   * The billing exemption (superadmin-owned orgs are never invoiced or blocked)
+   * must not be self-grantable — otherwise any business simply stops paying.
+   *
+   * Both tenant-writable routes to a *derived* exemption are covered here too,
+   * because they are exactly why the flag is an explicit guarded column rather
+   * than "is this org's owner a superadmin?":
+   *   * `organisations_update` covers the whole row, including `owner_id`
+   *   * `org_members_insert` accepts any `user_id` with `role='owner'`
+   * and the superadmin uuid is public (VITE_SUPERADMIN_USER_ID ships in the
+   * browser bundle). None of it may move the needle.
+   */
+  test('owner cannot grant themselves the billing exemption', async () => {
+    const ctx = await signInSeed()
+    const org = (await restApi(ctx, `organisations?slug=eq.${SEED.slug}&select=id,billing_exempt`)) as
+      { id: string; billing_exempt: boolean }[]
+    const orgId = org[0].id
+    expect(org[0].billing_exempt, 'seed org starts non-exempt').toBe(false)
+
+    const patch = (body: Record<string, unknown>) =>
+      fetch(`${ctx.url}/rest/v1/organisations?id=eq.${orgId}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: ctx.anonKey,
+          authorization: `Bearer ${ctx.accessToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+
+    // 1. Direct self-grant → rejected by prevent_billing_self_update.
+    const direct = await patch({ billing_exempt: true })
+    expect(direct.ok).toBeFalsy()
+    expect(await direct.text()).toContain('not_authorized')
+
+    // 2. Smuggled alongside an edit the owner IS allowed to make.
+    const smuggled = await patch({ description: 'exemption smuggling test', billing_exempt: true })
+    expect(smuggled.ok).toBeFalsy()
+
+    // 3. Creating a fresh org pre-set as exempt → the INSERT trigger overwrites it.
+    const created = await fetch(`${ctx.url}/rest/v1/organisations`, {
+      method: 'POST',
+      headers: {
+        apikey: ctx.anonKey,
+        authorization: `Bearer ${ctx.accessToken}`,
+        'content-type': 'application/json',
+        prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        name: 'Exemption probe', slug: `exempt-probe-${Date.now()}`, billing_exempt: true,
+      }),
+    })
+    if (created.ok) {
+      const rows = (await created.json()) as { id: string; billing_exempt: boolean }[]
+      expect(rows[0].billing_exempt, 'insert trigger pins it to false').toBe(false)
+      await fetch(`${ctx.url}/rest/v1/organisations?id=eq.${rows[0].id}`, {
+        method: 'DELETE',
+        headers: { apikey: ctx.anonKey, authorization: `Bearer ${ctx.accessToken}` },
+      })
+    }
+
+    // The seed org is untouched throughout.
+    const after = (await restApi(ctx, `organisations?id=eq.${orgId}&select=billing_exempt`)) as
+      { billing_exempt: boolean }[]
+    expect(after[0].billing_exempt).toBe(false)
+  })
+
   test('add a card from Settings → Billing: token stored, nothing charged', async ({ page }) => {
     const ctx = await signInSeed()
     const org = (await restApi(ctx, `organisations?slug=eq.${SEED.slug}&select=id`)) as { id: string }[]

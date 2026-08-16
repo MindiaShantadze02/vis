@@ -15,8 +15,10 @@ import { useOrg } from '@/contexts/OrgContext'
  */
 export default function UsageMeter() {
   const { t } = useTranslation()
-  const { billing } = useOrg()
+  const { org, billing } = useOrg()
 
+  // Superadmin-owned orgs are never invoiced — there is no running bill.
+  if (org?.billing_exempt) return null
   if (!billing) return null
 
   const { appointmentCount, runningAmount, earned, rolledForward, status } = billing

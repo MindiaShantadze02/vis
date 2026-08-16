@@ -732,6 +732,7 @@
     "blockedBody": "Your booking page is switched off until the outstanding balance is settled. Customers cannot book, and existing bookings cannot be moved. Everything else in your dashboard stays available.",
     "blockedOutstanding": "Outstanding balance",
     "blockedNoCard": "Add a card to settle the balance and switch bookings back on.",
-    "blockedAddCard": "Add a card"
+    "blockedAddCard": "Add a card",
+    "exempt": "This organisation is not billed — appointments are free for platform superadmins."
   }
 }
