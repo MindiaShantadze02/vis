@@ -7,10 +7,10 @@ import { depositFor } from '../_shared/deposit.ts'
 // gateway later calls payment-webhook to settle.
 //
 //   * appointment — public/guest call. Pays the business for an online booking
-//                   that was just inserted as pending/unpaid.
+//                   that is created once the payment webhook lands.
 //
 // (Post-paid usage billing charges the business monthly via a separate 'usage'
-// purpose added in T1.3; the old tier/credit purchases are gone.)
+// purpose.)
 //
 // Amounts are ALWAYS recomputed server-side (services.price) — a client-sent
 // amount is never trusted. verify_jwt = false so guests can reach the flow.

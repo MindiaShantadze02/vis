@@ -40,7 +40,6 @@ interface Resolved {
   address: string | null
   label: string
   when: string
-  pending: boolean
   meetingLink: string | null
 }
 
@@ -85,7 +84,6 @@ async function resolveAppointment(supabase: SupabaseClient, id: string): Promise
     address: org?.address ?? null,
     label: service?.name ?? '',
     when: fmtDateTime(data.scheduled_at),
-    pending: data.status === 'pending',
     meetingLink: data.meeting_link ?? null,
   }
 }
@@ -171,7 +169,6 @@ Deno.serve(async (req) => {
       businessName: resolved.businessName,
       serviceName: resolved.label,
       when: resolved.when,
-      pending: resolved.pending,
       address: resolved.address,
     }
     const body = message_type === 'meeting_link'

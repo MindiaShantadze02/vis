@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       appt.payment_method !== 'online'
       || appt.payment_status !== 'paid'
       || !appt.payment_reference
-      || !['pending', 'approved'].includes(appt.status)
+      || appt.status !== 'approved'
     ) {
       return err('not_refundable', 409)
     }

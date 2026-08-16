@@ -242,6 +242,9 @@ Deno.serve(async (req) => {
       if (!body || typeof body !== 'object') return apiError(422, 'invalid_body', 'Body must be JSON.')
 
       const { service_id, date, time, staff_id, notes, status } = body as Record<string, unknown>
+      // `status` was retired with the approval queue — every booking is created
+      // approved. Rejecting it loudly beats silently ignoring a field a caller
+      // still believes in.
       const customer = (body as { customer?: Record<string, unknown> }).customer ?? {}
       const firstName = String(customer.first_name ?? '').trim()
       const lastName = customer.last_name == null ? '' : String(customer.last_name)
@@ -252,8 +255,8 @@ Deno.serve(async (req) => {
       if (staff_id != null && !UUID_RE.test(String(staff_id))) {
         return apiError(422, 'invalid_staff_id', 'staff_id must be a UUID.')
       }
-      if (status != null && status !== 'pending' && status !== 'approved') {
-        return apiError(422, 'invalid_status', "status must be 'pending' or 'approved'.")
+      if (status != null) {
+        return apiError(422, 'invalid_status', 'status is no longer supported — bookings are always created approved.')
       }
       if (!firstName) return apiError(422, 'invalid_name', 'customer.first_name is required.')
       if (firstName.length > NAME_MAX || lastName.length > NAME_MAX) {
@@ -307,7 +310,6 @@ Deno.serve(async (req) => {
         p_scheduled_at: scheduledAt,
         p_staff_id: staffToBook,
         p_notes: notes == null ? null : String(notes),
-        p_status: status ?? null,
         p_consent_version: CONSENT_VERSION,
       })
       if (rpcErr) {

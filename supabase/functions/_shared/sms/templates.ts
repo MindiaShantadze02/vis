@@ -1,5 +1,3 @@
-import type { SmsMessageType } from './types.ts'
-
 // Message language. Defaults to Georgian to match the app's default locale.
 export type SmsLang = 'ka' | 'en' | 'ru'
 
@@ -8,8 +6,6 @@ export interface BookingConfirmationData {
   serviceName: string
   // Already-formatted, human-readable local date/time string.
   when: string
-  // Whether the booking still needs admin approval (pending) or is confirmed.
-  pending: boolean
   // Business street address; when set, appended so the customer knows where
   // to come. Optional — not every business has filled it in.
   address?: string | null
@@ -24,23 +20,17 @@ export function bookingConfirmationBody(
   data: BookingConfirmationData,
   lang: SmsLang = 'ka',
 ): string {
-  const { businessName, serviceName, when, pending } = data
+  const { businessName, serviceName, when } = data
   const at = addressSuffix(data.address, lang)
 
   switch (lang) {
     case 'en':
-      return pending
-        ? `${businessName}: your booking for ${serviceName} on ${when} has been received and is awaiting confirmation.${at}`
-        : `${businessName}: your booking for ${serviceName} on ${when} is confirmed.${at} See you soon!`
+      return `${businessName}: your booking for ${serviceName} on ${when} is confirmed.${at} See you soon!`
     case 'ru':
-      return pending
-        ? `${businessName}: ваша запись на ${serviceName} (${when}) принята и ожидает подтверждения.${at}`
-        : `${businessName}: ваша запись на ${serviceName} (${when}) подтверждена.${at} До встречи!`
+      return `${businessName}: ваша запись на ${serviceName} (${when}) подтверждена.${at} До встречи!`
     case 'ka':
     default:
-      return pending
-        ? `${businessName}: თქვენი ჯავშანი — ${serviceName}, ${when}. მიღებულია და ელოდება დადასტურებას.${at}`
-        : `${businessName}: თქვენი ჯავშანი — ${serviceName}, ${when} დადასტურდა.${at} გელით!`
+      return `${businessName}: თქვენი ჯავშანი — ${serviceName}, ${when} დადასტურდა.${at} გელით!`
   }
 }
 
@@ -219,17 +209,3 @@ export function cancellationUpdateBody(data: CancellationUpdateData, lang: SmsLa
         + (refunded ? ` გადახდილი ${sum} რამდენიმე დღეში დაგიბრუნდებათ ბარათზე.` : '')
   }
 }
-
-// Type-check helper so adding a SmsMessageType reminds you a template may be
-// needed. Not all types are wired yet (admin_*, invitation).
-export const TEMPLATED_MESSAGE_TYPES: readonly SmsMessageType[] = [
-  'booking_confirmation',
-  'approval_update',
-  'verification_code',
-  'appointment_reminder',
-  'setup_complete',
-  'meeting_link',
-  'refund_update',
-  'reschedule_update',
-  'cancellation_update',
-]

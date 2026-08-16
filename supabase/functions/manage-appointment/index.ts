@@ -77,8 +77,8 @@ Deno.serve(async (req) => {
     const phone = customer?.phone_number
     if (!phone || !org) return err('not_found', 404)
 
-    // Manageable only while pending/approved and still in the future.
-    const manageable = ['pending', 'approved'].includes(appt.status) && new Date(appt.scheduled_at) > new Date()
+    // Manageable only while approved and still in the future.
+    const manageable = appt.status === 'approved' && new Date(appt.scheduled_at) > new Date()
     if (!manageable) return err('not_manageable', 409)
 
     const otpBase = `${Deno.env.get('SUPABASE_URL')}/functions/v1`
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
         .update({ payment_status: 'refunded', status: 'cancelled', updated_at: new Date().toISOString() })
         .eq('id', appointmentId)
         .in('payment_status', ['paid', 'deposit_paid'])
-        .in('status', ['pending', 'approved'])
+        .eq('status', 'approved')
         .select('id')
       if (!claimed || claimed.length === 0) return err('not_manageable', 409)
 
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
         .from('appointments')
         .update({ status: 'cancelled', updated_at: new Date().toISOString() })
         .eq('id', appointmentId)
-        .in('status', ['pending', 'approved'])
+        .eq('status', 'approved')
         .select('id')
       if (!claimed || claimed.length === 0) return err('not_manageable', 409)
     }
