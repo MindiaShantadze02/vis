@@ -326,7 +326,8 @@
     "noBookingsYetCaption": "Share your booking link above — new bookings will appear here.",
     "noBookingsFound": "No bookings found",
     "markNoShow": "Mark no-show",
-    "no_show": "No-show"
+    "no_show": "No-show",
+    "pending": "Awaiting confirmation"
   },
   "notifications": {
     "title": "Notifications",
@@ -717,7 +718,12 @@
     "payNow": "Pay now",
     "paid": "Payment received — thank you!",
     "payFailed": "Payment could not be completed. Please try again.",
-    "pastDueBanner": "A payment is past due. Pay now to avoid your booking page being paused.",
-    "suspendedBanner": "Bookings are paused for an unpaid balance. Pay now to resume taking bookings."
+    "pastDueBanner": "A payment is past due, so your booking page is paused. Pay now to start taking bookings again.",
+    "suspendedBanner": "Bookings are paused for an unpaid balance. Pay now to resume taking bookings.",
+    "blockedTitle": "Bookings are paused",
+    "blockedBody": "Your booking page is switched off until the outstanding balance is settled. Customers cannot book, and existing bookings cannot be moved. Everything else in your dashboard stays available.",
+    "blockedOutstanding": "Outstanding balance",
+    "blockedNoCard": "Add a card to settle the balance and switch bookings back on.",
+    "blockedAddCard": "Add a card"
   }
 }

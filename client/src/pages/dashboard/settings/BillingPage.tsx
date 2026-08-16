@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { PageHeader, SideDrawer, FormErrorAlert, useToast } from '@/components/ui'
 import UsageMeter from '@/components/UsageMeter'
 import { useOrg } from '@/contexts/OrgContext'
+import { useBillingPayment } from '@/hooks/useBillingPayment'
 import { cardExpiryState } from '@/lib/billing'
 import { supabase } from '@/lib/supabase'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
@@ -49,19 +50,11 @@ export default function BillingPage() {
   const [submitted, setSubmitted] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [paying, setPaying] = useState(false)
 
   // "Pay now" clears the outstanding balance (mock settles it) and restores the
   // org to active immediately (settle_usage_charge recovers when nothing's left).
-  async function handlePayNow() {
-    if (!org) return
-    setPaying(true)
-    const { error: rpcErr } = await supabase.rpc('pay_org_outstanding', { p_org_id: org.id })
-    setPaying(false)
-    if (rpcErr) { toast.error(t('billing.payFailed')); return }
-    toast.success(t('billing.paid'))
-    refreshBilling()
-  }
+  // Shared with the blocking dialog — see useBillingPayment.
+  const { payNow, paying } = useBillingPayment()
 
   // Past invoices (closed periods) — the line-item breakdown behind the running
   // bill. Owners read their own via RLS.
@@ -134,7 +127,7 @@ export default function BillingPage() {
           sx={{ mb: 2 }}
           data-testid="billing-dunning"
           action={
-            <Button color="inherit" size="small" onClick={handlePayNow} disabled={paying} data-testid="billing-pay-now">
+            <Button color="inherit" size="small" onClick={payNow} disabled={paying} data-testid="billing-pay-now">
               {paying ? <CircularProgress size={18} color="inherit" /> : t('billing.payNow')}
             </Button>
           }

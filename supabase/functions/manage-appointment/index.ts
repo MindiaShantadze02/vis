@@ -129,6 +129,9 @@ Deno.serve(async (req) => {
         if (m.includes('slot_taken')) return err('slot_taken', 409)
         if (m.includes('not_reschedulable') || m.includes('not_found')) return err('not_manageable', 409)
         if (m.includes('staff_not_available')) return err('staff_not_available', 409)
+        // The business is behind on its bill, so it may not gain a booking on a
+        // new date. Cancelling stays available — see the RPC's comment.
+        if (m.includes('billing_blocked')) return err('billing_blocked', 409)
         console.error('[manage-appointment] reschedule:', rpcErr)
         return err('server_error', 500)
       }

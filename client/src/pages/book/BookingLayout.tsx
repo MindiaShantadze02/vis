@@ -170,12 +170,17 @@ export default function BookingLayout() {
       if (error || !pub) { console.error('org load error', error); setNotFound(true); return }
 
       // Block the whole flow up front if the business can't currently accept
-      // bookings (post-paid billing suspended). A guest can't fix that, so we
-      // show a friendly unavailable state rather than letting them fill the
-      // form and fail on insert.
+      // bookings (behind on its post-paid bill — past_due or suspended). A guest
+      // can't fix that, so we show a friendly unavailable state rather than
+      // letting them fill the form and fail at the payment step.
+      //
+      // Fail CLOSED: an RPC error leaves `data` null, and `null === false` is
+      // false, so the old `=== false` check silently rendered the booking page
+      // whenever this call failed. The org itself already resolved above, so a
+      // non-true answer here can only mean blocked or unreachable.
       const { data: canAccept } = await supabase
         .rpc('org_can_accept_appointment', { p_org_id: pub.id })
-      if (canAccept === false) { setAtCapacity(true); return }
+      if (canAccept !== true) { setAtCapacity(true); return }
 
       // The steps read org.payment_config[provider].enabled; the RPC delivers the
       // same shape under payment_methods (secrets stripped), so map it across.

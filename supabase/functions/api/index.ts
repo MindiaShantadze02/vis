@@ -314,8 +314,11 @@ Deno.serve(async (req) => {
       })
       if (rpcErr) {
         const msg = rpcErr.message ?? ''
+        // trg_enforce_appointment_limit fires when org_can_accept_appointment is
+        // false, which since 20260816120000 means the org is past_due/suspended
+        // — a billing state, not a quota (there is no quota under post-paid).
         if (msg.includes('limit_reached')) {
-          return apiError(403, 'quota_exceeded', "The organisation's monthly appointment quota is used up.")
+          return apiError(403, 'billing_blocked', 'This organisation is not currently accepting bookings.')
         }
         if (msg.includes('booking_too_far_in_advance')) {
           return apiError(422, 'too_far_in_advance', 'The date is beyond the booking window.')

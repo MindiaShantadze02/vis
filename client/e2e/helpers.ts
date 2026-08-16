@@ -205,6 +205,45 @@ export function readSupabaseEnv(): { url: string; anonKey: string } {
   return { url, anonKey }
 }
 
+/**
+ * Optional service-role key, read from `SUPABASE_SERVICE_ROLE_KEY` in client/.env
+ * (no VITE_ prefix, so Vite never bundles it into the browser) or from the
+ * process env. Absent by default — specs that need it must skip, not fail.
+ *
+ * Only for state a client legitimately cannot reach. Today that is
+ * `organisations.billing_status`: prevent_billing_self_update rejects owners, so
+ * without this the billing-block regression can never be exercised. Everything
+ * else must keep going through the owner's own credentials, or the tests stop
+ * proving that RLS works.
+ */
+export function serviceRoleKey(): string | null {
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) return process.env.SUPABASE_SERVICE_ROLE_KEY
+  try {
+    const env = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '.env'), 'utf8')
+    return /^SUPABASE_SERVICE_ROLE_KEY=(\S+)/m.exec(env)?.[1] ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Set the seed org's billing_status with the service role, which is exempt from
+ * prevent_billing_self_update (the guard allows `auth.uid() IS NULL`). Callers
+ * MUST restore 'active' in a finally/afterAll — leaving the seed org blocked
+ * would cascade failures across the whole suite.
+ */
+export async function setSeedBillingStatus(status: 'active' | 'past_due' | 'suspended'): Promise<void> {
+  const key = serviceRoleKey()
+  if (!key) throw new Error('setSeedBillingStatus needs SUPABASE_SERVICE_ROLE_KEY')
+  const { url } = readSupabaseEnv()
+  const res = await fetch(`${url}/rest/v1/organisations?slug=eq.${SEED.slug}`, {
+    method: 'PATCH',
+    headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ billing_status: status }),
+  })
+  if (!res.ok) throw new Error(`setSeedBillingStatus(${status}) → ${res.status} ${await res.text()}`)
+}
+
 /** Password sign-in as the seeded owner; returns the URL, anon key + access token. */
 export async function signInSeed(): Promise<{ url: string; anonKey: string; accessToken: string }> {
   const { url, anonKey } = readSupabaseEnv()

@@ -1,5 +1,5 @@
 import { Suspense, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 
 /**
  * Passed down to dashboard pages via the router Outlet. `refreshSignal` bumps
@@ -34,9 +34,15 @@ import { LanguageSwitcher, AnimatedOutlet, LoadingState } from '@/components/ui'
 import { dateLocale } from '@/lib/dateLocale'
 import { anim } from '@/theme/animations'
 import { gradient, tint } from '@/theme/theme'
+import { isBookingBlocked } from '@/lib/billing'
+import BillingBlockedDialog from '@/components/BillingBlockedDialog'
 import VisLogo from '@/components/VisLogo'
 
 const DRAWER_WIDTH = 240
+
+// Routes the billing block must NOT cover — they are how the owner gets out of
+// it (add a card, pay, or close the account).
+const BILLING_EXEMPT_PATHS = ['/dashboard/settings/billing', '/dashboard/settings/account']
 
 const NAV_ITEMS = [
   { labelKey: 'dashboard.overview',     path: '/dashboard',              icon: <DashboardOutlinedIcon /> },
@@ -82,11 +88,12 @@ export default function DashboardLayout() {
   const { t } = useTranslation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  const { org } = useOrg()
+  const { org, billing } = useOrg()
   const settingsGroups = SETTINGS_GROUPS
   const mainNav = NAV_ITEMS
   const { isSuperadmin } = useSuperadmin()
   const navigate = useNavigate()
+  const location = useLocation()
   const { items: notifications, unreadCount, markAllRead } = useNotifications()
 
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -421,6 +428,18 @@ export default function DashboardLayout() {
           </Suspense>
         </Box>
       </Box>
+
+      {/* Unpaid-bill hard block. Mounted here rather than inside the outlet so it
+          survives navigation and the Suspense fallback; the Dialog portals to
+          <body>, so its position in the tree doesn't affect layout. Suppressed
+          for org-less users and on the routes that let the owner settle up. */}
+      <BillingBlockedDialog
+        open={
+          !!org
+          && isBookingBlocked(billing, org.billing_status)
+          && !BILLING_EXEMPT_PATHS.includes(location.pathname)
+        }
+      />
     </Box>
   )
 }

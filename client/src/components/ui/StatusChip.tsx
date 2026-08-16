@@ -39,13 +39,18 @@ interface StatusChipProps {
  * Pairs a localized text label with a semantic theme color so status
  * is never conveyed by color alone (a11y). Replaces the duplicated
  * STATUS_COLOR / STATUS_LABEL maps across the dashboard pages.
+ *
+ * Tolerates a status outside the union: rows written before a status was retired
+ * still exist until the retiring migration is pushed, and rendering a raw i18n
+ * key ("dashboard.pending") at the customer's name is worse than a plain chip.
+ * `t` is given an explicit fallback so a missing key never leaks.
  */
 export default function StatusChip({ status, size = 'small', variant = 'filled' }: StatusChipProps) {
   const { t } = useTranslation()
   return (
     <Chip
-      label={t(`dashboard.${status}`)}
-      color={STATUS_COLOR[status]}
+      label={t(`dashboard.${status}`, { defaultValue: String(status).replace(/_/g, ' ') })}
+      color={STATUS_COLOR[status] ?? 'default'}
       icon={STATUS_ICON[status]}
       size={size}
       variant={variant}

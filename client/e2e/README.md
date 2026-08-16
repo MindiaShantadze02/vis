@@ -17,6 +17,28 @@ npm run e2e:report       # open the last HTML report
 
 The config reuses an already-running dev server on :5173, or starts one.
 
+### Optional: `SUPABASE_SERVICE_ROLE_KEY`
+
+Three billing tests need to put the seed org into `past_due` / `suspended`, which
+no client credential can do — `prevent_billing_self_update` rejects owners (the
+first billing test asserts exactly that). Add the project's service-role key to
+`client/.env` (gitignored; **no** `VITE_` prefix, so Vite never bundles it into
+the browser) and they run:
+
+```
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+```
+
+Without it they **skip**. Prefer running them: the unpaid-org booking leak fixed
+in `20260816120000` survived precisely because this path was never exercised.
+Each test restores `billing_status = 'active'` in a `finally`, so an interrupted
+run does not leave the seed org blocked — if one ever does, reset it with the
+same key.
+
+Do not reach for this key for anything else. Every other spec goes through the
+owner's own credentials on purpose; using the service role elsewhere would stop
+the suite proving that RLS works.
+
 ## What's covered
 
 Happy paths + edge cases (validation gating, route guards, error states):
@@ -27,6 +49,7 @@ Happy paths + edge cases (validation gating, route guards, error states):
 | `onboarding.spec.ts` | full 3-step onboarding → org (self-cleans) | step-1 "next" gating, a typed-but-not-added service is kept on Next, skip → dashboard, org-guard bounce |
 | `booking.spec.ts` | public in-person booking + OTP → auto-approved confirmation (075 default) | unknown slug, invalid name/phone gating, **wrong OTP rejected** |
 | `dashboard.spec.ts` | overview stats + link, clients list, calendar nav | no manual add-appointment action (bookings come from the public flow only) |
+| `billing.spec.ts` | billing guard + RLS (owner can read invoices, cannot set `billing_status` or write the ledger), add a card without being charged; **unpaid-org blocking** — `past_due`/`suspended` refuse bookings server-side (`org_can_accept_appointment` + `create-payment`) and raise the non-dismissable owner modal | the last three need `SUPABASE_SERVICE_ROLE_KEY` (see Run) and skip without it; each restores `active` in a `finally` |
 | `settings-services.spec.ts` | service create → edit → delete (self-cleans) | save gating (empty name / out-of-range price / bad duration); **BVA** on duration/capacity/price |
 | `meeting-link.spec.ts` | per-appointment online link: owner pastes a link on an online-service appointment and sends it via SMS (seeds an approved online appt over PostgREST; cancels + deactivates in teardown) | invalid-link inline flag, "link needed" cue clears + link round-trips through `search_appointments` |
 | `settings-team.spec.ts` | add/delete professional; invite by phone + cancel (self-clean) | invite-send gating, add-professional name gating |
@@ -97,9 +120,10 @@ its active service + Mon–Fri hours intact, or the booking/dashboard specs will
 
 ## Not yet covered (follow-ups)
 
-- **Superadmin privileged flows** (billing-status change, add/remove superadmin) need a
-  superadmin test account — not provisioned here. `superadmin.spec.ts` covers only
-  the access guard.
+- **Superadmin privileged flows** (add/remove superadmin) need a superadmin test
+  account — not provisioned here. `superadmin.spec.ts` covers only the access
+  guard. Billing-status changes are no longer in this bucket: `billing.spec.ts`
+  drives them with the service-role key instead of the superadmin UI.
 - ~~Online-payment booking path~~ — now covered by `refund.spec.ts`, which
   temporarily enables `payment_config.bog.enabled` on the seed org to drive
   guest checkout → `/pay/mock` → `payment-webhook` → cancel-with-refund

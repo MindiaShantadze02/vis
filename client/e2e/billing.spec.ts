@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test'
-import { login, signInSeed, restApi, SEED } from './helpers'
+import {
+  login, signInSeed, restApi, readSupabaseEnv, serviceRoleKey, setSeedBillingStatus,
+  uniquePhone, SEED,
+} from './helpers'
 
 /**
  * Post-paid billing core (BILLING_PLAN T1.1). Verifies the owner-facing
@@ -89,32 +92,118 @@ test.describe('Billing core — guard + RLS', () => {
     expect(periodsAfter.length).toBe(periodsBefore.length)
   })
 
-  // Suspension + recovery (T3.2). Suspending needs service role (owners can't),
-  // so this runs only when the seed org has been pre-suspended out-of-band;
-  // otherwise it skips rather than fail the suite. Pay-now restores it.
-  test('suspended org: booking page unavailable, dashboard alive, pay-now restores', async ({ page }) => {
-    const ctx = await signInSeed()
-    const org = (await restApi(ctx, `organisations?slug=eq.${SEED.slug}&select=billing_status`)) as
-      { billing_status: string }[]
-    test.skip(org[0].billing_status !== 'suspended', 'requires the seed org pre-suspended (service-role setup)')
+  // Unpaid → blocked → recovered. Since 20260816120000 BOTH 'past_due' and
+  // 'suspended' block bookings; 'past_due' is the state that regressed (it used
+  // to keep taking bookings for the whole ~11-day dunning window).
+  //
+  // Seeding it needs the service role: owners are rejected by
+  // prevent_billing_self_update, which the first test above asserts. Without
+  // SUPABASE_SERVICE_ROLE_KEY in client/.env this skips rather than fails — and
+  // that gap is exactly why the booking leak went unnoticed, so prefer running
+  // it. The status is ALWAYS restored in `finally`; leaving the seed org blocked
+  // would cascade through the rest of the suite.
+  test('past_due org: booking page unavailable, blocking modal shown, cannot be dismissed', async ({ page }) => {
+    test.skip(!serviceRoleKey(), 'needs SUPABASE_SERVICE_ROLE_KEY in client/.env to seed billing_status')
 
-    // Booking page shows the friendly unavailable state.
-    await page.goto(`/book/${SEED.slug}`)
-    await expect(page.getByTestId('booking-unavailable').or(page.getByText(/unavailable|მიუწვდ|недоступ/i)))
-      .toBeVisible({ timeout: 20_000 })
+    await setSeedBillingStatus('past_due')
+    try {
+      // Customers see the neutral unavailable state — never "they haven't paid".
+      await page.goto(`/book/${SEED.slug}`)
+      await expect(page.getByTestId('booking-unavailable').or(page.getByText(/unavailable|მიუწვდ|недоступ/i)))
+        .toBeVisible({ timeout: 20_000 })
 
-    // Dashboard still loads — data isn't hidden over billing.
-    await login(page)
-    await expect(page).toHaveURL(/\/dashboard/)
+      // Dashboard still loads — data isn't hidden over billing — but the owner
+      // gets the blocking modal, and Escape must not dismiss it.
+      await login(page)
+      await expect(page).toHaveURL(/\/dashboard/)
+      await expect(page.getByTestId('billing-blocked-dialog')).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(page.getByTestId('billing-blocked-dialog')).toBeVisible()
 
-    // Billing page shows the dunning banner; pay-now clears it.
-    await page.goto('/dashboard/settings/billing')
-    await expect(page.getByTestId('billing-dunning')).toBeVisible()
-    await page.getByTestId('billing-pay-now').click()
-    await expect(page.getByTestId('billing-dunning')).toHaveCount(0, { timeout: 20_000 })
+      // Billing stays reachable so the owner can act: the modal steps aside there.
+      await page.goto('/dashboard/settings/billing')
+      await expect(page.getByTestId('billing-blocked-dialog')).toHaveCount(0)
+      await expect(page.getByTestId('billing-dunning')).toBeVisible()
+    } finally {
+      await setSeedBillingStatus('active')
+    }
 
-    // Booking works again.
+    // Recovery: with the org active again, both sides come back.
+    await page.goto('/dashboard')
+    await expect(page.getByTestId('billing-blocked-dialog')).toHaveCount(0)
     await page.goto(`/book/${SEED.slug}`)
     await expect(page.getByTestId('book-service').first()).toBeVisible({ timeout: 20_000 })
+  })
+
+  // The server is the real enforcement — the modal is only an explanation. Drive
+  // the write paths directly, with no browser involved, so a UI regression can
+  // never mask a missing DB gate.
+  test('past_due org: the server refuses bookings, not just the UI', async () => {
+    test.skip(!serviceRoleKey(), 'needs SUPABASE_SERVICE_ROLE_KEY in client/.env to seed billing_status')
+
+    const ctx = await signInSeed()
+    const { url, anonKey } = readSupabaseEnv()
+    const org = (await restApi(ctx, `organisations?slug=eq.${SEED.slug}&select=id`)) as { id: string }[]
+    const orgId = org[0].id
+
+    const canAccept = async () => {
+      const res = await fetch(`${url}/rest/v1/rpc/org_can_accept_appointment`, {
+        method: 'POST',
+        headers: { apikey: anonKey, 'content-type': 'application/json' },
+        body: JSON.stringify({ p_org_id: orgId }),
+      })
+      return res.json() as Promise<boolean>
+    }
+
+    expect(await canAccept(), 'seed org starts bookable').toBe(true)
+
+    await setSeedBillingStatus('past_due')
+    try {
+      // The regression itself: past_due used to answer true here.
+      expect(await canAccept(), 'past_due must block — this is the reported bug').toBe(false)
+
+      // And the checkout path refuses before taking any money.
+      const svc = (await restApi(ctx, `services?org_id=eq.${orgId}&is_active=eq.true&select=id&limit=1`)) as
+        { id: string }[]
+      const pay = await fetch(`${url}/functions/v1/create-payment`, {
+        method: 'POST',
+        headers: { apikey: anonKey, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          purpose: 'appointment',
+          org_id: orgId,
+          service_id: svc[0].id,
+          scheduled_at: new Date(Date.now() + 8 * 86_400_000).toISOString(),
+          first_name: 'Blocked',
+          phone: uniquePhone(),
+          slug: SEED.slug,
+        }),
+      })
+      expect(pay.status, 'create-payment must refuse a blocked org').toBe(422)
+      expect((await pay.json()).error).toBe('limit_reached')
+    } finally {
+      await setSeedBillingStatus('active')
+    }
+
+    expect(await canAccept(), 'restored to bookable').toBe(true)
+  })
+
+  test('suspended org blocks too', async () => {
+    test.skip(!serviceRoleKey(), 'needs SUPABASE_SERVICE_ROLE_KEY in client/.env to seed billing_status')
+
+    const ctx = await signInSeed()
+    const { url, anonKey } = readSupabaseEnv()
+    const org = (await restApi(ctx, `organisations?slug=eq.${SEED.slug}&select=id`)) as { id: string }[]
+
+    await setSeedBillingStatus('suspended')
+    try {
+      const res = await fetch(`${url}/rest/v1/rpc/org_can_accept_appointment`, {
+        method: 'POST',
+        headers: { apikey: anonKey, 'content-type': 'application/json' },
+        body: JSON.stringify({ p_org_id: org[0].id }),
+      })
+      expect(await res.json()).toBe(false)
+    } finally {
+      await setSeedBillingStatus('active')
+    }
   })
 })

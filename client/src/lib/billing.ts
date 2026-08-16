@@ -73,6 +73,31 @@ export function currentBillTotal(b: Pick<BillingStatus, 'runningAmount' | 'rolle
   return Math.round((b.runningAmount + b.rolledForward) * 100) / 100
 }
 
+/**
+ * Whether the org is currently barred from taking bookings — the client mirror
+ * of `org_can_accept_appointment`, which since 20260816120000 requires
+ * billing_status = 'active' (both 'past_due' and 'suspended' block).
+ *
+ * There are two sources of the same status and they can drift, so the order
+ * matters:
+ *   * `billing.status` (get_org_billing_status) is the FRESH one — refreshBilling()
+ *     updates it, so paying the bill clears the gate immediately. Prefer it.
+ *   * `orgStatus` (organisations.billing_status, loaded with the org) is the
+ *     FALLBACK. `billing` is null on an RPC failure and for one render after the
+ *     org loads, and keying off it alone would fail OPEN and flash the dashboard.
+ *
+ * With neither available (signed out / no org) nothing is blocked — callers gate
+ * on `org` separately.
+ */
+export function isBookingBlocked(
+  billing: Pick<BillingStatus, 'status'> | null,
+  orgStatus: BillingState | null,
+): boolean {
+  const status = billing?.status ?? orgStatus
+  if (!status) return false
+  return status !== 'active'
+}
+
 export type CardExpiryState = 'valid' | 'expiring_soon' | 'expired'
 
 /**

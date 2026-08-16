@@ -103,10 +103,10 @@ const API_ERRORS: [string, string, L][] = [
     ka: 'მოთხოვნილი დრო დაკავებულია (რბოლა ან მოძველებული სია)',
     ru: 'запрошенное время занято (гонка или устаревший список слотов)',
   }],
-  ['403', 'quota_exceeded', {
-    en: 'monthly appointment limit reached',
-    ka: 'ყოველთვიური ჯავშნების ლიმიტი ამოწურულია',
-    ru: 'достигнут месячный лимит записей',
+  ['403', 'billing_blocked', {
+    en: 'the organisation is not currently accepting bookings (unpaid balance)',
+    ka: 'ორგანიზაცია ამჟამად არ იღებს ჯავშნებს (გადაუხდელი ბალანსი)',
+    ru: 'организация сейчас не принимает записи (неоплаченный баланс)',
   }],
   ['422', 'invalid_* / staff_not_available / too_far_in_advance', {
     en: 'validation failures',
