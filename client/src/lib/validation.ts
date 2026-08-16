@@ -134,13 +134,17 @@ export const PASSWORD_MIN = 8
 export const MAX_PRICE = 99999999.99
 
 /**
- * Smallest price a service may charge, in ₾. Free services were removed on
- * 2026-08-12 — every public booking now pays online — so the floor is a real
- * amount, not 0. PLACEHOLDER pending the business number: when it changes,
- * update the `services_price_min` CHECK (migration 20260812120000) to match.
- * consistency.spec.ts guards this constant against e2e/data/services.json.
+ * Smallest price a service may charge, in ₾. **Free services are legal** — a ₾0
+ * service simply books down the on-site path instead of the gateway. The ₾5
+ * floor that existed 2026-08-12 → 2026-08-16 is gone: what a business charges
+ * its own customer is its business, and the platform fee is a flat per-appointment
+ * charge to the business, unrelated to this.
+ *
+ * Mirrors the `services_price_non_negative` CHECK (migration 20260816130000) —
+ * change both together. consistency.spec.ts guards this constant against
+ * e2e/data/services.json.
  */
-export const MIN_PRICE = 5
+export const MIN_PRICE = 0
 
 /** True for a finite number ≥ 0 (rejects negatives and NaN). */
 export function isNonNegativeNumber(value: number): boolean {

@@ -201,15 +201,17 @@ describe('isUuid', () => {
 })
 
 describe('isValidServicePrice', () => {
-  // BVA around both ends of [MIN_PRICE, MAX_PRICE]. Free services were removed
-  // 2026-08-12, so 0 — long the lower boundary — is now firmly invalid.
+  // BVA around both ends of [MIN_PRICE, MAX_PRICE]. MIN_PRICE went back to 0 on
+  // 2026-08-16 — a free service is legal and books down the on-site path — so
+  // the lower boundary is 0 and only negatives fall outside it.
   it.each([
-    ['zero (was the old floor)', 0, false],
-    ['just below MIN_PRICE', 4.99, false],
+    ['zero = MIN_PRICE boundary (a free service)', 0, true],
     ['MIN_PRICE (boundary)', MIN_PRICE, true],
-    ['just above MIN_PRICE', 5.01, true],
+    ['just above zero', 0.01, true],
+    ['a mid-range price', 4.99, true],
     ['MAX_PRICE (boundary)', MAX_PRICE, true],
     ['just above MAX_PRICE', 100000000, false],
+    ['just below zero', -0.01, false],
     ['negative', -1, false],
     ['NaN', NaN, false],
     ['Infinity', Infinity, false],

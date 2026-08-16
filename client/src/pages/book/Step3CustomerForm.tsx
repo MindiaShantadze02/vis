@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -7,6 +8,8 @@ import {
   Stack,
   CircularProgress,
   Link as MuiLink,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import { Trans } from "react-i18next";
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from "@/components/icons";
@@ -86,6 +89,8 @@ export default function Step3CustomerForm({
   // flagged inline too (before that, only typed-but-invalid values are).
   const [submitted, setSubmitted] = useState(false);
 
+  const navigate = useNavigate();
+
   // Phone-verification (OTP) gate between the form and the actual booking insert.
   const [phase, setPhase] = useState<"form" | "otp">("form");
   const [code, setCode] = useState("");
@@ -94,9 +99,6 @@ export default function Step3CustomerForm({
   // while the same 6 digits sit in the field.
   const autoSubmitted = useRef<string | null>(null);
 
-  // Every service carries a price of at least MIN_PRICE (free services were
-  // removed 2026-08-12), so every booking is charged online — there is no
-  // no-charge path and no payment method to choose.
   const price = Number(booking.service?.price ?? 0);
 
   // Deposit preview (create-payment computes the real charge server-side with the
@@ -112,6 +114,34 @@ export default function Step3CustomerForm({
   const isDeposit = deposit > 0 && deposit < price;
   const balanceDue = Math.round((price - deposit) * 100) / 100;
   const money = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+
+  // ── How this booking gets paid ──────────────────────────────────────────
+  // Online is available for anything with a price: the gateway is chosen
+  // platform-wide by getPaymentProvider, NOT by org.payment_config (those
+  // bog/tbc flags are credential slots, not an availability switch — an org with
+  // neither enabled still checks out today). A ₾0 service can't go online at all
+  // — create-payment rejects it with `invalid_amount`.
+  //
+  // On site is the org's own opt-out, and a deposit overrides it: collecting the
+  // deposit is the entire point, and normalize_guest_appointment raises
+  // `deposit_required` if a deposit service is pushed down the direct-insert path.
+  const onSiteEnabled = org.payment_config?.in_person?.enabled ?? true;
+  const canPayOnline = price > 0;
+  const canPayOnSite = onSiteEnabled && deposit === 0;
+  // Offer the choice only when both are genuinely available.
+  const showPayChoice = canPayOnline && canPayOnSite;
+
+  const [payMethod, setPayMethod] = useState<"online" | "on_site">(
+    canPayOnline ? "online" : "on_site",
+  );
+  // The service can change under the form (back → pick another), so keep the
+  // selection inside whatever is still possible.
+  useEffect(() => {
+    if (!canPayOnline && payMethod === "online") setPayMethod("on_site");
+    if (!canPayOnSite && payMethod === "on_site") setPayMethod("online");
+  }, [canPayOnline, canPayOnSite, payMethod]);
+
+  const payingOnSite = payMethod === "on_site" && canPayOnSite;
 
   // The chosen slot is business (Georgia) wall-clock time — pin the stored
   // instant to the business offset so it doesn't shift with the viewer's zone.
@@ -280,6 +310,61 @@ export default function Step3CustomerForm({
           }
           staffId = free[0].id;
         }
+      }
+
+      // ── On-site: no gateway, so the rows are written here and now ────────
+      // Safe to insert straight from the client: the OTP is still verified and
+      // unconsumed (trg_enforce_booking_verification), trg_00_normalize_guest_-
+      // appointment pins status/payment_* and rejects a deposit service on this
+      // path, trg_enforce_slot_capacity re-checks capacity under a per-org
+      // advisory lock, and trg_enforce_appointment_limit applies the billing
+      // gate. Ids are minted here because a guest can't read either row back.
+      if (payingOnSite) {
+        const customerId = crypto.randomUUID();
+        const appointmentId = crypto.randomUUID();
+
+        const { error: custErr } = await supabase.from("customers").insert({
+          id: customerId,
+          first_name: booking.firstName.trim(),
+          last_name: booking.lastName.trim() || null,
+          phone_number: booking.phone,
+          consent_accepted_at: new Date().toISOString(),
+          consent_version: CONSENT_VERSION,
+        });
+        if (custErr) {
+          setError(t("booking.bookFailed"));
+          setLoading(false);
+          return;
+        }
+
+        const { error: apptErr } = await supabase.from("appointments").insert({
+          id: appointmentId,
+          org_id: org.id,
+          service_id: booking.service.id,
+          customer_id: customerId,
+          scheduled_at: scheduledAt.toISOString(),
+          duration_minutes: booking.service.duration_minutes,
+          staff_id: staffId,
+          notes: booking.notes.trim() || null,
+        });
+        if (apptErr) {
+          // The triggers speak in error codes — surface the ones a customer can
+          // act on, and fall back to the generic failure for the rest.
+          const m = apptErr.message ?? "";
+          setError(
+            m.includes("limit_reached")
+              ? t("booking.unavailable")
+              : m.includes("slot_taken") || m.includes("capacity")
+                ? t("booking.slotTaken")
+                : t("booking.bookFailed"),
+          );
+          setLoading(false);
+          return;
+        }
+
+        if (embed) postToParent({ type: "vis:booked", appointmentId });
+        navigate(`/booking-confirmation/${appointmentId}`);
+        return;
       }
 
       const { data: pay, error: payErr } = await supabase.functions.invoke(
@@ -472,17 +557,42 @@ export default function Step3CustomerForm({
               />
             </Box>
 
-            {/* Payment hint: a deposit-configured service prepays the deposit
-                online (balance in person); otherwise the full price is charged
-                online. Always shown — every service is priced. */}
+            {/* How to pay. The choice appears only when both routes are open —
+                a deposit forces online, a free service forces on site, and a
+                business can switch either off in Settings → Payment. */}
+            {showPayChoice && (
+              <Box>
+                <FieldLabel>{t("booking.payHow")}</FieldLabel>
+                <ToggleButtonGroup
+                  exclusive
+                  fullWidth
+                  size="small"
+                  value={payMethod}
+                  onChange={(_, v: "online" | "on_site" | null) => { if (v) setPayMethod(v) }}
+                >
+                  <ToggleButton value="online" data-testid="book-pay-online">
+                    {t("booking.payOnline")}
+                  </ToggleButton>
+                  <ToggleButton value="on_site" data-testid="book-pay-on-site">
+                    {t("booking.payOnSite")}
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+            )}
+
+            {/* Payment hint — what will actually happen on Confirm. */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <CreditCardOutlinedIcon
                 sx={{ fontSize: 16, color: "primary.main" }}
               />
               <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid="book-payment-hint">
-                {isDeposit
-                  ? t("booking.payDepositHint", { deposit: money(deposit), balance: money(balanceDue) })
-                  : t("booking.payOnlineHint")}
+                {payingOnSite
+                  ? price === 0
+                    ? t("booking.payFreeHint")
+                    : t("booking.payOnSiteHint", { amount: money(price) })
+                  : isDeposit
+                    ? t("booking.payDepositHint", { deposit: money(deposit), balance: money(balanceDue) })
+                    : t("booking.payOnlineHint")}
               </Typography>
             </Box>
 

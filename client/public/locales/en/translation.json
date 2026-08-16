@@ -248,7 +248,12 @@
     "payDepositHint": "Pay a {{deposit}} ₾ deposit now — {{balance}} ₾ due in person",
     "payDeposit": "Pay deposit",
     "payNowDeposit": "Pay now (deposit)",
-    "dueInPerson": "Due in person"
+    "dueInPerson": "Due in person",
+    "payHow": "How would you like to pay?",
+    "payOnline": "Pay online",
+    "payOnSite": "Pay on site",
+    "payOnSiteHint": "You will pay ₾{{amount}} at the appointment — nothing is charged now.",
+    "payFreeHint": "This service is free — nothing to pay."
   },
   "payment": {
     "sandbox": "Sandbox",
@@ -481,7 +486,10 @@
     "depositTitle": "Deposit",
     "depositOrgHelp": "Applied to every service that doesn't set its own deposit.",
     "depositRefundable": "Refund deposits on early cancellations",
-    "depositRefundableHelp": "When off, deposits are never returned, even within the cancellation window."
+    "depositRefundableHelp": "When off, deposits are never returned, even within the cancellation window.",
+    "acceptOnSite": "Accept payment on site",
+    "acceptOnSiteHelp": "Let customers choose to pay at the appointment instead of online. Services that require a deposit always pay online.",
+    "onSiteOffWarning": "Customers can no longer pay on site. Free (₾0) services have no other way to be booked, so they will be unbookable until you turn this back on."
   },
   "days": {
     "monday": "Monday",

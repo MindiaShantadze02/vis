@@ -18,6 +18,8 @@ import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 interface PaymentConfig {
   bog?: { merchantId?: string; apiKey?: string; enabled?: boolean }
   tbc?: { merchantId?: string; apiKey?: string; enabled?: boolean }
+  /** Flag-only (no credentials): may the customer choose to pay on site? */
+  in_person?: { enabled?: boolean }
 }
 
 export default function PaymentSettings() {
@@ -28,6 +30,7 @@ export default function PaymentSettings() {
   const [config, setConfig] = useState<PaymentConfig>({
     bog: { merchantId: '', apiKey: '', enabled: false },
     tbc: { merchantId: '', apiKey: '', enabled: false },
+    in_person: { enabled: true },
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,6 +67,9 @@ export default function PaymentSettings() {
         setConfig({
           bog: { merchantId: '', apiKey: '', enabled: false, ...(pc.bog ?? {}) },
           tbc: { merchantId: '', apiKey: '', enabled: false, ...(pc.tbc ?? {}) },
+          // Missing key = an org from before on-site was re-added; default ON to
+          // match the migration's backfill.
+          in_person: { enabled: pc.in_person?.enabled ?? true },
         })
         if (pc.bog?.enabled) setBogExpanded(true)
         if (pc.tbc?.enabled) setTbcExpanded(true)
@@ -93,9 +99,18 @@ export default function PaymentSettings() {
     if (enabled) setTbcExpanded(true)
   }
 
+  function setInPerson(enabled: boolean) {
+    setConfig(c => ({ ...c, in_person: { enabled } }))
+  }
+
   // When a provider is enabled, its credentials are required.
   const bogEnabled = config.bog?.enabled ?? false
   const tbcEnabled = config.tbc?.enabled ?? false
+  const inPersonEnabled = config.in_person?.enabled ?? true
+  // Priced services always keep the online route (the gateway is platform-wide),
+  // so switching on-site off only strands FREE services — they have no other way
+  // to finish. Warn rather than block: the org may have no ₾0 services at all.
+  const freeServicesStranded = !inPersonEnabled
   const bogMerchantMissing = bogEnabled && !(config.bog?.merchantId ?? '').trim()
   const bogKeyMissing = bogEnabled && !(config.bog?.apiKey ?? '').trim()
   const tbcMerchantMissing = tbcEnabled && !(config.tbc?.merchantId ?? '').trim()
@@ -147,6 +162,39 @@ export default function PaymentSettings() {
       </Alert>
 
       <Stack spacing={2}>
+        {/* Accept payment on site. Flag-only — no credentials — so it lives
+            above the gateway accordions. Switching it off is allowed — it just
+            strands ₾0 services, which the inline warning explains. */}
+        <Card>
+          <CardContent sx={{ p: 3 }}>
+            <FormControlLabel
+              sx={{ ml: 0, display: 'flex' }}
+              control={
+                <Switch
+                  checked={inPersonEnabled}
+                  onChange={e => setInPerson(e.target.checked)}
+                  data-testid="payment-in-person-toggle"
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {t('settings.acceptOnSite')}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {t('settings.acceptOnSiteHelp')}
+                  </Typography>
+                </Box>
+              }
+            />
+            {freeServicesStranded && (
+              <Alert severity="warning" sx={{ mt: 2 }} data-testid="payment-no-onsite-warning">
+                {t('settings.onSiteOffWarning')}
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Org-default deposit: the upfront prepayment that confirms a booking,
             applied to every service that doesn't set its own. The strongest
             no-show killer. */}

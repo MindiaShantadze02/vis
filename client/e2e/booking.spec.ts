@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test'
-import { passBookingOtp, fillStable, bookToDetails, pickFirstAvailableSlot, SEED } from './helpers'
+import {
+  passBookingOtp, fillStable, bookToDetails, pickFirstAvailableSlot,
+  signInSeed, restApi, letterName, uniquePhone, SEED,
+} from './helpers'
 
 /** Open the booking wizard on the date step (service selected, week strip visible). */
 async function openDateStep(page: import('@playwright/test').Page) {
@@ -19,9 +22,9 @@ test.describe('Public booking', () => {
     // The quiet "Powered by Vis" growth-loop footer is on every booking page.
     await expect(page.getByTestId('powered-by-vis')).toBeVisible()
 
-    // Step 3 — customer details. Pay-in-person was removed: a priced service
-    // (the seeded Consultation is ₾50) is always charged online, so there's no
-    // payment selector — Book proceeds straight to payment after verification.
+    // Step 3 — customer details. A priced service (the seeded Consultation is
+    // ₾50) with on-site enabled shows the Online / On site selector, and Online
+    // is preselected — so Book proceeds straight to payment after verification.
     // Name must be letters only (isValidPersonName rejects digits).
     await fillStable(page.getByTestId('book-first-name'), 'Nino')
     await fillStable(page.getByTestId('book-phone'), '599112233')
@@ -141,5 +144,75 @@ test.describe('Public booking — mobile', () => {
     // At the current week a further back-swipe is a no-op (can't go past today).
     await swipeStrip(page, 'right')
     await expect(firstDay).toHaveAttribute('data-testid', initialKey!)
+  })
+})
+
+/**
+ * On-site (pay-in-person) booking — re-added 2026-08-16 alongside the removal of
+ * the ₾5 price floor. A ₾0 service can only be booked this way, so this also
+ * covers the free-service path end to end.
+ *
+ * Creates its own ₾0 service as the seeded owner and deactivates it afterwards,
+ * so it never depends on the seed catalogue having a free entry.
+ */
+test.describe('Public booking — on site', () => {
+  const FREE_SVC = 'Free consult (e2e)'
+  let serviceId: string | null = null
+
+  test.beforeAll(async () => {
+    const ctx = await signInSeed()
+    const org = (await restApi(ctx, `organisations?slug=eq.${SEED.slug}&select=id`)) as { id: string }[]
+    const rows = (await restApi(ctx, 'services', {
+      method: 'POST',
+      headers: { prefer: 'return=representation' },
+      body: JSON.stringify({
+        org_id: org[0].id, name: FREE_SVC, duration_minutes: 30,
+        price: 0, max_per_slot: 1, is_active: true, location_type: 'in_person', sort_order: 99,
+      }),
+    })) as { id: string }[]
+    serviceId = rows[0].id
+  })
+
+  test.afterAll(async () => {
+    if (!serviceId) return
+    const ctx = await signInSeed()
+    await restApi(ctx, `services?id=eq.${serviceId}`, {
+      method: 'PATCH', body: JSON.stringify({ is_active: false }),
+    })
+  })
+
+  test('a ₾0 service books on site with no gateway redirect', async ({ page }) => {
+    await page.goto(`/book/${SEED.slug}`)
+    const svc = page.getByTestId('book-service').filter({ hasText: FREE_SVC })
+    await expect(svc.first()).toBeVisible({ timeout: 30_000 })
+    await svc.first().click()
+    expect(await pickFirstAvailableSlot(page), 'a free slot this week').toBe(true)
+
+    await fillStable(page.getByTestId('book-first-name'), letterName())
+    await fillStable(page.getByTestId('book-phone'), uniquePhone())
+
+    // Free ⇒ on site is the ONLY route, so no selector is offered.
+    await expect(page.getByTestId('book-pay-online')).toHaveCount(0)
+    await expect(page.getByTestId('book-payment-hint')).toBeVisible()
+
+    await page.getByTestId('book-submit').click()
+    await passBookingOtp(page)
+
+    // Straight to the confirmation — the gateway is never involved.
+    await expect(page).toHaveURL(/\/booking-confirmation\//, { timeout: 20_000 })
+    await expect(page.getByTestId('status-approved')).toBeVisible({ timeout: 20_000 })
+  })
+
+  test('a priced service offers the choice and defaults to online', async ({ page }) => {
+    await page.goto(`/book/${SEED.slug}`)
+    const svc = page.getByTestId('book-service').filter({ hasText: 'Consultation' })
+    await expect(svc.first()).toBeVisible({ timeout: 30_000 })
+    await svc.first().click()
+    expect(await pickFirstAvailableSlot(page), 'a free slot this week').toBe(true)
+
+    await expect(page.getByTestId('book-pay-online')).toBeVisible()
+    await expect(page.getByTestId('book-pay-on-site')).toBeVisible()
+    // Online stays preselected, so the existing online flow is unchanged.
+    await expect(page.getByTestId('book-pay-online')).toHaveAttribute('aria-pressed', 'true')
   })
 })

@@ -130,6 +130,9 @@ export async function setOnlinePayments(on: boolean): Promise<void> {
   const payment_config = {
     bog: { merchantId: '', apiKey: '', enabled: on },
     tbc: { merchantId: '', apiKey: '', enabled: false },
+    // Preserve the on-site flag — this helper replaces the whole jsonb, and
+    // dropping the key would silently change what the booking form offers.
+    in_person: { enabled: true },
   }
   const update = await fetch(
     `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`,
