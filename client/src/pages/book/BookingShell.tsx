@@ -78,8 +78,43 @@ export default function BookingShell({
   // once the height has held steady. The reposition always happens invisibly.
   // Small changes are ignored so a scrollbar or a one-line reflow can't make it
   // blink.
+  // Hold the step column at the tallest step seen so far, so moving between
+  // steps never resizes the page (the service list is normally the tallest, and
+  // it is step 1, so the floor is set before anything can shift).
+  //
+  // "Tallest of the three" can only ever mean tallest *so far*: step 2's height
+  // depends on the service picked and on the slot list the server returns for
+  // the chosen day (it changes as they browse days), and step 3's on which
+  // payment routes the org offers — none of that exists until those steps are
+  // rendered. Pre-rendering them to measure would need a fabricated service and
+  // slot. So the floor only ever grows: a later step that IS taller resizes the
+  // page once and then holds.
+  //
+  // Desktop only, and never in an embed: a ~1400px floor under a ~600px date
+  // step would be dead space on a phone, and would inflate the host's iframe.
+  const pinStepHeight = !isMobile && !embed
+  const stepContentRef = useRef<HTMLDivElement | null>(null)
+  const [stepFloor, setStepFloor] = useState(0)
+  useEffect(() => {
+    const el = stepContentRef.current
+    if (!el || !pinStepHeight) return
+    // Measures the inner (unpinned) content, so the floor applied to the outer
+    // container can't feed back into the measurement.
+    const observer = new ResizeObserver(() => {
+      const height = el.offsetHeight
+      setStepFloor(prev => (height > prev ? height : prev))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+    // Re-observes after AnimatePresence swaps in the new step's element.
+  }, [step, pinStepHeight])
+
   const sidebarRef = useRef<HTMLDivElement | null>(null)
   const [markVisible, setMarkVisible] = useState(false)
+  // Bumped by anything that can move the mark; every bump restarts the settle
+  // timer below. A counter rather than a boolean so repeated disturbances
+  // (a load that settles in stages) keep pushing the reveal back.
+  const [markDisturbance, setMarkDisturbance] = useState(0)
 
   // Hide it on a step change before the browser paints the new step. This is
   // the render-phase adjustment pattern rather than an effect: an effect lands
@@ -88,23 +123,31 @@ export default function BookingShell({
   if (markStep !== step) {
     setMarkStep(step)
     setMarkVisible(false)
+    setMarkDisturbance(n => n + 1)
   }
 
   useEffect(() => {
     const el = sidebarRef.current
     if (!el) return
     let lastHeight = -1
-    let timer: number | undefined
     const observer = new ResizeObserver(() => {
       if (Math.abs(el.offsetHeight - lastHeight) < MARK_SETTLE_EPSILON) return
       lastHeight = el.offsetHeight
       setMarkVisible(false)
-      window.clearTimeout(timer)
-      timer = window.setTimeout(() => setMarkVisible(true), MARK_SETTLE_MS)
+      setMarkDisturbance(n => n + 1)
     })
     observer.observe(el)
-    return () => { observer.disconnect(); window.clearTimeout(timer) }
+    return () => observer.disconnect()
   }, [])
+
+  // Reveal once things have been quiet for a moment. Driven by the disturbance
+  // counter, NOT by the resize observer: now that the step column is height-
+  // pinned, a step change hides the mark without resizing anything, so waiting
+  // on a resize to bring it back would leave it hidden for good.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMarkVisible(true), MARK_SETTLE_MS)
+    return () => window.clearTimeout(timer)
+  }, [markDisturbance])
 
   // Light vs. dark sidebar content (the white "minimal" theme uses a light panel,
   // so its text/overlays must flip to dark to stay legible).
@@ -346,12 +389,20 @@ export default function BookingShell({
           </Box>
         </Box>
 
-        {/* Step content — slides in the travelled direction on step change. */}
-        <Box sx={{ flex: 1, position: 'relative', overflowX: 'hidden' }}>
+        {/* Step content — slides in the travelled direction on step change.
+            The column is floored at the tallest step seen so far (see
+            stepFloor), so moving between steps never resizes the page. */}
+        <Box
+          sx={{
+            flex: 1, position: 'relative', overflowX: 'hidden',
+            minHeight: pinStepHeight && stepFloor ? `${stepFloor}px` : undefined,
+          }}
+        >
           <AnimatePresence mode="wait" custom={direction} initial={false}>
             <Box
               component={motion.div}
               key={step}
+              ref={stepContentRef}
               custom={direction}
               variants={stepVariants}
               initial="enter"

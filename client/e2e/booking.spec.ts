@@ -65,6 +65,28 @@ test.describe('Public booking', () => {
     await expect(page.getByTestId('book-phone')).toHaveValue('599112233')
   })
 
+  test('the form holds one height across steps (no layout shift)', async ({ page }) => {
+    await page.goto(`/book/${SEED.slug}`)
+    const service = page.getByTestId('book-service').first()
+    await service.waitFor({ state: 'visible', timeout: 30_000 })
+
+    const height = () => page.evaluate(() => Math.round(document.documentElement.scrollHeight))
+    // Let the service list settle first — its photos land after the markup, and
+    // that final height is the floor every later step is held to.
+    let settled = await height()
+    await expect.poll(async () => {
+      const now = await height()
+      const stable = now === settled
+      settled = now
+      return stable
+    }, { timeout: 15_000 }).toBe(true)
+
+    await service.click()
+    await expect(page.getByTestId('book-week-strip')).toBeVisible()
+    // The date step is shorter than the service list, but the page must not shrink.
+    await expect.poll(height, { timeout: 5_000 }).toBe(settled)
+  })
+
   test('an unknown org slug shows a not-found state', async ({ page }) => {
     await page.goto('/book/this-slug-does-not-exist-xyz')
     // BookingLayout renders an empty/unavailable state rather than the wizard.
