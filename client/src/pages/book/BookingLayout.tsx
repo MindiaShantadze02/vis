@@ -276,10 +276,18 @@ export default function BookingLayout() {
 
   // Live "your booking" summary — each choice ticked off in the sidebar as the
   // customer progresses (same overlay tokens as BookingShell).
+  //
+  // It only ever shows choices made in EARLIER steps, never the one being made
+  // right now. Going back to re-pick a service used to leave "Haircut" ticked
+  // off beside the service list you were standing in — the same for the date on
+  // the date step. The draft itself is kept (so the date step still reopens on
+  // the day they were looking at); this is purely what the panel reports.
   const sideFg = bookingTheme.sidebarText === 'dark' ? '#1F2937' : '#FFFFFF'
   const sideOverlay = (a: number) =>
     `rgba(${bookingTheme.sidebarText === 'dark' ? '0,0,0' : '255,255,255'},${a})`
-  const summary = booking.service ? (
+  const serviceChosen = step > 0 && booking.service
+  const slotChosen = step > 1 && booking.date && booking.time
+  const summary = serviceChosen && booking.service ? (
     <BookingSummaryCard
       label={t('booking.yourBooking')}
       fg={sideFg}
@@ -291,7 +299,7 @@ export default function BookingLayout() {
           label: t('booking.summaryService'),
           primary: booking.service.name,
         },
-        ...(booking.date && booking.time ? [{
+        ...(slotChosen ? [{
           label: t('booking.progressTime'),
           // booking.date is the raw yyyy-MM-dd key — render it like the rest
           // of the flow ("6 Jul · 14:00"), in the active language.
@@ -302,7 +310,9 @@ export default function BookingLayout() {
     />
   ) : undefined
 
-  const mobileAside = booking.service
+  // Same rule for the mobile header's running price: nothing while they are
+  // still choosing the service.
+  const mobileAside = serviceChosen && booking.service
     ? <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{booking.service.price} ₾</Typography>
     : undefined
 

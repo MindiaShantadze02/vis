@@ -87,6 +87,31 @@ test.describe('Public booking', () => {
     await expect.poll(height, { timeout: 5_000 }).toBe(settled)
   })
 
+  test('the sidebar summary only reports steps already left behind', async ({ page }) => {
+    await page.goto(`/book/${SEED.slug}`)
+    const service = page.getByTestId('book-service').filter({ hasText: SEED.service }).first()
+    await service.waitFor({ state: 'visible', timeout: 30_000 })
+
+    const summary = page.getByTestId('booking-summary')
+    const rows = page.getByTestId('booking-summary-row')
+
+    // Choosing the service: nothing to report yet.
+    await expect(summary).toHaveCount(0)
+
+    // On the date step it reports the service — one row, no date/time yet.
+    await service.click()
+    await expect(page.getByTestId('book-week-strip')).toBeVisible()
+    await expect(summary).toBeVisible()
+    await expect(summary).toContainText(SEED.service)
+    await expect(rows).toHaveCount(1)
+
+    // Going back to re-pick a service must clear it again — it used to stay
+    // ticked off beside the very list you were choosing from.
+    await page.getByTestId('book-back').click()
+    await expect(page.getByTestId('book-service').first()).toBeVisible()
+    await expect(summary).toHaveCount(0)
+  })
+
   test('an unknown org slug shows a not-found state', async ({ page }) => {
     await page.goto('/book/this-slug-does-not-exist-xyz')
     // BookingLayout renders an empty/unavailable state rather than the wizard.

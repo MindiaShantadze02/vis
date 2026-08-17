@@ -38,7 +38,7 @@ export default function BookingSummaryCard({
   label, fg, overlay, rows, price, priceLabel,
 }: Props) {
   return (
-    <Box sx={{ animation: anim.fadeInUp, position: 'relative', mt: 1, color: fg }}>
+    <Box data-testid="booking-summary" sx={{ animation: anim.fadeInUp, position: 'relative', mt: 1, color: fg }}>
       <Typography
         variant="caption"
         sx={{
@@ -52,6 +52,7 @@ export default function BookingSummaryCard({
       {rows.map((r, i) => (
         <Box
           key={i}
+          data-testid="booking-summary-row"
           sx={{
             display: 'flex', alignItems: 'flex-start', gap: 1.25, py: 1.4,
             borderBottom: `1px solid ${overlay(0.15)}`,
