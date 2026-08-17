@@ -491,6 +491,12 @@
     "depositOrgHelp": "Applied to every service that doesn't set its own deposit.",
     "depositRefundable": "Refund deposits on early cancellations",
     "depositRefundableHelp": "When off, deposits are never returned, even within the cancellation window.",
+    "paymentMethodsTitle": "How customers pay",
+    "paymentMethodsHelp": "Offer online, on site, or both. At least one must stay on.",
+    "acceptOnline": "Accept payment online",
+    "acceptOnlineHelp": "Customers pay by card when booking, and the appointment is confirmed straight away.",
+    "paymentNeedsOneMethod": "Customers need at least one way to pay — turn online or on-site payment back on.",
+    "depositNeedsOnline": "Deposits are taken online, so online payment must stay on while a deposit is set. Set the deposit to “None” first.",
     "acceptOnSite": "Accept payment on site",
     "acceptOnSiteHelp": "Let customers choose to pay at the appointment instead of online. Services that require a deposit always pay online.",
     "onSiteOffWarning": "Customers can no longer pay on site. Free (₾0) services have no other way to be booked, so they will be unbookable until you turn this back on."

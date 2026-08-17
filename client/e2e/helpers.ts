@@ -117,6 +117,46 @@ export async function pickFirstAvailableSlot(page: Page): Promise<boolean> {
 }
 
 /**
+ * Set which payment methods the seeded org offers (payment_config.online /
+ * .in_person). Both default ON, which is the seed's resting state — a spec that
+ * changes them MUST restore it, or later specs see a different Step-3 form.
+ * Straight PostgREST as the seeded owner. The bog/tbc credential slots are left
+ * alone: they are not availability switches.
+ */
+export async function setPaymentMethods(
+  opts: { online: boolean; inPerson: boolean },
+): Promise<void> {
+  const { url, anonKey, accessToken } = await signInSeed()
+  const current = await fetch(
+    `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=payment_config`,
+    { headers: { apikey: anonKey, authorization: `Bearer ${accessToken}` } },
+  )
+  if (!current.ok) throw new Error(`payment_config read failed: ${current.status}`)
+  const [row] = (await current.json()) as { payment_config: Record<string, unknown> }[]
+  const payment_config = {
+    ...(row?.payment_config ?? {}),
+    online: { enabled: opts.online },
+    in_person: { enabled: opts.inPerson },
+  }
+  const update = await fetch(
+    `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: anonKey,
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+        prefer: 'return=representation',
+      },
+      body: JSON.stringify({ payment_config }),
+    },
+  )
+  if (!update.ok) throw new Error(`payment_config update failed: ${update.status} ${await update.text()}`)
+  const rows = (await update.json()) as { id: string }[]
+  if (!rows.length) throw new Error('payment_config update matched no org')
+}
+
+/**
  * Enable/disable the ONLINE payment option on the seeded org by flipping
  * payment_config.bog.enabled (the Step-3 payment selector shows "online" when
  * bog or tbc is enabled; the actual checkout still goes through the
@@ -130,9 +170,10 @@ export async function setOnlinePayments(on: boolean): Promise<void> {
   const payment_config = {
     bog: { merchantId: '', apiKey: '', enabled: on },
     tbc: { merchantId: '', apiKey: '', enabled: false },
-    // Preserve the on-site flag — this helper replaces the whole jsonb, and
-    // dropping the key would silently change what the booking form offers.
+    // Preserve the method flags — this helper replaces the whole jsonb, and
+    // dropping a key would silently change what the booking form offers.
     in_person: { enabled: true },
+    online: { enabled: true },
   }
   const update = await fetch(
     `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`,

@@ -20,6 +20,8 @@ interface PaymentConfig {
   tbc?: { merchantId?: string; apiKey?: string; enabled?: boolean }
   /** Flag-only (no credentials): may the customer choose to pay on site? */
   in_person?: { enabled?: boolean }
+  /** Flag-only: may the customer pay online (card via the gateway)? */
+  online?: { enabled?: boolean }
 }
 
 export default function PaymentSettings() {
@@ -31,6 +33,7 @@ export default function PaymentSettings() {
     bog: { merchantId: '', apiKey: '', enabled: false },
     tbc: { merchantId: '', apiKey: '', enabled: false },
     in_person: { enabled: true },
+    online: { enabled: true },
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -70,6 +73,9 @@ export default function PaymentSettings() {
           // Missing key = an org from before on-site was re-added; default ON to
           // match the migration's backfill.
           in_person: { enabled: pc.in_person?.enabled ?? true },
+          // Same story for online: absent = an org from before the toggle
+          // existed, when online was implicit and always on.
+          online: { enabled: pc.online?.enabled ?? true },
         })
         if (pc.bog?.enabled) setBogExpanded(true)
         if (pc.tbc?.enabled) setTbcExpanded(true)
@@ -103,14 +109,24 @@ export default function PaymentSettings() {
     setConfig(c => ({ ...c, in_person: { enabled } }))
   }
 
+  function setOnline(enabled: boolean) {
+    setConfig(c => ({ ...c, online: { enabled } }))
+  }
+
   // When a provider is enabled, its credentials are required.
   const bogEnabled = config.bog?.enabled ?? false
   const tbcEnabled = config.tbc?.enabled ?? false
   const inPersonEnabled = config.in_person?.enabled ?? true
-  // Priced services always keep the online route (the gateway is platform-wide),
-  // so switching on-site off only strands FREE services — they have no other way
-  // to finish. Warn rather than block: the org may have no ₾0 services at all.
+  const onlineEnabled = config.online?.enabled ?? true
+  // Switching on-site off strands FREE services — they have no other way to
+  // finish (create-payment rejects a ₾0 amount). Warn rather than block: the org
+  // may have no ₾0 services at all.
   const freeServicesStranded = !inPersonEnabled
+  // The two hard rules. A booking has to be payable somehow, and a deposit is
+  // collected by the gateway — an on-site-only business can't take one, and the
+  // guest path refuses those bookings with `deposit_required`.
+  const noPaymentMethod = !inPersonEnabled && !onlineEnabled
+  const depositNeedsOnline = depositMode !== 'none' && !onlineEnabled
   const bogMerchantMissing = bogEnabled && !(config.bog?.merchantId ?? '').trim()
   const bogKeyMissing = bogEnabled && !(config.bog?.apiKey ?? '').trim()
   const tbcMerchantMissing = tbcEnabled && !(config.tbc?.merchantId ?? '').trim()
@@ -132,6 +148,8 @@ export default function PaymentSettings() {
       focusFirstInvalidFieldAfterRender()
       return
     }
+    // Both of these are explained inline, right under the toggles.
+    if (noPaymentMethod || depositNeedsOnline) return
     setSaving(true)
     setError(null)
 
@@ -162,13 +180,39 @@ export default function PaymentSettings() {
       </Alert>
 
       <Stack spacing={2}>
-        {/* Accept payment on site. Flag-only — no credentials — so it lives
-            above the gateway accordions. Switching it off is allowed — it just
-            strands ₾0 services, which the inline warning explains. */}
+        {/* How customers may pay. Both are flag-only (no credentials), so they
+            sit above the gateway accordions: online, on site, or both — any
+            combination except neither. */}
         <Card>
           <CardContent sx={{ p: 3 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+              {t('settings.paymentMethodsTitle')}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1.5 }}>
+              {t('settings.paymentMethodsHelp')}
+            </Typography>
             <FormControlLabel
               sx={{ ml: 0, display: 'flex' }}
+              control={
+                <Switch
+                  checked={onlineEnabled}
+                  onChange={e => setOnline(e.target.checked)}
+                  data-testid="payment-online-toggle"
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {t('settings.acceptOnline')}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {t('settings.acceptOnlineHelp')}
+                  </Typography>
+                </Box>
+              }
+            />
+            <FormControlLabel
+              sx={{ ml: 0, mt: 1.5, display: 'flex' }}
               control={
                 <Switch
                   checked={inPersonEnabled}
@@ -187,7 +231,17 @@ export default function PaymentSettings() {
                 </Box>
               }
             />
-            {freeServicesStranded && (
+            {noPaymentMethod && (
+              <Alert severity="error" sx={{ mt: 2 }} data-testid="payment-no-method-error">
+                {t('settings.paymentNeedsOneMethod')}
+              </Alert>
+            )}
+            {depositNeedsOnline && (
+              <Alert severity="error" sx={{ mt: 2 }} data-testid="payment-deposit-needs-online">
+                {t('settings.depositNeedsOnline')}
+              </Alert>
+            )}
+            {freeServicesStranded && !noPaymentMethod && (
               <Alert severity="warning" sx={{ mt: 2 }} data-testid="payment-no-onsite-warning">
                 {t('settings.onSiteOffWarning')}
               </Alert>

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import {
   passBookingOtp, fillStable, bookToDetails, pickFirstAvailableSlot,
-  signInSeed, restApi, letterName, uniquePhone, SEED,
+  signInSeed, restApi, letterName, uniquePhone, setPaymentMethods, SEED,
 } from './helpers'
 
 /** Open the booking wizard on the date step (service selected, week strip visible). */
@@ -218,5 +218,26 @@ test.describe('Public booking — on site', () => {
     await expect(page.getByTestId('book-pay-on-site')).toBeVisible()
     // Online stays preselected, so the existing online flow is unchanged.
     await expect(page.getByTestId('book-pay-online')).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('an on-site-only business offers no online route at all', async ({ page }) => {
+    // The third policy: a shop that takes cash at the counter. Restore the seed
+    // in a finally — later specs expect both methods on offer.
+    await setPaymentMethods({ online: false, inPerson: true })
+    try {
+      await page.goto(`/book/${SEED.slug}`)
+      const svc = page.getByTestId('book-service').filter({ hasText: 'Consultation' })
+      await expect(svc.first()).toBeVisible({ timeout: 30_000 })
+      await svc.first().click()
+      expect(await pickFirstAvailableSlot(page), 'a free slot this week').toBe(true)
+
+      // A priced service, yet there is no choice to make and no online option.
+      await expect(page.getByTestId('book-pay-on-site')).toHaveCount(0)
+      await expect(page.getByTestId('book-pay-online')).toHaveCount(0)
+      // ...and the hint promises payment at the appointment, not a gateway.
+      await expect(page.getByTestId('book-payment-hint')).toBeVisible()
+    } finally {
+      await setPaymentMethods({ online: true, inPerson: true })
+    }
   })
 })

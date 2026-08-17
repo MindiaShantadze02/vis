@@ -41,12 +41,19 @@ test.describe('Business onboarding', () => {
 
     // Step 3 — specialists (optional): add one bookable specialist, with the
     // same entrance-animation retry as the service form. The step lists the
-    // services from step 2 as chips, preselected — that's what becomes the
-    // service_staff row a customer needs to book this person by name.
-    await expect(page.getByTestId('onb-specialist-service-chip')).toHaveCount(1)
-    await expect(page.getByTestId('onb-specialist-service-chip')).toHaveAttribute('data-selected', 'true')
+    // services from step 2 as chips, none selected — the owner chooses what
+    // this person does; picking one is what writes the service_staff row a
+    // customer needs to book them by name.
+    const serviceChip = page.getByTestId('onb-specialist-service-chip')
+    await expect(serviceChip).toHaveCount(1)
+    // Nothing is assigned until the owner says so.
+    await expect(serviceChip).toHaveAttribute('data-selected', 'false')
+    // Selecting is part of the retried block: the step's entrance animation can
+    // remount the form and drop it, exactly like the typed fields.
     await expect(async () => {
       await page.getByTestId('onb-specialist-name').fill('Etest Specialist')
+      await serviceChip.click()
+      await expect(serviceChip).toHaveAttribute('data-selected', 'true', { timeout: 2_000 })
       const save = page.getByTestId('onb-specialist-save')
       await expect(save).toBeEnabled({ timeout: 2_000 })
       await save.click()

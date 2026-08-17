@@ -126,11 +126,17 @@ export default function Step3CustomerForm({
   // deposit is the entire point, and normalize_guest_appointment raises
   // `deposit_required` if a deposit service is pushed down the direct-insert path.
   const onSiteEnabled = org.payment_config?.in_person?.enabled ?? true;
-  const canPayOnline = price > 0;
+  const onlineEnabled = org.payment_config?.online?.enabled ?? true;
+  // A deposit keeps the online route open even for a business that switched
+  // online off: the deposit can only be taken by the gateway, and the direct
+  // insert would be refused with `deposit_required` anyway.
+  const canPayOnline = price > 0 && (onlineEnabled || deposit > 0);
   const canPayOnSite = onSiteEnabled && deposit === 0;
   // Offer the choice only when both are genuinely available.
   const showPayChoice = canPayOnline && canPayOnSite;
 
+  // Online stays the default when it's on offer; an on-site-only business lands
+  // straight on on site.
   const [payMethod, setPayMethod] = useState<"online" | "on_site">(
     canPayOnline ? "online" : "on_site",
   );

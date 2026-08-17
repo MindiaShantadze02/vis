@@ -71,10 +71,10 @@ export default function SpecialistsStep() {
   const [bookable, setBookable] = useState(true)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  // Which services this person performs. null = untouched, which means "all of
-  // them" — the useful default, and it stays correct if the user goes back and
-  // adds more services after opening this step.
-  const [serviceKeys, setServiceKeys] = useState<string[] | null>(null)
+  // Which services this person performs — nothing preselected: assigning a
+  // barber to every service by default is wrong more often than it's right, so
+  // the owner picks.
+  const [serviceKeys, setServiceKeys] = useState<string[]>([])
   // Set when Next is hit with a half-filled specialist that isn't valid yet —
   // explain why we stayed instead of silently dropping it (mirrors ServicesStep).
   const [draftError, setDraftError] = useState(false)
@@ -85,9 +85,7 @@ export default function SpecialistsStep() {
   // Seats are unlimited under post-paid billing (no tiers) — nothing to gate.
   const effectiveBookable = bookable
 
-  // Services entered on the previous step, and the draft's resolved selection.
-  const allServiceKeys = data.services.map(svc => svc.key)
-  const selectedServiceKeys = serviceKeys ?? allServiceKeys
+  // Services entered on the previous step, for the assignment chips.
   const serviceNameByKey = new Map(data.services.map(svc => [svc.key, svc.name]))
 
   function pickPhoto(file: File) {
@@ -103,15 +101,12 @@ export default function SpecialistsStep() {
   function resetForm() {
     setName(''); setTitle(''); setBookable(true)
     setPhotoFile(null); setPhotoPreview(null)
-    setServiceKeys(null)
+    setServiceKeys([])
     setSubmitted(false)
   }
 
   function toggleService(key: string) {
-    setServiceKeys(prev => {
-      const current = prev ?? allServiceKeys
-      return current.includes(key) ? current.filter(k => k !== key) : [...current, key]
-    })
+    setServiceKeys(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
   }
 
   function addSpecialist() {
@@ -124,7 +119,7 @@ export default function SpecialistsStep() {
       is_bookable: effectiveBookable,
       photoFile,
       photoPreview,
-      serviceKeys: selectedServiceKeys,
+      serviceKeys,
     }
     update({ specialists: [...data.specialists, specialist] })
     setDraftError(false)
@@ -275,7 +270,7 @@ export default function SpecialistsStep() {
                   </Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {data.services.map(svc => {
-                      const sel = selectedServiceKeys.includes(svc.key)
+                      const sel = serviceKeys.includes(svc.key)
                       return (
                         <Chip
                           key={svc.key}
