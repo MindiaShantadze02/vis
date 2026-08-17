@@ -84,7 +84,7 @@ export default function ManagePage() {
       .select('id, name, duration_minutes, price, max_per_slot')
       .eq('id', c.service_id)
       .maybeSingle()
-    if (svc) setService({ ...(svc as Omit<BookingService, 'images'>), images: [] })
+    if (svc) setService({ ...(svc as Omit<BookingService, 'image_url'>), image_url: null })
     setView('menu')
   }
 

@@ -71,6 +71,10 @@ export default function SpecialistsStep() {
   const [bookable, setBookable] = useState(true)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  // Which services this person performs. null = untouched, which means "all of
+  // them" — the useful default, and it stays correct if the user goes back and
+  // adds more services after opening this step.
+  const [serviceKeys, setServiceKeys] = useState<string[] | null>(null)
   // Set when Next is hit with a half-filled specialist that isn't valid yet —
   // explain why we stayed instead of silently dropping it (mirrors ServicesStep).
   const [draftError, setDraftError] = useState(false)
@@ -80,6 +84,11 @@ export default function SpecialistsStep() {
 
   // Seats are unlimited under post-paid billing (no tiers) — nothing to gate.
   const effectiveBookable = bookable
+
+  // Services entered on the previous step, and the draft's resolved selection.
+  const allServiceKeys = data.services.map(svc => svc.key)
+  const selectedServiceKeys = serviceKeys ?? allServiceKeys
+  const serviceNameByKey = new Map(data.services.map(svc => [svc.key, svc.name]))
 
   function pickPhoto(file: File) {
     const fileErr = imageFileError(file)
@@ -94,7 +103,15 @@ export default function SpecialistsStep() {
   function resetForm() {
     setName(''); setTitle(''); setBookable(true)
     setPhotoFile(null); setPhotoPreview(null)
+    setServiceKeys(null)
     setSubmitted(false)
+  }
+
+  function toggleService(key: string) {
+    setServiceKeys(prev => {
+      const current = prev ?? allServiceKeys
+      return current.includes(key) ? current.filter(k => k !== key) : [...current, key]
+    })
   }
 
   function addSpecialist() {
@@ -107,6 +124,7 @@ export default function SpecialistsStep() {
       is_bookable: effectiveBookable,
       photoFile,
       photoPreview,
+      serviceKeys: selectedServiceKeys,
     }
     update({ specialists: [...data.specialists, specialist] })
     setDraftError(false)
@@ -172,7 +190,14 @@ export default function SpecialistsStep() {
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>{sp.name}</Typography>
                   {sp.title && (
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{sp.title}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>{sp.title}</Typography>
+                  )}
+                  {data.services.length > 0 && (
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }} noWrap data-testid="onb-specialist-services">
+                      {sp.serviceKeys.length === 0
+                        ? t('onboarding.noServicesAssigned')
+                        : sp.serviceKeys.map(k => serviceNameByKey.get(k)).filter(Boolean).join(' · ')}
+                    </Typography>
                   )}
                 </Box>
                 {sp.is_bookable
@@ -236,6 +261,37 @@ export default function SpecialistsStep() {
                 )}
                 label={<Typography variant="body2">{t('settings.bookable')}</Typography>}
               />
+              {/* Which services this person performs — the service_staff rows
+                  that let a customer pick them by name on the booking page.
+                  Without this, an org finished onboarding with staff nobody
+                  could actually book. */}
+              {data.services.length > 0 && (
+                <Box sx={{ mt: 2 }} data-testid="onb-specialist-services-picker">
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    {t('onboarding.specialistServices')}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+                    {t('onboarding.specialistServicesHelp')}
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {data.services.map(svc => {
+                      const sel = selectedServiceKeys.includes(svc.key)
+                      return (
+                        <Chip
+                          key={svc.key}
+                          label={svc.name}
+                          onClick={() => toggleService(svc.key)}
+                          data-testid="onb-specialist-service-chip"
+                          data-selected={sel}
+                          color={sel ? 'primary' : 'default'}
+                          variant={sel ? 'filled' : 'outlined'}
+                        />
+                      )
+                    })}
+                  </Box>
+                </Box>
+              )}
+
               {/* Inside the fields column so it reads as this form's action. */}
               <Stack direction="row" spacing={1} sx={{ mt: 2.5 }}>
                 <Button

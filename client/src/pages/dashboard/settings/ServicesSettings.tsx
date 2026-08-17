@@ -15,10 +15,10 @@ import { useOrg } from '@/contexts/OrgContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, SkeletonImage, FormErrorAlert, useToast, SideDrawer } from '@/components/ui'
 import { isNonNegativeNumber, isValidServicePrice, MAX_PRICE, MIN_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
-import ServiceImagesEditor, { type EditorImage } from '@/components/ServiceImagesEditor'
+import ServiceThumbnailPicker from '@/components/ServiceThumbnailPicker'
 import {
   uploadServiceImage, removeServiceImageFile, serviceImageFileError,
-  MAX_IMAGES_PER_SERVICE, MAX_SERVICE_IMAGE_MB, type ServiceImage,
+  MAX_SERVICE_IMAGE_MB,
 } from '@/lib/serviceImages'
 
 type LocationType = 'in_person' | 'online'
@@ -35,6 +35,8 @@ interface Service {
   // Per-service deposit override; NULL deposit_type inherits the org default.
   deposit_type: 'none' | 'fixed' | 'percent' | null
   deposit_value: number | null
+  // Single thumbnail (services.image_url); null when none was uploaded.
+  image_url: string | null
 }
 
 // UI mode for the deposit control: 'inherit' persists a NULL deposit_type (use
@@ -72,12 +74,12 @@ const EMPTY: ServiceForm = {
   deposit_value: '',
 }
 
-// A dialog gallery item. `id` present = a persisted service_images row (edit
-// mode, already uploaded). `file` present = a staged upload waiting for the new
-// service's id (create mode). `url` is what the thumbnail shows (a stored URL or
-// a local blob: preview).
-interface GalleryItem extends EditorImage {
-  id?: string
+// The dialog's thumbnail. `saved` = already persisted on the service row (edit
+// mode). `file` = staged upload waiting for the new service's id (create mode).
+// `url` is what the tile shows: a stored URL or a local blob: preview.
+interface ThumbState {
+  url: string
+  saved?: boolean
   file?: File
 }
 
@@ -107,7 +109,6 @@ export default function ServicesSettings() {
 
   const [services, setServices] = useState<Service[]>([])
   const [bookableMembers, setBookableMembers] = useState<BookableMember[]>([])
-  const [imagesByService, setImagesByService] = useState<Record<string, ServiceImage[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // Set on the first Save attempt of the open dialog: from then on empty
@@ -119,8 +120,8 @@ export default function ServicesSettings() {
   const [editing, setEditing] = useState<Service | null>(null)
   const [form, setForm] = useState(EMPTY)
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
-  const [gallery, setGallery] = useState<GalleryItem[]>([])
-  const [galleryUploading, setGalleryUploading] = useState(false)
+  const [thumb, setThumb] = useState<ThumbState | null>(null)
+  const [thumbUploading, setThumbUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Service | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -132,7 +133,7 @@ export default function ServicesSettings() {
   async function load() {
     if (!org) return
     setLoading(true)
-    const [svcRes, memRes, imgRes] = await Promise.all([
+    const [svcRes, memRes] = await Promise.all([
       supabase.from('services').select('*').eq('org_id', org.id).order('sort_order'),
       supabase
         .from('org_members')
@@ -140,19 +141,9 @@ export default function ServicesSettings() {
         .eq('org_id', org.id)
         .eq('is_bookable', true)
         .order('sort_order'),
-      supabase
-        .from('service_images')
-        .select('id, service_id, url, sort_order')
-        .eq('org_id', org.id)
-        .order('sort_order'),
     ])
     setServices((svcRes.data ?? []) as Service[])
     setBookableMembers((memRes.data ?? []) as BookableMember[])
-    const grouped: Record<string, ServiceImage[]> = {}
-    for (const row of (imgRes.data ?? []) as ServiceImage[]) {
-      (grouped[row.service_id] ??= []).push(row)
-    }
-    setImagesByService(grouped)
     setLoading(false)
   }
 
@@ -160,7 +151,7 @@ export default function ServicesSettings() {
     setEditing(null)
     setForm(EMPTY)
     setSelectedMemberIds([])
-    setGallery([])
+    setThumb(null)
     setError(null)
     setSubmitted(false)
     setOpen(true)
@@ -181,62 +172,55 @@ export default function ServicesSettings() {
       deposit_mode: s.deposit_type == null ? 'inherit' : s.deposit_type,
       deposit_value: s.deposit_value != null ? String(s.deposit_value) : '',
     })
-    setGallery((imagesByService[s.id] ?? []).map(img => ({ key: img.id, id: img.id, url: img.url })))
+    setThumb(s.image_url ? { url: s.image_url, saved: true } : null)
     const { data } = await supabase.from('service_staff').select('member_id').eq('service_id', s.id)
     setSelectedMemberIds((data ?? []).map(r => (r as { member_id: string }).member_id))
     setOpen(true)
   }
 
-  // Add images from the dialog picker. In edit mode the service row exists, so
-  // upload + persist immediately; in create mode stage the files (with a local
-  // preview) until the new service's id exists on save.
-  async function handleAddImages(files: File[]) {
+  // Pick the thumbnail. In edit mode the service row exists, so upload +
+  // persist immediately; in create mode stage the file (with a local preview)
+  // until the new service's id exists on save.
+  async function handlePickImage(file: File) {
     if (!org) return
-    const room = MAX_IMAGES_PER_SERVICE - gallery.length
-    const picked = files.slice(0, Math.max(0, room))
-    const valid: File[] = []
-    for (const f of picked) {
-      const err = serviceImageFileError(f)
-      if (err) { toast.error(err === 'fileTooLarge' ? t('validation.fileTooLarge', { max: MAX_SERVICE_IMAGE_MB }) : t('validation.invalidImage')); continue }
-      valid.push(f)
+    const err = serviceImageFileError(file)
+    if (err) {
+      toast.error(err === 'fileTooLarge' ? t('validation.fileTooLarge', { max: MAX_SERVICE_IMAGE_MB }) : t('validation.invalidImage'))
+      return
     }
-    if (files.length > room) toast.error(t('settings.serviceImagesMax', { max: MAX_IMAGES_PER_SERVICE }))
-    if (!valid.length) return
 
     if (editing) {
-      setGalleryUploading(true)
-      let order = gallery.length
-      for (const file of valid) {
-        const url = await uploadServiceImage(org.id, editing.id, file)
-        if (!url) { toast.error(t('validation.saveFailed')); continue }
-        const { data, error: err } = await supabase
-          .from('service_images')
-          .insert({ org_id: org.id, service_id: editing.id, url, sort_order: order++ })
-          .select('id, service_id, url, sort_order')
-          .single()
-        if (err || !data) { await removeServiceImageFile(url); toast.error(t('validation.saveFailed')); continue }
-        const row = data as ServiceImage
-        setGallery(prev => [...prev, { key: row.id, id: row.id, url: row.url }])
-        setImagesByService(prev => ({ ...prev, [editing.id]: [...(prev[editing.id] ?? []), row] }))
-      }
-      setGalleryUploading(false)
+      setThumbUploading(true)
+      const url = await uploadServiceImage(org.id, editing.id, file)
+      if (!url) { setThumbUploading(false); toast.error(t('validation.saveFailed')); return }
+      const { error: upErr } = await supabase
+        .from('services').update({ image_url: url }).eq('id', editing.id)
+      if (upErr) { await removeServiceImageFile(url); setThumbUploading(false); toast.error(t('validation.saveFailed')); return }
+      // Replacing a photo: drop the outgoing file so the bucket doesn't collect
+      // orphans (the row already points at the new one).
+      const previous = thumb?.saved ? thumb.url : null
+      if (previous) await removeServiceImageFile(previous)
+      setThumb({ url, saved: true })
+      setServices(prev => prev.map(x => x.id === editing.id ? { ...x, image_url: url } : x))
+      setThumbUploading(false)
     } else {
-      setGallery(prev => [...prev, ...valid.map(file => ({ key: crypto.randomUUID(), url: URL.createObjectURL(file), file }))])
+      if (thumb?.file) URL.revokeObjectURL(thumb.url)
+      setThumb({ url: URL.createObjectURL(file), file })
     }
   }
 
-  // Remove an image. Persisted rows (edit mode) delete the row + storage file;
-  // staged items (create mode) just drop and revoke their preview.
-  async function handleRemoveImage(key: string) {
-    const item = gallery.find(g => g.key === key)
-    if (!item) return
-    setGallery(prev => prev.filter(g => g.key !== key))
-    if (item.id && editing) {
-      await supabase.from('service_images').delete().eq('id', item.id)
-      await removeServiceImageFile(item.url)
-      setImagesByService(prev => ({ ...prev, [editing.id]: (prev[editing.id] ?? []).filter(r => r.id !== item.id) }))
-    } else if (item.file) {
-      URL.revokeObjectURL(item.url)
+  // Remove the thumbnail. A persisted one (edit mode) clears the row and
+  // deletes the storage file; a staged one just drops its preview.
+  async function handleRemoveImage() {
+    const current = thumb
+    if (!current) return
+    setThumb(null)
+    if (current.saved && editing) {
+      await supabase.from('services').update({ image_url: null }).eq('id', editing.id)
+      await removeServiceImageFile(current.url)
+      setServices(prev => prev.map(x => x.id === editing.id ? { ...x, image_url: null } : x))
+    } else if (current.file) {
+      URL.revokeObjectURL(current.url)
     }
   }
 
@@ -348,18 +332,13 @@ export default function ServicesSettings() {
 
     await syncStaff(serviceId)
 
-    // Persist images staged during create (edit-mode images are already saved
-    // as they're added). Best-effort: a failed image upload shouldn't undo the
-    // saved service — it can be re-added by editing.
-    if (!editing) {
-      const staged = gallery.filter(g => g.file)
-      let order = 0
-      for (const item of staged) {
-        const url = await uploadServiceImage(org.id, serviceId, item.file!)
-        if (!url) continue
-        await supabase.from('service_images').insert({ org_id: org.id, service_id: serviceId, url, sort_order: order++ })
-        URL.revokeObjectURL(item.url)
-      }
+    // Persist a thumbnail staged during create (in edit mode it was saved as
+    // soon as it was picked). Best-effort: a failed upload shouldn't undo the
+    // saved service — the photo can be re-added by editing.
+    if (!editing && thumb?.file) {
+      const url = await uploadServiceImage(org.id, serviceId, thumb.file)
+      if (url) await supabase.from('services').update({ image_url: url }).eq('id', serviceId)
+      URL.revokeObjectURL(thumb.url)
     }
 
     setSaving(false)
@@ -370,9 +349,9 @@ export default function ServicesSettings() {
 
   async function handleDelete(s: Service) {
     setDeleting(true)
-    // Best-effort: remove the underlying storage files before the row cascade
-    // drops their metadata (otherwise the objects would be orphaned).
-    await Promise.all((imagesByService[s.id] ?? []).map(img => removeServiceImageFile(img.url)))
+    // Best-effort: remove the underlying storage file before the row goes
+    // (otherwise the object would be orphaned).
+    await removeServiceImageFile(s.image_url)
     await supabase.from('services').delete().eq('id', s.id)
     setDeleting(false)
     setConfirmDelete(null)
@@ -420,22 +399,13 @@ export default function ServicesSettings() {
                   opacity: s.is_active ? 1 : 0.55,
                 }}
               >
-                {(imagesByService[s.id]?.length ?? 0) > 0 && (
-                  <Box sx={{ position: 'relative', flexShrink: 0 }}>
-                    <SkeletonImage
-                      src={imagesByService[s.id][0].url}
-                      alt=""
-                      data-testid="service-row-thumb"
-                      sx={{ width: 44, height: 44, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}
-                    />
-                    {imagesByService[s.id].length > 1 && (
-                      <Chip
-                        label={`+${imagesByService[s.id].length - 1}`}
-                        size="small"
-                        sx={{ position: 'absolute', bottom: -6, right: -6, height: 18, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
-                      />
-                    )}
-                  </Box>
+                {s.image_url && (
+                  <SkeletonImage
+                    src={s.image_url}
+                    alt=""
+                    data-testid="service-row-thumb"
+                    sx={{ width: 44, height: 44, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', flexShrink: 0 }}
+                  />
                 )}
                 <Box sx={{ flex: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -606,6 +576,7 @@ export default function ServicesSettings() {
                         label={m.display_name || '—'}
                         avatar={<Avatar src={m.avatar_url ?? undefined}>{(m.display_name?.trim() || '?').charAt(0).toUpperCase()}</Avatar>}
                         data-testid="service-staff-chip"
+                        data-selected={sel}
                         onClick={() => toggleMember(m.id)}
                         color={sel ? 'primary' : 'default'}
                         variant={sel ? 'filled' : 'outlined'}
@@ -615,12 +586,12 @@ export default function ServicesSettings() {
                 </Box>
               </Box>
             )}
-            <ServiceImagesEditor
-              images={gallery.map(g => ({ key: g.key, url: g.url } as EditorImage))}
-              uploading={galleryUploading}
-              onAdd={handleAddImages}
+            <ServiceThumbnailPicker
+              url={thumb?.url ?? null}
+              uploading={thumbUploading}
+              onPick={handlePickImage}
               onRemove={handleRemoveImage}
-              data-testid="service-images-editor"
+              data-testid="service-image-picker"
             />
             <FormControlLabel
               control={

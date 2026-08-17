@@ -187,9 +187,13 @@ export default function WorkingHoursStep() {
         .insert({ org_id: orgId, user_id: user.id, role: 'owner', joined_at: new Date().toISOString() })
       if (memberErr) throw new Error(memberErr.message)
 
+      // Draft service key → created row id, so the specialists' service
+      // assignments (kept by key) can be written once both sides exist.
+      const serviceIdByKey = new Map<string, string>()
+
       if (data.services.length > 0) {
         // RETURNING preserves insert order, so created[i] pairs with services[i]
-        // — used to attach each service's staged gallery images below.
+        // — used to attach each service's staged thumbnail below.
         const { data: createdSvcs, error: svcErr } = await supabase.from('services').insert(
           data.services.map((s, i) => ({
             org_id: orgId, name: s.name, duration_minutes: s.duration_minutes, price: s.price, sort_order: i,
@@ -198,15 +202,20 @@ export default function WorkingHoursStep() {
         ).select('id')
         if (svcErr) throw new Error(svcErr.message)
 
-        // Service gallery images — uploaded after the insert (the storage path
+        ;(createdSvcs ?? []).forEach((row, i) => {
+          const key = data.services[i]?.key
+          if (key) serviceIdByKey.set(key, row.id)
+        })
+
+        // Service thumbnails — uploaded after the insert (the storage path
         // needs each service's id). Best-effort: a failed image upload shouldn't
-        // block finishing; images can be re-added in Services settings.
-        await Promise.all((createdSvcs ?? []).flatMap((row, i) =>
-          (data.services[i]?.imageFiles ?? []).map(async (file, j) => {
-            const url = await uploadServiceImage(orgId, row.id, file)
-            if (url) await supabase.from('service_images').insert({ org_id: orgId, service_id: row.id, url, sort_order: j })
-          }),
-        ))
+        // block finishing; the photo can be re-added in Services settings.
+        await Promise.all((createdSvcs ?? []).map(async (row, i) => {
+          const file = data.services[i]?.imageFile
+          if (!file) return
+          const url = await uploadServiceImage(orgId, row.id, file)
+          if (url) await supabase.from('services').update({ image_url: url }).eq('id', row.id)
+        }))
       }
 
       // Specialists (account-less staff profiles). Photos are uploaded after the
@@ -221,6 +230,22 @@ export default function WorkingHoursStep() {
           })))
           .select('id')
         if (staffErr) throw new Error(staffErr.message)
+
+        // Which services each specialist performs. Without these rows the
+        // booking page can't offer anyone by name, so an org used to finish
+        // onboarding with staff no customer could pick. Unknown keys (a service
+        // deleted after the assignment was made) are skipped.
+        const links = (created ?? []).flatMap((row, i) =>
+          (data.specialists[i]?.serviceKeys ?? [])
+            .map(key => serviceIdByKey.get(key))
+            .filter((serviceId): serviceId is string => Boolean(serviceId))
+            .map(serviceId => ({ org_id: orgId, service_id: serviceId, member_id: row.id })),
+        )
+        if (links.length > 0) {
+          const { error: linkErr } = await supabase.from('service_staff').insert(links)
+          if (linkErr) throw new Error(linkErr.message)
+        }
+
         // Best-effort: a failed photo upload shouldn't block finishing — the
         // photo can be re-added any time in Team settings.
         await Promise.all((created ?? []).map(async (row, i) => {

@@ -14,8 +14,8 @@ import { ActionIconButton, EmptyState, SkeletonImage, useToast } from '@/compone
 import { HONEY } from '@/theme/theme'
 import { isValidServicePrice, MAX_PRICE, MIN_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
-import ServiceImagesEditor from '@/components/ServiceImagesEditor'
-import { serviceImageFileError, MAX_IMAGES_PER_SERVICE, MAX_SERVICE_IMAGE_MB } from '@/lib/serviceImages'
+import ServiceThumbnailPicker from '@/components/ServiceThumbnailPicker'
+import { serviceImageFileError, MAX_SERVICE_IMAGE_MB } from '@/lib/serviceImages'
 import StepHeader from './StepHeader'
 import type { OnboardingData, ServiceLocationType } from './OnboardingLayout'
 
@@ -28,23 +28,19 @@ interface OutletCtx {
 
 // Numeric fields are held as strings while editing so the inputs can be
 // cleared/partially typed; they're coerced to numbers in saveService().
-interface DraftImage {
-  key: string
-  file: File
-  url: string  // local blob: preview
-}
-
 interface DraftService {
   name: string
   duration_minutes: string
   price: string
   location_type: ServiceLocationType
-  images: DraftImage[]
+  // Staged thumbnail: the File plus its local blob: preview.
+  imageFile: File | null
+  imagePreview: string | null
 }
 
 const empty: DraftService = {
   name: '', duration_minutes: '30', price: String(MIN_PRICE),
-  location_type: 'in_person', images: [],
+  location_type: 'in_person', imageFile: null, imagePreview: null,
 }
 
 // An appointment may last at most 24 hours. Mirrors the DB constraint
@@ -83,29 +79,24 @@ export default function ServicesStep() {
   const isEditing = editingIndex !== null
 
   function resetForm() {
-    setDraft({ ...empty, images: [] })
+    setDraft({ ...empty })
     setEditingIndex(null)
     setSubmitted(false)
   }
 
-  function addImages(files: File[]) {
-    const room = MAX_IMAGES_PER_SERVICE - draft.images.length
-    if (files.length > room) toast.error(t('settings.serviceImagesMax', { max: MAX_IMAGES_PER_SERVICE }))
-    const next: DraftImage[] = []
-    for (const file of files.slice(0, Math.max(0, room))) {
-      const err = serviceImageFileError(file)
-      if (err) { toast.error(err === 'fileTooLarge' ? t('validation.fileTooLarge', { max: MAX_SERVICE_IMAGE_MB }) : t('validation.invalidImage')); continue }
-      next.push({ key: crypto.randomUUID(), file, url: URL.createObjectURL(file) })
+  function pickImage(file: File) {
+    const err = serviceImageFileError(file)
+    if (err) {
+      toast.error(err === 'fileTooLarge' ? t('validation.fileTooLarge', { max: MAX_SERVICE_IMAGE_MB }) : t('validation.invalidImage'))
+      return
     }
-    if (next.length) setDraft(d => ({ ...d, images: [...d.images, ...next] }))
+    setDraft(d => ({ ...d, imageFile: file, imagePreview: URL.createObjectURL(file) }))
   }
 
-  function removeImage(key: string) {
-    setDraft(d => {
-      const gone = d.images.find(i => i.key === key)
-      if (gone) URL.revokeObjectURL(gone.url)
-      return { ...d, images: d.images.filter(i => i.key !== key) }
-    })
+  function removeImage() {
+    // The preview may be shared with an already-saved row (startEdit reuses the
+    // same blob: URL), so it is revoked when the row itself is dropped, not here.
+    setDraft(d => ({ ...d, imageFile: null, imagePreview: null }))
   }
 
   function saveService() {
@@ -114,12 +105,15 @@ export default function ServicesStep() {
     setSubmitted(true)
     if (!draftValid) { focusFirstInvalidFieldAfterRender(); return }
     const svc = {
+      // Reuse the row's key when editing so the specialists step keeps its
+      // assignment; a new row gets a fresh one.
+      key: isEditing ? data.services[editingIndex!].key : crypto.randomUUID(),
       name: draft.name.trim(),
       duration_minutes: Number(draft.duration_minutes),
       price: Number(draft.price),
       location_type: draft.location_type,
-      imageFiles: draft.images.map(i => i.file),
-      imagePreviews: draft.images.map(i => i.url),
+      imageFile: draft.imageFile,
+      imagePreview: draft.imagePreview,
     }
     if (isEditing) {
       update({ services: data.services.map((s, i) => (i === editingIndex ? svc : s)) })
@@ -136,9 +130,10 @@ export default function ServicesStep() {
       duration_minutes: String(svc.duration_minutes),
       price: String(svc.price),
       location_type: svc.location_type,
-      // Re-hydrate staged images so editing a row keeps its gallery. Files and
-      // their existing preview URLs are reused (no re-encode).
-      images: svc.imageFiles.map((file, i) => ({ key: `${index}-${i}`, file, url: svc.imagePreviews[i] })),
+      // Re-hydrate the staged photo so editing a row keeps it. The File and its
+      // existing preview URL are reused (no re-encode).
+      imageFile: svc.imageFile,
+      imagePreview: svc.imagePreview,
     })
     setEditingIndex(index)
   }
@@ -206,9 +201,9 @@ export default function ServicesStep() {
                   bgcolor: editingIndex === i ? 'action.selected' : 'transparent',
                 }}
               >
-                {svc.imagePreviews.length > 0 && (
+                {svc.imagePreview && (
                   <SkeletonImage
-                    src={svc.imagePreviews[0]}
+                    src={svc.imagePreview}
                     alt=""
                     data-testid="onb-service-thumb"
                     sx={{ width: 40, height: 40, borderRadius: 1.5, flexShrink: 0, border: '1px solid', borderColor: 'divider' }}
@@ -300,11 +295,11 @@ export default function ServicesStep() {
             </ToggleButtonGroup>
           </Box>
           <Box sx={{ mb: 2 }}>
-            <ServiceImagesEditor
-              images={draft.images.map(i => ({ key: i.key, url: i.url }))}
-              onAdd={addImages}
+            <ServiceThumbnailPicker
+              url={draft.imagePreview}
+              onPick={pickImage}
               onRemove={removeImage}
-              data-testid="onb-service-images"
+              data-testid="onb-service-image"
             />
           </Box>
           <Stack direction="row" spacing={1}>

@@ -1,14 +1,10 @@
 import { supabase } from '@/lib/supabase'
 
-// Shared helpers for the per-service image gallery (migration 074). Used by the
-// admin Services settings, the onboarding services step, and — for reads only —
-// the public booking service picker.
+// Shared helpers for the single service thumbnail (services.image_url). Used by
+// the admin Services settings and the onboarding services step; the public
+// booking picker only reads the stored URL.
 
 export const SERVICE_IMAGE_BUCKET = 'service-images'
-
-/** How many images a single service may carry. Enforced client-side; keeps the
- *  gallery tidy and storage bounded (writes are already org-scoped by RLS). */
-export const MAX_IMAGES_PER_SERVICE = 6
 
 /** Service photos are shown large on the booking page, so allow up to the
  *  bucket's 5 MB cap (vs. the 2 MB logo/avatar limit). */
@@ -16,13 +12,6 @@ export const MAX_SERVICE_IMAGE_BYTES = 5 * 1024 * 1024
 
 /** Max size in MB, for the `validation.fileTooLarge` message. */
 export const MAX_SERVICE_IMAGE_MB = 5
-
-export interface ServiceImage {
-  id: string
-  service_id: string
-  url: string
-  sort_order: number
-}
 
 /** Validate a service image before upload. Returns a `validation.*` key suffix
  *  or null when fine — mirrors `imageFileError`, but with the larger cap. */
@@ -33,9 +22,9 @@ export function serviceImageFileError(file: File): 'invalidImage' | 'fileTooLarg
 }
 
 /** Upload one file to "<org>/<service>/<uuid>.<ext>" and return its public URL,
- *  or null on failure. A random filename means uploads never collide, so a
- *  service can hold several images without overwriting. Does not toast — the
- *  caller decides how to surface the outcome. */
+ *  or null on failure. The random filename means a replacement never collides
+ *  with the outgoing thumbnail (which the caller deletes separately). Does not
+ *  toast — the caller decides how to surface the outcome. */
 export async function uploadServiceImage(
   orgId: string,
   serviceId: string,

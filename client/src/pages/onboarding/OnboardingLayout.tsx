@@ -13,15 +13,19 @@ import OnboardingShell from './OnboardingShell'
 export type ServiceLocationType = 'in_person' | 'online'
 
 export interface OnboardingService {
+  // Stable identity for this draft row. The specialists step references
+  // services by key, so reordering or deleting a service can't silently
+  // re-point an assignment the way an array index would.
+  key: string
   name: string
   duration_minutes: number
   price: number
   location_type: ServiceLocationType
-  // Gallery images staged as Files until finish — the storage path needs the
-  // service row's id, which only exists after the insert. Previews are local
-  // blob: URLs shown while editing.
-  imageFiles: File[]
-  imagePreviews: string[]
+  // Thumbnail staged as a File until finish — the storage path needs the
+  // service row's id, which only exists after the insert. The preview is a
+  // local blob: URL shown while editing.
+  imageFile: File | null
+  imagePreview: string | null
 }
 
 // An account-less staff profile (org_members role='staff'). The photo is staged
@@ -32,6 +36,10 @@ export interface OnboardingSpecialist {
   is_bookable: boolean
   photoFile: File | null
   photoPreview: string | null
+  // Keys of the services this person performs (service_staff rows, written on
+  // finish). Empty = takes no bookings for any specific service, so the booking
+  // page won't offer them by name.
+  serviceKeys: string[]
 }
 
 export interface OnboardingData {

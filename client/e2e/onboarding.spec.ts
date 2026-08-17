@@ -40,7 +40,11 @@ test.describe('Business onboarding', () => {
     await expect(page).toHaveURL(/\/onboarding\/specialists/)
 
     // Step 3 — specialists (optional): add one bookable specialist, with the
-    // same entrance-animation retry as the service form.
+    // same entrance-animation retry as the service form. The step lists the
+    // services from step 2 as chips, preselected — that's what becomes the
+    // service_staff row a customer needs to book this person by name.
+    await expect(page.getByTestId('onb-specialist-service-chip')).toHaveCount(1)
+    await expect(page.getByTestId('onb-specialist-service-chip')).toHaveAttribute('data-selected', 'true')
     await expect(async () => {
       await page.getByTestId('onb-specialist-name').fill('Etest Specialist')
       const save = page.getByTestId('onb-specialist-save')
@@ -48,6 +52,9 @@ test.describe('Business onboarding', () => {
       await save.click()
       await expect(page.getByTestId('onb-specialist-row')).toHaveCount(1, { timeout: 2_000 })
     }).toPass({ timeout: 20_000 })
+
+    // The added row echoes what they'll be bookable for.
+    await expect(page.getByTestId('onb-specialist-services')).toContainText('Haircut')
 
     await page.getByTestId('onb-specialists-next').click()
     await expect(page).toHaveURL(/\/onboarding\/hours/)
@@ -59,6 +66,15 @@ test.describe('Business onboarding', () => {
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 })
     await expect(page.getByText(bizName)).toBeVisible()
     await expect(page.getByText(/vis\.ge\/book\//)).toBeVisible()
+
+    // The onboarding assignment reached the DB: opening the service shows its
+    // specialist chip already selected (this reads service_staff). Before the
+    // fix, onboarding created staff that were assigned to nothing.
+    await page.goto('/dashboard/settings/services')
+    await page.getByTestId('service-row').filter({ hasText: 'Haircut' }).getByTestId('service-edit').click()
+    await expect(page.getByTestId('service-staff-chip').filter({ hasText: 'Etest Specialist' }))
+      .toHaveAttribute('data-selected', 'true')
+    await page.getByTestId('drawer-close').click()
 
     // Post-paid billing: a brand-new org is free (no trial, no plan). The
     // Billing page shows the running-bill meter — ₾0 with no appointments yet.

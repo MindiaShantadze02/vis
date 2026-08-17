@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box, Typography, Avatar, Divider, useMediaQuery, useTheme,
@@ -16,6 +16,14 @@ import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
 import BookingReviews from './BookingReviews'
 import EmbedScrollHint from './EmbedScrollHint'
+
+/** Sidebar height change (px) big enough to re-hide the watermark while the
+ *  panel re-flows — below this the mark just moves with it. */
+const MARK_SETTLE_EPSILON = 32
+/** How long the height must hold steady before the mark fades back in. Long
+ *  enough to cover a step change settling in stages (the content slides in,
+ *  then the slot list resolves), so the fade isn't started and cut short. */
+const MARK_SETTLE_MS = 350
 
 interface Props {
   org: BookingOrg
@@ -58,6 +66,42 @@ export default function BookingShell({
     window.scrollTo(0, 0)
   }, [step])
 
+  // The sidebar stretches to the step column, so its height changes both on
+  // load (520px → 1030px once the service list and its photos arrive) and on
+  // every step change (a list of photo cards is far taller than a slot grid).
+  // The watermark is anchored to a percentage of that height, so each change
+  // would slide it across the panel — over the org header on load, then flying
+  // up or down between steps.
+  //
+  // So the mark is never shown *while* the panel is re-flowing: any height
+  // change over MARK_SETTLE_EPSILON hides it instantly, and it fades back in
+  // once the height has held steady. The reposition always happens invisibly.
+  // Small changes are ignored so a scrollbar or a one-line reflow can't make it
+  // blink.
+  const sidebarRef = useRef<HTMLDivElement | null>(null)
+  const [markVisible, setMarkVisible] = useState(false)
+
+  // Hide it synchronously on a step change, before the browser paints the new
+  // step. The observer below reacts a frame late, which is long enough to show
+  // one frame of the mark at its outgoing position.
+  useLayoutEffect(() => { setMarkVisible(false) }, [step])
+
+  useEffect(() => {
+    const el = sidebarRef.current
+    if (!el) return
+    let lastHeight = -1
+    let timer: number | undefined
+    const observer = new ResizeObserver(() => {
+      if (Math.abs(el.offsetHeight - lastHeight) < MARK_SETTLE_EPSILON) return
+      lastHeight = el.offsetHeight
+      setMarkVisible(false)
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => setMarkVisible(true), MARK_SETTLE_MS)
+    })
+    observer.observe(el)
+    return () => { observer.disconnect(); window.clearTimeout(timer) }
+  }, [])
+
   // Light vs. dark sidebar content (the white "minimal" theme uses a light panel,
   // so its text/overlays must flip to dark to stay legible).
   const darkSidebar = bookingTheme.sidebarText === 'dark'
@@ -65,8 +109,36 @@ export default function BookingShell({
   const sideOverlay = (a: number) => `rgba(${darkSidebar ? '0,0,0' : '255,255,255'},${a})`
   const flatSidebar = darkSidebar
 
+  // Merchant contact details (phone/address/email — the E-Commerce Law Art. 4
+  // disclosure), rendered as labelled rows rather than a run of caption lines.
+  const iconSx = { fontSize: 14, opacity: 0.9 }
+  const contactRows = [
+    org.contact_phone && {
+      key: 'phone',
+      icon: <PhoneOutlinedIcon sx={iconSx} />,
+      label: t('booking.phone'),
+      value: displayGeorgianPhone(org.contact_phone),
+    },
+    org.address && {
+      key: 'address', testId: 'booking-address',
+      icon: <PlaceOutlinedIcon sx={iconSx} />,
+      label: t('booking.address'),
+      value: org.address,
+    },
+    org.contact_email && {
+      key: 'email', testId: 'booking-email',
+      icon: <MailOutlinedIcon sx={iconSx} />,
+      label: t('booking.email'),
+      value: org.contact_email,
+      href: `mailto:${org.contact_email}`,
+    },
+  ].filter(Boolean) as {
+    key: string; testId?: string; icon: ReactNode; label: string; value: string; href?: string
+  }[]
+
   const sidebar = (
     <Box
+      ref={sidebarRef}
       sx={{
         width: { xs: '100%', md: '25%' },
         // Never so narrow that the org header wraps badly on a small laptop,
@@ -94,16 +166,20 @@ export default function BookingShell({
           presence without a second badge competing with the business's own.
           Drawn in the sidebar's foreground colour at a few percent, so it reads
           on every preset *and* on a custom brand hex (light panels flip to a
-          dark mark via sideOverlay). Centred 40% down the panel and cropped by
-          its overflow:hidden. */}
+          dark mark via sideOverlay). It closes the panel — centred 15% of the
+          panel height above its foot — cropped by the panel's overflow:hidden. */}
       <Box
         aria-hidden
         data-testid="booking-vis-watermark"
         sx={{
-          position: 'absolute', left: '50%', top: '40%', zIndex: 0,
-          transform: 'translate(-50%,-50%) rotate(-45deg)',
+          position: 'absolute', left: '50%', bottom: '15%', zIndex: 0,
+          transform: 'translate(-50%,50%) rotate(-45deg)',
           transformOrigin: 'center',
           color: sideOverlay(darkSidebar ? 0.06 : 0.09),
+          // Only ever shown at rest (see markVisible): hidden instantly the
+          // moment the panel resizes, faded back in once it has settled.
+          opacity: markVisible ? 1 : 0,
+          transition: markVisible ? 'opacity 0.35s ease' : 'none',
           pointerEvents: 'none', userSelect: 'none',
         }}
       >
@@ -113,6 +189,11 @@ export default function BookingShell({
       {/* Content sits above the watermark: an absolutely positioned z-index:0
           layer would otherwise paint over its static siblings. */}
       <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* Identity lockup: the business name is the panel's one headline (the
+          display serif, matching the step headings across the divide). The
+          contact lines used to sit here under the name, which flattened all
+          three tiers into one 12px list — they now follow the description as
+          labelled rows. */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
         <Avatar
           src={org.logo_url ?? undefined}
@@ -127,43 +208,59 @@ export default function BookingShell({
         >
           {org.name.charAt(0)}
         </Avatar>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: sideFg }}>{org.name}</Typography>
-          {org.contact_phone && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
-              <PhoneOutlinedIcon sx={{ fontSize: 14, opacity: 0.8 }} />
-              <Typography variant="caption" sx={{ opacity: 0.8 }}>{displayGeorgianPhone(org.contact_phone)}</Typography>
-            </Box>
-          )}
-          {org.address && (
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mt: 0.25 }} data-testid="booking-address">
-              <PlaceOutlinedIcon sx={{ fontSize: 14, opacity: 0.8, mt: '2px' }} />
-              <Typography variant="caption" sx={{ opacity: 0.8 }}>{org.address}</Typography>
-            </Box>
-          )}
-          {org.contact_email && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }} data-testid="booking-email">
-              <MailOutlinedIcon sx={{ fontSize: 14, opacity: 0.8 }} />
-              <Typography
-                variant="caption"
-                component="a"
-                href={`mailto:${org.contact_email}`}
-                sx={{ opacity: 0.8, color: 'inherit', textDecoration: 'none', wordBreak: 'break-all', '&:hover': { textDecoration: 'underline' } }}
-              >
-                {org.contact_email}
-              </Typography>
-            </Box>
-          )}
-        </Box>
+        <Typography variant="h5" sx={{ fontWeight: 700, fontSize: '1.45rem', lineHeight: 1.3, color: sideFg }}>
+          {org.name}
+        </Typography>
       </Box>
 
+      {/* The pitch, promoted to the lead paragraph — a step up in size from the
+          contact rows below it, so the eye lands here first. */}
       {org.description && (
-        <>
-          <Divider sx={{ borderColor: sideOverlay(0.15) }} />
-          <Typography variant="body2" sx={{ opacity: 0.85, lineHeight: 1.65, position: 'relative' }}>
-            {org.description}
-          </Typography>
-        </>
+        <Typography sx={{ fontSize: '0.95rem', lineHeight: 1.7, opacity: 0.92, position: 'relative' }}>
+          {org.description}
+        </Typography>
+      )}
+
+      {contactRows.length > 0 && (
+        <Box>
+          <Divider sx={{ borderColor: sideOverlay(0.15), mb: 0.5 }} />
+          {contactRows.map(row => (
+            <Box
+              key={row.key}
+              data-testid={row.testId}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1.25, py: 0.9 }}
+            >
+              <Box
+                sx={{
+                  width: 28, height: 28, borderRadius: 2, flexShrink: 0,
+                  background: sideOverlay(darkSidebar ? 0.06 : 0.12),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                {row.icon}
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ display: 'block', fontSize: '0.66rem', letterSpacing: '0.6px', textTransform: 'uppercase', opacity: 0.55, lineHeight: 1.3 }}
+                >
+                  {row.label}
+                </Typography>
+                {row.href ? (
+                  <Typography
+                    component="a"
+                    href={row.href}
+                    sx={{ fontSize: '0.84rem', lineHeight: 1.35, color: 'inherit', textDecoration: 'none', wordBreak: 'break-all', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    {row.value}
+                  </Typography>
+                ) : (
+                  <Typography sx={{ fontSize: '0.84rem', lineHeight: 1.35 }}>{row.value}</Typography>
+                )}
+              </Box>
+            </Box>
+          ))}
+        </Box>
       )}
 
       {summary}

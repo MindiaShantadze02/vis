@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react'
 import { Box, Typography, Card, CardActionArea, CardContent } from '@mui/material'
 import { AccessTimeOutlined as AccessTimeOutlinedIcon } from '@/components/icons'
 import { ChevronRight as ChevronRightIcon } from '@/components/icons'
-import { CollectionsOutlined as CollectionsOutlinedIcon } from '@/components/icons'
 import { DesignServicesOutlined as DesignServicesOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useTheme, alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
 import { staggerContainer, listItem, baseTransition } from '@/theme/motion'
-import { LoadingState, EmptyState, SkeletonImage, ImageLightbox } from '@/components/ui'
+import { LoadingState, EmptyState, SkeletonImage } from '@/components/ui'
 import type { BookingService } from './BookingLayout'
 
 interface Props {
@@ -21,32 +20,16 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
   const { t } = useTranslation()
   const [services, setServices] = useState<BookingService[]>([])
   const [loading, setLoading] = useState(true)
-  // The service whose photos are open in the lightbox (browse without selecting).
-  const [gallery, setGallery] = useState<{ images: string[]; name: string } | null>(null)
 
   useEffect(() => {
     async function loadServices() {
-      // Gallery images ride along on each service so the sidebar can show the
-      // selected service's photos on the following steps (see ServiceGallery).
-      const [svcRes, imgRes] = await Promise.all([
-        supabase
-          .from('services')
-          .select('id, name, duration_minutes, price, max_per_slot, deposit_type, deposit_value')
-          .eq('org_id', orgId)
-          .eq('is_active', true)
-          .order('sort_order'),
-        supabase
-          .from('service_images')
-          .select('service_id, url, sort_order')
-          .eq('org_id', orgId)
-          .order('sort_order'),
-      ])
-      const byService: Record<string, string[]> = {}
-      for (const row of (imgRes.data ?? []) as { service_id: string; url: string }[]) {
-        (byService[row.service_id] ??= []).push(row.url)
-      }
-      const rows = (svcRes.data ?? []) as Omit<BookingService, 'images'>[]
-      setServices(rows.map(s => ({ ...s, images: byService[s.id] ?? [] })))
+      const { data } = await supabase
+        .from('services')
+        .select('id, name, duration_minutes, price, max_per_slot, deposit_type, deposit_value, image_url')
+        .eq('org_id', orgId)
+        .eq('is_active', true)
+        .order('sort_order')
+      setServices((data ?? []) as BookingService[])
       setLoading(false)
     }
     loadServices()
@@ -82,9 +65,7 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
         animate="visible"
         sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
       >
-        {services.map((s) => {
-          const hasImages = s.images.length > 0
-          return (
+        {services.map((s) => (
             <Card
               key={s.id}
               data-testid="service-card"
@@ -109,38 +90,11 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
                 '&:hover::before': { width: 6 },
               }}
             >
-              {/* "View photos" badge — a sibling of the CardActionArea (not nested
-                  inside it, which would be a button in a button), sat above it so
-                  a tap browses the gallery instead of selecting the service. */}
-              {hasImages && (
-                <Box
-                  component="button"
-                  type="button"
-                  aria-label={t('booking.viewGallery')}
-                  data-testid="view-photos"
-                  onClick={() => setGallery({ images: s.images, name: s.name })}
-                  sx={{
-                    position: 'absolute', top: 10, right: 10, zIndex: 2,
-                    display: 'inline-flex', alignItems: 'center', gap: 0.5,
-                    px: 1, py: 0.4, border: 0, borderRadius: 5, cursor: 'pointer',
-                    color: '#fff', bgcolor: 'rgba(0,0,0,0.55)',
-                    backdropFilter: 'blur(2px)',
-                    transition: 'background-color 0.15s ease',
-                    '&:hover': { bgcolor: 'rgba(0,0,0,0.72)' },
-                  }}
-                >
-                  <CollectionsOutlinedIcon sx={{ fontSize: 15 }} />
-                  <Typography component="span" variant="caption" sx={{ fontWeight: 700, lineHeight: 1 }}>
-                    {s.images.length}
-                  </Typography>
-                </Box>
-              )}
-
               <CardActionArea onClick={() => onSelect(s)} data-testid="book-service">
-                {/* Lead photo banner — only for services that have photos. */}
-                {hasImages && (
+                {/* Thumbnail banner — only for services that have a photo. */}
+                {s.image_url && (
                   <SkeletonImage
-                    src={s.images[0]}
+                    src={s.image_url}
                     alt={s.name}
                     // A near-3:2 frame: tall enough that portrait uploads still
                     // show their subject instead of a thin horizontal slice.
@@ -171,18 +125,8 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
                 </CardContent>
               </CardActionArea>
             </Card>
-          )
-        })}
+        ))}
       </Box>
-
-      {gallery && (
-        <ImageLightbox
-          images={gallery.images}
-          startIndex={0}
-          alt={gallery.name}
-          onClose={() => setGallery(null)}
-        />
-      )}
     </Box>
   )
 }

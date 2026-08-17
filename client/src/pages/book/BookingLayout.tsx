@@ -11,14 +11,11 @@ import { Box, Typography } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
 import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
 import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
-import { CalendarMonthOutlined as CalendarMonthOutlinedIcon } from '@/components/icons'
-import { AccessTimeOutlined as AccessTimeOutlinedIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { LoadingState, EmptyState } from '@/components/ui'
 import BookingShell from './BookingShell'
 import BookingSummaryCard from './BookingSummaryCard'
-import ServiceGallery from './ServiceGallery'
 import Step1ServiceSelect from './Step1ServiceSelect'
 import Step2DateTimeSelect from './Step2DateTimeSelect'
 import Step3CustomerForm from './Step3CustomerForm'
@@ -80,8 +77,8 @@ export interface BookingService {
   // Per-service deposit override; NULL deposit_type inherits the org default.
   deposit_type: 'none' | 'fixed' | 'percent' | null
   deposit_value: number | null
-  // Gallery image URLs in display order; shown in the sidebar once selected.
-  images: string[]
+  // Single thumbnail shown on the service card; null when none was uploaded.
+  image_url: string | null
 }
 
 export interface BookingStaff {
@@ -277,28 +274,25 @@ export default function BookingLayout() {
         : t('booking.anyAvailable'))
     : null
 
-  // Live "your booking" summary — a white ticket filled in as the customer
-  // progresses, echoing the confirmation-page stub. The selected service's
-  // photo gallery renders beneath it (same overlay tokens as BookingShell).
+  // Live "your booking" summary — each choice ticked off in the sidebar as the
+  // customer progresses (same overlay tokens as BookingShell).
   const sideFg = bookingTheme.sidebarText === 'dark' ? '#1F2937' : '#FFFFFF'
   const sideOverlay = (a: number) =>
     `rgba(${bookingTheme.sidebarText === 'dark' ? '0,0,0' : '255,255,255'},${a})`
   const summary = booking.service ? (
-    <>
     <BookingSummaryCard
       label={t('booking.yourBooking')}
-      labelColor={sideFg}
-      notchColor={bookingTheme.sidebar}
-      priceColor={bookingTheme.deep}
-      totalLabel={t('booking.total')}
-      total={`${booking.service.price} ₾`}
+      fg={sideFg}
+      overlay={sideOverlay}
+      priceLabel={t('booking.price')}
+      price={`${booking.service.price} ₾`}
       rows={[
         {
-          icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />,
+          label: t('booking.summaryService'),
           primary: booking.service.name,
         },
         ...(booking.date && booking.time ? [{
-          icon: <AccessTimeOutlinedIcon sx={{ fontSize: 18 }} />,
+          label: t('booking.progressTime'),
           // booking.date is the raw yyyy-MM-dd key — render it like the rest
           // of the flow ("6 Jul · 14:00"), in the active language.
           primary: `${format(new Date(`${booking.date}T00:00:00`), 'd MMM', { locale: dateLocale() })} · ${booking.time}`,
@@ -306,19 +300,6 @@ export default function BookingLayout() {
         }] : []),
       ]}
     />
-    {/* Photos only accompany the steps *after* choosing a service — going back
-        to the service list keeps booking.service (so the ticket persists), but
-        the previous choice's photos next to a fresh list read as stale. */}
-    {step > 0 && (
-      <ServiceGallery
-        // `?? []` guards drafts persisted before services carried images.
-        images={booking.service.images ?? []}
-        serviceName={booking.service.name}
-        fg={sideFg}
-        overlay={sideOverlay}
-      />
-    )}
-    </>
   ) : undefined
 
   const mobileAside = booking.service

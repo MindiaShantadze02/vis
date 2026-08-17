@@ -297,9 +297,9 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
 - `org_members` + `invitations` (team; phone-based invites; `staff` = non-login bookable profile
   with optional photo)
 - `services` (name, duration, **price ≥ ₾0** — free services are legal and book on site —
-  `max_per_slot` capacity, in-person/online location type, per-service deposit config),
-  `service_staff` (who performs what),
-  `service_images` (per-service gallery, composite-FK tenant-integrity pattern; `service-images` bucket)
+  `max_per_slot` capacity, in-person/online location type, per-service deposit config,
+  `image_url` — one thumbnail, stored in the `service-images` bucket),
+  `service_staff` (who performs what; also written from onboarding)
 - `appointments` — status is `approved | rejected | cancelled | completed | no_show` (there is no
   `pending`); `+ meeting_link` for online ones; `payment_status` incl. `deposit_paid`;
   `payment_method` is `online` for public bookings, `in_person` for API/internal writes — plus
