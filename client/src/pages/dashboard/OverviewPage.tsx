@@ -27,6 +27,8 @@ import { isValidUrl, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import PendingInvites from './PendingInvites'
 import AppointmentDetails from '@/components/AppointmentDetails'
+import RefundAction from '@/components/RefundAction'
+import { refundGate } from '@/lib/refund'
 import { useStaffAssignment } from '@/hooks/useStaffAssignment'
 import type { Appointment, StaffRef } from '@/types/appointment'
 import type { DashboardOutletContext } from './DashboardLayout'
@@ -858,9 +860,7 @@ export default function OverviewPage() {
                     PAID online appointment. Checked by default; unticking keeps
                     the money (e.g. a late cancellation per the business's
                     policy) and the cancel becomes a plain status change. */}
-                {confirmingCancel
-                  && selected.payment_method === 'online'
-                  && selected.payment_status === 'paid' && (
+                {confirmingCancel && refundGate(selected) === 'refundable' && (
                   <Box sx={{
                     p: 1.5, borderRadius: 2,
                     border: '1px solid', borderColor: 'divider',
@@ -886,6 +886,26 @@ export default function OverviewPage() {
                     </Typography>
                   </Box>
                 )}
+
+                {/* Refund on its own — reachable whatever the status, unlike the
+                    action footer above. Suppressed while the cancel confirmation
+                    is open so the two refund paths never compete. */}
+                <RefundAction
+                  appt={selected}
+                  suppressed={confirmingCancel}
+                  onRefunded={({ cancelled }) => {
+                    const patch = {
+                      payment_status: 'refunded' as const,
+                      ...(cancelled ? { status: 'cancelled' as const } : {}),
+                    }
+                    setAppointments(prev => prev.map(a =>
+                      a.id === selected.id ? { ...a, ...patch } : a))
+                    setSelected(prev => (prev ? { ...prev, ...patch } : prev))
+                    loadStats()
+                    // A cancel frees a billable slot; a money-only refund doesn't.
+                    if (cancelled) refreshBilling()
+                  }}
+                />
           </AppointmentDetails>
         )}
       </SideDrawer>

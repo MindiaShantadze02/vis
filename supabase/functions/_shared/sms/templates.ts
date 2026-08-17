@@ -139,23 +139,34 @@ export interface RefundUpdateData {
   // the customer knows exactly what to expect back on their card.
   amount: number
   currency: string
+  // Whether the booking was cancelled along with the refund. A business can now
+  // refund WITHOUT cancelling (a goodwill refund on a visit that happened, or a
+  // deposit returned while the appointment stands), and telling that customer
+  // their booking was cancelled would be actively wrong.
+  cancelled?: boolean
 }
 
-// Sent when a paid online booking is cancelled and the money is returned
-// (admin cancel-with-refund, or the automatic refund when fulfilment fails
-// after a cleared charge). Settlement takes days, so the message says the
-// amount is on its way rather than already back.
+// Sent when money is returned for a paid online booking: admin cancel-with-refund,
+// a standalone admin refund, or the automatic refund when fulfilment fails after a
+// cleared charge. Settlement takes days, so the message says the amount is on its
+// way rather than already back.
 export function refundUpdateBody(data: RefundUpdateData, lang: SmsLang = 'ka'): string {
-  const { businessName, serviceName, amount, currency } = data
+  const { businessName, serviceName, amount, currency, cancelled = true } = data
   const sum = currency === 'GEL' ? `${amount}₾` : `${amount} ${currency}`
   switch (lang) {
     case 'en':
-      return `${businessName}: your booking for ${serviceName} was cancelled. The ${sum} you paid will be returned to your card within a few days.`
+      return cancelled
+        ? `${businessName}: your booking for ${serviceName} was cancelled. The ${sum} you paid will be returned to your card within a few days.`
+        : `${businessName}: we are returning ${sum} for your ${serviceName} booking. It will be back on your card within a few days.`
     case 'ru':
-      return `${businessName}: ваша запись на ${serviceName} отменена. Оплаченные ${sum} вернутся на вашу карту в течение нескольких дней.`
+      return cancelled
+        ? `${businessName}: ваша запись на ${serviceName} отменена. Оплаченные ${sum} вернутся на вашу карту в течение нескольких дней.`
+        : `${businessName}: возвращаем ${sum} за вашу запись на ${serviceName}. Деньги вернутся на карту в течение нескольких дней.`
     case 'ka':
     default:
-      return `${businessName}: თქვენი ჯავშანი — ${serviceName} — გაუქმდა. გადახდილი ${sum} რამდენიმე დღეში დაგიბრუნდებათ ბარათზე.`
+      return cancelled
+        ? `${businessName}: თქვენი ჯავშანი — ${serviceName} — გაუქმდა. გადახდილი ${sum} რამდენიმე დღეში დაგიბრუნდებათ ბარათზე.`
+        : `${businessName}: გიბრუნებთ ${sum}-ს ჯავშნისთვის — ${serviceName}. თანხა რამდენიმე დღეში დაგიბრუნდებათ ბარათზე.`
   }
 }
 

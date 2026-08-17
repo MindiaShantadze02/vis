@@ -1,7 +1,7 @@
 # Vis — Appointment Booking SaaS
 
 > Product name **Vis**. Hosted Supabase project ref `dnmecnpugjxkjonqsfxx`.
-> Migrations run through `20260817150000_remove_public_api.sql` (2026-08-17); everything
+> Migrations run through `20260818120000_appointment_refunds.sql` (2026-08-18); everything
 > through that is **pushed to prod**. Verify with `supabase migration list --linked` (remote
 > versions are re-timestamped on push, so match by *name*, not number).
 
@@ -146,10 +146,27 @@ dashboard. The product front door is a **marketing landing page** at `/`.
 ### Admin dashboard
 - **Overview** — stats + revenue totals; filterable/searchable appointment list; detail drawer with
   staff reassignment, notes, payment state, copy-review-link on completed appointments, meeting-link
-  send, cancel (with refund choice) and mark-no-show.
+  send, cancel (with refund choice), mark-no-show, and a **standalone Refund** (money only —
+  see below).
 - **Weekly calendar** — week grid (desktop) / single-day timeline (mobile) with service-coloured
   pills, same-service overlap grouping, and block time ("Rest"). The detail drawer is read-only
-  apart from staff reassignment. No manual entry — bookings arrive from the public flow / API.
+  apart from staff reassignment and the Refund action. No manual entry — bookings arrive from the
+  public booking flow.
+
+### Refunds (086 + `20260818120000`)
+- Two doors, one edge function (`refund-payment`, JWT + org membership):
+  - **Cancel with refund** — the checkbox in the cancel dialog. Atomic: a refund failure reverts
+    the cancellation, so money-state and booking-state only ever move together.
+  - **Standalone Refund** — the drawer button, reachable from *any* status. Returns the money and
+    cancels the booking **only if it was still approved**; a completed or no-show visit keeps its
+    status, so history and the billable count are not rewritten.
+- Refundable = online payment, `paid` **or** `deposit_paid`, with a gateway reference. The amount
+  always comes from `payment_log` (what was charged), never `services.price`. Full refunds only.
+- `mode: 'quote'` returns the amount for the confirm dialog without opening `payment_log` (which
+  also holds platform subscription charges) to org members.
+- **`appointment_refunds`** is the org-readable ledger: amount, actor (`initiated_by` +
+  snapshotted name), reason, `initiated_via`, and whether it cancelled. Written service-role only,
+  `pending` before the gateway call so a crash mid-refund is reconcilable.
 - **Clients** — customer directory grouped client-side, with the Art. 16 **erase client data**
   action (anonymizes PII via `erase_customer_data`).
 - **Analytics** (migration 096) — a money-first dashboard for a chosen range (30/90/365 days) from
@@ -292,6 +309,8 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
   `platform_config.billing_config`
 - Deposits (089): per-service + org `deposit_type`/`deposit_value`; org `cancellation_window_hours`
   / `deposit_refundable`
+- `appointment_refunds` (org-readable refund ledger: amount, actor, reason, cancelled_appointment;
+  service-role writes). `payment_log` stays superadmin-only.
 - `reviews` (one per appointment; org-scoped read; public aggregate exposed via `get_public_org`)
 - `setup_requests` (concierge-onboarding queue; one open per org)
 - Verification: `booking_verifications` / `password_reset_verifications` (hashed OTP challenges);

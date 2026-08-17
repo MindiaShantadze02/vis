@@ -17,6 +17,7 @@ import { useBreakpoints } from '@/hooks/useBreakpoints'
 import { anim } from '@/theme/animations'
 import { StatusChip, ConfirmDialog, LoadingState, useToast, SideDrawer } from '@/components/ui'
 import AppointmentDetails from '@/components/AppointmentDetails'
+import RefundAction from '@/components/RefundAction'
 import { dateLocale } from '@/lib/dateLocale'
 import { getDayKey, type DayConfig, type WeekTemplate } from '@/lib/slots'
 import { timeToMinutes } from '@/lib/validation'
@@ -1012,7 +1013,22 @@ export default function CalendarPage() {
             assignableMembers={assignableMembers}
             onReassign={reassignStaff}
             showDuration
-          />
+          >
+            {/* The calendar drawer is otherwise read-only; a refund belongs
+                here because money questions get asked while looking at the
+                day, not only from the overview list. */}
+            <RefundAction
+              appt={selected}
+              onRefunded={({ cancelled }) => {
+                setSelected(prev => (prev ? {
+                  ...prev,
+                  payment_status: 'refunded',
+                  ...(cancelled ? { status: 'cancelled' as const } : {}),
+                } : prev))
+                loadWeek()
+              }}
+            />
+          </AppointmentDetails>
         )}
       </SideDrawer>
 
