@@ -12,7 +12,6 @@ import { stepVariants } from '@/theme/motion'
 import { LanguageSwitcher, SkeletonImage } from '@/components/ui'
 import VisLogo from '@/components/VisLogo'
 import { displayGeorgianPhone } from '@/lib/validation'
-import { storageImage } from '@/lib/storageImage'
 import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
 import BookingReviews from './BookingReviews'
@@ -237,9 +236,7 @@ export default function BookingShell({
           labelled rows. */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
         <Avatar
-          // 56px slot at 2x. Logos are uploaded at 800px+ and were shipped
-          // whole for a thumbnail-sized hole.
-          src={org.logo_url ? storageImage(org.logo_url, 112) : undefined}
+          src={org.logo_url ?? undefined}
           sx={{
             width: 56, height: 56,
             background: sideOverlay(darkSidebar ? 0.06 : 0.15),
@@ -352,7 +349,7 @@ export default function BookingShell({
         {isMobile && !embed && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, background: bookingTheme.sidebar, color: sideFg }}>
             <Avatar
-              src={org.logo_url ? storageImage(org.logo_url, 76) : undefined}
+              src={org.logo_url ?? undefined}
               sx={{ width: 38, height: 38, background: sideOverlay(darkSidebar ? 0.06 : 0.16), color: sideFg, fontSize: 16, fontWeight: 700 }}
             >
               {org.name.charAt(0)}
