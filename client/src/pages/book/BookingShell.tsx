@@ -9,7 +9,7 @@ import { PlaceOutlined as PlaceOutlinedIcon } from '@/components/icons'
 import { MailOutlined as MailOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { stepVariants } from '@/theme/motion'
-import { SkeletonImage } from '@/components/ui'
+import { LanguageSwitcher, SkeletonImage } from '@/components/ui'
 import VisLogo from '@/components/VisLogo'
 import { displayGeorgianPhone } from '@/lib/validation'
 import type { BookingTheme } from '@/theme/bookingThemes'
@@ -276,15 +276,24 @@ export default function BookingShell({
           </AnimatePresence>
         </Box>
 
-        {/* "Powered by Vis" — the built-in growth loop: every booking page (all
-            themes, standalone and embedded) carries one quiet link back to the
-            marketing site. Deliberately low-contrast so it never competes with
-            the business's own branding. */}
+        {/* Footer: the language switcher sits here, out of the flow's way — a
+            non-Georgian visitor still has a way out of the default language,
+            but it no longer competes with the step header. Hidden in embed
+            mode, where language comes from ?lang=.
+
+            Beside it, "Powered by Vis" — the built-in growth loop: every
+            booking page (all themes, standalone and embedded) carries one quiet
+            link back to the marketing site. Deliberately low-contrast so it
+            never competes with the business's own branding. */}
         <Box
           component="footer"
-          sx={{ textAlign: 'center', py: 1.5, px: 2 }}
-          data-testid="powered-by-vis"
+          sx={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 1, flexWrap: 'wrap', py: 1.5, px: 2,
+          }}
         >
+          {!embed && <LanguageSwitcher />}
+          <Box data-testid="powered-by-vis">
           <Typography
             component="a"
             href="https://vis.ge/?ref=badge"
@@ -299,6 +308,7 @@ export default function BookingShell({
           >
             {t('booking.poweredBy')}
           </Typography>
+          </Box>
         </Box>
       </Box>
 

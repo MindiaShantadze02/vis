@@ -41,8 +41,10 @@ test.describe('SEO — client head', () => {
   test('embed mode still renders the booking flow', async ({ page }) => {
     await page.goto(`/book/${SEED.slug}?embed=1`)
     await expect(page.getByTestId('book-service').first()).toBeVisible({ timeout: 30_000 })
-    // Embeds carry the host site's branding — no sidebar, so no Vis wordmark.
+    // Embeds carry the host site's branding — no sidebar, so no Vis wordmark;
+    // language comes from ?lang=, so no footer switcher either.
     await expect(page.getByTestId('booking-vis-watermark')).toHaveCount(0)
+    await expect(page.getByTestId('language-switcher-btn')).toHaveCount(0)
   })
 
   test('unknown route gets the not-found title and a client noindex', async ({ page }) => {

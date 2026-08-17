@@ -23,6 +23,8 @@ test.describe('Public booking', () => {
     // and the oversized Vis wordmark closes the branded sidebar.
     await expect(page.getByTestId('powered-by-vis')).toBeVisible()
     await expect(page.getByTestId('booking-vis-watermark')).toBeVisible()
+    // The language switcher lives in that same footer, not above the steps.
+    await expect(page.getByTestId('language-switcher-btn')).toBeVisible()
 
     // Step 3 — customer details. A priced service (the seeded Consultation is
     // ₾50) with on-site enabled shows the Online / On site selector, and Online
