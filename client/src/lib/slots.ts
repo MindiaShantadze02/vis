@@ -3,9 +3,9 @@
  * (Step2DateTimeSelect). All functions here are pure — callers pass in the
  * working-hours template, the date's override, and the existing appointments.
  *
- * KEEP IN SYNC with supabase/functions/_shared/slots.ts — the public REST API
- * runs a Deno port of this exact logic (only date-fns swapped out). Any change
- * to the slot rules here must be mirrored there.
+ * This is the single implementation of the slot rules: the Deno port that the
+ * public REST API ran (supabase/functions/_shared/slots.ts) went with the API
+ * itself, and with it the sync guard in slots.parity.test.ts.
  */
 import { format, isBefore } from 'date-fns'
 

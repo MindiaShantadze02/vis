@@ -75,7 +75,6 @@ One transaction, ordered to avoid the NULL-limit-=-unlimited gotcha:
 ### 2.2 Edge functions
 - `create-payment`: no structural change (`VALID_TIERS` already excludes free; prices come from `tier_prices`). Add the founders'-deal hook point later (Phase 2).
 - `payment-webhook`: already flips tier + `subscription_expires_at` — confirm it satisfies §2.1.5's definition of `active`. Redeploy anything whose bundled SQL/types mention `free`.
-- `api` edge fn (071): `api_create_booking` inserts hit the same trigger — verify its error mapping surfaces `limit_reached` cleanly as 4xx (it should already).
 
 ### 2.3 Client
 - **`lib/tiers.ts` rewrite:** drop `free`; `Tier = 'starter'|'pro'|'business'`; limits 150/400/800; prices ₾29/₾59/₾99; features per the record (reminders sell Starter, staff seats sell Pro); Pro gets the highlighted/recommended treatment. `tierAtLeast` keeps working with the shorter order (currently unused but exported). Update `tiers.test.ts` + i18n `tiers.*` keys (ka/en).

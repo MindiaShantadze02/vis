@@ -79,7 +79,6 @@ const SETTINGS_GROUPS = [
     items: [
       { labelKey: 'settings.billing',      path: '/dashboard/settings/billing' },
       { labelKey: 'settings.account',      path: '/dashboard/settings/account' },
-      { labelKey: 'settings.apiKeys',      path: '/dashboard/settings/api' },
     ],
   },
 ]

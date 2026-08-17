@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box, Typography, Avatar, Divider, useMediaQuery, useTheme,
@@ -81,10 +81,14 @@ export default function BookingShell({
   const sidebarRef = useRef<HTMLDivElement | null>(null)
   const [markVisible, setMarkVisible] = useState(false)
 
-  // Hide it synchronously on a step change, before the browser paints the new
-  // step. The observer below reacts a frame late, which is long enough to show
-  // one frame of the mark at its outgoing position.
-  useLayoutEffect(() => { setMarkVisible(false) }, [step])
+  // Hide it on a step change before the browser paints the new step. This is
+  // the render-phase adjustment pattern rather than an effect: an effect lands
+  // a frame late, which is long enough to flash the mark at its outgoing spot.
+  const [markStep, setMarkStep] = useState(step)
+  if (markStep !== step) {
+    setMarkStep(step)
+    setMarkVisible(false)
+  }
 
   useEffect(() => {
     const el = sidebarRef.current

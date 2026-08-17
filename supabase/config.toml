@@ -73,11 +73,6 @@ verify_jwt = false
 # the mock provider, by the /pay/mock checkout screen.
 verify_jwt = false
 
-[functions.api]
-# Public REST API for business integrations. Auth is a per-org API key
-# (x-api-key, checked in-function against api_keys) — not a Supabase JWT.
-verify_jwt = false
-
 [functions.refund-payment]
 # Admin cancel-with-refund: changes the appointment status AND refunds the
 # online charge in one call. Org membership re-checked in-function.

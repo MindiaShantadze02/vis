@@ -11,7 +11,7 @@ import { CANONICAL_ORIGIN, rpc } from './_shared'
 
 export const config = { runtime: 'edge' }
 
-const STATIC_PATHS = ['/', '/docs/api', '/docs/widget', '/privacy', '/terms']
+const STATIC_PATHS = ['/', '/docs/widget', '/privacy', '/terms']
 
 export default async function handler(): Promise<Response> {
   let slugs: { slug: string }[] = []

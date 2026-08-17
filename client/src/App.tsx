@@ -37,7 +37,6 @@ const WorkingHoursSettings = lazy(() => import('@/pages/dashboard/settings/Worki
 const TeamSettings = lazy(() => import('@/pages/dashboard/settings/TeamSettings'))
 const PaymentSettings = lazy(() => import('@/pages/dashboard/settings/PaymentSettings'))
 const BillingPage = lazy(() => import('@/pages/dashboard/settings/BillingPage'))
-const ApiKeysSettings = lazy(() => import('@/pages/dashboard/settings/ApiKeysSettings'))
 
 // Public booking
 const BookingLayout = lazy(() => import('@/pages/book/BookingLayout'))
@@ -167,7 +166,6 @@ export default function App() {
           <Route path="settings/hours" element={<WorkingHoursSettings />} />
           <Route path="settings/team" element={<TeamSettings />} />
           <Route path="settings/payment" element={<PaymentSettings />} />
-          <Route path="settings/api" element={<ApiKeysSettings />} />
           <Route path="settings/billing" element={<BillingPage />} />
           <Route path="settings/account" element={<AccountSettings />} />
         </Route>
@@ -185,9 +183,8 @@ export default function App() {
       <Route path="/privacy" element={<LegalPage type="privacy" />} />
       <Route path="/terms" element={<LegalPage type="terms" />} />
 
-      {/* Public developer docs (linked from the homepage). */}
-      <Route path="/docs/api" element={<DevDocsPage type="api" />} />
-      <Route path="/docs/widget" element={<DevDocsPage type="widget" />} />
+      {/* Public widget docs (linked from the homepage). */}
+      <Route path="/docs/widget" element={<DevDocsPage />} />
 
       <Route path="/superadmin" element={<AuthGuard><SuperAdminGuard><SuperAdminLayout /></SuperAdminGuard></AuthGuard>}>
         <Route index element={<PlatformOverviewPage />} />

@@ -1,7 +1,7 @@
 # Vis — Appointment Booking SaaS
 
 > Product name **Vis**. Hosted Supabase project ref `dnmecnpugjxkjonqsfxx`.
-> Migrations run through `20260817120000_superadmin_billing_exempt.sql` (2026-08-17); everything
+> Migrations run through `20260817150000_remove_public_api.sql` (2026-08-17); everything
 > through that is **pushed to prod**. Verify with `supabase migration list --linked` (remote
 > versions are re-timestamped on push, so match by *name*, not number).
 
@@ -9,7 +9,7 @@
 A multi-tenant SaaS platform for the **Georgian market** that lets small service businesses
 (salons, spas, clinics, trainers, barbers, etc.) take online appointment bookings. Each business
 gets a **public booking page** (`/book/[slug]`) to share on social media or **embed on its own
-website**, plus a **public REST API** for custom integrations. End customers book as **guests**
+website**. End customers book as **guests**
 (no account — name + phone, verified by an SMS code). Owners manage everything through an admin
 dashboard. The product front door is a **marketing landing page** at `/`.
 
@@ -18,17 +18,17 @@ dashboard. The product front door is a **marketing landing page** at `/`.
 
 > **Bookings come from customers only.** The owner-side *manual add-appointment* dialog and
 > **recurring appointments** were removed 2026-08-13 — Vis is a pure online-booking platform, so
-> every appointment originates from the public booking flow or the REST API. Owners cancel
+> every appointment originates from the public booking flow. Owners cancel
 > (with refund), mark no-show, reassign staff, attach meeting links and block time ("Rest").
 
 > **Every appointment is created `approved`.** The pending-approval workflow and
 > `organisations.require_approval` were removed 2026-08-14 (`20260814120000`). There is no
-> approval queue, no approve/reject UI, and the REST API rejects a `status` field.
+> approval queue and no approve/reject UI.
 
 ## Tech stack
 - **Frontend:** React 19 + TypeScript + Vite, MUI v9 + MUI X (DataGrid, Date Pickers), React Router v7, framer-motion, Phosphor icons
 - **Backend:** Supabase only (Postgres + Auth + Edge Functions + Realtime + Storage) — **no separate Node server**
-- **Edge Functions (Deno):** `api` (public REST API), `request-booking-otp`, `verify-booking-otp`, `create-payment`, `payment-webhook`, `refund-payment`, `manage-appointment`, `save-card`, `send-sms`, `request-password-reset`, `reset-password`, `delete-account`. (Legacy `get-available-slots`, `book-appointment` and `claim-waitlist` are 410 tombstones pending dashboard deletion.)
+- **Edge Functions (Deno):** `request-booking-otp`, `verify-booking-otp`, `create-payment`, `payment-webhook`, `refund-payment`, `manage-appointment`, `save-card`, `send-sms`, `request-password-reset`, `reset-password`, `delete-account`. (Legacy `get-available-slots`, `book-appointment`, `claim-waitlist` and `api` — the withdrawn public REST API — are 410 tombstones pending dashboard deletion.)
 - **i18n:** Georgian (default/fallback), Russian, English via react-i18next (`localStorage['vis-lang']`).
   Language switchers on the landing page, dashboard, and the standalone public booking page; the
   embed can pin a language via `?lang=`. The public dev-docs pages carry all three languages
@@ -40,9 +40,9 @@ dashboard. The product front door is a **marketing landing page** at `/`.
   `request-booking-otp`/`verify-booking-otp`) so phone ownership is proven before a session is
   issued / an account is created. Password minimum is **8 characters**; registration requires
   consent to the Privacy Policy + Terms.
-- **Timezone:** all customer-facing booking logic is pinned to **business time (Georgia, fixed `+04:00`)** via helpers in `client/src/lib/slots.ts` (`businessDayWindow`, `businessDayKey`, `toBusinessWallClock`, …) so slots don't shift with the viewer's browser zone. The `api` edge function keeps a Deno copy of `slots.ts` that must stay in sync. The admin dashboard intentionally stays viewer-local.
+- **Timezone:** all customer-facing booking logic is pinned to **business time (Georgia, fixed `+04:00`)** via helpers in `client/src/lib/slots.ts` (`businessDayWindow`, `businessDayKey`, `toBusinessWallClock`, …) so slots don't shift with the viewer's browser zone. The admin dashboard intentionally stays viewer-local.
 - **Testing:**
-  - **Playwright e2e** — 34 spec files / 96 tests; 93 pass and 3 skip without a service-role key
+  - **Playwright e2e** — 33 spec files / 94 tests; 91 pass and 3 skip without a service-role key
     (`cd client && ./node_modules/.bin/playwright test`), run against the hosted project via the
     dev server; booking OTP master code `000000`. Includes a
     **data-driven layer**: BVA/ECP rows live in `e2e/data/*.json`, executed by
@@ -51,9 +51,9 @@ dashboard. The product front door is a **marketing landing page** at `/`.
     ⚠️ **Run it in batches, not one invocation** — ~90 logins from one IP crosses the `ip_burst`
     OTP cap (070) and every later test then fails waiting for the OTP field. Use the local binary;
     `npx playwright` pulls a mismatched version.
-  - **Vitest unit layer** — 8 files / 186 tests (`cd client && npm run test`) for pure logic:
-    `validation`, `slug`, `slots` (+ a parity suite run under foreign TZs to prove viewer-zone
-    independence), `billing`, `deposit`, `analytics`, `acquisition`.
+  - **Vitest unit layer** — 7 files / 176 tests (`cd client && npm run test`) for pure logic:
+    `validation`, `slug`, `slots`, `billing`, `deposit`, `analytics`, `acquisition`. (The
+    client↔Deno slot-parity suite went with the REST API that needed the second copy.)
 - **Validation UX conventions:** submit buttons are **never disabled for validation** — validate on
   click and show inline per-field errors (`aria-invalid`), scrolling to the first invalid field.
   Banners/toasts are reserved for server errors.
@@ -81,8 +81,8 @@ dashboard. The product front door is a **marketing landing page** at `/`.
   **on the owner's behalf**; marking it completed texts the requester (`setup_complete` SMS).
 
 ### Public booking (guest, OTP-gated)
-1. **Service** (with per-service **photo galleries**, migration 074 — shown in the form and in the
-   branded sidebar after the service-select step) → **date/time** (staff pick or "any available")
+1. **Service** (with a per-service **thumbnail** on each card, `services.image_url`) →
+   **date/time** (staff pick or "any available")
    → **customer details** (name + phone, optional notes, required Privacy/Terms consent). There is
    **no payment-method choice** — every priced booking pays online.
 2. **Phone OTP:** `request-booking-otp` sends a hashed code; `verify-booking-otp` checks it. A DB
@@ -132,22 +132,6 @@ dashboard. The product front door is a **marketing landing page** at `/`.
   booking link.
 - Public docs: `/docs/widget` (trilingual, no auth).
 
-### Public REST API (v1) — migration 071 + `api` edge function
-- Custom integrations without the widget: **per-organisation API keys** (`grf_…`, up to 5 active
-  per org, minted/revoked in **Settings → API keys**; revocation immediate), passed via
-  `x-api-key` or `Authorization: Bearer`.
-- Endpoints: `GET /v1/organisation`, `GET /v1/services`, `GET /v1/slots` (same availability rules
-  as the booking page), `POST /v1/bookings` (creates an in-person booking, always **`approved`**;
-  the requested time is re-validated server-side just before insert — race returns 409). Sending a
-  `status` field returns **422** (the parameter was removed with the approval queue, 2026-08-14).
-- **No customer OTP on this path** — the API key is the trusted credential; the caller vouches for
-  customer consent (timestamp/version recorded). The OTP exemption is a GUC **inside
-  `api_create_booking`** — deliberately *not* a service-role exemption.
-- **Rate limit:** 60 requests/key/minute (HTTP 429), tunable in `platform_config.api_rate_limits`.
-  A booking at a business behind on its bill returns **403 `billing_blocked`**.
-- Uniform error shape `{ "error": "<code>", "message": "…" }`. Docs: `/docs/api` in-app
-  (trilingual) — keep in sync with `docs/PUBLIC_API.md` (the reviewable source).
-
 ### Reviews (verified, appointment-bound) — migration 068
 - Each **completed** appointment's UUID doubles as a capability link `/review/:appointmentId`
   (`pages/review/ReviewPage.tsx`) — only a real attendee can review, **one review per appointment**
@@ -175,13 +159,13 @@ dashboard. The product front door is a **marketing landing page** at `/`.
 - **Realtime in-app notifications** (owner bell) for new bookings.
 - **Settings** (grouped by concern, `SETTINGS_GROUPS` in `DashboardLayout.tsx`):
   - **Business:** Business info (name/description/contact phone/email/address/logo — path kept at
-    `/settings/profile`), Services (incl. per-service photo galleries), Working hours, Team
+    `/settings/profile`), Services (incl. a per-service thumbnail), Working hours, Team
     (invite members / add non-login professionals with photos).
   - **Booking & payments:** Booking page (shareable link + embed snippet, cover image, color theme
     — 5 presets **or a custom brand hex** — and the reviews toggle) and Payment (accept-on-site
     switch, gateway credentials, cancellation window, org-default deposit).
   - **Account & billing:** Billing (running bill, card on file, invoices, pay now), the
-    delete-account danger zone, and **API keys** (demoted here in the 2026-08-04 regroup).
+    delete-account danger zone.
 - **Visual theme:** calm/mature flat hairline look via `theme/theme.ts`; accent is **"Deep
   Harbor"** dark Prussian blue `#1D5B84`. The public booking flow is exempt: `makeBookingTheme`
   re-pins the older lifted/citrus card+button look for `/book/*` and `/review/*`.
@@ -282,7 +266,7 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
   legal-entity details). `CONSENT_VERSION` (stored with each consent) is bumped on substance
   changes — currently `2026-08-04`.
 - **Consent** captured (with version) at booking and registration; stored on `customers` /
-  `pending_bookings`. API-created bookings record consent as vouched by the key holder.
+  `pending_bookings`.
 - **Retention** (migrations 064/065): a daily `purge_expired_data()` pg_cron deletes stale
   verification codes, parked bookings and old SMS logs, and **anonymizes** appointments/customers
   past the window (kept for revenue/tax) — windows tunable in `platform_config.retention_config`.
@@ -309,7 +293,6 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
 - Deposits (089): per-service + org `deposit_type`/`deposit_value`; org `cancellation_window_hours`
   / `deposit_refundable`
 - `reviews` (one per appointment; org-scoped read; public aggregate exposed via `get_public_org`)
-- `api_keys` + `api_rate_counters` (public API; hashed keys, per-minute counters)
 - `setup_requests` (concierge-onboarding queue; one open per org)
 - Verification: `booking_verifications` / `password_reset_verifications` (hashed OTP challenges);
   `otp_rate_limits` config in `platform_config`
@@ -378,11 +361,10 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
 - Appointments end-to-end: 4-step onboarding (or concierge setup) → settings → public booking with
   OTP + online payment → owner notification → completion → verified review.
 - Phone auth with OTP second step; OTP password reset.
-- Marketing landing page; trilingual public dev docs (`/docs/api`, `/docs/widget`); legal pages
+- Marketing landing page; trilingual public widget docs (`/docs/widget`); legal pages
   with English fallback for non-Georgian languages.
-- Public REST API v1 with per-org keys, rate limiting, and key management UI.
 - Embeddable widget with auto-height, `vis:booked` event, and language pinning.
-- Per-service photo galleries; staff profiles with photos; per-appointment meeting links with
+- Per-service thumbnails; staff profiles with photos; per-appointment meeting links with
   owner-sent SMS; org cover image.
 - Online-payment plumbing via `create-payment`/`payment-webhook` (mock gateway) + refunds
   (`refund-payment`, cancel-with-refund choice, webhook auto-refund on fulfilment failure).

@@ -26,7 +26,6 @@ const FEATURES: { key: string; Icon: typeof StorefrontOutlined }[] = [
   { key: 'hours', Icon: ScheduleOutlined },
   { key: 'reviews', Icon: StarRounded },
   { key: 'widget', Icon: LanguageOutlined },
-  { key: 'api', Icon: CodeOutlined },
 ]
 
 /** The brand wordmark (shared VisLogo SVG). aria-label gives the SVG-only
@@ -181,7 +180,7 @@ export default function HomePage() {
         </Container>
       </Box>
 
-      {/* ── Developer / API strip ───────────────────────────────── */}
+      {/* ── Embed-on-your-site strip ────────────────────────────── */}
       <Container maxWidth={false} sx={{ maxWidth: MAX_W, py: { xs: 6, sm: 8 } }}>
         <Panel sx={{ p: { xs: 3, sm: 4 } }}>
           <Stack
@@ -196,11 +195,7 @@ export default function HomePage() {
                 {t('home.devDesc')}
               </Typography>
             </Box>
-            {/* Sign-up mints keys under Settings → API. */}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-              <Button component={RouterLink} to="/docs/api" variant="outlined">
-                {t('home.apiDocs')}
-              </Button>
               <Button component={RouterLink} to="/docs/widget" variant="outlined">
                 {t('home.widgetDocs')}
               </Button>
@@ -225,9 +220,6 @@ export default function HomePage() {
           }}
         >
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <Button component={RouterLink} to="/docs/api" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
-              {t('home.apiDocs')}
-            </Button>
             <Button component={RouterLink} to="/docs/widget" size="small" color="inherit" sx={{ color: 'text.secondary' }}>
               {t('home.widgetDocs')}
             </Button>
