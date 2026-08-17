@@ -86,6 +86,8 @@ Deno.serve(async (req) => {
     const otpHeaders = { 'content-type': 'application/json', apikey: anonKey, authorization: `Bearer ${anonKey}` }
 
     // ── request-otp ─────────────────────────────────────────────────────────
+    // Deliberately NOT gated on the org blocklist: a blocked customer must still
+    // be able to reach the cancel action below. The block bites at reschedule.
     if (action === 'request-otp') {
       const r = await fetch(`${otpBase}/request-booking-otp`, {
         method: 'POST', headers: otpHeaders, body: JSON.stringify({ phone, org_id: appt.org_id }),
@@ -129,6 +131,10 @@ Deno.serve(async (req) => {
         if (m.includes('slot_taken')) return err('slot_taken', 409)
         if (m.includes('not_reschedulable') || m.includes('not_found')) return err('not_manageable', 409)
         if (m.includes('staff_not_available')) return err('staff_not_available', 409)
+        // The business has blocked this number. Like billing_blocked, this stops
+        // the move only — the cancel branch below stays open so nobody is left
+        // holding a booking they can neither move nor drop.
+        if (m.includes('customer_blocked')) return err('customer_blocked', 403)
         // The business is behind on its bill, so it may not gain a booking on a
         // new date. Cancelling stays available — see the RPC's comment.
         if (m.includes('billing_blocked')) return err('billing_blocked', 409)

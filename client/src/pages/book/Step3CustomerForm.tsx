@@ -33,6 +33,7 @@ import {
 } from "@/lib/slots";
 import { CONSENT_VERSION } from "@/pages/legal/legalContent";
 import { depositFor } from "@/lib/deposit";
+import { readFunctionError } from "@/lib/functionError";
 import { postToParent } from "./useEmbedBridge";
 import { elevation } from "@/theme/theme";
 import type { BookingOrg, BookingState } from "./BookingLayout";
@@ -358,11 +359,13 @@ export default function Step3CustomerForm({
           // act on, and fall back to the generic failure for the rest.
           const m = apptErr.message ?? "";
           setError(
-            m.includes("limit_reached")
-              ? t("booking.unavailable")
-              : m.includes("slot_taken") || m.includes("capacity")
-                ? t("booking.slotTaken")
-                : t("booking.bookFailed"),
+            m.includes("customer_blocked")
+              ? t("booking.numberBlocked")
+              : m.includes("limit_reached")
+                ? t("booking.unavailable")
+                : m.includes("slot_taken") || m.includes("capacity")
+                  ? t("booking.slotTaken")
+                  : t("booking.bookFailed"),
           );
           setLoading(false);
           return;
@@ -393,7 +396,14 @@ export default function Step3CustomerForm({
         }
       );
       if (payErr || !pay?.checkoutUrl) {
-        setError(t("booking.paymentStartFailed"));
+        // Tell the one refusal the customer can act on (the business has blocked
+        // this number) apart from a generic checkout failure.
+        const code = await readFunctionError(pay, payErr);
+        setError(
+          code === "customer_blocked"
+            ? t("booking.numberBlocked")
+            : t("booking.paymentStartFailed"),
+        );
         setLoading(false);
         return;
       }

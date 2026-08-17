@@ -17,6 +17,7 @@ import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { dateLocale } from '@/lib/dateLocale'
 import { toBusinessWallClock, BUSINESS_UTC_OFFSET } from '@/lib/slots'
 import { isUuid } from '@/lib/validation'
+import { readFunctionError } from '@/lib/functionError'
 import { anim } from '@/theme/animations'
 import Step2DateTimeSelect from '@/pages/book/Step2DateTimeSelect'
 import type { BookingService } from '@/pages/book/BookingLayout'
@@ -146,9 +147,15 @@ export default function ManagePage() {
     setBusy(false)
     const res = data as { ok?: boolean; error?: string; refunded?: boolean } | null
     if (fnErr || !res?.ok) {
-      const e = res?.error
+      // The function answers failures with a non-2xx, which supabase-js turns
+      // into `fnErr` with `data` null — so the error code lives on the raw
+      // response, not in `res`. readFunctionError looks in both places.
+      const e = await readFunctionError(data, fnErr)
       if (e === 'wrong_code' || e === 'too_many_attempts' || e === 'expired') { setError(t('manage.wrongCode')); return }
       if (e === 'slot_taken') { setError(t('manage.slotTaken')); return }
+      // The business has blocked this number: reschedule is off, but cancel
+      // still works, so send them back to the menu rather than a dead end.
+      if (e === 'customer_blocked') { setError(t('manage.numberBlocked')); setView('menu'); return }
       setError(t('manage.actionFailed'))
       return
     }

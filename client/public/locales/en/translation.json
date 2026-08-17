@@ -258,7 +258,8 @@
     "payOnline": "Pay online",
     "payOnSite": "Pay on site",
     "payOnSiteHint": "You will pay ₾{{amount}} at the appointment — nothing is charged now.",
-    "payFreeHint": "This service is free — nothing to pay."
+    "payFreeHint": "This service is free — nothing to pay.",
+    "numberBlocked": "This business isn't accepting bookings from this number."
   },
   "payment": {
     "sandbox": "Sandbox",
@@ -629,7 +630,8 @@
     "cancelNoRefundNote": "Free cancellation up to {{hours}}h before the visit.",
     "wrongCode": "Wrong code. Please try again.",
     "slotTaken": "That time was just taken. Pick another.",
-    "actionFailed": "Something went wrong. Please try again."
+    "actionFailed": "Something went wrong. Please try again.",
+    "numberBlocked": "This business isn't taking new times from this number. You can still cancel."
   },
   "clients": {
     "nav": "Clients",
@@ -639,7 +641,26 @@
     "lastVisit": "Last visit",
     "erased": "Erased",
     "eraseTitle": "Erase client data",
-    "eraseMessage": "This permanently anonymizes {{name}}'s name, phone and notes across all their appointments. This cannot be undone."
+    "eraseMessage": "This permanently anonymizes {{name}}'s name, phone and notes across all their appointments. This cannot be undone.",
+    "tabClients": "Clients",
+    "tabBlocked": "Blocked",
+    "blocked": "Blocked",
+    "block": "Block",
+    "unblock": "Unblock",
+    "blockNumber": "Block a number",
+    "blockTitle": "Block this number",
+    "blockHelp": "{{name}} will no longer be able to book or reschedule with you. Their existing appointments stay — cancel those yourself if you want them gone.",
+    "blockReason": "Reason (optional)",
+    "blockReasonHelp": "Only you and your team see this.",
+    "blockDone": "Number blocked",
+    "alreadyBlocked": "That number is already blocked",
+    "unblockTitle": "Unblock this number",
+    "unblockMessage": "{{phone}} will be able to book with you again.",
+    "unblockDone": "Number unblocked",
+    "blockedEmpty": "No blocked numbers",
+    "blockedEmptyHelp": "Block a number to stop it booking with you. Use this as a last resort.",
+    "noReason": "No reason given",
+    "blockHelpGeneric": "This number will no longer be able to book or reschedule with you. Existing appointments stay — cancel those yourself if you want them gone."
   },
   "analytics": {
     "title": "Analytics",

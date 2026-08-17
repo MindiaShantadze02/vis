@@ -168,7 +168,19 @@ dashboard. The product front door is a **marketing landing page** at `/`.
   snapshotted name), reason, `initiated_via`, and whether it cancelled. Written service-role only,
   `pending` before the gateway call so a crash mid-refund is reconcilable.
 - **Clients** — customer directory grouped client-side, with the Art. 16 **erase client data**
-  action (anonymizes PII via `erase_customer_data`).
+  action (anonymizes PII via `erase_customer_data`), plus a per-org **blocklist** on a second tab.
+- **Blocking a number** (migration `20260819120000`) — the business's last resort against a phone
+  that abuses its booking page. `blocked_customers (org_id, phone)` is **org-scoped only**: it
+  never bars anyone platform-wide, and RLS ties writes to the caller's own org. Phones are
+  normalised on write (`normalize_ge_phone`), so a pasted `+995 …` matches the stored 9-digit form.
+  Enforced entirely server-side via `is_phone_blocked`, with **no trusted-caller bypass**:
+  `trg_zz_block_blocked_customer` (BEFORE INSERT on `appointments`, so the service-role
+  payment-webhook insert is covered too), `reschedule_appointment_slot`, and `submit_review`.
+  `create-payment` also refuses at checkout so a blocked customer is never charged. The trigger
+  deliberately sorts **after** `trg_enforce_booking_verification` — firing earlier would let anyone
+  probe an org's blocklist without owning the phone. A block stops new bookings and reschedules
+  only: existing appointments stand (the business cancels them itself) and **cancelling stays
+  open**, same reasoning as the billing block.
 - **Analytics** (migration 096) — a money-first dashboard for a chosen range (30/90/365 days) from
   the pre-aggregated `get_org_analytics` RPC: revenue + revenue-per-staff, booking/completion counts,
   **no-show / cancellation / repeat-customer rates**, busiest-weekday & busiest-hour histograms

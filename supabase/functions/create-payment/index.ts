@@ -121,6 +121,19 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'verification_required' }, { status: 422, headers: corsHeaders })
       }
 
+      // Blocklist: this business has barred this number. Checked AFTER the OTP
+      // gate on purpose — the answer is only ever given to someone who has just
+      // proven they own the phone, so this can't be used to enumerate an org's
+      // blocklist. Refusing here means a blocked customer is never charged; if
+      // this check were somehow skipped the appointment insert would still be
+      // refused by trg_zz_block_blocked_customer and the webhook would
+      // auto-refund, so this is the courtesy, not the control.
+      const { data: blocked } = await admin
+        .rpc('is_phone_blocked', { p_org_id: org_id, p_phone: phoneLocal })
+      if (blocked === true) {
+        return Response.json({ error: 'customer_blocked' }, { status: 403, headers: corsHeaders })
+      }
+
       // Park the booking until payment clears.
       const { data: intent, error: intentErr } = await admin
         .from('pending_bookings')
