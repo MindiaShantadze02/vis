@@ -15,7 +15,7 @@ import { HONEY } from '@/theme/theme'
 import { isValidServicePrice, MAX_PRICE, MIN_PRICE, FIELD_LIMITS } from '@/lib/validation'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import ServiceThumbnailPicker from '@/components/ServiceThumbnailPicker'
-import { serviceImageFileError, MAX_SERVICE_IMAGE_MB } from '@/lib/serviceImages'
+import { serviceImageFileError, isLowResolution, MAX_SERVICE_IMAGE_MB, RECOMMENDED_SERVICE_IMAGE_WIDTH } from '@/lib/serviceImages'
 import StepHeader from './StepHeader'
 import type { OnboardingData, ServiceLocationType } from './OnboardingLayout'
 
@@ -84,13 +84,17 @@ export default function ServicesStep() {
     setSubmitted(false)
   }
 
-  function pickImage(file: File) {
+  async function pickImage(file: File) {
     const err = serviceImageFileError(file)
     if (err) {
       toast.error(err === 'fileTooLarge' ? t('validation.fileTooLarge', { max: MAX_SERVICE_IMAGE_MB }) : t('validation.invalidImage'))
       return
     }
     setDraft(d => ({ ...d, imageFile: file, imagePreview: URL.createObjectURL(file) }))
+    // Kept, but flagged: a small photo is stretched across the booking card.
+    if (await isLowResolution(file)) {
+      toast.error(t('validation.imageLowResolution', { width: RECOMMENDED_SERVICE_IMAGE_WIDTH }))
+    }
   }
 
   function removeImage() {

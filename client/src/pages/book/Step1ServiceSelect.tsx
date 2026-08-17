@@ -91,7 +91,10 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
               }}
             >
               <CardActionArea onClick={() => onSelect(s)} data-testid="book-service">
-                {/* Thumbnail banner — only for services that have a photo. */}
+                {/* Thumbnail banner — only for services that have a photo.
+                    Spans the card and is centre-cropped; `renderWidth` asks the
+                    storage renderer for a variant matched to that width (and to
+                    the screen's pixel density). */}
                 {s.image_url && (
                   <SkeletonImage
                     src={s.image_url}
@@ -100,6 +103,7 @@ export default function Step1ServiceSelect({ orgId, onSelect }: Props) {
                     // show their subject instead of a thin horizontal slice.
                     sx={{ width: '100%', height: { xs: 200, md: 280 } }}
                     imgSx={{ objectPosition: 'center' }}
+                    renderWidth={1040}
                   />
                 )}
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2.25, pl: 2.75 }}>

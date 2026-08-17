@@ -18,7 +18,7 @@ import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import ServiceThumbnailPicker from '@/components/ServiceThumbnailPicker'
 import {
   uploadServiceImage, removeServiceImageFile, serviceImageFileError,
-  MAX_SERVICE_IMAGE_MB,
+  isLowResolution, MAX_SERVICE_IMAGE_MB, RECOMMENDED_SERVICE_IMAGE_WIDTH,
 } from '@/lib/serviceImages'
 
 type LocationType = 'in_person' | 'online'
@@ -187,6 +187,11 @@ export default function ServicesSettings() {
     if (err) {
       toast.error(err === 'fileTooLarge' ? t('validation.fileTooLarge', { max: MAX_SERVICE_IMAGE_MB }) : t('validation.invalidImage'))
       return
+    }
+    // Accepted either way — but say so now, because a small photo gets stretched
+    // across the booking card and nothing downstream can put the detail back.
+    if (await isLowResolution(file)) {
+      toast.error(t('validation.imageLowResolution', { width: RECOMMENDED_SERVICE_IMAGE_WIDTH }))
     }
 
     if (editing) {

@@ -12,6 +12,7 @@ import { stepVariants } from '@/theme/motion'
 import { LanguageSwitcher, SkeletonImage } from '@/components/ui'
 import VisLogo from '@/components/VisLogo'
 import { displayGeorgianPhone } from '@/lib/validation'
+import { storageImage } from '@/lib/storageImage'
 import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
 import BookingReviews from './BookingReviews'
@@ -66,18 +67,6 @@ export default function BookingShell({
     window.scrollTo(0, 0)
   }, [step])
 
-  // The sidebar stretches to the step column, so its height changes both on
-  // load (520px → 1030px once the service list and its photos arrive) and on
-  // every step change (a list of photo cards is far taller than a slot grid).
-  // The watermark is anchored to a percentage of that height, so each change
-  // would slide it across the panel — over the org header on load, then flying
-  // up or down between steps.
-  //
-  // So the mark is never shown *while* the panel is re-flowing: any height
-  // change over MARK_SETTLE_EPSILON hides it instantly, and it fades back in
-  // once the height has held steady. The reposition always happens invisibly.
-  // Small changes are ignored so a scrollbar or a one-line reflow can't make it
-  // blink.
   // Hold the step column at the tallest step seen so far, so moving between
   // steps never resizes the page (the service list is normally the tallest, and
   // it is step 1, so the floor is set before anything can shift).
@@ -109,6 +98,11 @@ export default function BookingShell({
     // Re-observes after AnimatePresence swaps in the new step's element.
   }, [step, pinStepHeight])
 
+  // The watermark is anchored to a percentage of the panel height, so anything
+  // that resizes the panel (the service list and its photos arriving on load)
+  // would slide the mark across it — over the org header, then down into place.
+  // It is therefore never shown *while* the panel is re-flowing: a disturbance
+  // hides it instantly, and it fades back in once things have held steady.
   const sidebarRef = useRef<HTMLDivElement | null>(null)
   const [markVisible, setMarkVisible] = useState(false)
   // Bumped by anything that can move the mark; every bump restarts the settle
@@ -243,7 +237,9 @@ export default function BookingShell({
           labelled rows. */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
         <Avatar
-          src={org.logo_url ?? undefined}
+          // 56px slot at 2x. Logos are uploaded at 800px+ and were shipped
+          // whole for a thumbnail-sized hole.
+          src={org.logo_url ? storageImage(org.logo_url, 112) : undefined}
           sx={{
             width: 56, height: 56,
             background: sideOverlay(darkSidebar ? 0.06 : 0.15),
@@ -341,6 +337,9 @@ export default function BookingShell({
           // thin band — the old 180px strip cropped out most of the photo.
           sx={{ width: '100%', height: { xs: 200, md: 380 }, flexShrink: 0 }}
           imgSx={{ objectPosition: 'center' }}
+          // Spans the viewport, so ask for a render wide enough for a large
+          // desktop; the renderer caps it at whatever the upload actually has.
+          renderWidth={1920}
         />
       )}
 
@@ -353,7 +352,7 @@ export default function BookingShell({
         {isMobile && !embed && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, background: bookingTheme.sidebar, color: sideFg }}>
             <Avatar
-              src={org.logo_url ?? undefined}
+              src={org.logo_url ? storageImage(org.logo_url, 76) : undefined}
               sx={{ width: 38, height: 38, background: sideOverlay(darkSidebar ? 0.06 : 0.16), color: sideFg, fontSize: 16, fontWeight: 700 }}
             >
               {org.name.charAt(0)}

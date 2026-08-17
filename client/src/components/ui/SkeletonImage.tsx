@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Box, Skeleton } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material/styles'
+import { storageSrcSet } from '@/lib/storageImage'
 
 interface Props {
   src: string
@@ -11,6 +12,11 @@ interface Props {
   imgSx?: SxProps<Theme>
   /** Skeleton colour override — needed on dark surfaces (e.g. the lightbox). */
   skeletonSx?: SxProps<Theme>
+  /**
+   * Widest CSS width this image is laid out at. Enables a resized, 1x/2x
+   * `srcSet` from Supabase's image renderer instead of shipping the original.
+   */
+  renderWidth?: number
   onClick?: () => void
   role?: string
   'aria-label'?: string
@@ -23,9 +29,13 @@ interface Props {
  * The frame owns the shape: pass size/aspect/radius via `sx`; the image
  * covers it. Blob/cached URLs resolve in the first paint and skip straight
  * past the skeleton.
+ *
+ * Pass `renderWidth` wherever the image is shown large, so visitors get a
+ * variant sized for that slot (and for their screen's pixel density) rather
+ * than the owner's original upload.
  */
 export default function SkeletonImage({
-  src, alt, sx, imgSx, skeletonSx, onClick, ...rest
+  src, alt, sx, imgSx, skeletonSx, renderWidth, onClick, ...rest
 }: Props) {
   const [loaded, setLoaded] = useState(false)
 
@@ -37,6 +47,12 @@ export default function SkeletonImage({
     setLoaded(false)
   }
 
+  const srcSet = renderWidth ? storageSrcSet(src, renderWidth) : undefined
+
+  function settle(el: HTMLImageElement | null) {
+    if (el?.complete && el.naturalWidth && !loaded) setLoaded(true)
+  }
+
   return (
     <Box sx={{ position: 'relative', overflow: 'hidden', ...sx }} onClick={onClick} {...rest}>
       {!loaded && (
@@ -45,19 +61,21 @@ export default function SkeletonImage({
           sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', ...skeletonSx }}
         />
       )}
+
       <Box
         component="img"
         src={src}
+        srcSet={srcSet}
         alt={alt}
         // Below-the-fold thumbnails/banners shouldn't block first paint.
         loading="lazy"
         decoding="async"
         // Cached images can be complete before React attaches onLoad.
-        ref={(el: HTMLImageElement | null) => { if (el?.complete && !loaded) setLoaded(true) }}
+        ref={settle}
         onLoad={() => setLoaded(true)}
         onError={() => setLoaded(true)}
         sx={{
-          width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+          width: '100%', height: '100%', display: 'block', objectFit: 'cover',
           opacity: loaded ? 1 : 0, transition: 'opacity 0.2s ease',
           ...imgSx,
         }}

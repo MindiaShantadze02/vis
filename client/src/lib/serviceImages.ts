@@ -21,6 +21,42 @@ export function serviceImageFileError(file: File): 'invalidImage' | 'fileTooLarg
   return null
 }
 
+/** Below this width a service photo is being stretched across the booking
+ *  card, which is where "my photos look blurry" comes from. The card is ~1040
+ *  CSS px at its widest; 1200 gives a little headroom without demanding a
+ *  professional shot. */
+export const RECOMMENDED_SERVICE_IMAGE_WIDTH = 1200
+
+/**
+ * The pixel size of an image file, or null if it can't be decoded. Async by
+ * nature (the browser has to parse the file), so it is kept apart from the
+ * synchronous `serviceImageFileError` validation.
+ */
+export async function imageDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  const url = URL.createObjectURL(file)
+  try {
+    return await new Promise(resolve => {
+      const img = new Image()
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
+      img.onerror = () => resolve(null)
+      img.src = url
+    })
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+/**
+ * True when this file is too small for the slot it will be shown in, i.e. the
+ * browser will have to enlarge it. Nothing downstream can recover that detail —
+ * the storage renderer never upscales — so the only remedy is a bigger file,
+ * which is why the owner is told at upload time rather than left to notice.
+ */
+export async function isLowResolution(file: File): Promise<boolean> {
+  const size = await imageDimensions(file)
+  return !!size && size.width < RECOMMENDED_SERVICE_IMAGE_WIDTH
+}
+
 /** Upload one file to "<org>/<service>/<uuid>.<ext>" and return its public URL,
  *  or null on failure. The random filename means a replacement never collides
  *  with the outgoing thumbnail (which the caller deletes separately). Does not

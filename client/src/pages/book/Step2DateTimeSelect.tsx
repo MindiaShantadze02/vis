@@ -12,6 +12,7 @@ import {
 } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { storageImage } from '@/lib/storageImage'
 import { dateLocale } from '@/lib/dateLocale'
 import { useTheme, alpha } from '@mui/material/styles'
 import { anim } from '@/theme/animations'
@@ -452,7 +453,8 @@ export default function Step2DateTimeSelect({ orgId, service, initialDate, initi
                   }}
                 >
                   <Avatar
-                    src={opt.avatar_url ?? undefined}
+                    // 30px slot at 2x (staff photos are uploaded full-size).
+                    src={opt.avatar_url ? storageImage(opt.avatar_url, 60) : undefined}
                     sx={{
                       width: 30, height: 30, fontSize: '0.8rem', fontWeight: 700,
                       bgcolor: selected ? 'primary.main' : 'text.disabled',

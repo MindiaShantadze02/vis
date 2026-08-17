@@ -68,6 +68,7 @@
     "priceTooLow": "Price must be at least {{min}} ₾",
     "fileTooLarge": "File is too large (max {{max}} MB)",
     "invalidImage": "Please choose an image file (PNG, JPG, GIF)",
+    "imageLowResolution": "This photo is small and will look soft on your booking page. Upload one at least {{width}} px wide.",
     "requiredWhenEnabled": "Required when this method is enabled",
     "loadFailed": "Failed to load.",
     "consentRequired": "Please accept the Privacy Policy and Terms to continue.",
