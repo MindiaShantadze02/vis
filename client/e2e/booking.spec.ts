@@ -19,8 +19,10 @@ test.describe('Public booking', () => {
   test('a guest books and pays online end to end and it auto-approves', async ({ page }) => {
     expect(await bookToDetails(page), 'expected an open day with a free slot this week').toBeTruthy()
 
-    // The quiet "Powered by Vis" growth-loop footer is on every booking page.
+    // The quiet "Powered by Vis" growth-loop footer is on every booking page,
+    // and the oversized Vis wordmark closes the branded sidebar.
     await expect(page.getByTestId('powered-by-vis')).toBeVisible()
+    await expect(page.getByTestId('booking-vis-watermark')).toBeVisible()
 
     // Step 3 — customer details. A priced service (the seeded Consultation is
     // ₾50) with on-site enabled shows the Online / On site selector, and Online

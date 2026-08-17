@@ -9,7 +9,8 @@ import { PlaceOutlined as PlaceOutlinedIcon } from '@/components/icons'
 import { MailOutlined as MailOutlinedIcon } from '@/components/icons'
 import { useTranslation } from 'react-i18next'
 import { stepVariants } from '@/theme/motion'
-import { LanguageSwitcher, SkeletonImage } from '@/components/ui'
+import { SkeletonImage } from '@/components/ui'
+import VisLogo from '@/components/VisLogo'
 import { displayGeorgianPhone } from '@/lib/validation'
 import type { BookingTheme } from '@/theme/bookingThemes'
 import type { BookingOrg } from './BookingLayout'
@@ -67,10 +68,16 @@ export default function BookingShell({
   const sidebar = (
     <Box
       sx={{
-        width: { xs: '100%', md: 300 },
+        width: { xs: '100%', md: '25%' },
+        // Never so narrow that the org header wraps badly on a small laptop,
+        // nor so wide that it eats the step column on an ultrawide.
+        minWidth: { md: 300 }, maxWidth: { md: 420 },
         background: bookingTheme.sidebar,
         color: sideFg,
-        p: 4,
+        // Tuned (not a spacing step) so the org name lines up with the
+        // "Step 1 / 3 · Service" row across the divide: the progress bar's 20px
+        // top padding minus half the difference between the two line heights.
+        px: 4, pt: '15px', pb: 4,
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
@@ -83,6 +90,29 @@ export default function BookingShell({
         }),
       }}
     >
+      {/* Oversized Vis wordmark, laid diagonally across the panel — brand
+          presence without a second badge competing with the business's own.
+          Drawn in the sidebar's foreground colour at a few percent, so it reads
+          on every preset *and* on a custom brand hex (light panels flip to a
+          dark mark via sideOverlay). Centred 40% down the panel and cropped by
+          its overflow:hidden. */}
+      <Box
+        aria-hidden
+        data-testid="booking-vis-watermark"
+        sx={{
+          position: 'absolute', left: '50%', top: '40%', zIndex: 0,
+          transform: 'translate(-50%,-50%) rotate(-45deg)',
+          transformOrigin: 'center',
+          color: sideOverlay(darkSidebar ? 0.06 : 0.09),
+          pointerEvents: 'none', userSelect: 'none',
+        }}
+      >
+        <VisLogo height={170} color="currentColor" />
+      </Box>
+
+      {/* Content sits above the watermark: an absolutely positioned z-index:0
+          layer would otherwise paint over its static siblings. */}
+      <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
         <Avatar
           src={org.logo_url ?? undefined}
@@ -149,6 +179,7 @@ export default function BookingShell({
         overlay={sideOverlay}
         accent={bookingTheme.deep}
       />
+      </Box>
     </Box>
   )
 
@@ -174,14 +205,6 @@ export default function BookingShell({
       {!isMobile && !embed && sidebar}
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: embed ? 'background.paper' : bookingTheme.pageBg, minWidth: 0 }}>
-        {/* Standalone language switcher (the biggest UX gap for non-Georgian
-            visitors). In embed mode language comes from ?lang=, so it's hidden. */}
-        {!embed && (
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: { xs: 1.5, md: 3 }, pt: 1.25, bgcolor: 'background.paper' }}>
-            <LanguageSwitcher />
-          </Box>
-        )}
-
         {/* Compact mobile header — replaces the full sidebar below md. */}
         {isMobile && !embed && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, background: bookingTheme.sidebar, color: sideFg }}>
