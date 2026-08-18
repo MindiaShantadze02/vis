@@ -765,6 +765,8 @@
     "removeCardMessage": "Your card details are deleted from Vis. Bookings keep working, but the next monthly bill can't be collected — add a card before it comes due or your booking page is paused until it's paid.",
     "cardRemoved": "Card removed",
     "cardRemoveFailed": "Couldn't remove the card. Please try again.",
-    "cardExpiredInput": "That card has expired"
+    "cardExpiredInput": "That card has expired",
+    "cardOnFileHint": "The card we charge each month. Adding or replacing it never charges you.",
+    "invoicesHint": "Closed months and what each was billed for."
   }
 }

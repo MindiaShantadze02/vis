@@ -26,8 +26,10 @@ export default function UsageMeter() {
   const hasFooter = rolledForward > 0 || status === 'past_due' || status === 'suspended'
 
   return (
-    <Card sx={{ mb: 4, maxWidth: 420 }} data-testid="usage-meter">
-      <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+    // Full width + p:3 to match every other dashboard card. The hero figure
+    // stays large; only the frame changes.
+    <Card sx={{ mb: 3 }} data-testid="usage-meter">
+      <CardContent sx={{ p: 3 }}>
         <Typography
           variant="caption"
           sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.5 }}

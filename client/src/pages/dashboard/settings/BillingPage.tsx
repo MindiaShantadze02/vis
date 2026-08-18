@@ -137,7 +137,7 @@ export default function BillingPage() {
     return (
       <Box>
         <PageHeader title={t('settings.billing')} />
-        <Alert severity="info" data-testid="billing-exempt" sx={{ maxWidth: 480 }}>
+        <Alert severity="info" data-testid="billing-exempt">
           {t('billing.exempt')}
         </Alert>
       </Box>
@@ -146,15 +146,15 @@ export default function BillingPage() {
 
   return (
     <Box>
-      <PageHeader title={t('settings.billing')} />
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-        {t('billing.intro')}
-      </Typography>
+      {/* The page intro belongs in PageHeader's subtitle slot, like any other
+          page-level description — it used to be a loose <Typography> under the
+          header, which no other page does. */}
+      <PageHeader title={t('settings.billing')} subtitle={t('billing.intro')} />
 
       {(billing?.status === 'past_due' || billing?.status === 'suspended') && (
         <Alert
           severity={billing.status === 'suspended' ? 'error' : 'warning'}
-          sx={{ mb: 2 }}
+          sx={{ mb: 3 }}
           data-testid="billing-dunning"
           action={
             <Button color="inherit" size="small" onClick={payNow} disabled={paying} data-testid="billing-pay-now">
@@ -168,35 +168,26 @@ export default function BillingPage() {
 
       <UsageMeter />
 
-      <Card sx={{ maxWidth: 480 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{t('billing.cardOnFile')}</Typography>
-            <Button size="small" variant="outlined" data-testid="billing-add-card" onClick={() => setOpen(true)}>
-              {billing?.card ? t('billing.replaceCard') : t('billing.addCard')}
-            </Button>
-          </Box>
+      <Card sx={{ mb: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+            {t('billing.cardOnFile')}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            {t('billing.cardOnFileHint')}
+          </Typography>
+
           {billing?.card
             ? (
               <>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2" data-testid="billing-card" sx={{ flex: 1 }}>
-                    {(billing.card.brand ?? t('billing.card'))} ···· {billing.card.last4 ?? '····'}
-                  </Typography>
-                  <Button
-                    size="small"
-                    color="error"
-                    data-testid="billing-remove-card"
-                    onClick={() => setConfirmRemove(true)}
-                  >
-                    {t('billing.removeCard')}
-                  </Button>
-                </Box>
+                <Typography variant="body2" data-testid="billing-card">
+                  {(billing.card.brand ?? t('billing.card'))} ···· {billing.card.last4 ?? '····'}
+                </Typography>
                 {expiryState === 'expired' && (
-                  <Alert severity="error" sx={{ mt: 1 }} data-testid="card-expired">{t('billing.cardExpired')}</Alert>
+                  <Alert severity="error" sx={{ mt: 2 }} data-testid="card-expired">{t('billing.cardExpired')}</Alert>
                 )}
                 {expiryState === 'expiring_soon' && (
-                  <Alert severity="warning" sx={{ mt: 1 }} data-testid="card-expiring">{t('billing.cardExpiringSoon')}</Alert>
+                  <Alert severity="warning" sx={{ mt: 2 }} data-testid="card-expiring">{t('billing.cardExpiringSoon')}</Alert>
                 )}
               </>
             )
@@ -205,13 +196,33 @@ export default function BillingPage() {
                 {t('billing.noCard')}
               </Typography>
             )}
+
+          {/* Actions bottom-right, primary on the right — the same shape every
+              other settings card uses (cf. BookingPageSettings' Save). Replacing
+              the card is the primary act; removing it is the quiet destructive
+              one beside it. */}
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            {billing?.card && (
+              <Button color="error" data-testid="billing-remove-card" onClick={() => setConfirmRemove(true)}>
+                {t('billing.removeCard')}
+              </Button>
+            )}
+            <Button variant="contained" data-testid="billing-add-card" onClick={() => setOpen(true)}>
+              {billing?.card ? t('billing.replaceCard') : t('billing.addCard')}
+            </Button>
+          </Box>
         </CardContent>
       </Card>
 
       {invoices.length > 0 && (
-        <Card sx={{ maxWidth: 480, mt: 3 }} data-testid="billing-invoices">
-          <CardContent>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>{t('billing.invoices')}</Typography>
+        <Card data-testid="billing-invoices">
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+              {t('billing.invoices')}
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
+              {t('billing.invoicesHint')}
+            </Typography>
             {invoices.map((inv, i) => (
               <Box key={inv.id}>
                 {i > 0 && <Divider />}
