@@ -176,11 +176,20 @@ dashboard. The product front door is a **marketing landing page** at `/`.
   Enforced entirely server-side via `is_phone_blocked`, with **no trusted-caller bypass**:
   `trg_zz_block_blocked_customer` (BEFORE INSERT on `appointments`, so the service-role
   payment-webhook insert is covered too), `reschedule_appointment_slot`, and `submit_review`.
-  `create-payment` also refuses at checkout so a blocked customer is never charged. The trigger
-  deliberately sorts **after** `trg_enforce_booking_verification` — firing earlier would let anyone
-  probe an org's blocklist without owning the phone. A block stops new bookings and reschedules
-  only: existing appointments stand (the business cancels them itself) and **cancelling stays
-  open**, same reasoning as the billing block.
+  Two edge functions refuse earlier so an abuser stops costing the business money:
+  `request-booking-otp` declines **before generating or sending a code**, and `create-payment`
+  declines before charging. Neither is the control — bypassing either still hits the trigger.
+  `manage-appointment` is exempted from the OTP gate (it proves itself with the service-role key
+  in an `x-internal-key` header — the gateway rewrites `authorization`, so a bearer comparison
+  never matches server-to-server) because **cancelling stays open** to a blocked customer and
+  cancelling needs a code. A block stops new bookings and reschedules only: existing appointments
+  stand and the business cancels them itself, same reasoning as the billing block.
+  Two ordering notes worth keeping: the trigger sorts **after**
+  `trg_enforce_booking_verification`, and `create-payment` checks **after** its OTP check —
+  earlier in either case would let anyone probe an org's blocklist without owning the phone. The
+  pre-send OTP refusal knowingly accepts that residual (it answers "has org X blocked phone Y" to
+  someone who already knows both) in exchange for not paying to text an abuser; it sends nothing
+  and stores nothing, so it cannot burn the real owner's daily code budget.
 - **Analytics** (migration 096) — a money-first dashboard for a chosen range (30/90/365 days) from
   the pre-aggregated `get_org_analytics` RPC: revenue + revenue-per-staff, booking/completion counts,
   **no-show / cancellation / repeat-customer rates**, busiest-weekday & busiest-hour histograms

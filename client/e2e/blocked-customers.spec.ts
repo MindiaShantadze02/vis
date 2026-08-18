@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import {
-  login, fillStable, bookToDetails, passBookingOtp,
-  signInSeed, restApi, letterName, setPaymentMethods, SEED,
+  login, fillStable, bookToDetails, createSeedAppointment,
+  signInSeed, restApi, readSupabaseEnv, letterName, BOOKING_OTP, SEED,
   type SeedCtx,
 } from './helpers'
 
@@ -69,17 +69,12 @@ test.describe('Blocked customers', () => {
     }
   })
 
-  test('a blocked number is refused at the booking form', async ({ page }) => {
+  test('a blocked number is refused before any code is sent', async ({ page }) => {
     const ctx = await signInSeed()
     const orgId = await seedOrgId(ctx)
     const phone = `59${String(Date.now()).slice(-7)}`
 
     try {
-      // On-site payment only, so the booking is a direct client-side insert and
-      // the refusal comes from the trigger rather than from create-payment. Both
-      // paths are gated; this is the one a spec can drive without a gateway.
-      await setPaymentMethods({ online: false, inPerson: true })
-
       await restApi(ctx, 'blocked_customers', {
         method: 'POST',
         body: JSON.stringify({ org_id: orgId, phone, reason: 'e2e' }),
@@ -89,46 +84,130 @@ test.describe('Blocked customers', () => {
       await fillStable(page.getByTestId('book-first-name'), letterName())
       await fillStable(page.getByTestId('book-phone'), phone)
       await page.getByTestId('book-submit').click()
-      // The block sits BEHIND the OTP gate on purpose — proving you own the
-      // phone is what earns you the real answer.
-      await passBookingOtp(page)
 
+      // Refused at the FIRST step that can refuse: the customer is told straight
+      // away and never reaches the code screen.
       await expect(page.getByTestId('book-error')).toContainText(/ამ ნომრიდან/, { timeout: 20_000 })
+      await expect(page.getByTestId('book-otp-code')).toHaveCount(0)
 
-      // Nothing was created.
-      const appts = await restApi(
-        ctx,
-        `appointments?org_id=eq.${orgId}&select=id,customers!inner(phone_number)&customers.phone_number=eq.${phone}`,
-      ) as unknown[]
-      expect(appts).toHaveLength(0)
+      // The point of moving the check here: no SMS was paid for and no challenge
+      // was stored. booking_verifications / sms_log are superadmin-only, so
+      // reading them as the owner would pass vacuously — probe the 60s per-phone
+      // cooldown instead. It counts stored challenges, so if the blocked attempt
+      // had written one, this next request would come back 'too_soon'.
+      const { url, anonKey } = readSupabaseEnv()
+      await unblockAll(ctx, [phone])
+      const after = await fetch(`${url}/functions/v1/request-booking-otp`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', apikey: anonKey, authorization: `Bearer ${anonKey}` },
+        body: JSON.stringify({ phone, org_id: orgId }),
+      })
+      const j = await after.json()
+      expect(j.error ?? null, 'the refused attempt must not have burned the cooldown').not.toBe('too_soon')
+      expect(j.ok).toBe(true)
     } finally {
       await unblockAll(ctx, [phone])
-      await setPaymentMethods({ online: true, inPerson: true })
     }
   })
 
-  test('a blocked number never reaches the payment gateway', async ({ page }) => {
+  test('blocking after a code was verified still stops the checkout', async () => {
+    // The mid-flow race: the customer already holds a verified OTP when the
+    // business blocks them. create-payment must refuse rather than charge —
+    // the gate the UI can no longer reach now that request-booking-otp
+    // short-circuits first. Driven over HTTP for exactly that reason.
     const ctx = await signInSeed()
     const orgId = await seedOrgId(ctx)
+    const { url, anonKey } = readSupabaseEnv()
     const phone = `59${String(Date.now()).slice(-7)}`
+    const fnHeaders = {
+      'content-type': 'application/json',
+      apikey: anonKey,
+      authorization: `Bearer ${anonKey}`,
+    }
 
     try {
+      // 1. Code requested + verified while the number is still welcome.
+      const req = await fetch(`${url}/functions/v1/request-booking-otp`, {
+        method: 'POST', headers: fnHeaders, body: JSON.stringify({ phone, org_id: orgId }),
+      })
+      expect((await req.json()).ok, 'OTP request before the block').toBe(true)
+
+      const ver = await fetch(`${url}/functions/v1/verify-booking-otp`, {
+        method: 'POST', headers: fnHeaders, body: JSON.stringify({ phone, code: BOOKING_OTP }),
+      })
+      expect((await ver.json()).verified, 'master code accepted').toBe(true)
+
+      // 2. The business blocks them mid-flow.
       await restApi(ctx, 'blocked_customers', {
         method: 'POST',
         body: JSON.stringify({ org_id: orgId, phone, reason: 'e2e' }),
       })
 
-      // Online is the seed's default, so this is the checkout path. create-payment
-      // refuses AFTER the OTP check and BEFORE parking the booking, so the
-      // customer is never charged and no pending_bookings row is left behind.
-      expect(await bookToDetails(page), 'expected an open day with a free slot this week').toBeTruthy()
-      await fillStable(page.getByTestId('book-first-name'), letterName())
-      await fillStable(page.getByTestId('book-phone'), phone)
-      await page.getByTestId('book-submit').click()
-      await passBookingOtp(page)
+      // 3. Checkout is refused, so no charge and nothing parked.
+      const svc = await restApi(
+        ctx, `services?org_id=eq.${orgId}&is_active=eq.true&select=id&limit=1`,
+      ) as { id: string }[]
+      const pay = await fetch(`${url}/functions/v1/create-payment`, {
+        method: 'POST',
+        headers: fnHeaders,
+        body: JSON.stringify({
+          purpose: 'appointment',
+          org_id: orgId,
+          service_id: svc[0].id,
+          scheduled_at: new Date(Date.now() + 7 * 24 * 3_600_000).toISOString(),
+          first_name: letterName(),
+          phone,
+          returnBaseUrl: 'http://localhost:5173',
+        }),
+      })
+      expect(pay.status).toBe(403)
+      expect((await pay.json()).error).toBe('customer_blocked')
 
-      await expect(page.getByTestId('book-error')).toContainText(/ამ ნომრიდან/, { timeout: 20_000 })
-      await expect(page).not.toHaveURL(/\/pay\/mock/)
+      // (pending_bookings is superadmin-only, so the 403 above IS the assertion:
+      // create-payment parks the booking only after this check passes.)
+    } finally {
+      await unblockAll(ctx, [phone])
+    }
+  })
+
+  test('a blocked customer can still cancel the booking they already have', async ({ page }) => {
+    // The exemption that makes the new pre-send gate safe: manage-appointment
+    // asks for the code with the SERVICE ROLE key, and request-booking-otp skips
+    // the blocklist for that caller. Without it a blocked customer would be
+    // stranded with a booking they can neither move nor drop.
+    const ctx = await signInSeed()
+    const orgId = await seedOrgId(ctx)
+    const phone = `59${String(Date.now()).slice(-7)}`
+    // 8 days out at 10:00 business time (06:00Z).
+    const when = new Date(Date.now() + 8 * 86_400_000)
+    when.setUTCHours(6, 0, 0, 0)
+
+    let apptId: string | null = null
+    try {
+      // Booked first, blocked second — the trigger refuses the owner insert too,
+      // so the order matters.
+      apptId = await createSeedAppointment({
+        firstName: letterName(), phone, scheduledAt: when.toISOString(),
+      })
+      await restApi(ctx, 'blocked_customers', {
+        method: 'POST',
+        body: JSON.stringify({ org_id: orgId, phone, reason: 'e2e' }),
+      })
+
+      await page.goto(`/manage/${apptId}`)
+      await page.getByTestId('manage-cancel').click()
+
+      // The code still arrives despite the block…
+      const code = page.getByTestId('manage-otp-code')
+      await expect(code).toBeVisible({ timeout: 20_000 })
+      await code.fill(BOOKING_OTP)
+      await page.getByTestId('manage-otp-submit').click()
+
+      // …and the cancellation goes through.
+      await expect.poll(async () => {
+        const rows = await restApi(ctx, `appointments?id=eq.${apptId}&select=status`) as { status: string }[]
+        return rows[0]?.status
+      }, { timeout: 20_000 }).toBe('cancelled')
     } finally {
       await unblockAll(ctx, [phone])
     }

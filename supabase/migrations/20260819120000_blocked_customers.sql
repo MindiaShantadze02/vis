@@ -31,9 +31,11 @@
 --                                   door, and reviews are keyed to an appointment
 --                                   the blocked number owns.
 --
--- create-payment additionally refuses at checkout so a blocked customer is never
--- charged. That is a UX shortcut, not the control: if it were bypassed the
--- webhook's insert would hit the trigger above and auto-refund.
+-- Two edge functions refuse earlier so the business stops paying for an abuser:
+-- request-booking-otp declines before generating or sending a code at all, and
+-- create-payment declines before charging. Both are cost/UX shortcuts, not the
+-- control — if either were bypassed the appointment insert would still hit the
+-- trigger above (and the webhook would auto-refund).
 -- ============================================================
 
 -- ------------------------------------------------------------

@@ -202,6 +202,11 @@ export default function Step3CustomerForm({
           ? t("booking.otpTooSoon")
           : data?.error === "too_many_requests"
           ? t("booking.otpTooMany")
+          : // The business has blocked this number, so no code was ever sent.
+            // Same message the later gates use — the customer is told once, at
+            // the first step that can tell them.
+          data?.error === "customer_blocked"
+          ? t("booking.numberBlocked")
           : t("booking.otpSendFailed")
       );
       return;

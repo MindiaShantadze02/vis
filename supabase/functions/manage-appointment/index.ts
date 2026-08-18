@@ -83,11 +83,21 @@ Deno.serve(async (req) => {
 
     const otpBase = `${Deno.env.get('SUPABASE_URL')}/functions/v1`
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-    const otpHeaders = { 'content-type': 'application/json', apikey: anonKey, authorization: `Bearer ${anonKey}` }
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    // x-internal-key identifies us to request-booking-otp as "managing an
+    // existing booking", so it skips its blocklist gate — a blocked customer
+    // must still be able to cancel, and cancelling needs a code. Proving it with
+    // the service-role key rather than a flag in the body keeps a browser from
+    // claiming the exemption; it goes in a CUSTOM header because the functions
+    // gateway rewrites `authorization` on the way through.
+    const otpHeaders = {
+      'content-type': 'application/json',
+      apikey: anonKey,
+      authorization: `Bearer ${anonKey}`,
+      'x-internal-key': serviceKey,
+    }
 
     // ── request-otp ─────────────────────────────────────────────────────────
-    // Deliberately NOT gated on the org blocklist: a blocked customer must still
-    // be able to reach the cancel action below. The block bites at reschedule.
     if (action === 'request-otp') {
       const r = await fetch(`${otpBase}/request-booking-otp`, {
         method: 'POST', headers: otpHeaders, body: JSON.stringify({ phone, org_id: appt.org_id }),
