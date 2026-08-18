@@ -234,6 +234,11 @@ export default function BookingPageSettings() {
             {t('settings.bookingPageColorHelp')}
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 1.5 }}>
+            {/* Presets are swatch-only: the colour IS the label, and the names
+                ("citrus", "graphite", …) were noise next to it. The name stays
+                reachable as the accessible name and a hover tooltip, so nothing
+                is lost for screen readers or for anyone unsure. The custom tile
+                below KEEPS its text — that one can't be read off a swatch. */}
             {BOOKING_THEME_LIST.map(th => {
               const selected = th.key === bookingTheme
               return (
@@ -242,9 +247,11 @@ export default function BookingPageSettings() {
                   onClick={() => setBookingTheme(th.key)}
                   role="button"
                   aria-pressed={selected}
+                  aria-label={th.label}
+                  title={th.label}
                   sx={{
-                    display: 'flex', alignItems: 'center', gap: 1,
-                    px: 1.5, py: 1, borderRadius: 2, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 44, height: 44, borderRadius: 2, cursor: 'pointer',
                     border: '2px solid',
                     borderColor: selected ? 'primary.main' : 'divider',
                     bgcolor: selected ? surface.hover : 'transparent',
@@ -254,7 +261,7 @@ export default function BookingPageSettings() {
                 >
                   <Box
                     sx={{
-                      width: 22, height: 22, borderRadius: '50%',
+                      width: 24, height: 24, borderRadius: '50%',
                       // Match what customers actually see: the theme's primary
                       // accent. Two-tone themes (deep ≠ primary, e.g. brass) show
                       // the primary dominant with the deep accent as a wedge.
@@ -265,9 +272,6 @@ export default function BookingPageSettings() {
                       flexShrink: 0,
                     }}
                   />
-                  <Typography variant="body2" sx={{ fontWeight: selected ? 600 : 500 }}>
-                    {th.label}
-                  </Typography>
                 </Box>
               )
             })}
