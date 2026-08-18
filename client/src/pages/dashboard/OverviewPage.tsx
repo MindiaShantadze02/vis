@@ -508,23 +508,17 @@ export default function OverviewPage() {
     <Box>
       <PageHeader title={t('dashboard.overview')} />
 
-      {/* Booking link + website embed code — copy & share / paste into a site.
-          Available on every plan. */}
+      {/* Booking link — copy & share. The embed snippet used to sit here too,
+          but it is developer-facing setup rather than something an owner needs
+          on the daily dashboard; it lives on Settings → Booking page, which is
+          where the rest of the booking-page setup already is. */}
       {org?.slug && (
-        <Box sx={{ mb: 4, maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Box sx={{ mb: 4, maxWidth: 480 }}>
           <CopyableText
             label={t('dashboard.yourBookingLink')}
             text={`vis.ge/book/${org.slug}`}
             value={`https://vis.ge/book/${org.slug}`}
             href={`https://vis.ge/book/${org.slug}`}
-          />
-          <CopyableText
-            label={t('dashboard.embedCode')}
-            text={`<iframe data-vis src="…/book/${org.slug}?embed=1"> … + embed.js`}
-            value={
-              `<iframe data-vis src="https://vis.ge/book/${org.slug}?embed=1&lang=ka" style="width:100%;border:0"></iframe>\n` +
-              `<script src="https://vis.ge/embed.js" async></script>`
-            }
           />
         </Box>
       )}
