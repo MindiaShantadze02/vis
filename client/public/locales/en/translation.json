@@ -500,7 +500,10 @@
     "depositNeedsOnline": "Deposits are taken online, so online payment must stay on while a deposit is set. Set the deposit to “None” first.",
     "acceptOnSite": "Accept payment on site",
     "acceptOnSiteHelp": "Let customers choose to pay at the appointment instead of online. Services that require a deposit always pay online.",
-    "onSiteOffWarning": "Customers can no longer pay on site. Free (₾0) services have no other way to be booked, so they will be unbookable until you turn this back on."
+    "onSiteOffWarning": "Customers can no longer pay on site. Free (₾0) services have no other way to be booked, so they will be unbookable until you turn this back on.",
+    "changePasswordHint": "We text a confirmation code to your login number before the password changes.",
+    "sendPasswordCode": "Send code",
+    "passwordCodeSent": "We sent a 6-digit code to {{phone}}. Enter it to confirm the change."
   },
   "days": {
     "monday": "Monday",

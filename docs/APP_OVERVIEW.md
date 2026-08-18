@@ -40,6 +40,16 @@ dashboard. The product front door is a **marketing landing page** at `/`.
   `request-booking-otp`/`verify-booking-otp`) so phone ownership is proven before a session is
   issued / an account is created. Password minimum is **8 characters**; registration requires
   consent to the Privacy Policy + Terms.
+- **Changing a password is OTP-gated too** (Settings → Account, 2026-08-18): a live session is no
+  longer sufficient, since an unlocked laptop or a stolen token could otherwise be used to take the
+  account over silently — a password change is the one action that locks the real owner out. The
+  form is two steps (new password → 6-digit code) and reuses the recovery pair
+  `request-password-reset` → `reset-password`, so the hashed challenge, 5-attempt budget, 60s
+  resend cooldown and SMS-pumping caps all apply unchanged. The phone always comes from the
+  **session**, never an input, so the code can only reach the account's own number.
+  Note `reset-password` carries **no** `000000` test bypass (unlike `verify-booking-otp`), so no
+  test can drive this to completion — the e2e covers everything up to the code and then proves the
+  password did not change.
 - **Timezone:** all customer-facing booking logic is pinned to **business time (Georgia, fixed `+04:00`)** via helpers in `client/src/lib/slots.ts` (`businessDayWindow`, `businessDayKey`, `toBusinessWallClock`, …) so slots don't shift with the viewer's browser zone. The admin dashboard intentionally stays viewer-local.
 - **Testing:**
   - **Playwright e2e** — 33 spec files / 94 tests; 91 pass and 3 skip without a service-role key

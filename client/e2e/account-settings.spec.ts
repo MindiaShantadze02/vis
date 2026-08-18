@@ -1,12 +1,17 @@
 import { test, expect } from '@playwright/test'
-import { login, fillStable } from './helpers'
+import { login, fillStable, readSupabaseEnv, SEED } from './helpers'
 
 /**
- * Account settings — the delete-account danger zone. The confirm-word guard is
- * tested WITHOUT ever confirming, so the seeded owner is never deleted. (The
- * real delete path is exercised safely by onboarding.spec on a throwaway account.)
- * The button is no longer disabled for validation: a wrong word is reported on
- * click (the input turns invalid) and never triggers the delete.
+ * Account settings — the delete-account danger zone and the OTP-gated password
+ * change. Both are tested WITHOUT ever completing the destructive act: the
+ * seeded owner is never deleted and its password is never changed. (The real
+ * delete path is exercised safely by onboarding.spec on a throwaway account.)
+ * The buttons are not disabled for validation: bad input is reported on click.
+ *
+ * The password change cannot be driven to completion by a test at all —
+ * reset-password carries NO '000000' bypass (unlike verify-booking-otp), and the
+ * real code only exists in the SMS. So these cover everything up to the code and
+ * then prove the password did NOT change. Same limit as forgot-password.spec.
  */
 test.describe('Settings — Account', () => {
   test.beforeEach(async ({ page }) => {
@@ -42,5 +47,50 @@ test.describe('Settings — Account', () => {
     // Abort — close the dialog without deleting.
     await page.keyboard.press('Escape')
     await expect(confirm).toHaveCount(0)
+  })
+
+  test('a password change is gated on an SMS code to the account phone', async ({ page }) => {
+    const send = page.getByTestId('account-change-password')
+    await expect(send).toBeVisible()
+
+    // A bad password never reaches the code step — no SMS is spent on input
+    // that would be rejected anyway.
+    await fillStable(page.getByTestId('account-new-password'), 'short')
+    await send.click()
+    await expect(page.getByTestId('account-new-password')).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByTestId('account-password-code')).toHaveCount(0)
+
+    // Mismatched confirmation: same.
+    await fillStable(page.getByTestId('account-new-password'), 'newpassword123')
+    await fillStable(page.getByTestId('account-confirm-password'), 'newpassword124')
+    await send.click()
+    await expect(page.getByTestId('account-confirm-password')).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByTestId('account-password-code')).toHaveCount(0)
+
+    // A valid pair moves to the code step, which names the phone it went to.
+    await fillStable(page.getByTestId('account-confirm-password'), 'newpassword123')
+    await send.click()
+    const code = page.getByTestId('account-password-code')
+    await expect(code).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByTestId('account-code-sent')).toContainText('555')
+
+    // A wrong code is refused and the change does not go through.
+    await fillStable(code, '111111')
+    await page.getByTestId('account-confirm-password-change').click()
+    await expect(page.getByTestId('account-password-error')).toBeVisible({ timeout: 20_000 })
+    await expect(code).toBeVisible()
+
+    // Cancel returns to the form with the fields cleared.
+    await page.getByRole('button', { name: 'გაუქმება' }).first().click()
+    await expect(page.getByTestId('account-new-password')).toHaveValue('')
+
+    // The seed password is untouched — the real proof that nothing changed.
+    const { url, anonKey } = readSupabaseEnv()
+    const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { apikey: anonKey, 'content-type': 'application/json' },
+      body: JSON.stringify({ phone: `+995${SEED.phone}`, password: SEED.password }),
+    })
+    expect(res.ok, 'the seeded owner must still sign in with the ORIGINAL password').toBe(true)
   })
 })

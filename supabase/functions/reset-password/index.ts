@@ -1,10 +1,17 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { hashCode, normalizeGeorgianPhone } from '../_shared/otp.ts'
 
-// Step 2 of phone-OTP password recovery. Checks the code against the most recent
+// Step 2 of phone-OTP password recovery, and the confirm step of the OTP-gated
+// password change in Settings → Account. Checks the code against the most recent
 // unconsumed, unexpired challenge for the phone and, on success, sets the new
 // password on the matching auth user and consumes the row. Public
 // (verify_jwt=false) — ownership is proven by the OTP, not a session.
+//
+// Deliberately carries NO '000000' test bypass (unlike verify-booking-otp): the
+// same shortcut here would set the password of any account whose phone you know,
+// which is account takeover for anyone holding the public anon key. The cost is
+// that neither this nor the Settings → Account change can be driven end-to-end
+// by a test until a real SMS provider exists.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
