@@ -41,7 +41,7 @@ interface Stats {
   appointmentsToday: number
 }
 
-const ALL_STATUSES: AppointmentStatus[] = ['approved', 'rejected', 'cancelled', 'completed', 'no_show']
+const ALL_STATUSES: AppointmentStatus[] = ['pending', 'approved', 'rejected', 'cancelled', 'completed', 'no_show']
 const GRID_COLS = '140px 1fr 1fr 100px 90px 140px'
 
 // An approved online-service appointment with no join link yet — the owner
@@ -172,7 +172,10 @@ export default function OverviewPage() {
       supabase
         .from('appointments').select('id', { count: 'exact', head: true })
         .eq('org_id', org.id).gte('scheduled_at', todayStart).lte('scheduled_at', todayEnd)
-        .not('status', 'in', '(rejected,cancelled)'),
+        // 'pending' is excluded alongside rejected/cancelled: a request the
+        // owner hasn't approved is not yet an appointment they need to staff.
+        // The revenue queries below are already safe (positive status list).
+        .not('status', 'in', '(rejected,cancelled,pending)'),
 
       supabase
         .from('appointments').select('id, services(price)', { count: 'exact' })
@@ -258,7 +261,40 @@ export default function OverviewPage() {
     setDateFrom(null); setDateTo(null); setDatePreset(null); setPage(0)
   }
 
-  async function changeStatus(id: string, status: 'cancelled' | 'no_show') {
+  /**
+   * Approve a pending request. Goes through the approve_appointment RPC rather
+   * than a plain UPDATE because a pending request does NOT hold its slot — the
+   * time may have been booked by someone else in the meantime, and the RPC
+   * re-checks capacity under the per-org advisory lock and refuses rather than
+   * letting one click create a double booking.
+   *
+   * The approving UPDATE is also what sends the customer's confirmation SMS and
+   * what first makes the appointment billable by Vis.
+   */
+  async function approveAppointment(id: string) {
+    setActionLoading(id)
+    const { error } = await supabase.rpc('approve_appointment', { p_appointment_id: id })
+    if (error) {
+      const m = error.message ?? ''
+      toast.error(
+        m.includes('slot_taken') ? t('dashboard.approveSlotTaken')
+          : m.includes('not_pending') ? t('dashboard.approveNotPending')
+            : error.message,
+      )
+      // Re-read: whatever happened, our copy of this row is now suspect.
+      loadAppointments()
+      setActionLoading(null)
+      return
+    }
+    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'approved' } : a))
+    loadStats()
+    refreshBilling()  // approving is what makes it billable
+    toast.success(t('dashboard.approved'))
+    setSelected(null)
+    setActionLoading(null)
+  }
+
+  async function changeStatus(id: string, status: 'cancelled' | 'no_show' | 'rejected') {
     setActionLoading(id)
 
     // Cancelling a PAID online appointment with the refund box ticked routes
@@ -771,7 +807,23 @@ export default function OverviewPage() {
         open={!!selected}
         onClose={() => { setSelected(null); setConfirmingCancel(false) }}
         title={selected ? `${selected.customers?.first_name ?? ''} ${selected.customers?.last_name ?? ''}` : ''}
-        actions={selected && selected.status === 'approved' ? (
+        actions={selected && selected.status === 'pending' ? (
+          /* A request awaiting the owner. Approve confirms it (and texts the
+             customer); Decline rejects it (and texts them too). Both are
+             single-step: unlike cancelling a confirmed booking there is nothing
+             to undo yet and no money involved — an on-site request is the only
+             thing that can be pending. */
+          <>
+            <Button variant="outlined" color="error" data-testid="appt-reject"
+              onClick={() => changeStatus(selected.id, 'rejected')} disabled={!!actionLoading}>
+              {t('dashboard.reject')}
+            </Button>
+            <Button variant="contained" color="success" data-testid="appt-approve"
+              onClick={() => approveAppointment(selected.id)} disabled={!!actionLoading}>
+              {t('dashboard.approve')}
+            </Button>
+          </>
+        ) : selected && selected.status === 'approved' ? (
           confirmingCancel ? (
             <>
               <Button onClick={() => setConfirmingCancel(false)} disabled={!!actionLoading} data-testid="appt-keep">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Typography, Card, CardContent, Button } from '@mui/material'
 import { CheckCircleOutlined as CheckCircleOutlinedIcon } from '@/components/icons'
+import { ScheduleOutlined as ScheduleOutlinedIcon } from '@/components/icons'
 import { AccessTimeOutlined as AccessTimeOutlinedIcon } from '@/components/icons'
 import { CalendarMonthOutlined as CalendarMonthOutlinedIcon } from '@/components/icons'
 import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
@@ -111,6 +112,8 @@ export default function BookingConfirmationPage() {
   // the appointment happens at the salon, wherever the customer is browsing.
   const scheduledAt = toBusinessWallClock(appt.scheduled_at)
   const bookingTheme = getBookingTheme(appt.organisations?.booking_theme)
+  // The business vets on-site bookings and hasn't looked at this one yet.
+  const isPending = appt.status === 'pending'
 
   return (
     <ThemeProvider theme={makeBookingTheme(bookingTheme)}>
@@ -134,19 +137,24 @@ export default function BookingConfirmationPage() {
             transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
             sx={{
               width: 72, height: 72, borderRadius: '50%',
-              bgcolor: 'success.light',
+              bgcolor: isPending ? 'warning.light' : 'success.light',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               mx: 'auto', mb: 2,
             }}
           >
-            <CheckCircleOutlinedIcon sx={{ fontSize: 38, color: 'success.main' }} />
+            {/* A request awaiting the business is amber with a clock, not a green
+                tick: showing "Booking confirmed!" for something that isn't yet
+                is how people end up turning up to a slot they never got. */}
+            {isPending
+              ? <ScheduleOutlinedIcon sx={{ fontSize: 38, color: 'warning.main' }} />
+              : <CheckCircleOutlinedIcon sx={{ fontSize: 38, color: 'success.main' }} />}
           </Box>
 
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {t('booking.confirmApprovedTitle')}
+            {t(isPending ? 'booking.confirmPendingTitle' : 'booking.confirmApprovedTitle')}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-            {t('booking.confirmApprovedSub')}
+            {t(isPending ? 'booking.confirmPendingSub' : 'booking.confirmApprovedSub')}
           </Typography>
 
           {/* Details — rendered as a tear-off ticket stub (the signature). */}

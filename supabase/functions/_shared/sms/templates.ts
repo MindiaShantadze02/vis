@@ -67,6 +67,28 @@ export function appointmentReminderBody(
   }
 }
 
+// Sent when a business DECLINES a booking request (the require_approval flow).
+// The customer asked for a time and would otherwise hear nothing, so silence
+// would leave them assuming they were booked and turning up. Deliberately gives
+// no reason — that is the business's to give, not ours to guess — but points
+// them back at the booking page so they can pick another time.
+export function bookingDeclinedBody(
+  data: BookingConfirmationData,
+  lang: SmsLang = 'ka',
+): string {
+  const { businessName, serviceName, when } = data
+
+  switch (lang) {
+    case 'en':
+      return `${businessName}: sorry, your request for ${serviceName} on ${when} could not be confirmed. You can pick another time.`
+    case 'ru':
+      return `${businessName}: к сожалению, вашу заявку на ${serviceName} (${when}) подтвердить не удалось. Вы можете выбрать другое время.`
+    case 'ka':
+    default:
+      return `${businessName}: სამწუხაროდ, თქვენი მოთხოვნა — ${serviceName}, ${when} — ვერ დადასტურდა. შეგიძლიათ სხვა დრო აირჩიოთ.`
+  }
+}
+
 // Sent when a superadmin finishes configuring an account on the business's
 // behalf (concierge onboarding, setup_requests.status → completed).
 export function setupCompleteBody(businessName: string, lang: SmsLang = 'ka'): string {

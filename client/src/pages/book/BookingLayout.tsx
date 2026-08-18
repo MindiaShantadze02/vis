@@ -44,6 +44,9 @@ export interface BookingOrg {
   deposit_type: 'none' | 'fixed' | 'percent' | null
   deposit_value: number | null
   deposit_refundable: boolean
+  // When true, an ON-SITE booking here arrives as a request the business must
+  // approve — so Step 3 promises a request, not a confirmation.
+  require_approval: boolean
 }
 
 // Shape returned by the get_public_org RPC (secrets stripped server-side).
@@ -66,6 +69,7 @@ interface PublicOrg {
   deposit_type: 'none' | 'fixed' | 'percent' | null
   deposit_value: number | null
   deposit_refundable: boolean | null
+  require_approval: boolean | null
 }
 
 export interface BookingService {
@@ -198,8 +202,9 @@ export default function BookingLayout() {
         review_avg: pub.review_avg != null ? Number(pub.review_avg) : null,
         review_count: Number(pub.review_count ?? 0),
         cancellation_window_hours: Number(pub.cancellation_window_hours ?? 24),
-        // Default to auto-approve when the flag is absent (older cached RPC),
-        // matching the DB default since migration 075.
+        // Default to auto-approve when the flag is absent (an older cached RPC
+        // response), matching the column default.
+        require_approval: pub.require_approval ?? false,
         // Deposit config for the Step-3 preview (numeric comes back as string).
         deposit_type: pub.deposit_type ?? 'none',
         deposit_value: pub.deposit_value != null ? Number(pub.deposit_value) : null,

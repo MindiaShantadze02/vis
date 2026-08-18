@@ -3,6 +3,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   bookingConfirmationBody,
   appointmentReminderBody,
+  bookingDeclinedBody,
   meetingLinkBody,
   setupCompleteBody,
   sendSms,
@@ -148,8 +149,9 @@ Deno.serve(async (req) => {
     }
 
     // appointment_reminder only applies to appointments; meeting_link carries
-    // the per-appointment join URL; everything else uses the shared booking-
-    // confirmation body (approval_update reuses it too).
+    // the per-appointment join URL; approval_update is the DECLINE notice for a
+    // rejected request (20260822120000 — it is the only producer, and it was an
+    // unused type before that); everything else uses the booking-confirmation body.
     const SUPPORTED: SmsMessageType[] = ['booking_confirmation', 'approval_update', 'appointment_reminder', 'meeting_link']
     if (!SUPPORTED.includes(message_type)) {
       return Response.json({ error: `unsupported message_type: ${message_type}` }, { status: 400, headers: corsHeaders })
@@ -180,6 +182,8 @@ Deno.serve(async (req) => {
         })
       : message_type === 'appointment_reminder'
       ? appointmentReminderBody(details)
+      : message_type === 'approval_update'
+      ? bookingDeclinedBody(details)
       : bookingConfirmationBody(details)
 
     const result = await sendSms(supabase, {

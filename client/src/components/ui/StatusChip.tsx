@@ -7,10 +7,13 @@ import { CancelOutlined as CancelOutlinedIcon } from '@/components/icons'
 import { DoNotDisturbAltOutlined as DoNotDisturbAltOutlinedIcon } from '@/components/icons'
 import { TaskAltOutlined as TaskAltOutlinedIcon } from '@/components/icons'
 import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
+import { ScheduleOutlined as ScheduleOutlinedIcon } from '@/components/icons'
 
-export type AppointmentStatus = 'approved' | 'rejected' | 'cancelled' | 'completed' | 'no_show'
+export type AppointmentStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed' | 'no_show'
 
 const STATUS_COLOR: Record<AppointmentStatus, ChipProps['color']> = {
+  // Amber, not green: a request awaiting the owner is not a booking yet.
+  pending:   'warning',
   approved:  'success',
   rejected:  'error',
   cancelled: 'default',
@@ -21,6 +24,7 @@ const STATUS_COLOR: Record<AppointmentStatus, ChipProps['color']> = {
 // Each status also carries a distinct icon so meaning isn't conveyed by colour
 // alone (a11y / colour-blind users).
 const STATUS_ICON: Record<AppointmentStatus, ReactElement> = {
+  pending:   <ScheduleOutlinedIcon />,
   approved:  <CheckCircleOutlinedIcon />,
   rejected:  <CancelOutlinedIcon />,
   cancelled: <DoNotDisturbAltOutlinedIcon />,
@@ -42,8 +46,8 @@ interface StatusChipProps {
  *
  * Tolerates a status outside the union: rows written before a status was retired
  * still exist until the retiring migration is pushed, and rendering a raw i18n
- * key ("dashboard.pending") at the customer's name is worse than a plain chip.
- * `t` is given an explicit fallback so a missing key never leaks.
+ * key at the customer's name is worse than a plain chip. `t` is given an
+ * explicit fallback so a missing key never leaks.
  */
 export default function StatusChip({ status, size = 'small', variant = 'filled' }: StatusChipProps) {
   const { t } = useTranslation()

@@ -8,9 +8,10 @@ import { login, seedUpcomingAppointment, openApptByName, letterName, eraseClient
  *   approved ──cancel───▶ cancelled   (terminal)
  *      └──────no-show───▶ no_show     (terminal)
  *
- * The pending-approval workflow was removed (2026-08-14): every booking is
- * created 'approved', so 'approved' is now the only non-terminal state and the
- * approve/reject transitions no longer exist.
+ * Manual approval came back on 2026-08-22, but it is OPT-IN and the seed org
+ * leaves it off, so bookings here are still created 'approved' and this spec is
+ * unchanged. The pending → approved / rejected transitions are covered
+ * separately in approval-flow.spec.ts, which toggles the flag on and restores it.
  *
  * Also covers guardrails (no actions on terminal states) and equivalence-
  * partitioning of the status filter (an item shows only in the partition

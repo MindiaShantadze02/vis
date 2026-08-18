@@ -25,6 +25,9 @@ export interface Organisation {
   billing_exempt: boolean
   booking_theme: string | null
   reviews_enabled: boolean
+  /** When on, ON-SITE bookings arrive 'pending' and wait for the owner to
+   *  approve. Online/deposit bookings are never gated. Default false. */
+  require_approval: boolean
   // Cancellation policy (migration 090): the free-cancel/refund window,
   // consumed by self-service cancel-with-refund.
   cancellation_window_hours: number

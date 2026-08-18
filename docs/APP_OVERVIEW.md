@@ -21,9 +21,21 @@ dashboard. The product front door is a **marketing landing page** at `/`.
 > every appointment originates from the public booking flow. Owners cancel
 > (with refund), mark no-show, reassign staff, attach meeting links and block time ("Rest").
 
-> **Every appointment is created `approved`.** The pending-approval workflow and
-> `organisations.require_approval` were removed 2026-08-14 (`20260814120000`). There is no
-> approval queue and no approve/reject UI.
+> **Appointments are created `approved` unless the business opts into manual approval.**
+> Removed 2026-08-14, re-added 2026-08-22 (`20260822120000`) in a narrower form:
+> `organisations.require_approval` (default **false**) gates **on-site bookings only** — anything
+> paid online or carrying a deposit is always auto-approved, because the money has already moved.
+> A pending request:
+> - does **not** hold its slot (someone else can still book that time), so `approve_appointment`
+>   re-checks capacity under the per-org advisory lock and can fail with `slot_taken`;
+> - is **not billable** — `close_billing_period_for_org` and `get_org_billing_status` count only
+>   `('approved','completed','no_show')`, so Vis charges nothing until the owner approves;
+> - sorts first in `search_appointments` and raises a `pending_approval` notification;
+> - is auto-rejected once its slot time passes (`reject-elapsed-pending` cron, every 5 min).
+>
+> Approving fires the existing `send_appointment_sms` "reached approved" arm → the customer's
+> confirmation SMS. A **human** rejection sends an `approval_update` decline SMS; the cron sweep
+> is silent (it has no `auth.uid()`, which is the condition the trigger tests).
 
 ## Tech stack
 - **Frontend:** React 19 + TypeScript + Vite, MUI v9 + MUI X (DataGrid, Date Pickers), React Router v7, framer-motion, Phosphor icons
@@ -351,8 +363,9 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
   `max_per_slot` capacity, in-person/online location type, per-service deposit config,
   `image_url` — one thumbnail, stored in the `service-images` bucket),
   `service_staff` (who performs what; also written from onboarding)
-- `appointments` — status is `approved | rejected | cancelled | completed | no_show` (there is no
-  `pending`); `+ meeting_link` for online ones; `payment_status` incl. `deposit_paid`;
+- `appointments` — status is `pending | approved | rejected | cancelled | completed | no_show`
+  (`pending` only on opt-in `require_approval` orgs, on-site path only);
+  `+ meeting_link` for online ones; `payment_status` incl. `deposit_paid`;
   `payment_method` is `online` for public bookings, `in_person` for API/internal writes — plus
   shared `customers` (name + phone; consent fields; `anonymized_at`)
 - Billing: `billing_periods`, `billing_line_items`, `org_payment_methods`, `billing_events`;

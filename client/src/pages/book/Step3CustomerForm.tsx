@@ -15,6 +15,7 @@ import { Trans } from "react-i18next";
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from "@/components/icons";
 import { CreditCardOutlined as CreditCardOutlinedIcon } from "@/components/icons";
 import { SmsOutlined as SmsOutlinedIcon } from "@/components/icons";
+import { ScheduleOutlined as ScheduleOutlinedIcon } from "@/components/icons";
 import { format } from "date-fns";
 import { dateLocale } from "@/lib/dateLocale";
 import { useTranslation } from "react-i18next";
@@ -149,6 +150,9 @@ export default function Step3CustomerForm({
   }, [canPayOnline, canPayOnSite, payMethod]);
 
   const payingOnSite = payMethod === "on_site" && canPayOnSite;
+  // Approval gates the on-site path only — an online payment or a deposit is
+  // confirmed the moment it clears, so those never wait on the business.
+  const needsApproval = payingOnSite && org.require_approval;
 
   // The chosen slot is business (Georgia) wall-clock time — pin the stored
   // instant to the business offset so it doesn't shift with the viewer's zone.
@@ -616,6 +620,20 @@ export default function Step3CustomerForm({
                     : t("booking.payOnlineHint")}
               </Typography>
             </Box>
+
+            {/* This business vets on-site bookings, so say so BEFORE they book:
+                being told afterwards that a "confirmed" booking is actually a
+                request is the kind of surprise that makes people turn up anyway.
+                Only shown on the on-site path — paying online or leaving a
+                deposit is always confirmed instantly. */}
+            {needsApproval && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <ScheduleOutlinedIcon sx={{ fontSize: 16, color: "warning.main" }} />
+                <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid="book-approval-hint">
+                  {t("booking.approvalHint")}
+                </Typography>
+              </Box>
+            )}
 
             {/* Summary card — styled as the booking ticket (perforated total). */}
             <Box

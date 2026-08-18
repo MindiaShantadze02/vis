@@ -343,6 +343,34 @@ export function letterName(): string {
 }
 
 /**
+ * Turn manual approval on/off for the seeded org (organisations.require_approval,
+ * migration 20260822120000). OFF is the seed's resting state — a spec that turns
+ * it ON **must** restore it in a `finally`, or every later booking spec starts
+ * producing 'pending' rows instead of 'approved' ones and the whole suite drifts.
+ *
+ * Straight PostgREST as the seeded owner, same as setPaymentMethods.
+ */
+export async function setRequireApproval(on: boolean): Promise<void> {
+  const { url, anonKey, accessToken } = await signInSeed()
+  const res = await fetch(
+    `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: anonKey,
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+        prefer: 'return=representation',
+      },
+      body: JSON.stringify({ require_approval: on }),
+    },
+  )
+  if (!res.ok) throw new Error(`setRequireApproval(${on}) → ${res.status} ${await res.text()}`)
+  const rows = (await res.json()) as { id: string }[]
+  if (!rows.length) throw new Error('require_approval update matched no org')
+}
+
+/**
  * Leave a real upcoming appointment on the seeded org under `firstName`, for the
  * dashboard specs that drive the approved→cancelled/no_show transitions.
  * Callers identify/clean it up later via openApptByName.

@@ -259,7 +259,10 @@
     "payOnSite": "Pay on site",
     "payOnSiteHint": "You will pay ₾{{amount}} at the appointment — nothing is charged now.",
     "payFreeHint": "This service is free — nothing to pay.",
-    "numberBlocked": "This business isn't accepting bookings from this number."
+    "numberBlocked": "This business isn't accepting bookings from this number.",
+    "approvalHint": "This business confirms bookings manually — you'll get an SMS once they do.",
+    "confirmPendingTitle": "Request sent!",
+    "confirmPendingSub": "The business will confirm it shortly — we'll text you either way."
   },
   "payment": {
     "sandbox": "Sandbox",
@@ -354,7 +357,11 @@
     "noBookingsFound": "No bookings found",
     "markNoShow": "Mark no-show",
     "no_show": "No-show",
-    "pending": "Awaiting confirmation"
+    "pending": "Awaiting confirmation",
+    "approve": "Approve",
+    "reject": "Decline",
+    "approveSlotTaken": "That time was taken while this request was waiting. Decline it and ask the client to pick another slot.",
+    "approveNotPending": "This request has already been handled."
   },
   "notifications": {
     "title": "Notifications",
@@ -503,7 +510,9 @@
     "onSiteOffWarning": "Customers can no longer pay on site. Free (₾0) services have no other way to be booked, so they will be unbookable until you turn this back on.",
     "changePasswordHint": "We text a confirmation code to your login number before the password changes.",
     "sendPasswordCode": "Send code",
-    "passwordCodeSent": "We sent a 6-digit code to {{phone}}. Enter it to confirm the change."
+    "passwordCodeSent": "We sent a 6-digit code to {{phone}}. Enter it to confirm the change.",
+    "requireApproval": "Approve bookings manually",
+    "requireApprovalHelp": "On-site bookings arrive as requests you confirm or decline. Online payments and deposits are always confirmed automatically, and Vis only charges you once you approve."
   },
   "days": {
     "monday": "Monday",

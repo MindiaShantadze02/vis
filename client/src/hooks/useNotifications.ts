@@ -5,7 +5,10 @@ import { useAuth } from '@/contexts/AuthContext'
 export interface Notification {
   id: string
   created_at: string
-  type: 'new_appointment' | 'appointment_cancelled'
+  // Mirrors the notifications_type_check constraint. 'pending_approval' is a
+  // booking waiting on the owner (require_approval orgs); 'billing_notice' was
+  // already being written by the billing close job but was missing here.
+  type: 'new_appointment' | 'pending_approval' | 'appointment_cancelled' | 'billing_notice'
   appointment_id: string | null
   title: string
   body: string | null

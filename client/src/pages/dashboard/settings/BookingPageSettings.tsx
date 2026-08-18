@@ -30,6 +30,10 @@ export default function BookingPageSettings() {
   const [bookingTheme, setBookingTheme] = useState<string>(DEFAULT_BOOKING_THEME)
   // Whole-feature on/off for customer reviews (badge on the booking page).
   const [reviewsEnabled, setReviewsEnabled] = useState(true)
+  // Opt-in manual approval. Applies to ON-SITE bookings only — anything paid
+  // online or carrying a deposit is auto-approved regardless, since the money
+  // has already moved. Off by default.
+  const [requireApproval, setRequireApproval] = useState(false)
   // Optional wide banner for the top of the booking page. Persisted immediately
   // on upload/remove (like the logo), independent of the Save button below.
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
@@ -42,6 +46,7 @@ export default function BookingPageSettings() {
     if (org) {
       setBookingTheme(getBookingTheme(org.booking_theme).key)
       setReviewsEnabled(org.reviews_enabled)
+      setRequireApproval(org.require_approval ?? false)
       setCoverUrl(org.cover_url ?? null)
     }
   }, [org])
@@ -100,7 +105,11 @@ export default function BookingPageSettings() {
     setError(null)
     const { error: err } = await supabase
       .from('organisations')
-      .update({ booking_theme: bookingTheme, reviews_enabled: reviewsEnabled })
+      .update({
+        booking_theme: bookingTheme,
+        reviews_enabled: reviewsEnabled,
+        require_approval: requireApproval,
+      })
       .eq('id', org.id)
     setSaving(false)
     if (err) { setError(err.message); return }
@@ -339,6 +348,28 @@ export default function BookingPageSettings() {
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('reviews.settingTitle')}</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {t('reviews.settingHelp')}
+                </Typography>
+              </Box>
+            }
+          />
+
+          {/* Manual approval — ON-SITE bookings only. The help text says so
+              explicitly, because a business that takes online payments would
+              otherwise reasonably expect this to gate those too. */}
+          <FormControlLabel
+            sx={{ ml: 0, mt: 2 }}
+            control={
+              <Switch
+                checked={requireApproval}
+                onChange={e => setRequireApproval(e.target.checked)}
+                data-testid="require-approval-toggle"
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.requireApproval')}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {t('settings.requireApprovalHelp')}
                 </Typography>
               </Box>
             }
