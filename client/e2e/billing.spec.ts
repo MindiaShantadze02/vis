@@ -159,6 +159,104 @@ test.describe('Billing core — guard + RLS', () => {
     expect(periodsAfter.length).toBe(periodsBefore.length)
   })
 
+  test('the card fields reformat whatever shape the owner types', async ({ page }) => {
+    // Regression: the expiry used to require exactly /^\d{2}\s*\/\s*\d{2}$/, so
+    // "0929" and "9/29" were rejected as invalid on a perfectly good card. Both
+    // fields now normalise on every keystroke.
+    await login(page)
+    await page.goto('/dashboard/settings/billing')
+    await page.getByTestId('billing-add-card').click()
+    await expect(page.getByTestId('card-form')).toBeVisible()
+
+    const num = page.getByTestId('card-number')
+    const exp = page.getByTestId('card-expiry')
+    const yy = String(new Date().getFullYear() + 2).slice(-2)
+
+    // Bare digits get grouped; a dashed paste is accepted just the same.
+    await num.fill('4242424242424242')
+    await expect(num).toHaveValue('4242 4242 4242 4242')
+    await num.fill('4242-4242-4242-4242')
+    await expect(num).toHaveValue('4242 4242 4242 4242')
+    // Amex groups 4-6-5, not in fours.
+    await num.fill('378282246310005')
+    await expect(num).toHaveValue('3782 822463 10005')
+
+    // The expiry spellings that used to fail.
+    await exp.fill(`09${yy}`)
+    await expect(exp).toHaveValue(`09/${yy}`)
+    await exp.fill(`9/${yy}`)
+    await expect(exp).toHaveValue(`09/${yy}`)
+    await exp.fill(`09 / 20${yy}`)
+    await expect(exp).toHaveValue(`09/${yy}`)
+
+    // …and one of them saves, which is the point.
+    await num.fill('4242424242424242')
+    await exp.fill(`09${yy}`)
+    await page.getByTestId('card-save').click()
+    await expect(page.getByTestId('billing-card')).toContainText('4242', { timeout: 15_000 })
+  })
+
+  test('an owner can take their card off file, and add one again', async ({ page }) => {
+    const ctx = await signInSeed()
+    const org = (await restApi(ctx, `organisations?slug=eq.${SEED.slug}&select=id`)) as { id: string }[]
+    const orgId = org[0].id
+
+    await login(page)
+    await page.goto('/dashboard/settings/billing')
+
+    // Make sure there IS a card to remove (spec order shouldn't matter).
+    if (await page.getByTestId('billing-no-card').isVisible().catch(() => false)) {
+      await page.getByTestId('billing-add-card').click()
+      await page.getByTestId('card-number').fill('4242424242424242')
+      await page.getByTestId('card-expiry').fill(`09${String(new Date().getFullYear() + 2).slice(-2)}`)
+      await page.getByTestId('card-save').click()
+    }
+    await expect(page.getByTestId('billing-card')).toBeVisible({ timeout: 15_000 })
+
+    await page.getByTestId('billing-remove-card').click()
+    await page.getByTestId('confirm-dialog-confirm').click()
+
+    // The page falls back to the "no card" state…
+    await expect(page.getByTestId('billing-no-card')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('billing-card')).toHaveCount(0)
+
+    // …and the row is RETIRED, not deleted: no active default remains, but the
+    // history behind past charges survives.
+    const active = (await restApi(
+      ctx, `org_payment_methods?org_id=eq.${orgId}&is_default=eq.true&status=eq.active&select=id`,
+    )) as unknown[]
+    expect(active).toHaveLength(0)
+    const removed = (await restApi(
+      ctx, `org_payment_methods?org_id=eq.${orgId}&status=eq.removed&select=id`,
+    )) as unknown[]
+    expect(removed.length).toBeGreaterThan(0)
+
+    // Restore the seed's resting state — a later spec expects a card on file.
+    await page.getByTestId('billing-add-card').click()
+    await page.getByTestId('card-number').fill('4242424242424242')
+    await page.getByTestId('card-expiry').fill(`09${String(new Date().getFullYear() + 2).slice(-2)}`)
+    await page.getByTestId('card-save').click()
+    await expect(page.getByTestId('billing-card')).toContainText('4242', { timeout: 15_000 })
+  })
+
+  test('one org cannot remove another org\'s card', async () => {
+    // remove_org_card is SECURITY DEFINER over a table with no client write
+    // policy, so its own membership check is the whole guard.
+    const ctx = await signInSeed()
+    const attempt = fetch(`${ctx.url}/rest/v1/rpc/remove_org_card`, {
+      method: 'POST',
+      headers: {
+        apikey: ctx.anonKey,
+        authorization: `Bearer ${ctx.accessToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ p_org_id: '00000000-0000-0000-0000-000000000001' }),
+    }).then(async r => {
+      if (!r.ok) throw new Error(`${r.status} ${await r.text()}`)
+    })
+    await expect(attempt).rejects.toThrow(/not_authorized/)
+  })
+
   // Unpaid → blocked → recovered. Since 20260816120000 BOTH 'past_due' and
   // 'suspended' block bookings; 'past_due' is the state that regressed (it used
   // to keep taking bookings for the whole ~11-day dunning window).

@@ -237,6 +237,19 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
 - **Owner UI:** Settings → Billing shows the running bill (`get_org_billing_status` → `UsageMeter`),
   card on file, past invoices, and **Pay now** (`pay_org_outstanding`, shared with the blocking
   modal via `useBillingPayment`). Adding a card **never charges**.
+- **Card on file:** `store_org_card` writes it (`20260724150000`) and `remove_org_card`
+  (`20260820120000`) takes it off. Both are SECURITY DEFINER — `org_payment_methods` has no client
+  write policy — and both **retire** the old row (`is_default = false, status = 'removed'`) rather
+  than deleting it, so charge history survives and the partial-unique default index is freed.
+  Removal is allowed **while a bill is outstanding**: it can't dodge collection (a due charge with
+  no card still routes into dunning, `20260729120000`), and trapping an owner's card details on a
+  platform they're leaving is the worse failure. Owners read display metadata only — the `token`
+  column is revoked from `authenticated`.
+- **Card entry** (`client/src/lib/card.ts`) reformats as you type instead of demanding one exact
+  shape: the number groups in fours (Amex 4-6-5) and the expiry normalises to `MM/YY` from `0929`,
+  `9/29`, `09 - 2029` and so on. The expiry parser respects an explicit separator rather than
+  reading the digit run positionally, so `9/29` is September, not month 92. "Unreadable" and
+  "expired" are distinct inline errors.
 - Owners cannot touch their own `billing_status` **or `billing_exempt`** —
   `prevent_billing_self_update` rejects both (service role, superadmin or the
   `app.internal_billing` GUC only).
@@ -316,6 +329,12 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
   `payment_config` (`{method: {enabled, …}}`; `in_person` is flag-only and drives the on-site
   option, gateways also carry credentials), `booking_theme` — preset key or custom `#RRGGBB`; `reviews_enabled`,
   `contact_email`, `address`, `cover_url`, org-default deposit config)
+  - **`contact_email` is a merchant legal disclosure** (E-Commerce Law Art. 4), published by
+    `get_public_org` on the booking page. Mandatory on **both** the onboarding step and
+    Settings → Business — it cannot be cleared once set. Format + a 254-char cap are enforced
+    server-side by `organisations_contact_email_format` (`20260821120000`); the column stays
+    nullable only for orgs created before the field existed, so "not empty" is a form rule and
+    "well-formed" is a DB rule.
 - `org_members` + `invitations` (team; phone-based invites; `staff` = non-login bookable profile
   with optional photo)
 - `services` (name, duration, **price ≥ ₾0** — free services are legal and book on site —

@@ -87,18 +87,26 @@ export default function ProfileSettings() {
   // flagged inline too (before that, only typed-but-invalid values are).
   const [submitted, setSubmitted] = useState(false)
 
-  // Business name is required; contact phone is mandatory. Email is optional but
-  // validated when provided (shown on the booking page for merchant disclosure).
+  // Name, contact phone and contact email are all mandatory. Email is NOT
+  // optional here: it is a merchant legal disclosure (E-Commerce Law Art. 4)
+  // published on the booking page, and onboarding (BusinessProfileStep) already
+  // refuses to continue without one — leaving it clearable afterwards meant a
+  // business could sign up compliant and then delete the disclosure.
   const nameTooShort = (submitted || name.trim().length > 0) && name.trim().length < 2
   const phoneMissing = contactPhone.trim().length === 0
   const phoneInvalid = (submitted || !phoneMissing) && !isValidGeorgianPhone(contactPhone)
-  const emailInvalid = contactEmail.trim().length > 0 && !isValidEmail(contactEmail.trim())
+  const emailMissing = contactEmail.trim().length === 0
+  const emailInvalid = (submitted || !emailMissing) && !isValidEmail(contactEmail.trim())
 
   async function handleSave() {
     if (!org) return
     // Flag every invalid field inline and pull the first one into view.
     setSubmitted(true)
-    if (name.trim().length < 2 || !isValidGeorgianPhone(contactPhone) || emailInvalid) {
+    if (
+      name.trim().length < 2
+      || !isValidGeorgianPhone(contactPhone)
+      || !isValidEmail(contactEmail.trim())
+    ) {
       focusFirstInvalidFieldAfterRender()
       return
     }
@@ -111,7 +119,8 @@ export default function ProfileSettings() {
         name: name.trim(),
         description: description.trim() || null,
         contact_phone: formatGeorgianPhone(contactPhone),
-        contact_email: contactEmail.trim() || null,
+        // Required above, so this is always a real address by the time we save.
+        contact_email: contactEmail.trim(),
         address: address.trim() || null,
       })
       .eq('id', org.id)
@@ -221,10 +230,15 @@ export default function ProfileSettings() {
               value={contactEmail}
               onChange={e => setContactEmail(e.target.value)}
               fullWidth
+              required
               type="email"
               placeholder="business@example.com"
               error={emailInvalid}
-              helperText={emailInvalid ? t('validation.invalidEmail') : t('settings.contactEmailHint')}
+              helperText={
+                emailInvalid
+                  ? (emailMissing ? t('validation.required') : t('validation.invalidEmail'))
+                  : t('settings.contactEmailHint')
+              }
               slotProps={{ htmlInput: { inputMode: 'email', maxLength: FIELD_LIMITS.email, 'data-testid': 'profile-email' } }}
             />
           </Stack>

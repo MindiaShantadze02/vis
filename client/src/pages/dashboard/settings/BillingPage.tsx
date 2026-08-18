@@ -3,11 +3,15 @@ import {
   Box, Card, CardContent, Typography, Button, Stack, TextField, Alert, CircularProgress, Divider, Chip,
 } from '@mui/material'
 import { useTranslation } from 'react-i18next'
-import { PageHeader, SideDrawer, FormErrorAlert, useToast } from '@/components/ui'
+import { PageHeader, SideDrawer, FormErrorAlert, ConfirmDialog, useToast } from '@/components/ui'
 import UsageMeter from '@/components/UsageMeter'
 import { useOrg } from '@/contexts/OrgContext'
 import { useBillingPayment } from '@/hooks/useBillingPayment'
 import { cardExpiryState } from '@/lib/billing'
+import {
+  formatCardNumber, formatCardExpiry, parseCardExpiry, isExpiryInFuture,
+  isPlausibleCardNumber, detectCardBrand,
+} from '@/lib/card'
 import { supabase } from '@/lib/supabase'
 import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 
@@ -25,19 +29,15 @@ const INVOICE_CHIP: Record<Invoice['status'], 'success' | 'warning' | 'error' | 
   charged: 'success', pending: 'warning', failed: 'error', waived: 'default',
 }
 
-// Brand from the IIN (display only; a real provider returns the brand).
-function detectBrand(digits: string): string {
-  if (digits.startsWith('4')) return 'visa'
-  if (/^5[1-5]/.test(digits)) return 'mastercard'
-  if (/^(34|37)/.test(digits)) return 'amex'
-  return 'card'
-}
-
 /**
  * Settings → Billing. Running bill + card on file. Adding a card NEVER charges;
  * the business is only charged once a month for the appointments it received
  * (T2.2 disclaimer on the form). The card form tokenises client-side — only the
  * token + last4/brand/expiry are sent to save-card; a PAN never leaves here.
+ *
+ * The number/expiry fields reformat as the owner types (see lib/card.ts) rather
+ * than demanding one exact shape, and the card can be removed again via
+ * remove_org_card.
  */
 export default function BillingPage() {
   const { t } = useTranslation()
@@ -50,6 +50,8 @@ export default function BillingPage() {
   const [submitted, setSubmitted] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState(false)
+  const [removing, setRemoving] = useState(false)
 
   // "Pay now" clears the outstanding balance (mock settles it) and restores the
   // org to active immediately (settle_usage_charge recovers when nothing's left).
@@ -72,25 +74,24 @@ export default function BillingPage() {
   }, [org, billing])
 
   const digits = number.replace(/\D/g, '')
-  const expMatch = /^(\d{2})\s*\/\s*(\d{2})$/.exec(expiry.trim())
-  const expiryOk = (() => {
-    if (!expMatch) return false
-    const mm = Number(expMatch[1]); const yy = 2000 + Number(expMatch[2])
-    if (!(mm >= 1 && mm <= 12)) return false
-    return Date.UTC(yy, mm, 0, 23, 59, 59) >= Date.now()
-  })()
-  const numberOk = digits.length >= 13 && digits.length <= 19
+  const numberOk = isPlausibleCardNumber(number)
+  // Parsing and expiry-checking are separate so the field can say WHICH it is:
+  // "we can't read that" and "that card has expired" are different problems.
+  const parsedExpiry = parseCardExpiry(expiry)
+  const expiryOk = !!parsedExpiry && isExpiryInFuture(parsedExpiry)
   const numberInvalid = submitted && !numberOk
   const expiryInvalid = submitted && !expiryOk
+  const expiryHelper = !expiryInvalid
+    ? 'MM/YY'
+    : parsedExpiry ? t('billing.cardExpiredInput') : t('billing.cardExpiryInvalid')
 
   async function handleSave() {
     setSubmitted(true)
     if (!org) return
-    if (!numberOk || !expiryOk) {
+    if (!numberOk || !parsedExpiry || !expiryOk) {
       focusFirstInvalidFieldAfterRender(document.querySelector('[data-testid="card-form"]') ?? document)
       return
     }
-    const mm = Number(expMatch![1]); const yy = 2000 + Number(expMatch![2])
 
     setSaving(true)
     setError(null)
@@ -100,15 +101,30 @@ export default function BillingPage() {
         // Real provider tokenises client-side; the mock stands in for that.
         token: `mock_card_${crypto.randomUUID()}`,
         last4: digits.slice(-4),
-        brand: detectBrand(digits),
-        exp_month: mm,
-        exp_year: yy,
+        brand: detectCardBrand(number),
+        exp_month: parsedExpiry.month,
+        exp_year: parsedExpiry.year,
       },
     })
     setSaving(false)
     if (fnErr || !data?.ok) { setError(t('billing.cardSaveFailed')); return }
     toast.success(t('billing.cardSaved'))
     setOpen(false); setNumber(''); setExpiry(''); setSubmitted(false)
+    refreshBilling()
+  }
+
+  // Removing the card is allowed even while a bill is outstanding — it doesn't
+  // dodge collection (a due charge with no card still routes into dunning), and
+  // trapping someone's card details would be the worse failure. The confirm
+  // copy says so plainly.
+  async function handleRemove() {
+    if (!org) return
+    setRemoving(true)
+    const { error: rpcErr } = await supabase.rpc('remove_org_card', { p_org_id: org.id })
+    setRemoving(false)
+    setConfirmRemove(false)
+    if (rpcErr) { toast.error(t('billing.cardRemoveFailed')); return }
+    toast.success(t('billing.cardRemoved'))
     refreshBilling()
   }
 
@@ -163,9 +179,19 @@ export default function BillingPage() {
           {billing?.card
             ? (
               <>
-                <Typography variant="body2" data-testid="billing-card">
-                  {(billing.card.brand ?? t('billing.card'))} ···· {billing.card.last4 ?? '····'}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body2" data-testid="billing-card" sx={{ flex: 1 }}>
+                    {(billing.card.brand ?? t('billing.card'))} ···· {billing.card.last4 ?? '····'}
+                  </Typography>
+                  <Button
+                    size="small"
+                    color="error"
+                    data-testid="billing-remove-card"
+                    onClick={() => setConfirmRemove(true)}
+                  >
+                    {t('billing.removeCard')}
+                  </Button>
+                </Box>
                 {expiryState === 'expired' && (
                   <Alert severity="error" sx={{ mt: 1 }} data-testid="card-expired">{t('billing.cardExpired')}</Alert>
                 )}
@@ -231,25 +257,41 @@ export default function BillingPage() {
             {t('billing.cardDisclaimer', { price: billing?.appointmentPrice ?? 1 })}
           </Alert>
           <Stack spacing={2}>
+            {/* Both fields reformat on every keystroke, so the owner can type
+                or paste in whatever shape they like — digits only, with dashes,
+                a 4-digit year — and still end up with a value that saves. No
+                maxLength: the formatters cap the digits themselves, and a hard
+                cap on the FORMATTED string would silently truncate a paste. */}
             <TextField
               label={t('billing.cardNumber')} value={number}
-              onChange={e => setNumber(e.target.value)}
+              onChange={e => setNumber(formatCardNumber(e.target.value))}
               fullWidth size="small" placeholder="4242 4242 4242 4242"
               error={numberInvalid}
               helperText={numberInvalid ? t('billing.cardNumberInvalid') : undefined}
-              slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 23, 'data-testid': 'card-number' } }}
+              slotProps={{ htmlInput: { inputMode: 'numeric', autoComplete: 'cc-number', 'data-testid': 'card-number' } }}
             />
             <TextField
               label={t('billing.cardExpiry')} value={expiry}
-              onChange={e => setExpiry(e.target.value)}
+              onChange={e => setExpiry(formatCardExpiry(e.target.value))}
               size="small" sx={{ maxWidth: 160 }} placeholder="09/29"
               error={expiryInvalid}
-              helperText={expiryInvalid ? t('billing.cardExpiryInvalid') : 'MM/YY'}
-              slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 5, 'data-testid': 'card-expiry' } }}
+              helperText={expiryHelper}
+              slotProps={{ htmlInput: { inputMode: 'numeric', autoComplete: 'cc-exp', 'data-testid': 'card-expiry' } }}
             />
           </Stack>
         </Box>
       </SideDrawer>
+
+      <ConfirmDialog
+        open={confirmRemove}
+        title={t('billing.removeCardTitle')}
+        message={t('billing.removeCardMessage')}
+        confirmLabel={t('billing.removeCard')}
+        destructive
+        loading={removing}
+        onClose={() => setConfirmRemove(false)}
+        onConfirm={handleRemove}
+      />
     </Box>
   )
 }
