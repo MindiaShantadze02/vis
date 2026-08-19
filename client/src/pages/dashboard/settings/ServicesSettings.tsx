@@ -354,10 +354,25 @@ export default function ServicesSettings() {
 
   async function handleDelete(s: Service) {
     setDeleting(true)
-    // Best-effort: remove the underlying storage file before the row goes
-    // (otherwise the object would be orphaned).
+    // A service with bookings is protected by an FK (RESTRICT): deleting it used
+    // to CASCADE and erase every appointment ever made for it, which destroyed
+    // customer history and zeroed that month's bill. Try the delete, and if the
+    // database refuses, point the owner at the on/off toggle instead — that is
+    // what retiring a service actually means.
+    const { error } = await supabase.from('services').delete().eq('id', s.id)
+    if (error) {
+      setDeleting(false)
+      setConfirmDelete(null)
+      toast.error(
+        error.code === '23503'
+          ? t('services.deleteBlockedHasBookings')
+          : error.message,
+      )
+      return
+    }
+    // Only once the row is really gone — otherwise a refused delete would still
+    // have destroyed the image.
     await removeServiceImageFile(s.image_url)
-    await supabase.from('services').delete().eq('id', s.id)
     setDeleting(false)
     setConfirmDelete(null)
     toast.success(t('common.deleted'))

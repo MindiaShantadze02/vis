@@ -205,7 +205,14 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
 
   async function deleteService(id: string) {
     const { error } = await supabase.from('services').delete().eq('id', id)
-    if (error) { toast.error(error.message); return }
+    // FK RESTRICT: a service with bookings can't be removed (it used to CASCADE
+    // and erase the appointments). Retire it with is_active instead.
+    if (error) {
+      toast.error(error.code === '23503'
+        ? 'სერვისზე უკვე არის ჯავშნები — წაშლა შეუძლებელია'
+        : error.message)
+      return
+    }
     setServices(prev => prev.filter(s => s.id !== id))
     setLinks(prev => { const next = { ...prev }; delete next[id]; return next })
   }

@@ -780,5 +780,8 @@
     "cardExpiredInput": "That card has expired",
     "cardOnFileHint": "The card we charge each month. Adding or replacing it never charges you.",
     "invoicesHint": "Closed months and what each was billed for."
+  },
+  "services": {
+    "deleteBlockedHasBookings": "This service can’t be deleted — it already has bookings. Turn it off instead to stop new bookings (history is kept)."
   }
 }

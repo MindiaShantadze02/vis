@@ -54,16 +54,36 @@ function one<T>(v: T | T[] | null): T | null {
   return Array.isArray(v) ? (v[0] ?? null) : v
 }
 
-// Drop duplicate/replayed sends of the same message to the same recipient.
-async function inCooldown(supabase: SupabaseClient, to: string, messageType: SmsMessageType): Promise<boolean> {
+// Drop duplicate/replayed sends of the SAME message about the SAME booking.
+//
+// This used to match on recipient + type alone, which silently swallowed
+// legitimate messages: the reminder cron posts every appointment due today in
+// one loop, so a customer with two bookings that morning got one reminder and
+// the other was dropped — permanently, because the dispatcher stamps
+// reminder_sent_at before posting. Measured on real data: 47 phone-days with
+// collisions, 106 reminders that would never arrive, worst case 7 bookings in a
+// day for one number.
+//
+// Scoping by appointment keeps the property that actually matters (a retried or
+// replayed webhook for ONE booking doesn't double-text) while letting distinct
+// bookings each get their own message. setup_complete has no appointment, so it
+// keeps the per-phone behaviour.
+async function inCooldown(
+  supabase: SupabaseClient,
+  to: string,
+  messageType: SmsMessageType,
+  appointmentId: string | null,
+): Promise<boolean> {
   const since = new Date(Date.now() - RESEND_COOLDOWN_SECONDS * 1000).toISOString()
-  const { count } = await supabase
+  let q = supabase
     .from('sms_log')
     .select('id', { count: 'exact', head: true })
     .eq('recipient_phone', to)
     .eq('message_type', messageType)
     .in('status', ['queued', 'sent'])
     .gte('created_at', since)
+  q = appointmentId ? q.eq('appointment_id', appointmentId) : q.is('appointment_id', null)
+  const { count } = await q
   return (count ?? 0) > 0
 }
 
@@ -121,7 +141,7 @@ Deno.serve(async (req) => {
       if (!reqRow || reqRow.status !== 'completed') {
         return Response.json({ error: 'setup request not found or not completed' }, { status: 404, headers: corsHeaders })
       }
-      if (await inCooldown(supabase, reqRow.phone, 'setup_complete')) {
+      if (await inCooldown(supabase, reqRow.phone, 'setup_complete', null)) {
         return Response.json({ status: 'skipped', reason: 'cooldown' }, { headers: corsHeaders })
       }
       const result = await sendSms(supabase, {
@@ -163,7 +183,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'no meeting link set' }, { status: 422, headers: corsHeaders })
     }
 
-    if (await inCooldown(supabase, to, message_type)) {
+    if (await inCooldown(supabase, to, message_type, resolved.appointmentId)) {
       return Response.json({ status: 'skipped', reason: 'cooldown' }, { headers: corsHeaders })
     }
 
