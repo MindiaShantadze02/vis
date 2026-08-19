@@ -34,6 +34,12 @@ export function esc(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+    // `'` for single-quoted attributes (none today, but cheap insurance), and
+    // `$` because the escaped text is later used as a String.replace()
+    // replacement, where `$&`/`` $` ``/`$'` are expansion patterns. The call
+    // sites use function replacers now; escaping here is the belt to that brace.
+    .replace(/'/g, '&#39;')
+    .replace(/\$/g, '&#36;')
 }
 
 /** Standard HTML response headers with an explicit cache policy. */

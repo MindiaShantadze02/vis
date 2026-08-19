@@ -44,7 +44,14 @@
       frame.style.height = data.height + 'px';
     } else if (data.type === 'vis:redirect' && data.url) {
       // Payment gateways refuse to load inside an iframe — send the top window.
-      window.top.location.href = data.url;
+      // Scheme-check first: this navigates the HOST page, so an unchecked value
+      // would let a `javascript:` URL run script in the host site's origin. The
+      // origin check above already restricts who can send this, but a redirect
+      // primitive aimed at someone else's page deserves its own guard.
+      var dest;
+      try { dest = new URL(data.url, location.href); } catch (_) { return; }
+      if (dest.protocol !== 'https:' && dest.protocol !== 'http:') return;
+      window.top.location.href = dest.href;
     } else if (data.type === 'vis:booked') {
       // Let the host page react to a completed booking if it wants to.
       frame.dispatchEvent(new CustomEvent('vis:booked', { detail: data }));

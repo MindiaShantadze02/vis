@@ -78,7 +78,9 @@ export default function BookingConfirmationPage() {
   // Let the embedding site react to a completed booking (e.g. analytics, custom
   // thank-you). No-op when not embedded.
   useEffect(() => {
-    if (appt) postToParent({ type: 'vis:booked', appointmentId: appt.id, status: appt.status })
+    // Status only — see Step3CustomerForm: the appointment id is a capability
+    // and this message goes to any origin that framed us.
+    if (appt) postToParent({ type: 'vis:booked', status: appt.status })
   }, [appt])
 
   // The booking is done, so rewind its saved draft: "Book another" (and browser

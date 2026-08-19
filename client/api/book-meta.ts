@@ -33,8 +33,15 @@ interface PublicOrg {
     to injecting before </head> if the markers ever go missing. */
 function replaceSeoBlock(shell: string, head: string): string {
   const re = /<!--seo:start-->[\s\S]*?<!--seo:end-->/
-  if (re.test(shell)) return shell.replace(re, head)
-  return shell.replace('</head>', `${head}\n</head>`)
+  // The replacement is passed as a FUNCTION, not a string. As a string, JS
+  // expands `$&`, `` $` ``, `$'` and `$$` inside it — and esc() does not escape
+  // `$` — so a business whose name or description contained `$'` would splice a
+  // slice of index.html into its own <head>, landing the app's <script> tag
+  // inside <title> or the ld+json block and stopping the SPA from booting. Not
+  // XSS (`<` is still escaped), but self-inflicted breakage cached at the edge
+  // for an hour. A function replacer is taken literally.
+  if (re.test(shell)) return shell.replace(re, () => head)
+  return shell.replace('</head>', () => `${head}\n</head>`)
 }
 
 export default async function handler(req: Request): Promise<Response> {

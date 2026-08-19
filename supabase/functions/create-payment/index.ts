@@ -15,6 +15,26 @@ import { depositFor } from '../_shared/deposit.ts'
 // Amounts are ALWAYS recomputed server-side (services.price) — a client-sent
 // amount is never trusted. verify_jwt = false so guests can reach the flow.
 
+// Origins we will build a checkout return URL on. CANONICAL_ORIGIN is the
+// production site; localhost/127.0.0.1 keep the dev server and the Playwright
+// suite working. Anything else is refused.
+function isAllowedReturnOrigin(raw: string): boolean {
+  let url: URL
+  try {
+    url = new URL(raw)
+  } catch {
+    return false
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
+
+  const canonical = Deno.env.get('CANONICAL_ORIGIN') ?? 'https://vis.ge'
+  const allowed = new Set([canonical, 'https://vis.ge', 'https://www.vis.ge'])
+  if (allowed.has(url.origin)) return true
+
+  // Local development / e2e only.
+  return (url.hostname === 'localhost' || url.hostname === '127.0.0.1')
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -28,7 +48,13 @@ Deno.serve(async (req) => {
     const purpose = body.purpose as string
     const returnBaseUrl = body.returnBaseUrl as string
 
-    if (!returnBaseUrl || !/^https?:\/\//.test(returnBaseUrl)) {
+    // The gateway return URL is built on this origin and handed back as
+    // `checkoutUrl`, so an unvalidated value lets a caller have OUR api mint a
+    // legitimate-looking checkout link pointing at their own host — carrying a
+    // real payment reference. Harmless while the mock provider only composes
+    // strings; a phishing primitive the moment BOG/TBC receive it as the
+    // merchant return URL. Allowlist the origin rather than the scheme.
+    if (!returnBaseUrl || !isAllowedReturnOrigin(returnBaseUrl)) {
       return Response.json({ error: 'invalid_return_url' }, { status: 400, headers: corsHeaders })
     }
 

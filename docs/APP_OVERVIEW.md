@@ -421,6 +421,40 @@ Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A busine
   `platform_config.otp_rate_limits` (production defaults: 5/10min and 20/day per IP, 6/day per
   phone, 1000/day global). Blocked booking requests return `too_many_requests` (surfaced in the
   UI); password-reset stays neutral (`ok: true`).
+- **Security sweep** (2026-08-19, `20260823120000` + edge redeploys) — see
+  `docs/SECURITY_PRE_LAUNCH.md` for what is knowingly still open:
+  - `prevent_billing_self_update` now freezes **`usage_anchor` and `owner_id`** as
+    well as `billing_status`/`billing_exempt`. `organisations_update` has no
+    column list, so this trigger **is** the column-level access control — add any
+    new sensitive `organisations` column to it. Moving `usage_anchor` forward had
+    let an owner suppress invoicing indefinitely.
+  - **OTP attempts are now charged atomically** by `claim_booking_otp_attempt` /
+    `claim_password_reset_attempt` (`attempts = attempts + 1 … RETURNING`, charged
+    before the hash compare). The previous read-modify-write let concurrent guesses
+    share a stale counter, making a 6-digit code brute-forceable — on
+    `reset-password` that was owner account takeover. Verified live: 20 concurrent
+    guesses ⇒ exactly 5 evaluated, 15 refused, `attempts` = 20.
+    Two things the budget deliberately does **not** do, both learned by breaking
+    the app with them first:
+    - it counts only **unverified** live challenges, because nothing sets
+      `consumed_at` on the login path, so every successful sign-in would otherwise
+      leave a charged row behind and lock the phone out within a few logins;
+    - a **successful** verify refunds its own charge (`mark_booking_otp_verified`),
+      because signing in again inside the 60s resend cooldown re-verifies the same
+      still-live challenge. Wrong guesses are never refunded, so the bound holds.
+    `check_otp_rate_limit` is **not** called on the verify side — it caps code
+    *issuance* (it counts rows created per IP/phone) and belongs on the request
+    side only. At its production defaults, applying it to verification would
+    refuse legitimately-issued codes for everyone behind one office NAT.
+  - `reset-password` no longer returns `no_account` (phone enumeration).
+  - **Grant hygiene:** `anon`/`authenticated` no longer hold table-level ALL on
+    `platform_config`, `superadmins`, the two verification tables or
+    `org_payment_methods`. Note migration 066's column-revoke on `org_members`
+    had been a **no-op** — a column REVOKE cannot carve a subset out of a
+    table-level grant; it is done correctly now.
+  - ⚠️ `has_verified_booking_otp` **must stay anon-executable**: the
+    `customers_insert` policy calls it, and RLS expressions run as the CALLING
+    role, so revoking it breaks all guest booking.
 - **Internal-function lockdown** (073 + 081): default PUBLIC/anon EXECUTE revoked from the
   internal cron/helper functions (`dispatch_appointment_reminders`,
   `complete_elapsed_appointments`, `purge_expired_data`, the billing settle/charge functions).

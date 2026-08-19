@@ -61,51 +61,44 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // Reject if the phone has burned through its attempts across any recent,
-    // still-valid challenge — counting per row alone lets a fresh OTP request
-    // silently reset the limit, so we sum failures over the live window.
-    const { data: recent } = await supabase
-      .from('booking_verifications')
-      .select('attempts')
-      .eq('phone', local)
-      .is('consumed_at', null)
-      .gt('expires_at', new Date().toISOString())
-    const totalAttempts = (recent ?? []).reduce((sum, r) => sum + (r.attempts ?? 0), 0)
-    if (totalAttempts >= MAX_ATTEMPTS) {
-      return Response.json({ verified: false, error: 'too_many_attempts' }, { headers: corsHeaders })
-    }
+    // NOTE: check_otp_rate_limit is deliberately NOT called here. It caps code
+    // ISSUANCE (it counts rows created per IP/phone), so applying it to the
+    // verify side refuses a code the user legitimately received just because
+    // their IP requested several — at the production defaults (5 per 10 min per
+    // IP) that locks out everyone behind one office or cafe NAT. Brute force is
+    // bounded by the per-phone attempt budget below, which the request-side cap
+    // composes with: at most phone_daily codes a day, each window capped at
+    // MAX_ATTEMPTS wrong guesses that a fresh code does not reset.
 
-    // Latest challenge for this phone that hasn't been used or expired.
-    const { data: row } = await supabase
-      .from('booking_verifications')
-      .select('id, code_hash, attempts, expires_at')
-      .eq('phone', local)
-      .is('consumed_at', null)
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    // Charge the attempt and read the challenge in ONE atomic statement.
+    // This replaced a read-modify-write (`attempts = row.attempts + 1`) that
+    // concurrent requests all computed from the same stale value, so N parallel
+    // guesses advanced the counter by 1 and the 5-guess budget never bound.
+    // Charging BEFORE the comparison is the point: a burst cannot buy extras.
+    const { data: claim } = await supabase
+      .rpc('claim_booking_otp_attempt', { p_phone: local })
+    const row = Array.isArray(claim) ? claim[0] : claim
 
     if (!row) {
       return Response.json({ verified: false, error: 'expired' }, { headers: corsHeaders })
+    }
+    if (row.attempts_used > MAX_ATTEMPTS) {
+      return Response.json({ verified: false, error: 'too_many_attempts' }, { headers: corsHeaders })
     }
 
     const matches = (testOtpBypassAllowed() && String(code) === TEST_OTP_CODE) ||
       row.code_hash === (await hashCode(String(code), local, secret))
 
     if (!matches) {
-      const attempts = row.attempts + 1
-      await supabase.from('booking_verifications').update({ attempts }).eq('id', row.id)
-      return Response.json(
-        { verified: false, error: 'wrong_code', remaining: Math.max(0, MAX_ATTEMPTS - attempts) },
-        { headers: corsHeaders },
-      )
+      // No `remaining` — telling an attacker their exact budget helps only them.
+      return Response.json({ verified: false, error: 'wrong_code' }, { headers: corsHeaders })
     }
 
-    await supabase
-      .from('booking_verifications')
-      .update({ verified_at: new Date().toISOString() })
-      .eq('id', row.id)
+    // Marks verified AND refunds the attempt the claim charged: a correct code
+    // must not cost budget, or repeated sign-ins inside the 60s resend cooldown
+    // (which re-verify the same still-live challenge) lock the user out of
+    // their own account.
+    await supabase.rpc('mark_booking_otp_verified', { p_id: row.challenge_id })
 
     return Response.json({ verified: true }, { headers: corsHeaders })
   } catch (err) {

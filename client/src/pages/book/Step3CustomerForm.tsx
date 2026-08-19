@@ -380,7 +380,12 @@ export default function Step3CustomerForm({
           return;
         }
 
-        if (embed) postToParent({ type: "vis:booked", appointmentId });
+        // Deliberately NOT the appointmentId: postToParent targets '*' and
+        // /book/* is framable by anyone (frame-ancestors *), so a hostile site
+        // could frame a business's widget and harvest real customers' booking
+        // ids — which grant the /manage read surface and can trigger an OTP SMS.
+        // The host page only needs to know a booking completed.
+        if (embed) postToParent({ type: "vis:booked" });
         navigate(`/booking-confirmation/${appointmentId}`);
         return;
       }

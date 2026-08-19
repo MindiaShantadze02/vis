@@ -72,7 +72,7 @@ const CODE = {
 <script src="https://vis.ge/embed.js" async></script>`,
   bookedEvent: `document.querySelector('iframe[data-vis]')
   .addEventListener('vis:booked', (e) => {
-    // e.detail = { appointmentId: "…", status: "approved" }
+    // e.detail = { status: "approved" }
     console.log('booked', e.detail)
   })`,
 }
