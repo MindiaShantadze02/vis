@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Card, CardContent, Box, Typography } from '@mui/material'
+import { Card, CardContent, Box, Typography, TablePagination } from '@mui/material'
 
 /**
  * Section shell shared by the superadmin console pages. Matches the dashboard
@@ -39,4 +39,45 @@ export function Section({ title, hint, action, children }: {
 /** Horizontally scrollable table wrapper — the page body must never scroll sideways. */
 export function ScrollX({ children }: { children: ReactNode }) {
   return <Box sx={{ overflowX: 'auto', mx: -1, px: 1 }}>{children}</Box>
+}
+
+/**
+ * Footer pager for the superadmin lists. Mirrors the dashboard's
+ * OverviewPage control (same MUI component, same responsive toolbar tweaks) so
+ * the two consoles behave identically; the labels are Georgian inline because
+ * the superadmin area is single-language by design.
+ *
+ * Paging is client-side: these lists arrive whole from one RPC and are searched
+ * in memory, so slicing locally keeps search instant and avoids a round trip
+ * per page. If the platform ever passes a few thousand orgs, move
+ * list_orgs_overview to p_limit/p_offset the way get_org_appointments already
+ * does — the component below does not change.
+ */
+export function Pager({ count, page, rowsPerPage, onPage, onRowsPerPage }: {
+  count: number
+  page: number
+  rowsPerPage: number
+  onPage: (p: number) => void
+  onRowsPerPage: (n: number) => void
+}) {
+  if (count === 0) return null
+  return (
+    <TablePagination
+      component="div"
+      count={count}
+      page={page}
+      onPageChange={(_, p) => onPage(p)}
+      rowsPerPage={rowsPerPage}
+      onRowsPerPageChange={e => { onRowsPerPage(parseInt(e.target.value, 10)); onPage(0) }}
+      rowsPerPageOptions={[10, 25, 50]}
+      labelRowsPerPage="სტრიქონი გვერდზე"
+      labelDisplayedRows={({ from, to, count: c }) => `${from}–${to} / ${c}`}
+      sx={{
+        borderTop: '1px solid',
+        borderColor: 'divider',
+        '& .MuiTablePagination-toolbar': { flexWrap: 'wrap', minHeight: 52, gap: 0.5 },
+        '& .MuiTablePagination-actions button': { p: { xs: 1.25, md: 1 } },
+      }}
+    />
+  )
 }

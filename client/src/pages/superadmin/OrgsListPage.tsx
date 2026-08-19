@@ -8,6 +8,8 @@ import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, EmptyState } from '@/components/ui'
+import { Pager } from './_shared'
+import { usePaged } from './usePaged'
 
 // Post-paid billing status → chip label (ka) + MUI colour.
 const BILLING_CHIP: Record<string, { label: string; color: 'success' | 'warning' | 'error' }> = {
@@ -28,9 +30,11 @@ interface OrgRow {
   contact_phone: string | null
   member_count: number
   usage: number
+  /** All-time booking-page views (unique visitor per day). */
+  views: number
 }
 
-const GRID_COLS = '1.6fr 1fr 110px 90px 110px'
+const GRID_COLS = '1.6fr 1fr 110px 80px 100px 90px'
 
 export default function OrgsListPage() {
   const theme = useTheme()
@@ -65,6 +69,8 @@ export default function OrgsListPage() {
     )
   }, [orgs, search])
 
+  const { paged, page, setPage, rowsPerPage, setRowsPerPage, count } = usePaged(filtered, 25)
+
   return (
     <Box>
       <PageHeader title="ორგანიზაციები" />
@@ -90,7 +96,7 @@ export default function OrgsListPage() {
               borderBottom: '1px solid', borderColor: 'divider',
             }}
           >
-            {['ორგანიზაცია', 'მფლობელი', 'სტატუსი', 'წევრები', 'გამოყენება'].map(h => (
+            {['ორგანიზაცია', 'მფლობელი', 'სტატუსი', 'წევრები', 'ჯავშნები', 'ნახვები'].map(h => (
               <Typography key={h} variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>{h}</Typography>
             ))}
           </Box>
@@ -104,11 +110,11 @@ export default function OrgsListPage() {
           ))
           : filtered.length === 0
           ? <EmptyState icon={<StorefrontOutlinedIcon />} title="ორგანიზაცია ვერ მოიძებნა" />
-          : filtered.map((o, i) => {
+          : paged.map((o, i) => {
             const b = BILLING_CHIP[o.billing_status] ?? BILLING_CHIP.active
             const rowSx = {
               px: 2, py: 1.5,
-              borderBottom: i < filtered.length - 1 ? '1px solid' : 'none',
+              borderBottom: i < paged.length - 1 ? '1px solid' : 'none',
               borderColor: 'divider', cursor: 'pointer',
               '&:hover': { bgcolor: 'action.hover' },
             }
@@ -123,7 +129,7 @@ export default function OrgsListPage() {
                     <Box sx={{ minWidth: 0 }}>
                       <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>{o.name}</Typography>
                       <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block' }}>
-                        {o.owner_phone ?? o.owner_email ?? '—'} · {o.member_count} წევრი · {o.usage} ჯავშანი
+                        {o.owner_phone ?? o.owner_email ?? '—'} · {o.member_count} წევრი · {o.usage} ჯავშანი · {o.views} ნახვა
                       </Typography>
                     </Box>
                     {billingChip}
@@ -152,10 +158,21 @@ export default function OrgsListPage() {
                 {billingChip}
                 <Typography variant="body2">{o.member_count}</Typography>
                 <Typography variant="body2">{o.usage}</Typography>
+                <Typography variant="body2">{o.views}</Typography>
               </Box>
             )
           })
         }
+
+        {!loading && (
+          <Pager
+            count={count}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPage={setPage}
+            onRowsPerPage={setRowsPerPage}
+          />
+        )}
       </Card>
     </Box>
   )

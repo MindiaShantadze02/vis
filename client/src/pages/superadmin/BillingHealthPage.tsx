@@ -10,7 +10,8 @@ import { ErrorOutlineOutlined as WarningIcon } from '@/components/icons'
 import { EventBusyOutlined as CalendarCheckIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, StatCard, EmptyState } from '@/components/ui'
-import { Section, ScrollX } from './_shared'
+import { Section, ScrollX, Pager } from './_shared'
+import { usePaged } from './usePaged'
 import { lari, monthLabel } from './format'
 
 /**
@@ -89,6 +90,14 @@ export default function BillingHealthPage() {
   const thisMonth = revenue.length ? revenue[revenue.length - 1] : null
   const owed = health?.outstanding.amount ?? 0
   const noCard = health?.no_card ?? []
+  const expiring = health?.expiring_cards ?? []
+  const retroOrgs = retro?.orgs ?? []
+
+  // Only the lists that grow with the number of businesses are paged; the
+  // month-based tables are six rows by construction.
+  const noCardPage = usePaged(noCard, 10)
+  const expiringPage = usePaged(expiring, 10)
+  const retroPage = usePaged(retroOrgs, 10)
 
   return (
     <Box>
@@ -259,7 +268,7 @@ export default function BillingHealthPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {noCard.map(o => (
+                  {noCardPage.paged.map(o => (
                     <TableRow key={o.org_id} hover>
                       <TableCell>
                         <MuiLink component={RouterLink} to={`/superadmin/orgs/${o.org_id}`} underline="hover">
@@ -276,9 +285,16 @@ export default function BillingHealthPage() {
               </Table>
             </ScrollX>
           )}
+          <Pager
+            count={noCardPage.count}
+            page={noCardPage.page}
+            rowsPerPage={noCardPage.rowsPerPage}
+            onPage={noCardPage.setPage}
+            onRowsPerPage={noCardPage.setRowsPerPage}
+          />
         </Section>
 
-        {(health?.expiring_cards.length ?? 0) > 0 && (
+        {expiring.length > 0 && (
           <Section
             title="ბარათს ვადა ეწურება"
             hint="მომდევნო 30 დღეში. ერთი შეხსენება აქ ერთ დავალიანებას აცილებს."
@@ -293,7 +309,7 @@ export default function BillingHealthPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(health?.expiring_cards ?? []).map(c => (
+                  {expiringPage.paged.map(c => (
                     <TableRow key={c.org_id} hover>
                       <TableCell>
                         <MuiLink component={RouterLink} to={`/superadmin/orgs/${c.org_id}`} underline="hover">
@@ -324,7 +340,7 @@ export default function BillingHealthPage() {
             />
           </Box>
 
-          {(retro?.orgs.length ?? 0) === 0 ? (
+          {retroOrgs.length === 0 ? (
             <EmptyState title="გვიანი გაუქმება არ ყოფილა" />
           ) : (
             <ScrollX>
@@ -339,7 +355,7 @@ export default function BillingHealthPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(retro?.orgs ?? []).map(o => (
+                  {retroPage.paged.map(o => (
                     <TableRow key={o.org_id} hover>
                       <TableCell>
                         <MuiLink component={RouterLink} to={`/superadmin/orgs/${o.org_id}`} underline="hover">
@@ -363,6 +379,13 @@ export default function BillingHealthPage() {
               </Table>
             </ScrollX>
           )}
+          <Pager
+            count={retroPage.count}
+            page={retroPage.page}
+            rowsPerPage={retroPage.rowsPerPage}
+            onPage={retroPage.setPage}
+            onRowsPerPage={retroPage.setRowsPerPage}
+          />
         </Section>
       </Box>
     </Box>

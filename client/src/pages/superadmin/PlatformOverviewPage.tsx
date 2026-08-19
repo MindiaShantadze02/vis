@@ -3,6 +3,7 @@ import { Box, Grid, Card, CardContent, Typography, Chip, useTheme } from '@mui/m
 import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
 import { EventNoteOutlined as EventNoteOutlinedIcon } from '@/components/icons'
 import { PersonAddAltOutlined as PersonAddAltOutlinedIcon } from '@/components/icons'
+import { VisibilityOutlined as VisibilityOutlinedIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, StatCard } from '@/components/ui'
 
@@ -16,6 +17,9 @@ interface Stats {
   total_orgs: number
   total_appointments: number
   signups_last_30d: number
+  /** Booking-page views across every business: all time, and the last 30 days. */
+  booking_views_total: number
+  booking_views_30d: number
   orgs_by_billing_status: Record<string, number>
 }
 
@@ -36,7 +40,7 @@ export default function PlatformOverviewPage() {
       <PageHeader title="პლატფორმის მიმოხილვა" />
 
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <StatCard
             label="ორგანიზაციები"
             value={stats?.total_orgs ?? 0}
@@ -45,7 +49,7 @@ export default function PlatformOverviewPage() {
             loading={loading}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <StatCard
             label="ჯავშნები (სულ)"
             value={stats?.total_appointments ?? 0}
@@ -54,7 +58,7 @@ export default function PlatformOverviewPage() {
             loading={loading}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <StatCard
             label="ახალი რეგისტრაცია (30 დღე)"
             value={stats?.signups_last_30d ?? 0}
@@ -63,7 +67,22 @@ export default function PlatformOverviewPage() {
             loading={loading}
           />
         </Grid>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          {/* One visitor per business per day. Counts people who reached a
+              booking form, so it reads next to "ჯავშნები" as a rough funnel. */}
+          <StatCard
+            label="ჯავშნის გვერდის ნახვები"
+            value={stats?.booking_views_total ?? 0}
+            icon={<VisibilityOutlinedIcon />}
+            color={theme.palette.warning.main}
+            loading={loading}
+          />
+        </Grid>
       </Grid>
+
+      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 3 }}>
+        ბოლო 30 დღეში — {stats?.booking_views_30d ?? 0} ნახვა. ერთი ვიზიტორი დღეში ერთხელ ითვლება.
+      </Typography>
 
       {/* Orgs by billing status */}
       <Card>

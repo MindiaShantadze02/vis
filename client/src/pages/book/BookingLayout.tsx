@@ -12,6 +12,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { SearchOffOutlined as SearchOffOutlinedIcon } from '@/components/icons'
 import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
+import { recordBookingPageView } from '@/lib/pageViews'
 import { getBookingTheme, makeBookingTheme } from '@/theme/bookingThemes'
 import { LoadingState, EmptyState } from '@/components/ui'
 import BookingShell from './BookingShell'
@@ -210,6 +211,11 @@ export default function BookingLayout() {
         deposit_value: pub.deposit_value != null ? Number(pub.deposit_value) : null,
         deposit_refundable: pub.deposit_refundable ?? true,
       })
+
+      // Count the visit only once the page is actually going to render the
+      // form: a 404 slug or a billing-blocked business returns above, so those
+      // never inflate the number. Fire-and-forget — it must not delay the page.
+      if (slug) void recordBookingPageView(slug)
     }
     if (slug) loadOrg()
   }, [slug])
