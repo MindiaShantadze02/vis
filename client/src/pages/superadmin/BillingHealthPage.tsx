@@ -1,20 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  Box, Card, CardContent, Typography, Chip, Table, TableBody, TableCell,
-  TableHead, TableRow, Link as MuiLink, Skeleton, Alert,
+  Box, Grid, Typography, Chip, Table, TableBody, TableCell, TableHead, TableRow,
+  Link as MuiLink, Alert, useTheme,
 } from '@mui/material'
+import { CreditCardOutlined as CreditCardOutlinedIcon } from '@/components/icons'
+import { InsightsOutlined as InsightsOutlinedIcon } from '@/components/icons'
+import { ErrorOutlineOutlined as WarningIcon } from '@/components/icons'
+import { EventBusyOutlined as CalendarCheckIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
-import { PageHeader } from '@/components/ui'
+import { PageHeader, StatCard, EmptyState } from '@/components/ui'
+import { Section, ScrollX } from './_shared'
+import { lari, monthLabel } from './format'
 
 /**
- * Billing + operational health for superadmins.
+ * The money page: what we are owed, what we collected, and who we cannot charge.
  *
- * Two RPCs, deliberately kept apart: platform_billing_health answers "is revenue
- * landing?", platform_ops_health answers "is the machinery still running?". The
- * second exists because the worst bug found in the 2026-08-19 sweep was a
- * control that stopped working while nothing failed — a scheduled job that
- * quietly stops would not surface until month end without this.
+ * Retro-cancellation lives here rather than on the platform overview — it is a
+ * billing-integrity number (occurrences a business tried to take off its own
+ * invoice), so it belongs next to the invoice, not next to signup counts.
+ * Machine health moved out to /superadmin/system for the same reason.
  */
 
 interface Outstanding { amount: number; periods: number; orgs: number; oldest_due: string | null }
@@ -26,8 +31,7 @@ interface RevenueMonth { month: string; billable: number; revenue: number }
 interface NoCardOrg { org_id: string; name: string; slug: string; billing_status: string; owed: number }
 interface ExpiringCard { org_id: string; name: string; last4: string; expires_at: string }
 interface Dunning {
-  past_due: number; suspended: number; recovered: number
-  median_days_to_recover: number | null
+  past_due: number; suspended: number; recovered: number; median_days_to_recover: number | null
 }
 interface BillingHealth {
   months: number
@@ -40,162 +44,116 @@ interface BillingHealth {
   revenue_by_month: RevenueMonth[]
 }
 
-interface CronJob {
-  job: string; schedule: string; active: boolean
-  last_run: string | null; last_success: string | null
-  failures_24h: number; stale: boolean
+interface RetroOrg {
+  org_id: string; name: string; slug: string; bookings: number; billable: number
+  retro_billed: number; free_corrections: number; retro_rate_pct: number
 }
-interface OtpStats {
-  issued: number; verified: number; failed: number
-  never_tried: number; hit_the_cap: number; failure_pct: number
+interface RetroStats {
+  window_days: number; grace_hours: number
+  totals: { bookings: number; billable: number; retro_billed: number; free_corrections: number; orgs_affected: number }
+  orgs: RetroOrg[]
 }
-interface OpsHealth { cron: CronJob[]; otp_7d: OtpStats }
 
-const lari = (n: number) => `₾${Number(n ?? 0).toFixed(2)}`
-const shortDate = (s: string | null) =>
-  s ? new Date(s).toLocaleString('ka-GE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
-
-function Stat({ label, value, hint, tone }: {
-  label: string; value: string; hint?: string; tone?: 'error' | 'warning'
-}) {
+/** Small label/value pair used inside sections, where a full StatCard is too heavy. */
+function Figure({ label, value, tone }: { label: string; value: string; tone?: 'error' | 'warning' | 'success' }) {
   return (
-    <Box sx={{ px: 2, py: 1.5, borderRadius: 2, minWidth: 170, border: '1px solid', borderColor: 'divider' }}>
-      <Typography variant="caption" color="text.secondary">{label}</Typography>
-      <Typography
-        variant="h6"
-        sx={{ fontWeight: 700, color: tone ? `${tone}.main` : 'text.primary' }}
-      >
+    <Box sx={{ minWidth: 150 }}>
+      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+        {label}
+      </Typography>
+      <Typography variant="h6" sx={{ fontWeight: 700, color: tone ? `${tone}.main` : 'text.primary' }}>
         {value}
       </Typography>
-      {hint && <Typography variant="caption" color="text.secondary">{hint}</Typography>}
     </Box>
   )
 }
 
-function SectionCard({ title, hint, children }: {
-  title: string; hint?: string; children: React.ReactNode
-}) {
-  return (
-    <Card sx={{ mt: 3 }}>
-      <CardContent sx={{ p: 3 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{title}</Typography>
-        {hint && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{hint}</Typography>
-        )}
-        {children}
-      </CardContent>
-    </Card>
-  )
-}
-
 export default function BillingHealthPage() {
+  const theme = useTheme()
   const [health, setHealth] = useState<BillingHealth | null>(null)
-  const [ops, setOps] = useState<OpsHealth | null>(null)
+  const [retro, setRetro] = useState<RetroStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       supabase.rpc('platform_billing_health', { p_months: 6 }),
-      supabase.rpc('platform_ops_health'),
-    ]).then(([h, o]) => {
+      supabase.rpc('platform_retro_cancel_stats', { p_days: 90 }),
+    ]).then(([h, r]) => {
       setHealth((h.data ?? null) as BillingHealth | null)
-      setOps((o.data ?? null) as OpsHealth | null)
+      setRetro((r.data ?? null) as RetroStats | null)
       setLoading(false)
     })
   }, [])
 
-  const staleJobs = (ops?.cron ?? []).filter(j => j.stale || j.failures_24h > 0)
+  const revenue = health?.revenue_by_month ?? []
+  const thisMonth = revenue.length ? revenue[revenue.length - 1] : null
+  const owed = health?.outstanding.amount ?? 0
+  const noCard = health?.no_card ?? []
 
   return (
     <Box>
       <PageHeader
-        title="ბილინგის მდგომარეობა"
-        subtitle="შემოსავალი, ამოღება და სისტემური პროცესები"
+        title="ბილინგი"
+        subtitle="რამდენი შემოვიდა, რამდენი გვმართებს და ვისგან ვერ ჩამოვჭრით"
       />
 
-      {loading ? (
-        <Skeleton variant="rounded" height={140} />
-      ) : (
-        <>
-          {/* A stopped job is the failure nobody notices — surface it above everything. */}
-          {staleJobs.length > 0 && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              დაგეგმილი პროცესი არ მუშაობს:{' '}
-              {staleJobs.map(j => j.job).join(', ')}
-            </Alert>
-          )}
+      {/* Owed money that we have no way to collect is the one thing worth
+          interrupting for — it is silent otherwise. */}
+      {!loading && noCard.some(o => o.owed > 0) && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {noCard.filter(o => o.owed > 0).length} ბიზნესს აქვს დავალიანება, მაგრამ ბარათი არ აქვს
+          მიბმული — ავტომატურად ვერ ჩამოიჭრება.
+        </Alert>
+      )}
 
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-            <Stat
-              label="დაუფარავი ბალანსი"
-              value={lari(health?.outstanding.amount ?? 0)}
-              hint={`${health?.outstanding.orgs ?? 0} ორგანიზაცია · ${health?.outstanding.periods ?? 0} პერიოდი`}
-              tone={(health?.outstanding.amount ?? 0) > 0 ? 'warning' : undefined}
-            />
-            <Stat
-              label="ბარათის გარეშე"
-              value={String(health?.no_card.length ?? 0)}
-              hint="ვერ ჩამოვჭრით"
-              tone={(health?.no_card.length ?? 0) > 0 ? 'warning' : undefined}
-            />
-            <Stat
-              label="ვადა იწურება (30 დღე)"
-              value={String(health?.expiring_cards.length ?? 0)}
-              hint="ბარათი"
-            />
-            <Stat
-              label="ვერიფიკაციის ჩავარდნა (7 დღე)"
-              value={`${ops?.otp_7d.failure_pct ?? 0}%`}
-              hint={`${ops?.otp_7d.failed ?? 0} / ${(ops?.otp_7d.verified ?? 0) + (ops?.otp_7d.failed ?? 0)}`}
-              tone={(ops?.otp_7d.failure_pct ?? 0) >= 25 ? 'error' : undefined}
-            />
-          </Box>
+      <Grid container spacing={2} sx={{ mb: 1 }}>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <StatCard
+            label="გვმართებენ"
+            value={lari(owed)}
+            icon={<WarningIcon />}
+            color={owed > 0 ? theme.palette.warning.main : theme.palette.success.main}
+            loading={loading}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <StatCard
+            label="ამ თვის შემოსავალი"
+            value={lari(thisMonth?.revenue ?? 0)}
+            icon={<InsightsOutlinedIcon />}
+            color={theme.palette.primary.main}
+            loading={loading}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <StatCard
+            label="ბარათი არ აქვს"
+            value={noCard.length}
+            icon={<CreditCardOutlinedIcon />}
+            color={noCard.length > 0 ? theme.palette.warning.main : theme.palette.success.main}
+            loading={loading}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <StatCard
+            label="ბარათს ვადა ეწურება"
+            value={health?.expiring_cards.length ?? 0}
+            icon={<CalendarCheckIcon />}
+            color={theme.palette.info.main}
+            loading={loading}
+          />
+        </Grid>
+      </Grid>
 
-          {/* Collection — uncollectable is broken out on purpose: a charged/failed
-              ratio alone hid the 2026-08-17 no-card regression completely. */}
-          <SectionCard
-            title="ამოღება თვეების მიხედვით"
-            hint="„ვერ ამოღებადი“ = გადასახდელი დადგა, მაგრამ ბარათი არ არის. ეს ცალკე ისმება, რადგან მხოლოდ ჩამოჭრილი/ჩავარდნილი თანაფარდობა ასეთ შემთხვევებს ვერ ხედავს."
-          >
-            <Box sx={{ overflowX: 'auto' }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>თვე</TableCell>
-                    <TableCell align="right">ჩამოიჭრა</TableCell>
-                    <TableCell align="right">ჩავარდა</TableCell>
-                    <TableCell align="right">ვერ ამოღებადი</TableCell>
-                    <TableCell align="right">მოლოდინში</TableCell>
-                    <TableCell align="right">გაუქმდა</TableCell>
-                    <TableCell align="right">ამოღებული</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(health?.collection_by_month ?? []).map(m => (
-                    <TableRow key={m.month} hover>
-                      <TableCell>{m.month}</TableCell>
-                      <TableCell align="right">{m.charged}</TableCell>
-                      <TableCell align="right">{m.failed}</TableCell>
-                      <TableCell align="right">
-                        {m.uncollectable > 0
-                          ? <Chip size="small" color="error" label={m.uncollectable} sx={{ fontWeight: 700 }} />
-                          : 0}
-                      </TableCell>
-                      <TableCell align="right">{m.pending}</TableCell>
-                      <TableCell align="right">{m.waived}</TableCell>
-                      <TableCell align="right">{lari(m.collected)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-          </SectionCard>
-
-          <SectionCard
-            title="შემოსავალი თვეების მიხედვით"
-            hint={`ანგარიშსწორებადი ჯავშნები × ₾${health?.appointment_price ?? 0}`}
-          >
-            <Box sx={{ overflowX: 'auto' }}>
+      <Box sx={{ mt: 3 }}>
+        <Section
+          title="შემოსავალი თვეების მიხედვით"
+          hint={`თითოეული ჯავშანი, რომელიც ანგარიშში შედის, ჯდება ₾${health?.appointment_price ?? 0}.`}
+        >
+          {revenue.length === 0 ? (
+            <EmptyState title="ჯერ არაფერია" caption="შემოსავალი გამოჩნდება პირველი დახურული თვის შემდეგ." />
+          ) : (
+            <ScrollX>
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -205,76 +163,131 @@ export default function BillingHealthPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(health?.revenue_by_month ?? []).map(m => (
+                  {revenue.map(m => (
                     <TableRow key={m.month} hover>
-                      <TableCell>{m.month}</TableCell>
+                      <TableCell>{monthLabel(m.month)}</TableCell>
                       <TableCell align="right">{m.billable}</TableCell>
-                      <TableCell align="right">{lari(m.revenue)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>{lari(m.revenue)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </Box>
-          </SectionCard>
+            </ScrollX>
+          )}
+        </Section>
 
-          {/* Whether the grace/retry settings are tuned right. */}
-          <SectionCard
-            title="დავალიანების პროცესი"
-            hint="თუ თითქმის ყველა აღდგება — შეჩერება ნაადრევია; თუ თითქმის არავინ — პროცესი არ მუშაობს."
-          >
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              <Stat label="ვადაგადაცილებული" value={String(health?.dunning.past_due ?? 0)} />
-              <Stat label="აღდგა" value={String(health?.dunning.recovered ?? 0)} />
-              <Stat label="შეჩერდა" value={String(health?.dunning.suspended ?? 0)} />
-              <Stat
-                label="აღდგენის მედიანა"
-                value={health?.dunning.median_days_to_recover != null
-                  ? `${health.dunning.median_days_to_recover} დღე`
-                  : '—'}
-              />
-            </Box>
-          </SectionCard>
-
-          <SectionCard
-            title="ბარათის გარეშე"
-            hint="ამ ბიზნესებს ვერ ჩამოვჭრით — დაუკავშირდით ანგარიშის დადგომამდე."
-          >
-            {(health?.no_card.length ?? 0) === 0 ? (
-              <Typography variant="body2" color="text.secondary">ყველას აქვს ბარათი.</Typography>
-            ) : (
-              <Box sx={{ overflowX: 'auto' }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ორგანიზაცია</TableCell>
-                      <TableCell>სტატუსი</TableCell>
-                      <TableCell align="right">დავალიანება</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(health?.no_card ?? []).map(o => (
-                      <TableRow key={o.org_id} hover>
-                        <TableCell>
-                          <MuiLink component={RouterLink} to={`/superadmin/orgs/${o.org_id}`} underline="hover">
-                            {o.name}
-                          </MuiLink>
-                        </TableCell>
-                        <TableCell>{o.billing_status}</TableCell>
-                        <TableCell align="right">{lari(o.owed)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Box>
-            )}
-          </SectionCard>
-
-          {(health?.expiring_cards.length ?? 0) > 0 && (
-            <SectionCard title="ბარათებს ვადა იწურება (30 დღე)">
+        {/* 'ბარათის გარეშე' is broken out on purpose. A plain charged-vs-failed
+            ratio hid the 2026-08-17 regression completely: no-card orgs were
+            skipped silently and never landed in either column. */}
+        <Section
+          title="გადახდები"
+          hint="„ბარათის გარეშე“ ნიშნავს, რომ თანხა დასაფარია, მაგრამ ჩამოსაჭრელი ბარათი არ არსებობს — ეს ცალკე ითვლება, რადგან წარმატებულ/ჩავარდნილ თანაფარდობაში საერთოდ არ ჩანს."
+        >
+          {(health?.collection_by_month.length ?? 0) === 0 ? (
+            <EmptyState title="გადახდები ჯერ არ ყოფილა" />
+          ) : (
+            <ScrollX>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>ორგანიზაცია</TableCell>
+                    <TableCell>თვე</TableCell>
+                    <TableCell align="right">ჩამოიჭრა</TableCell>
+                    <TableCell align="right">ვერ ჩამოიჭრა</TableCell>
+                    <TableCell align="right">ბარათის გარეშე</TableCell>
+                    <TableCell align="right">მოლოდინში</TableCell>
+                    <TableCell align="right">არ დაერიცხა</TableCell>
+                    <TableCell align="right">შემოსული</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(health?.collection_by_month ?? []).map(m => (
+                    <TableRow key={m.month} hover>
+                      <TableCell>{monthLabel(m.month)}</TableCell>
+                      <TableCell align="right">{m.charged}</TableCell>
+                      <TableCell align="right">
+                        {m.failed > 0
+                          ? <Chip size="small" color="warning" label={m.failed} sx={{ fontWeight: 700 }} />
+                          : '—'}
+                      </TableCell>
+                      <TableCell align="right">
+                        {m.uncollectable > 0
+                          ? <Chip size="small" color="error" label={m.uncollectable} sx={{ fontWeight: 700 }} />
+                          : '—'}
+                      </TableCell>
+                      <TableCell align="right">{m.pending || '—'}</TableCell>
+                      <TableCell align="right">{m.waived || '—'}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>{lari(m.collected)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollX>
+          )}
+        </Section>
+
+        <Section
+          title="რა ხდება, როცა არ იხდიან"
+          hint="თუ თითქმის ყველა ბოლოს იხდის — შეჩერება ნაადრევია. თუ თითქმის არავინ — შეხსენება არ მუშაობს."
+        >
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            <Figure label="ვადაგადაცილდა" value={String(health?.dunning.past_due ?? 0)} />
+            <Figure label="ბოლოს გადაიხადა" value={String(health?.dunning.recovered ?? 0)} tone="success" />
+            <Figure label="შეჩერდა" value={String(health?.dunning.suspended ?? 0)} tone="error" />
+            <Figure
+              label="საშუალოდ გადახდამდე"
+              value={health?.dunning.median_days_to_recover != null
+                ? `${health.dunning.median_days_to_recover} დღე`
+                : '—'}
+            />
+          </Box>
+        </Section>
+
+        <Section
+          title="ბარათი არ აქვს მიბმული"
+          hint="ამ ბიზნესებს ავტომატურად ვერ ჩამოვჭრით. დაუკავშირდით ანგარიშის დადგომამდე, არა შემდეგ."
+        >
+          {noCard.length === 0 ? (
+            <EmptyState title="ყველას აქვს ბარათი" caption="ავტომატური ჩამოჭრა ყველასთვის მუშაობს." />
+          ) : (
+            <ScrollX>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>ბიზნესი</TableCell>
+                    <TableCell>სტატუსი</TableCell>
+                    <TableCell align="right">დავალიანება</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {noCard.map(o => (
+                    <TableRow key={o.org_id} hover>
+                      <TableCell>
+                        <MuiLink component={RouterLink} to={`/superadmin/orgs/${o.org_id}`} underline="hover">
+                          {o.name}
+                        </MuiLink>
+                      </TableCell>
+                      <TableCell>{o.billing_status}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: o.owed > 0 ? 700 : 400 }}>
+                        {o.owed > 0 ? lari(o.owed) : '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollX>
+          )}
+        </Section>
+
+        {(health?.expiring_cards.length ?? 0) > 0 && (
+          <Section
+            title="ბარათს ვადა ეწურება"
+            hint="მომდევნო 30 დღეში. ერთი შეხსენება აქ ერთ დავალიანებას აცილებს."
+          >
+            <ScrollX>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>ბიზნესი</TableCell>
                     <TableCell>ბარათი</TableCell>
                     <TableCell>ვადა</TableCell>
                   </TableRow>
@@ -293,36 +306,54 @@ export default function BillingHealthPage() {
                   ))}
                 </TableBody>
               </Table>
-            </SectionCard>
-          )}
+            </ScrollX>
+          </Section>
+        )}
 
-          <SectionCard
-            title="დაგეგმილი პროცესები"
-            hint="გაჩერებული პროცესი ჩუმად ვარდება — ბოლო წარმატებული გაშვება ერთადერთი ნიშანია."
-          >
-            <Box sx={{ overflowX: 'auto' }}>
+        <Section
+          title="გვიანი გაუქმებები"
+          hint={`ჯავშანი, რომელიც შემდგარი ვიზიტის შემდეგ გაუქმდა. ${retro?.grace_hours ?? 24} საათში შესწორება უფასოა — მის შემდეგ ჯავშანი ანგარიშში რჩება. ბოლო ${retro?.window_days ?? 90} დღე.`}
+        >
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4, mb: 3 }}>
+            <Figure label="სულ ჯავშანი" value={String(retro?.totals.bookings ?? 0)} />
+            <Figure label="დროული შესწორება" value={String(retro?.totals.free_corrections ?? 0)} />
+            <Figure
+              label="გვიან — ანგარიშში დარჩა"
+              value={String(retro?.totals.retro_billed ?? 0)}
+              tone={(retro?.totals.retro_billed ?? 0) > 0 ? 'warning' : undefined}
+            />
+          </Box>
+
+          {(retro?.orgs.length ?? 0) === 0 ? (
+            <EmptyState title="გვიანი გაუქმება არ ყოფილა" />
+          ) : (
+            <ScrollX>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>პროცესი</TableCell>
-                    <TableCell>განრიგი</TableCell>
-                    <TableCell>ბოლო წარმატება</TableCell>
-                    <TableCell align="right">შეცდომა (24სთ)</TableCell>
-                    <TableCell align="right">მდგომარეობა</TableCell>
+                    <TableCell>ბიზნესი</TableCell>
+                    <TableCell align="right">ჯავშნები</TableCell>
+                    <TableCell align="right">დროული შესწორება</TableCell>
+                    <TableCell align="right">გვიანი</TableCell>
+                    <TableCell align="right">წილი</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(ops?.cron ?? []).map(j => (
-                    <TableRow key={j.job} hover>
-                      <TableCell>{j.job}</TableCell>
-                      <TableCell><code>{j.schedule}</code></TableCell>
-                      <TableCell>{shortDate(j.last_success)}</TableCell>
-                      <TableCell align="right">{j.failures_24h}</TableCell>
+                  {(retro?.orgs ?? []).map(o => (
+                    <TableRow key={o.org_id} hover>
+                      <TableCell>
+                        <MuiLink component={RouterLink} to={`/superadmin/orgs/${o.org_id}`} underline="hover">
+                          {o.name}
+                        </MuiLink>
+                      </TableCell>
+                      <TableCell align="right">{o.bookings}</TableCell>
+                      <TableCell align="right">{o.free_corrections}</TableCell>
+                      <TableCell align="right">{o.retro_billed}</TableCell>
                       <TableCell align="right">
                         <Chip
                           size="small"
-                          label={j.stale ? 'გაჩერდა' : 'აქტიური'}
-                          color={j.stale ? 'error' : 'success'}
+                          label={`${o.retro_rate_pct}%`}
+                          color={o.retro_rate_pct >= 20 ? 'error' : o.retro_rate_pct >= 5 ? 'warning' : 'default'}
                           sx={{ fontWeight: 700 }}
                         />
                       </TableCell>
@@ -330,23 +361,10 @@ export default function BillingHealthPage() {
                   ))}
                 </TableBody>
               </Table>
-            </Box>
-          </SectionCard>
-
-          <SectionCard
-            title="ვერიფიკაცია (7 დღე)"
-            hint="ჩავარდნის მკვეთრი ზრდა ან შეტევაა, ან ჩვენი შეცდომა."
-          >
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              <Stat label="გაიგზავნა" value={String(ops?.otp_7d.issued ?? 0)} />
-              <Stat label="დადასტურდა" value={String(ops?.otp_7d.verified ?? 0)} />
-              <Stat label="ჩავარდა" value={String(ops?.otp_7d.failed ?? 0)} />
-              <Stat label="ლიმიტს მიაღწია" value={String(ops?.otp_7d.hit_the_cap ?? 0)} />
-              <Stat label="არ უცდიათ" value={String(ops?.otp_7d.never_tried ?? 0)} />
-            </Box>
-          </SectionCard>
-        </>
-      )}
+            </ScrollX>
+          )}
+        </Section>
+      </Box>
     </Box>
   )
 }

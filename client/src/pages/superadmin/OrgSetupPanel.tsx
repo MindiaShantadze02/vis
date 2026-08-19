@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Box, Card, CardContent, Typography, TextField, Button, IconButton,
-  Stack, Divider, Switch, FormControlLabel, CircularProgress,
+  Stack, Divider, Switch, FormControlLabel, CircularProgress, Chip, Tooltip, Alert,
 } from '@mui/material'
 import { DeleteOutlined as DeleteOutlinedIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
@@ -57,6 +57,14 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
   const [svcPrice, setSvcPrice] = useState('')
   const [addingSvc, setAddingSvc] = useState(false)
 
+  // ── Who performs which service (service_staff) ─────────────
+  // Keyed by service id. A bookable specialist with no service here is invisible
+  // on the booking page — Step2DateTimeSelect only offers staff that are linked
+  // to the chosen service — which is the usual reason an owner reports "my
+  // specialist doesn't show up".
+  const [links, setLinks] = useState<Record<string, string[]>>({})
+  const [savingLink, setSavingLink] = useState<string | null>(null)
+
   // ── Specialists ────────────────────────────────────────────
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [stName, setStName] = useState('')
@@ -70,14 +78,23 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
 
   const [loading, setLoading] = useState(true)
 
+  // Only bookable specialists can be offered for a service, so only they are
+  // worth showing as assignment targets.
+  const bookableStaff = staff.filter(m => m.is_bookable)
+  // Bookable, but performs nothing -> never appears on the booking page.
+  const unassignedStaff = bookableStaff.filter(
+    m => !Object.values(links).some(ids => ids.includes(m.id)),
+  )
+
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const [orgRes, svcRes, staffRes, hoursRes] = await Promise.all([
+      const [orgRes, svcRes, staffRes, hoursRes, linkRes] = await Promise.all([
         supabase.from('organisations').select('name, description, address, booking_theme, reviews_enabled').eq('id', orgId).maybeSingle(),
         supabase.from('services').select('id, name, duration_minutes, price').eq('org_id', orgId).eq('is_active', true).order('sort_order'),
         supabase.from('org_members').select('id, display_name, title, is_bookable').eq('org_id', orgId).eq('role', 'staff').order('sort_order'),
         supabase.from('working_hours_template').select('*').eq('org_id', orgId).maybeSingle(),
+        supabase.from('service_staff').select('service_id, member_id').eq('org_id', orgId),
       ])
       const org = orgRes.data as {
         name?: string; description?: string | null; address?: string | null
@@ -90,6 +107,12 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
       setReviewsEnabled(org?.reviews_enabled ?? true)
       setServices((svcRes.data ?? []) as ServiceRow[])
       setStaff((staffRes.data ?? []) as StaffRow[])
+
+      const byService: Record<string, string[]> = {}
+      for (const r of (linkRes.data ?? []) as { service_id: string; member_id: string }[]) {
+        ;(byService[r.service_id] ??= []).push(r.member_id)
+      }
+      setLinks(byService)
 
       const tpl = hoursRes.data as Record<string, { open?: boolean; ranges?: { start: string; end: string }[] }> | null
       setHasTemplate(!!tpl)
@@ -152,10 +175,39 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
     setSvcName(''); setSvcPrice('')
   }
 
+  /**
+   * Link or unlink one specialist to one service. Writes straight through (no
+   * save button) — this is a two-state toggle, and a superadmin fixing an org
+   * over the phone should see it take effect immediately.
+   *
+   * Superadmins are allowed here by the service_staff_superadmin_write policy
+   * (migration 078); org_id is set explicitly because the composite FK ties the
+   * row to the org that owns both the service and the member.
+   */
+  async function toggleServiceStaff(serviceId: string, memberId: string) {
+    const current = links[serviceId] ?? []
+    const linked = current.includes(memberId)
+    setSavingLink(`${serviceId}:${memberId}`)
+
+    const { error } = linked
+      ? await supabase.from('service_staff').delete()
+          .eq('service_id', serviceId).eq('member_id', memberId)
+      : await supabase.from('service_staff')
+          .insert({ org_id: orgId, service_id: serviceId, member_id: memberId })
+
+    setSavingLink(null)
+    if (error) { toast.error(error.message); return }
+    setLinks(prev => ({
+      ...prev,
+      [serviceId]: linked ? current.filter(id => id !== memberId) : [...current, memberId],
+    }))
+  }
+
   async function deleteService(id: string) {
     const { error } = await supabase.from('services').delete().eq('id', id)
     if (error) { toast.error(error.message); return }
     setServices(prev => prev.filter(s => s.id !== id))
+    setLinks(prev => { const next = { ...prev }; delete next[id]; return next })
   }
 
   async function addStaff() {
@@ -185,6 +237,9 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
     const { error } = await supabase.from('org_members').delete().eq('id', id)
     if (error) { toast.error(error.message); return }
     setStaff(prev => prev.filter(s => s.id !== id))
+    setLinks(prev => Object.fromEntries(
+      Object.entries(prev).map(([svc, ids]) => [svc, ids.filter(m => m !== id)]),
+    ))
   }
 
   async function saveHours() {
@@ -334,16 +389,48 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>სერვისები</Typography>
           {services.length === 0
             ? <EmptyState title="სერვისები არ არის" />
-            : services.map(s => (
-              <Box key={s.id} data-testid="sa-service-row" sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
-                <Typography variant="body2" sx={{ flex: 1, fontWeight: 600 }}>{s.name}</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{s.duration_minutes} წთ</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', minWidth: 48, textAlign: 'right' }}>{Number(s.price)} ₾</Typography>
-                <IconButton size="small" onClick={() => deleteService(s.id)} aria-label="წაშლა" data-testid="sa-service-delete">
-                  <DeleteOutlinedIcon sx={{ fontSize: 17 }} />
-                </IconButton>
-              </Box>
-            ))}
+            : services.map(s => {
+              const assigned = links[s.id] ?? []
+              return (
+                <Box key={s.id} data-testid="sa-service-row" sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2" sx={{ flex: 1, fontWeight: 600 }}>{s.name}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{s.duration_minutes} წთ</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', minWidth: 48, textAlign: 'right' }}>{Number(s.price)} ₾</Typography>
+                    <IconButton size="small" onClick={() => deleteService(s.id)} aria-label="წაშლა" data-testid="sa-service-delete">
+                      <DeleteOutlinedIcon sx={{ fontSize: 17 }} />
+                    </IconButton>
+                  </Box>
+
+                  {/* Who performs it. Clicking a chip writes through immediately. */}
+                  {bookableStaff.length > 0 && (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 1, pl: 0.25 }}>
+                      {bookableStaff.map(m => {
+                        const on = assigned.includes(m.id)
+                        return (
+                          <Chip
+                            key={m.id}
+                            size="small"
+                            label={m.display_name ?? '—'}
+                            color={on ? 'primary' : 'default'}
+                            variant={on ? 'filled' : 'outlined'}
+                            onClick={() => toggleServiceStaff(s.id, m.id)}
+                            disabled={savingLink === `${s.id}:${m.id}`}
+                            data-testid="sa-service-staff-chip"
+                            sx={{ fontWeight: on ? 600 : 400 }}
+                          />
+                        )
+                      })}
+                      {assigned.length === 0 && (
+                        <Tooltip title="ამ სერვისზე სპეციალისტი არ არის მიბმული — ჯავშნისას არავინ გამოჩნდება">
+                          <Chip size="small" color="warning" variant="outlined" label="არავინ" />
+                        </Tooltip>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              )
+            })}
           <Divider sx={{ my: 2 }} />
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
             <TextField
@@ -372,6 +459,15 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
       <Card>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>სპეციალისტები</Typography>
+
+          {/* The commonest "my specialist doesn't show up" cause, stated plainly.
+              Booking only offers staff linked to the chosen service. */}
+          {unassignedStaff.length > 0 && services.length > 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }} data-testid="sa-staff-unassigned">
+              {unassignedStaff.map(m => m.display_name ?? '—').join(', ')} — არცერთ სერვისზე არ არის
+              მიბმული, ამიტომ ჯავშნის გვერდზე არ ჩანს.
+            </Alert>
+          )}
           {staff.length === 0
             ? <EmptyState title="სპეციალისტები არ არის" />
             : staff.map(m => (
@@ -407,7 +503,8 @@ export default function OrgSetupPanel({ orgId }: { orgId: string }) {
             </Button>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
-            ახალი სპეციალისტი ყველა სერვისზეა ხელმისაწვდომი; დაჯავშნადი ადგილების რაოდენობა გეგმაზეა დამოკიდებული.
+            ახალი სპეციალისტი ჯერ არცერთ სერვისზეა მიბმული — მიაბით „სერვისები“ სექციაში,
+            თორემ ჯავშნის გვერდზე არ გამოჩნდება.
           </Typography>
         </CardContent>
       </Card>

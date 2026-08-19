@@ -7,6 +7,7 @@ import {
 import { InsightsOutlined as InsightsOutlinedIcon } from '@/components/icons'
 import { StorefrontOutlined as StorefrontOutlinedIcon } from '@/components/icons'
 import { CreditCardOutlined as CreditCardOutlinedIcon } from '@/components/icons'
+import { ScheduleOutlined as ScheduleOutlinedIcon } from '@/components/icons'
 import { AdminPanelSettingsOutlined as AdminPanelSettingsOutlinedIcon } from '@/components/icons'
 import { SupportOutlined as SupportOutlinedIcon } from '@/components/icons'
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from '@/components/icons'
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { label: 'მიმოხილვა',      path: '/superadmin',        icon: <InsightsOutlinedIcon />,            end: true },
   { label: 'ორგანიზაციები',  path: '/superadmin/orgs',   icon: <StorefrontOutlinedIcon />,          end: false },
   { label: 'ბილინგი',        path: '/superadmin/billing', icon: <CreditCardOutlinedIcon />,         end: false },
+  { label: 'სისტემა',        path: '/superadmin/system',  icon: <ScheduleOutlinedIcon />,           end: false },
   { label: 'დახმარების მოთხოვნები', path: '/superadmin/requests', icon: <SupportOutlinedIcon />,   end: false },
   { label: 'სუპერ-ადმინები', path: '/superadmin/admins', icon: <AdminPanelSettingsOutlinedIcon />,  end: false },
 ]

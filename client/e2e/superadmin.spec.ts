@@ -32,6 +32,9 @@ test.describe('Superadmin — access control', () => {
 
     await page.goto('/superadmin/billing')
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 })
+
+    await page.goto('/superadmin/system')
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 })
   })
 
   /**
