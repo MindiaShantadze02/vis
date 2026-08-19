@@ -288,6 +288,33 @@ export async function setSeedBillingStatus(status: 'active' | 'past_due' | 'susp
   if (!res.ok) throw new Error(`setSeedBillingStatus(${status}) → ${res.status} ${await res.text()}`)
 }
 
+/**
+ * PostgREST/RPC call with the SERVICE ROLE. Same rule as setSeedBillingStatus:
+ * only for state a client legitimately cannot reach — seeding a throwaway org,
+ * a billing period, or an appointment dated in the past (the booking flow
+ * refuses past times, by design). Never use it to stand in for something the
+ * owner should be able to do, or the test stops proving RLS works.
+ *
+ * Throws if no key is configured; callers must test.skip on serviceRoleKey().
+ */
+export async function serviceApi(path: string, init: RequestInit = {}) {
+  const key = serviceRoleKey()
+  if (!key) throw new Error('serviceApi needs SUPABASE_SERVICE_ROLE_KEY')
+  const { url } = readSupabaseEnv()
+  const res = await fetch(`${url}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: key,
+      authorization: `Bearer ${key}`,
+      'content-type': 'application/json',
+      ...(init.headers ?? {}),
+    },
+  })
+  if (!res.ok) throw new Error(`${init.method ?? 'GET'} ${path} → ${res.status} ${await res.text()}`)
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
+}
+
 /** Password sign-in as the seeded owner; returns the URL, anon key + access token. */
 export async function signInSeed(): Promise<{ url: string; anonKey: string; accessToken: string }> {
   const { url, anonKey } = readSupabaseEnv()
