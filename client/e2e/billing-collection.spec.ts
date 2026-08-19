@@ -25,6 +25,8 @@ import { signInSeed, restApi, serviceApi, serviceRoleKey, readSupabaseEnv, SEED 
  */
 
 const PAST = () => new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+/** Elapsed, but still inside the 24h correction window. */
+const JUST_PAST = () => new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
 const FUTURE = () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
 /**
@@ -83,6 +85,8 @@ async function dropAppointment(f: Fixture) {
   await serviceApi(`customers?id=eq.${f.customerId}`, { method: 'DELETE' })
   await serviceApi(`booking_verifications?phone=eq.${f.phone}`, { method: 'DELETE' })
 }
+
+const NEEDS_SR = 'needs SUPABASE_SERVICE_ROLE_KEY in client/.env to seed past-dated rows'
 
 test.describe('Billing collection integrity', () => {
   test('cancelling an already-delivered appointment still bills it', async () => {
@@ -153,6 +157,34 @@ test.describe('Billing collection integrity', () => {
       expect(row.billable_period_at!.slice(0, 10)).toBe(original.slice(0, 10))
     } finally {
       await dropAppointment(f)
+    }
+  })
+
+  test('a same-day correction is free, a late one is billed (grace boundary)', async () => {
+    test.skip(!serviceRoleKey(), NEEDS_SR)
+    // Both sides of the line in one test so the boundary can't drift unnoticed.
+    // Inside: customer rang at 13:55 about a 14:00 slot, owner tidies up at 15:30.
+    // Outside: the same edit made days later, which is what month-end evasion is.
+    const inside = await seedAppointment('completed', JUST_PAST())
+    const outside = await seedAppointment('completed', PAST())
+    try {
+      const ctx = await signInSeed()
+      for (const f of [inside, outside]) {
+        await restApi(ctx, `appointments?id=eq.${f.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'cancelled' }),
+        })
+      }
+      const rows = (await serviceApi(
+        `appointments?id=in.(${inside.id},${outside.id})&select=id,billable_locked_at`,
+      )) as { id: string; billable_locked_at: string | null }[]
+      const lockOf = (id: string) => rows.find(r => r.id === id)!.billable_locked_at
+
+      expect(lockOf(inside.id)).toBeNull()        // 2h after the slot → free
+      expect(lockOf(outside.id)).not.toBeNull()   // 3 days after → billed
+    } finally {
+      await dropAppointment(inside)
+      await dropAppointment(outside)
     }
   })
 
