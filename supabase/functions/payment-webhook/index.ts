@@ -98,11 +98,28 @@ Deno.serve(async (req) => {
       if (!pb || pb.payment_reference !== ref) {
         return Response.json({ error: 'not_found' }, { status: 404, headers: corsHeaders })
       }
-      // Already settled (e.g. duplicate callback) — idempotent. Report the
-      // booking's actual fate, not the (possibly different) requested outcome.
-      if (pb.status !== 'pending') {
+      // Claim it ATOMICALLY before doing any work. This used to be a plain
+      // `if (pb.status !== 'pending')` read followed much later by the
+      // 'consumed' write, so duplicate callbacks — which real gateways send as
+      // routine retries — all passed the check and all fulfilled. Measured with
+      // 10 concurrent callbacks for one payment: 2 appointments created, 8
+      // orphaned customers, and payment_log left 'refunded' because the losers'
+      // inserts failed (the winner had consumed the OTP) and a failed
+      // fulfilment auto-refunds. A booking that succeeded got refunded while
+      // both appointments stayed live.
+      const { data: claimRes } = await admin
+        .rpc('claim_pending_booking', { p_id: id, p_ref: ref })
+      const claim = Array.isArray(claimRes) ? claimRes[0] : claimRes
+      if (!claim?.claimed) {
+        // Someone else owns this callback. Report the booking's actual fate.
+        // 'processing' means a sibling is mid-fulfilment: 409 so a real gateway
+        // retries later rather than recording a wrong final state.
+        const st = claim?.current_status
+        if (st === 'processing') {
+          return Response.json({ error: 'in_progress' }, { status: 409, headers: corsHeaders })
+        }
         return Response.json(
-          { ok: true, outcome: pb.status === 'consumed' ? 'paid' : 'failed' },
+          { ok: true, outcome: st === 'consumed' ? 'paid' : 'failed' },
           { headers: corsHeaders },
         )
       }
@@ -171,6 +188,10 @@ Deno.serve(async (req) => {
         // was taken or the limit hit during checkout) — auto-refund. A system
         // fault took the money, so it goes straight back, no human in the loop.
         await admin.from('pending_bookings').update({ status: 'failed' }).eq('id', id)
+        // Drop the customer row we just created: with no appointment it is
+        // unreachable PII that nothing ever cleans up (customers_select needs a
+        // linked appointment, so it is invisible even to the business).
+        if (customer) await admin.from('customers').delete().eq('id', customer.id)
         console.error('[payment-webhook] fulfilment_failed:', fulfilErr)
         try {
           // On success payment_log flips 'refunded' with the fulfilment error
