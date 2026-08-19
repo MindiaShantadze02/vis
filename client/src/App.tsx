@@ -51,6 +51,7 @@ const InvitationAcceptPage = lazy(() => import('@/pages/book/InvitationAcceptPag
 const SuperAdminLayout = lazy(() => import('@/pages/superadmin/SuperAdminLayout'))
 const PlatformOverviewPage = lazy(() => import('@/pages/superadmin/PlatformOverviewPage'))
 const OrgsListPage = lazy(() => import('@/pages/superadmin/OrgsListPage'))
+const BillingHealthPage = lazy(() => import('@/pages/superadmin/BillingHealthPage'))
 const OrgDetailPage = lazy(() => import('@/pages/superadmin/OrgDetailPage'))
 const SuperadminsPage = lazy(() => import('@/pages/superadmin/SuperadminsPage'))
 const SetupRequestsPage = lazy(() => import('@/pages/superadmin/SetupRequestsPage'))
@@ -190,6 +191,7 @@ export default function App() {
         <Route index element={<PlatformOverviewPage />} />
         <Route path="orgs" element={<OrgsListPage />} />
         <Route path="orgs/:id" element={<OrgDetailPage />} />
+        <Route path="billing" element={<BillingHealthPage />} />
         <Route path="requests" element={<SetupRequestsPage />} />
         <Route path="admins" element={<SuperadminsPage />} />
       </Route>
