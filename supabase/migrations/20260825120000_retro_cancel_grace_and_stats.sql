@@ -22,8 +22,14 @@ UPDATE platform_config
    SET billing_config = billing_config || '{"retro_cancel_grace_hours": 24}'::jsonb
  WHERE id = 1;
 
+-- ⚠️ SECURITY DEFINER is REQUIRED, not optional: this reads platform_config for
+-- the grace setting, and `authenticated` has no SELECT there (revoked in the
+-- 2026-08-19 grant sweep — it holds SMS and payment credentials). Without it,
+-- every owner status change fails with 42501 and the whole dashboard workflow
+-- breaks. Shipped without it once; see 20260901120000.
 CREATE OR REPLACE FUNCTION public.lock_billable_appointment()
   RETURNS trigger LANGUAGE plpgsql
+  SECURITY DEFINER
   SET search_path TO 'public','pg_temp'
 AS $function$
 DECLARE

@@ -17,6 +17,12 @@ import { fileURLToPath } from 'node:url'
  * never trips the retro-cancel billing lock, which only stamps appointments whose
  * slot has already elapsed.
  *
+ * PENDING requests are cleared too, and they matter for a different reason than
+ * slot capacity: the approval flow deliberately sorts pending to the TOP of the
+ * dashboard list, so a leftover request from an interrupted run occupies the row
+ * approval-flow and appointment-status specs assert on, and they fail comparing
+ * against a stranger's booking.
+ *
  * Best-effort by design: if the key is missing or the request fails this logs and
  * returns, because a housekeeping step must never stop the suite from running.
  */
@@ -65,7 +71,7 @@ export default async function globalSetup() {
     const now = new Date().toISOString()
     const res = await fetch(
       `${url}/rest/v1/appointments?org_id=eq.${org[0].id}` +
-        `&status=in.(approved,completed,no_show)&scheduled_at=gt.${now}&select=id`,
+        `&status=in.(approved,completed,no_show,pending)&scheduled_at=gt.${now}&select=id`,
       { method: 'PATCH', headers, body: JSON.stringify({ status: 'cancelled' }) },
     )
     if (!res.ok) {
