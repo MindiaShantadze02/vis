@@ -50,6 +50,10 @@ test.describe('Superadmin — access control', () => {
       ['platform_billing_health', { p_months: 6 }],
       ['platform_ops_health', {}],
       ['platform_retro_cancel_stats', { p_days: 90 }],
+      // Granting superadmin is the most privileged call on the platform, and it
+      // moved from email to phone in 20260830120000 — re-assert the guard.
+      ['add_superadmin', { p_phone: '599123456' }],
+      ['list_superadmins', {}],
     ] as const) {
       const res = await fetch(`${ctx.url}/rest/v1/rpc/${fn}`, {
         method: 'POST',
@@ -61,7 +65,7 @@ test.describe('Superadmin — access control', () => {
         body: JSON.stringify(body),
       })
       expect(res.ok, `${fn} must refuse a non-superadmin`).toBeFalsy()
-      expect(await res.text()).toContain('forbidden')
+      expect(await res.text()).toMatch(/forbidden|not_authorized/)
     }
   })
 })

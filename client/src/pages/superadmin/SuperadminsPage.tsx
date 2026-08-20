@@ -8,16 +8,20 @@ import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageHeader, LoadingState, EmptyState, ConfirmDialog, ActionIconButton, useToast } from '@/components/ui'
-import { isValidEmail } from '@/lib/validation'
+import { isValidGeorgianPhone, displayGeorgianPhone } from '@/lib/validation'
 
 interface SuperadminRow {
   user_id: string
-  email: string
+  /** Bare 9-digit national number; formatted for display, never stored formatted. */
+  phone: string
+  /** Often null — most accounts sign in with a phone and never set one. */
+  email: string | null
   created_at: string
 }
 
 const ERRORS: Record<string, string> = {
-  user_not_found: 'ამ ელ. ფოსტით მომხმარებელი ვერ მოიძებნა',
+  invalid_phone: 'ნომერი არასწორია',
+  user_not_found: 'ამ ნომრით მომხმარებელი ვერ მოიძებნა',
   last_superadmin: 'ბოლო სუპერ-ადმინის წაშლა შეუძლებელია',
   not_authorized: 'წვდომა აკრძალულია',
 }
@@ -28,7 +32,7 @@ export default function SuperadminsPage() {
 
   const [rows, setRows] = useState<SuperadminRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [adding, setAdding] = useState(false)
   const [toRemove, setToRemove] = useState<SuperadminRow | null>(null)
   const [removing, setRemoving] = useState(false)
@@ -43,16 +47,19 @@ export default function SuperadminsPage() {
   }
 
   async function add() {
-    const value = email.trim()
-    if (!isValidEmail(value)) { toast.error('ელ. ფოსტა არასწორია'); return }
+    const value = phone.trim()
+    // Validate on click rather than disabling the button (house convention), and
+    // let the server re-check: normalize_ge_phone is the authority, this is just
+    // a faster answer for the obvious cases.
+    if (!isValidGeorgianPhone(value)) { toast.error(ERRORS.invalid_phone); return }
     setAdding(true)
-    const { data, error } = await supabase.rpc('add_superadmin', { p_email: value })
+    const { data, error } = await supabase.rpc('add_superadmin', { p_phone: value })
     setAdding(false)
     if (error) { toast.error(error.message); return }
     const res = data as { ok: boolean; error?: string }
     if (!res.ok) { toast.error(ERRORS[res.error ?? ''] ?? res.error ?? 'შეცდომა'); return }
     toast.success('სუპერ-ადმინი დაემატა')
-    setEmail('')
+    setPhone('')
     load()
   }
 
@@ -73,18 +80,19 @@ export default function SuperadminsPage() {
     <Box sx={{ maxWidth: 720 }}>
       <PageHeader title="სუპერ-ადმინები" subtitle="პლატფორმის ადმინისტრატორების მართვა" />
 
-      {/* Add by email */}
+      {/* Add by phone — the app's sign-in identifier. */}
       <Card sx={{ mb: 3 }}>
         <Box sx={{ p: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>ახალი სუპერ-ადმინი</Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <TextField
-              fullWidth required size="small" type="email"
-              label="ელ. ფოსტა"
-              placeholder="user@example.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              fullWidth required size="small" type="tel"
+              label="ტელეფონის ნომერი"
+              placeholder="+995 5XX XX XX XX"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') add() }}
+              slotProps={{ htmlInput: { inputMode: 'tel', 'data-testid': 'sa-admin-phone' } }}
             />
             <Button
               variant="contained"
@@ -97,7 +105,8 @@ export default function SuperadminsPage() {
             </Button>
           </Stack>
           <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
-            მომხმარებელს უკვე უნდა ჰქონდეს vis-ის ანგარიში ამ ელ. ფოსტით.
+            მომხმარებელს უკვე უნდა ჰქონდეს vis-ის ანგარიში ამ ნომრით — სუპერ-ადმინობა
+            არსებულ ანგარიშს ენიჭება, ახალს არ ქმნის.
           </Typography>
         </Box>
       </Card>
@@ -119,11 +128,13 @@ export default function SuperadminsPage() {
             >
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>{r.email}</Typography>
+                  <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
+                    {displayGeorgianPhone(r.phone)}
+                  </Typography>
                   {r.user_id === user?.id && <Chip label="თქვენ" size="small" color="primary" variant="outlined" />}
                 </Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  დაემატა {format(new Date(r.created_at), 'dd MMM yyyy')}
+                  {r.email ? `${r.email} · ` : ''}დაემატა {format(new Date(r.created_at), 'dd MMM yyyy')}
                 </Typography>
               </Box>
               <ActionIconButton tone="danger" aria-label="წაშლა" onClick={() => setToRemove(r)}>
@@ -137,7 +148,7 @@ export default function SuperadminsPage() {
       <ConfirmDialog
         open={!!toRemove}
         title="სუპერ-ადმინის წაშლა"
-        message={toRemove ? `წავშალოთ ${toRemove.email} სუპერ-ადმინების სიიდან?` : ''}
+        message={toRemove ? `წავშალოთ ${displayGeorgianPhone(toRemove.phone)} სუპერ-ადმინების სიიდან?` : ''}
         confirmLabel="წაშლა"
         loading={removing}
         onConfirm={remove}
