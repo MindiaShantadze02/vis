@@ -10,6 +10,10 @@ import { defineConfig, devices } from '@playwright/test'
 // Booking OTP uses the temporary master code 000000 (see e2e/helpers.ts).
 export default defineConfig({
   testDir: './e2e',
+  // Frees the shared seed calendar before each run — booking specs accumulate
+  // real appointments and a saturated calendar fails ~13 unrelated specs at the
+  // day strip. No-ops without a service-role key. See e2e/global-setup.ts.
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,
   // Live network + OTP round-trips are occasionally flaky; one retry absorbs that.

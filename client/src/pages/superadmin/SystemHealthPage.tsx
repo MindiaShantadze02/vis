@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import {
   Box, Grid, Typography, Chip, Table, TableBody, TableCell, TableHead, TableRow,
-  Alert, useTheme,
+  Alert, useTheme, Link as MuiLink,
 } from '@mui/material'
+import { Link as RouterLink } from 'react-router-dom'
 import { ScheduleOutlined as ScheduleIcon } from '@/components/icons'
 import { SmsOutlined as SmsIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, StatCard } from '@/components/ui'
-import { Section, ScrollX } from './_shared'
+import { Section, ScrollX, Pager } from './_shared'
+import { usePaged } from './usePaged'
 import { dateTime } from './format'
 
 /**
@@ -31,6 +33,34 @@ interface OtpStats {
   never_tried: number; hit_the_cap: number; failure_pct: number
 }
 interface OpsHealth { cron: CronJob[]; otp_7d: OtpStats }
+
+/**
+ * Article 27 processing log. Append-only in the database — there is no
+ * INSERT/UPDATE/DELETE policy, so not even a superadmin can edit or erase their
+ * own trail. Read directly (the table's SELECT policy is is_superadmin()).
+ */
+interface AccessLogRow {
+  id: string
+  actor_user_id: string | null
+  action: string
+  org_id: string | null
+  detail: Record<string, unknown> | null
+  created_at: string
+}
+
+/** Plain-language label for each recorded action. */
+const ACTION_LABEL: Record<string, string> = {
+  platform_stats: 'პლატფორმის სტატისტიკა',
+  list_orgs_overview: 'ბიზნესების სია (მფლობელის ნომრებით)',
+  platform_billing_health: 'ბილინგის მდგომარეობა',
+  platform_ops_health: 'სისტემის მდგომარეობა',
+  platform_retro_cancel_stats: 'გვიანი გაუქმებები',
+  list_superadmins: 'სუპერ-ადმინების სია',
+  add_superadmin: 'სუპერ-ადმინის დამატება',
+  remove_superadmin: 'სუპერ-ადმინის წაშლა',
+  erase_customer_data: 'კლიენტის მონაცემების წაშლა',
+  decide_billing_appeal: 'ბილინგის გასაჩივრების გადაწყვეტა',
+}
 
 /** Plain-language description of what each scheduled job is actually for. */
 const JOB_PURPOSE: Record<string, string> = {
@@ -58,6 +88,7 @@ function Figure({ label, value, tone }: { label: string; value: string; tone?: '
 export default function SystemHealthPage() {
   const theme = useTheme()
   const [ops, setOps] = useState<OpsHealth | null>(null)
+  const [log, setLog] = useState<AccessLogRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -65,7 +96,16 @@ export default function SystemHealthPage() {
       setOps((data ?? null) as OpsHealth | null)
       setLoading(false)
     })
+    // Read straight from the table — its SELECT policy is already superadmin-only.
+    supabase
+      .from('data_access_log')
+      .select('id, actor_user_id, action, org_id, detail, created_at')
+      .order('created_at', { ascending: false })
+      .limit(500)
+      .then(({ data }) => setLog((data ?? []) as AccessLogRow[]))
   }, [])
+
+  const logPage = usePaged(log, 25)
 
   const jobs = ops?.cron ?? []
   const broken = jobs.filter(j => j.stale || j.failures_24h > 0)
@@ -188,6 +228,63 @@ export default function SystemHealthPage() {
             პროცენტი ითვლება მხოლოდ იმ კოდებზე, რომლებზეც პასუხი გაეცა ({answered}) — გაგზავნილი,
             მაგრამ უპასუხოდ დარჩენილი კოდები არ ითვლება.
           </Typography>
+        </Section>
+
+        {/* Art. 27 processing log. */}
+        <Section
+          title="წვდომის ჟურნალი"
+          hint="ვინ, როდის და რა ნახა — ჩანაწერი მხოლოდ ემატება, წაშლა და შეცვლა შეუძლებელია ბაზის დონეზე. ფიქსირდება სუპერ-ადმინის RPC-გამოძახებები; ბაზაზე პირდაპირი მიმართვა აქ არ ჩანს (იხ. docs/PROCESSING_RECORD.md)."
+        >
+          {log.length === 0 ? (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              ჩანაწერი ჯერ არ არის.
+            </Typography>
+          ) : (
+            <>
+              <ScrollX>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>როდის</TableCell>
+                      <TableCell>მოქმედება</TableCell>
+                      <TableCell>ბიზნესი</TableCell>
+                      <TableCell>დეტალი</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {logPage.paged.map(r => (
+                      <TableRow key={r.id} hover>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{dateTime(r.created_at)}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{ACTION_LABEL[r.action] ?? r.action}</Typography>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{r.action}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          {r.org_id
+                            ? <MuiLink component={RouterLink} to={`/superadmin/orgs/${r.org_id}`} underline="hover">
+                                ბიზნესი
+                              </MuiLink>
+                            : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            {r.detail ? JSON.stringify(r.detail) : '—'}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollX>
+              <Pager
+                count={logPage.count}
+                page={logPage.page}
+                rowsPerPage={logPage.rowsPerPage}
+                onPage={logPage.setPage}
+                onRowsPerPage={logPage.setRowsPerPage}
+              />
+            </>
+          )}
         </Section>
       </Box>
     </Box>

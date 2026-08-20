@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import {
-  Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Typography,
+  Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
+  Typography, TextField, Link as MuiLink,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +9,7 @@ import { useOrg } from '@/contexts/OrgContext'
 import { useBillingPayment } from '@/hooks/useBillingPayment'
 import { currentBillTotal } from '@/lib/billing'
 import { supabase } from '@/lib/supabase'
+import { useToast } from '@/components/ui'
 import { surface } from '@/theme/theme'
 import { anim } from '@/theme/animations'
 
@@ -26,8 +29,40 @@ const BILLING_PATH = '/dashboard/settings/billing'
 export default function BillingBlockedDialog({ open }: { open: boolean }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { billing } = useOrg()
+  const { org, billing } = useOrg()
   const { payNow, paying } = useBillingPayment()
+  const toast = useToast()
+
+  // Article 19: this suspension is a solely-automated decision that stops the
+  // business trading, so there has to be a way to put it in front of a person.
+  // Accepting the appeal grants a dated hold that unblocks bookings while it is
+  // considered — the debt itself is untouched.
+  const [appealOpen, setAppealOpen] = useState(false)
+  const [appealText, setAppealText] = useState('')
+  const [sending, setSending] = useState(false)
+
+  async function sendAppeal() {
+    if (!org) return
+    setSending(true)
+    const { data, error } = await supabase.rpc('request_billing_review', {
+      p_org_id: org.id,
+      p_message: appealText,
+    })
+    setSending(false)
+    if (error) { toast.error(error.message); return }
+    const res = data as { ok: boolean; error?: string }
+    if (!res.ok) {
+      toast.error(
+        res.error === 'already_open' ? t('billing.appealAlreadyOpen')
+        : res.error === 'message_too_short' ? t('billing.appealTooShort')
+        : (res.error ?? 'error'),
+      )
+      return
+    }
+    toast.success(t('billing.appealSent'))
+    setAppealOpen(false)
+    setAppealText('')
+  }
 
   const outstanding = billing ? currentBillTotal(billing) : null
   const card = billing?.card ?? null
@@ -97,6 +132,48 @@ export default function BillingBlockedDialog({ open }: { open: boolean }) {
           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1.5 }}>
             {t('billing.blockedNoCard')}
           </Typography>
+        )}
+
+        {/* Art. 19 human review. Deliberately understated — paying is still the
+            normal way out, this is the safeguard for when the decision is wrong. */}
+        {!appealOpen ? (
+          <MuiLink
+            component="button"
+            type="button"
+            variant="caption"
+            underline="hover"
+            onClick={() => setAppealOpen(true)}
+            data-testid="billing-appeal-open"
+            sx={{ display: 'block', mt: 2, color: 'text.secondary' }}
+          >
+            {t('billing.appealCta')}
+          </MuiLink>
+        ) : (
+          <Box sx={{ mt: 2.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              {t('billing.appealTitle')}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1.5 }}>
+              {t('billing.appealBody')}
+            </Typography>
+            <TextField
+              fullWidth multiline minRows={3} size="small"
+              placeholder={t('billing.appealPlaceholder')}
+              value={appealText}
+              onChange={e => setAppealText(e.target.value)}
+              slotProps={{ htmlInput: { maxLength: 1000, 'data-testid': 'billing-appeal-text' } }}
+            />
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={sendAppeal}
+              disabled={sending}
+              data-testid="billing-appeal-send"
+              sx={{ mt: 1.5 }}
+            >
+              {sending ? <CircularProgress size={16} color="inherit" /> : t('billing.appealSubmit')}
+            </Button>
+          </Box>
         )}
       </DialogContent>
 

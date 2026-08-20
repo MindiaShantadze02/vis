@@ -779,7 +779,15 @@
     "cardRemoveFailed": "Couldn't remove the card. Please try again.",
     "cardExpiredInput": "That card has expired",
     "cardOnFileHint": "The card we charge each month. Adding or replacing it never charges you.",
-    "invoicesHint": "Closed months and what each was billed for."
+    "invoicesHint": "Closed months and what each was billed for.",
+    "appealCta": "Disagree? Request a review",
+    "appealTitle": "Appeal the suspension",
+    "appealBody": "This suspension was automatic. Tell us what happened and a person will review it — you can take bookings again while it is being looked at.",
+    "appealPlaceholder": "Briefly describe what happened",
+    "appealSubmit": "Send",
+    "appealSent": "Request sent — we'll get back to you shortly",
+    "appealTooShort": "Please give a little more detail",
+    "appealAlreadyOpen": "Your request is already being reviewed"
   },
   "services": {
     "deleteBlockedHasBookings": "This service can’t be deleted — it already has bookings. Turn it off instead to stop new bookings (history is kept)."

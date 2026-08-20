@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Box, Grid, Typography, Chip, Table, TableBody, TableCell, TableHead, TableRow,
-  Link as MuiLink, Alert, useTheme,
+  Link as MuiLink, Alert, useTheme, Button,
 } from '@mui/material'
 import { CreditCardOutlined as CreditCardOutlinedIcon } from '@/components/icons'
 import { InsightsOutlined as InsightsOutlinedIcon } from '@/components/icons'
 import { ErrorOutlineOutlined as WarningIcon } from '@/components/icons'
 import { EventBusyOutlined as CalendarCheckIcon } from '@/components/icons'
 import { supabase } from '@/lib/supabase'
+import { useToast } from '@/components/ui'
 import { PageHeader, StatCard, EmptyState } from '@/components/ui'
 import { Section, ScrollX, Pager } from './_shared'
 import { usePaged } from './usePaged'
@@ -49,6 +50,15 @@ interface RetroOrg {
   org_id: string; name: string; slug: string; bookings: number; billable: number
   retro_billed: number; free_corrections: number; retro_rate_pct: number
 }
+/** Art. 19 appeals against an automated billing suspension. */
+interface Appeal {
+  id: string
+  org_id: string
+  message: string
+  created_at: string
+  organisations?: { name: string } | { name: string }[] | null
+}
+
 interface RetroStats {
   window_days: number; grace_hours: number
   totals: { bookings: number; billable: number; retro_billed: number; free_corrections: number; orgs_affected: number }
@@ -73,7 +83,19 @@ export default function BillingHealthPage() {
   const theme = useTheme()
   const [health, setHealth] = useState<BillingHealth | null>(null)
   const [retro, setRetro] = useState<RetroStats | null>(null)
+  const [appeals, setAppeals] = useState<Appeal[]>([])
+  const [deciding, setDeciding] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const toast = useToast()
+
+  function loadAppeals() {
+    supabase
+      .from('billing_appeals')
+      .select('id, org_id, message, created_at, organisations(name)')
+      .eq('status', 'open')
+      .order('created_at', { ascending: true })
+      .then(({ data }) => setAppeals((data ?? []) as Appeal[]))
+  }
 
   useEffect(() => {
     Promise.all([
@@ -84,7 +106,21 @@ export default function BillingHealthPage() {
       setRetro((r.data ?? null) as RetroStats | null)
       setLoading(false)
     })
+    loadAppeals()
   }, [])
+
+  async function decide(id: string, accept: boolean) {
+    setDeciding(id)
+    const { data, error } = await supabase.rpc('decide_billing_appeal', {
+      p_id: id, p_accept: accept, p_days: 14,
+    })
+    setDeciding(null)
+    if (error) { toast.error(error.message); return }
+    const res = data as { ok: boolean; error?: string }
+    if (!res.ok) { toast.error(res.error ?? 'error'); return }
+    toast.success(accept ? 'დროებით განიბლოკა (14 დღე)' : 'უარყოფილია')
+    loadAppeals()
+  }
 
   const revenue = health?.revenue_by_month ?? []
   const thisMonth = revenue.length ? revenue[revenue.length - 1] : null
@@ -155,6 +191,49 @@ export default function BillingHealthPage() {
       </Grid>
 
       <Box sx={{ mt: 3 }}>
+        {/* Art. 19: appeals against the automated suspension. Kept at the top —
+            a business here cannot trade until somebody answers. */}
+        {appeals.length > 0 && (
+          <Section
+            title={`შეჩერების გასაჩივრება (${appeals.length})`}
+            hint="შეჩერება ავტომატურია. დათანხმება დროებით (14 დღე) განბლოკავს ჯავშნებს — დავალიანება რჩება."
+          >
+            {appeals.map(a => {
+              const orgName = Array.isArray(a.organisations)
+                ? a.organisations[0]?.name
+                : a.organisations?.name
+              return (
+                <Box
+                  key={a.id}
+                  sx={{ py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}
+                  data-testid="billing-appeal-row"
+                >
+                  <MuiLink component={RouterLink} to={`/superadmin/orgs/${a.org_id}`} underline="hover">
+                    {orgName ?? 'ბიზნესი'}
+                  </MuiLink>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>{a.message}</Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    <Button
+                      size="small" variant="contained"
+                      disabled={deciding === a.id}
+                      onClick={() => decide(a.id, true)}
+                    >
+                      დათანხმება
+                    </Button>
+                    <Button
+                      size="small" color="inherit"
+                      disabled={deciding === a.id}
+                      onClick={() => decide(a.id, false)}
+                    >
+                      უარყოფა
+                    </Button>
+                  </Box>
+                </Box>
+              )
+            })}
+          </Section>
+        )}
+
         <Section
           title="შემოსავალი თვეების მიხედვით"
           hint={`თითოეული ჯავშანი, რომელიც ანგარიშში შედის, ჯდება ₾${health?.appointment_price ?? 0}.`}
