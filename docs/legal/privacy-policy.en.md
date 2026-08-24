@@ -28,7 +28,7 @@ data-protection question, contact us at [EMAIL].
 
 - **From business users:** phone number (used as your login identity), password (stored only
   as a secure cryptographic hash), business name, description, contact phone and logo, staff
-  display names and photos, the appointment and internal notes you enter, and subscription and
+  display names and photos, the appointment and internal notes you enter, and billing and
   payment records.
 - **From clients booking an appointment:** first name, last name (optional), phone number, any
   notes you type, and your chosen service, staff member, date and time. We send a one-time

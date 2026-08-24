@@ -8,7 +8,7 @@
 // Placeholders in [BRACKETS] are filled once the legal entity is registered.
 
 /** Version tag stored with each consent (customers.consent_version). Bump on change. */
-export const CONSENT_VERSION = '2026-08-04'
+export const CONSENT_VERSION = '2026-08-21'
 
 export type LegalDocType = 'privacy' | 'terms'
 
@@ -49,7 +49,7 @@ const PRIVACY: Record<Lang, LegalDoc> = {
       {
         heading: '3. What data we collect',
         body: [[
-          'From business users: phone number (login identity), password (stored only as a secure hash), business name, description, contact phone and logo, staff display names and photos, the appointment and internal notes you enter, and subscription and payment records.',
+          'From business users: phone number (login identity), password (stored only as a secure hash), business name, description, contact phone and logo, staff display names and photos, the appointment and internal notes you enter, and billing and payment records.',
           'From clients booking: first name, last name (optional), phone number, any notes you type, and your chosen service, staff member, date and time. We send a one-time code by SMS to verify your phone.',
           'Automatically: the minimal technical data needed to operate and secure the service (e.g. security and request logs). We do not use third-party advertising or analytics trackers.',
         ]],
@@ -128,7 +128,7 @@ const PRIVACY: Record<Lang, LegalDoc> = {
       {
         heading: '3. რა მონაცემებს ვაგროვებთ',
         body: [[
-          'ბიზნეს-მომხმარებლებისგან: ტელეფონის ნომერი (ავტორიზაცია), პაროლი (ინახება მხოლოდ დაცული ჰეშის სახით), ბიზნესის სახელი, აღწერა, საკონტაქტო ტელეფონი და ლოგო, თანამშრომელთა სახელები და ფოტოები, შეყვანილი შენიშვნები, გამოწერისა (სააბონენტო გეგმის) და გადახდის ჩანაწერები.',
+          'ბიზნეს-მომხმარებლებისგან: ტელეფონის ნომერი (ავტორიზაცია), პაროლი (ინახება მხოლოდ დაცული ჰეშის სახით), ბიზნესის სახელი, აღწერა, საკონტაქტო ტელეფონი და ლოგო, თანამშრომელთა სახელები და ფოტოები, შეყვანილი შენიშვნები, ბილინგისა და გადახდის ჩანაწერები.',
           'დამჯავშნელი კლიენტებისგან: სახელი, გვარი (არასავალდებულო), ტელეფონის ნომერი, შეყვანილი შენიშვნები, არჩეული სერვისი, თანამშრომელი, თარიღი და დრო. ნომრის დასადასტურებლად ვგზავნით ერთჯერად კოდს SMS-ით.',
           'ავტომატურად: სერვისის ფუნქციონირებისა და უსაფრთხოებისთვის საჭირო მინიმალური ტექნიკური მონაცემები. ჩვენ არ ვიყენებთ მესამე მხარის სარეკლამო ან ანალიტიკურ ტრეკერებს.',
         ]],
@@ -193,46 +193,92 @@ const PRIVACY: Record<Lang, LegalDoc> = {
 const TERMS: Record<Lang, LegalDoc> = {
   en: {
     title: 'Terms of Service — [COMPANY NAME] ("Vis")',
-    updated: '[DATE]',
+    updated: '2026-08-21',
     sections: [
       { heading: '1. Acceptance', body: ['By creating an account or booking an appointment through the platform, you agree to these Terms and to our Privacy Policy. If you do not agree, do not use the service.'] },
       { heading: '2. The service', body: ['Vis provides software that lets businesses publish booking pages and manage appointments, and lets clients book with those businesses. Vis is not a party to the appointment between a client and a business, and is not responsible for the services a business provides.'] },
       { heading: '3. Accounts', body: ['Business users register with a phone number and password and are responsible for safeguarding their credentials and for all activity under their account. You must provide accurate information and keep it current.'] },
-      { heading: '4. Client bookings', body: ['Booking requires a valid phone number and one-time SMS verification. Cancellations and changes are handled by the business directly, whose contact details are shown on the booking confirmation.'] },
+      { heading: '4. Client bookings', body: [
+        'Booking requires a valid phone number and one-time SMS verification.',
+        'A business may choose to review bookings before confirming them. Where it does, your booking is a request until the business approves it: it does not hold the slot, and it is not confirmed until you receive a confirmation message. If the business does not respond before the requested time passes, the request lapses and we notify you. Bookings paid online, or secured with a deposit, are confirmed immediately and are never held for review.',
+        'Cancellations and changes are handled by the business directly, whose contact details are shown on the booking confirmation.',
+        'A business may decline to take bookings from a particular phone number. Where it has, booking is refused without further explanation. This is the business’s decision, not ours.',
+      ] },
       { heading: '5. Payments and billing', body: [
         'Appointments with a price are paid online at the time of booking; payment is processed by a third-party provider (e.g. BOG / TBC), whose terms apply to the transaction. Appointments offered free of charge require no payment.',
-        'Business accounts are free to open and require no card to start. Businesses are billed once a month for the appointments they received that month, at a per-appointment rate charged to a card kept on file; months with no appointments are not charged. The current rate is shown in the app under Settings → Billing, where the running total for the month is also visible. We give advance notice of the amount before each monthly charge and announce rate changes in advance. If a charge is not settled, we may pause the booking page from accepting new bookings until the outstanding balance is paid; the account and its data are always retained.',
+        'Refunds are issued by the business. Where a paid booking cannot be fulfilled for a technical reason, the payment is returned automatically.',
+        'Business accounts are free to open and require no card to start. Businesses are billed once a month for the appointments they received that month, at a per-appointment rate charged to a card kept on file; months with no appointments are not charged. The current rate is shown in the app under Settings → Billing, where the running total for the month is also visible.',
+        'An appointment counts towards the bill once it has been confirmed and its time has passed — including where the client did not attend. A booking cancelled before its scheduled time is never charged. A business may also correct its records for up to 24 hours after an appointment’s scheduled end without being charged for it; after that window, an appointment that already took place remains on the bill even if its status is later changed.',
+        'We give advance notice of the amount before each monthly charge and announce rate changes in advance. If a charge is not settled, we may pause the booking page from accepting new bookings until the outstanding balance is paid; the account and its data are always retained.',
+        'Pausing happens automatically. If you believe it is wrong, you may ask us to review it from the notice shown in the app; a person will consider it, and we may lift the pause while we do. Asking for a review does not cancel the amount owed.',
       ] },
       { heading: '6. Acceptable use', body: ['Do not misuse the platform: no unlawful, fraudulent, infringing, or abusive content; no attempts to breach security, scrape data, or overload the service; and no uploading of another person’s personal data without a lawful basis.'] },
       { heading: '7. Business obligations regarding client data', body: ['Businesses using the platform are the data controllers of their clients’ personal data and must comply with the Law of Georgia on Personal Data Protection — including having a lawful basis, honoring client rights, and not entering special-category data without proper grounds. Vis processes such data only as described in Section 2 of the Privacy Policy.'] },
-      { heading: '8. Intellectual property', body: ['The platform, its design and its software are owned by [COMPANY NAME]. You receive a limited, non-exclusive right to use the service. Content you upload remains yours, and you grant us the license needed to operate the service.'] },
-      { heading: '9. Availability and disclaimers', body: ['The service is provided "as is". We aim for high availability but do not guarantee uninterrupted or error-free operation. To the extent permitted by Georgian law, we exclude implied warranties.'] },
-      { heading: '10. Liability', body: ['To the maximum extent permitted by law, [COMPANY NAME] is not liable for indirect or consequential losses, or for the acts of businesses or clients using the platform. Nothing limits liability that cannot be limited under Georgian law.'] },
-      { heading: '11. Termination', body: ['You may stop using the service and delete your account at any time; deletion removes your data in accordance with the Privacy Policy retention terms. An unpaid balance or a paused booking page does not delete your account or data (see Section 5). We may suspend or terminate accounts that violate these Terms.'] },
-      { heading: '12. Governing law and disputes', body: ['These Terms are governed by the law of Georgia, and disputes are subject to the courts of Georgia, without prejudice to any mandatory consumer-protection rights.'] },
-      { heading: '13. Contact', body: ['[EMAIL] — [ADDRESS].'] },
+      { heading: '8. Data processing terms', body: [
+        'This section applies where we process client personal data on a business’s behalf. For that data the business is the controller and we are its processor, and this section is the written processing agreement required by Article 36 of the Law of Georgia on Personal Data Protection.',
+        'We will:',
+        [
+          'process client data only to provide the platform, and on the business’s documented instructions — using the service is such an instruction, and we will tell the business if an instruction appears to breach the law;',
+          'ensure that anyone who can access the data is bound by confidentiality;',
+          'keep the measures described in Section 8 of the Privacy Policy, and record access made through our administrative tools;',
+          'not engage a sub-processor without notice, and remain responsible for those we do engage — our current sub-processors are listed in Section 6 of the Privacy Policy;',
+          'assist the business, so far as we reasonably can, in responding to client rights requests and to a personal-data breach;',
+          'delete client data in line with the retention terms in the Privacy Policy, and on request return or delete it when the business stops using the service;',
+          'make available the information the business reasonably needs to verify our compliance.',
+        ],
+        'Support access to a business’s client data is restricted to what is necessary, and is recorded.',
+      ] },
+      { heading: '9. Intellectual property', body: ['The platform, its design and its software are owned by [COMPANY NAME]. You receive a limited, non-exclusive right to use the service. Content you upload remains yours, and you grant us the license needed to operate the service.'] },
+      { heading: '10. Availability and disclaimers', body: ['The service is provided "as is". We aim for high availability but do not guarantee uninterrupted or error-free operation. To the extent permitted by Georgian law, we exclude implied warranties.'] },
+      { heading: '11. Liability', body: ['To the maximum extent permitted by law, [COMPANY NAME] is not liable for indirect or consequential losses, or for the acts of businesses or clients using the platform. Nothing limits liability that cannot be limited under Georgian law.'] },
+      { heading: '12. Termination', body: ['You may stop using the service and delete your account at any time; deletion removes your data in accordance with the Privacy Policy retention terms. An unpaid balance or a paused booking page does not delete your account or data (see Section 5). We may suspend or terminate accounts that violate these Terms.'] },
+      { heading: '13. Governing law and disputes', body: ['These Terms are governed by the law of Georgia, and disputes are subject to the courts of Georgia, without prejudice to any mandatory consumer-protection rights.'] },
+      { heading: '14. Contact', body: ['[EMAIL] — [ADDRESS].'] },
     ],
   },
   ka: {
     title: 'მომსახურების პირობები — [კომპანიის სახელი] ("Vis")',
-    updated: '[თარიღი]',
+    updated: '2026-08-21',
     sections: [
       { heading: '1. პირობებზე თანხმობა', body: ['ანგარიშის შექმნით ან ვიზიტის დაჯავშნით თქვენ ეთანხმებით ამ პირობებსა და კონფიდენციალურობის პოლიტიკას. თუ არ ეთანხმებით, ნუ გამოიყენებთ სერვისს.'] },
       { heading: '2. სერვისი', body: ['Vis გთავაზობთ პროგრამულ უზრუნველყოფას, რომელიც ბიზნესებს აძლევს ჯავშნის გვერდების გამოქვეყნებისა და ვიზიტების მართვის, ხოლო კლიენტებს — დაჯავშნის საშუალებას. Vis არ არის მხარე კლიენტსა და ბიზნესს შორის შემდგარ ვიზიტში და არ არის პასუხისმგებელი ბიზნესის მიერ გაწეულ მომსახურებაზე.'] },
       { heading: '3. ანგარიშები', body: ['ბიზნეს-მომხმარებლები რეგისტრირდებიან ტელეფონის ნომრითა და პაროლით და პასუხისმგებელნი არიან ავტორიზაციის მონაცემების (პაროლის) დაცვაზე და ანგარიშით განხორციელებულ ყველა ქმედებაზე. უნდა მიუთითოთ ზუსტი ინფორმაცია და საჭიროებისამებრ განაახლოთ იგი.'] },
-      { heading: '4. კლიენტის ჯავშნები', body: ['დაჯავშნისთვის საჭიროა მოქმედი ნომერი და ერთჯერადი SMS-დადასტურება. გაუქმებასა და ცვლილებებს ბიზნესი უშუალოდ წარმართავს, რომლის კონტაქტიც მითითებულია დადასტურების გვერდზე.'] },
+      { heading: '4. კლიენტის ჯავშნები', body: [
+        'დაჯავშნისთვის საჭიროა მოქმედი ნომერი და ერთჯერადი SMS-დადასტურება.',
+        'ბიზნესმა შესაძლოა აირჩიოს ჯავშნების წინასწარი განხილვა. ასეთ შემთხვევაში თქვენი ჯავშანი არის მოთხოვნა ბიზნესის მიერ დადასტურებამდე: ის არ იკავებს დროს და დადასტურებულად ჩაითვლება მხოლოდ დამადასტურებელი შეტყობინების მიღების შემდეგ. თუ ბიზნესი მოთხოვნილ დრომდე არ გამოეხმაურება, მოთხოვნა უქმდება და ჩვენ გაცნობებთ ამის შესახებ. ონლაინ გადახდილი ან ბეს გადახდით უზრუნველყოფილი ჯავშნები დასტურდება დაუყოვნებლივ.',
+        'გაუქმებასა და ცვლილებებს ბიზნესი უშუალოდ წარმართავს, რომლის კონტაქტიც მითითებულია დადასტურების გვერდზე.',
+        'ბიზნესს შეუძლია უარი თქვას კონკრეტული ნომრიდან ჯავშნების მიღებაზე. ასეთ შემთხვევაში დაჯავშნაზე უარი ეთქმევა დამატებითი ახსნის გარეშე. ეს ბიზნესის გადაწყვეტილებაა და არა ჩვენი.',
+      ] },
       { heading: '5. გადახდები და ბილინგი', body: [
         'ონლაინ გადახდისას გადახდას ამუშავებს მესამე მხარის მომწოდებელი (მაგ. BOG / TBC), რომლის პირობებიც ვრცელდება. ადგილზე გადახდა წარიმართება უშუალოდ კლიენტსა და ბიზნესს შორის.',
-        'ბიზნეს-ანგარიშის გახსნა უფასოა და ბარათი დასაწყისში საჭირო არ არის. ბიზნესს ერიცხება თვეში ერთხელ იმ ჯავშნებისთვის, რომლებიც მიიღო ამ თვეში — თითო ჯავშანზე დადგენილი ტარიფით, შენახულ ბარათზე. თუ თვეში ჯავშანი არ იყო, გადასახადი არ არის. მოქმედი ტარიფი მოცემულია აპლიკაციაში (პარამეტრები → ბილინგი), სადაც ასევე ჩანს მიმდინარე თვის ჯამი. ყოველი ყოველთვიური გადახდის წინ წინასწარ გაცნობებთ თანხას და ტარიფის ცვლილებასაც წინასწარ ვაცნობებთ. თუ გადახდა არ განხორციელდა, ჯავშნის გვერდი შესაძლოა შეჩერდეს ახალი ჯავშნების მიღებაზე დავალიანების გასტუმრებამდე; ანგარიში და მონაცემები ყოველთვის შენარჩუნდება.',
+        'თანხის დაბრუნებას ახორციელებს ბიზნესი. თუ გადახდილი ჯავშანი ტექნიკური მიზეზით ვერ სრულდება, თანხა ბრუნდება ავტომატურად.',
+        'ბიზნეს-ანგარიშის გახსნა უფასოა და ბარათი დასაწყისში საჭირო არ არის. ბიზნესს ერიცხება თვეში ერთხელ იმ ჯავშნებისთვის, რომლებიც მიიღო ამ თვეში — თითო ჯავშანზე დადგენილი ტარიფით, შენახულ ბარათზე. თუ თვეში ჯავშანი არ იყო, გადასახადი არ არის. მოქმედი ტარიფი და მიმდინარე თვის ჯამი მოცემულია აპლიკაციაში (პარამეტრები → ბილინგი).',
+        'ვიზიტი ანგარიშში შედის მას შემდეგ, რაც დადასტურდა და მისი დრო გავიდა — მათ შორის მაშინაც, თუ კლიენტი არ გამოცხადდა. ჯავშანი, რომელიც გაუქმდა დანიშნულ დრომდე, არასოდეს ანაზღაურდება. ბიზნესს ასევე შეუძლია ჩანაწერი შეასწოროს ვიზიტის დასრულებიდან 24 საათის განმავლობაში ისე, რომ საფასური არ დაერიცხოს; ამ ვადის შემდეგ უკვე შემდგარი ვიზიტი ანგარიშში რჩება, თუნდაც მისი სტატუსი მოგვიანებით შეიცვალოს.',
+        'ყოველთვიურ ჩამოჭრამდე წინასწარ გაცნობებთ თანხას და ტარიფის ცვლილებასაც წინასწარ ვაანონსებთ. თუ გადახდა არ განხორციელდა, ჯავშნის გვერდი შესაძლოა შეჩერდეს ახალი ჯავშნების მიღებაზე დავალიანების გასტუმრებამდე; ანგარიში და მონაცემები ყოველთვის შენარჩუნდება.',
+        'შეჩერება ხდება ავტომატურად. თუ მიგაჩნიათ, რომ ეს არასწორია, აპლიკაციაში ნაჩვენები შეტყობინებიდან შეგიძლიათ მოითხოვოთ განხილვა; მოთხოვნას განიხილავს ადამიანი და განხილვის პერიოდში შეჩერება შესაძლოა დროებით მოიხსნას. განხილვის მოთხოვნა არ აუქმებს დავალიანებას.',
       ] },
       { heading: '6. დასაშვები გამოყენება', body: ['ნუ გამოიყენებთ პლატფორმას ბოროტად: აკრძალულია უკანონო, თაღლითური, უფლების დამრღვევი ან შეურაცხმყოფელი შინაარსი; უსაფრთხოების დარღვევის, მონაცემთა მასობრივი ამოღების ან სერვისის გადატვირთვის მცდელობა; სხვისი პერსონალური მონაცემების ატვირთვა სამართლებრივი საფუძვლის გარეშე.'] },
       { heading: '7. ბიზნესის ვალდებულებები კლიენტის მონაცემებზე', body: ['პლატფორმის მომხმარებელი ბიზნესები არიან თავიანთი კლიენტების მონაცემთა მაკონტროლებლები და ვალდებულნი არიან დაიცვან კანონი „პერსონალურ მონაცემთა დაცვის შესახებ" — მათ შორის, ჰქონდეთ სამართლებრივი საფუძველი, პატივი სცენ კლიენტის უფლებებს და არ შეიყვანონ განსაკუთრებული კატეგორიის მონაცემები საფუძვლის გარეშე. Vis ამ მონაცემებს ამუშავებს მხოლოდ პოლიტიკის მე-2 ნაწილის შესაბამისად.'] },
-      { heading: '8. ინტელექტუალური საკუთრება', body: ['პლატფორმა, მისი დიზაინი და პროგრამული უზრუნველყოფა ეკუთვნის [კომპანიის სახელი]-ს. თქვენ იღებთ სერვისის გამოყენების შეზღუდულ, არაექსკლუზიურ უფლებას. ატვირთული შინაარსი რჩება თქვენს საკუთრებაში, და გვანიჭებთ ფუნქციონირებისთვის საჭირო ლიცენზიას.'] },
-      { heading: '9. ხელმისაწვდომობა და პასუხისმგებლობის შეზღუდვა', body: ['სერვისი მოწოდებულია „როგორც არის" პრინციპით. არ ვიძლევით უწყვეტი ან უშეცდომო მუშაობის გარანტიას. საქართველოს კანონმდებლობით დაშვებულ ფარგლებში გამოვრიცხავთ ნაგულისხმევ გარანტიებს.'] },
-      { heading: '10. პასუხისმგებლობა', body: ['კანონით დაშვებულ მაქსიმალურ ფარგლებში, [კომპანიის სახელი] არ არის პასუხისმგებელი არაპირდაპირ ან თანმდევ ზიანზე, ან მომხმარებელ ბიზნესთა/კლიენტთა ქმედებებზე. ვერცერთი დებულება ვერ შეზღუდავს პასუხისმგებლობას, რომლის შეზღუდვაც კანონით დაუშვებელია.'] },
-      { heading: '11. შეწყვეტა', body: ['ნებისმიერ დროს შეგიძლიათ შეწყვიტოთ სერვისის გამოყენება და წაშალოთ ანგარიში; წაშლა შლის თქვენს მონაცემებს პოლიტიკის შენახვის ვადების შესაბამისად. დავალიანება ან ჯავშნის გვერდის შეჩერება არ შლის თქვენს ანგარიშსა და მონაცემებს (იხ. ნაწილი 5). ჩვენ შესაძლოა შევაჩეროთ ან შევწყვიტოთ პირობების დამრღვევი ანგარიშები.'] },
-      { heading: '12. მოქმედი სამართალი და დავები', body: ['პირობები რეგულირდება საქართველოს კანონმდებლობით, დავები განიხილება საქართველოს სასამართლოების მიერ, მომხმარებელთა კანონით დადგენილი უფლებების შეზღუდვის გარეშე.'] },
-      { heading: '13. კონტაქტი', body: ['[ელფოსტა] — [მისამართი].'] },
+      { heading: '8. მონაცემთა დამუშავების პირობები', body: [
+        'ეს ნაწილი ვრცელდება მაშინ, როცა კლიენტის პერსონალურ მონაცემებს ვამუშავებთ ბიზნესის სახელით. ამ მონაცემებზე ბიზნესი არის მაკონტროლებელი, ჩვენ კი — მისი დამმუშავებელი, და ეს ნაწილი წარმოადგენს წერილობით ხელშეკრულებას, რომელსაც მოითხოვს „პერსონალურ მონაცემთა დაცვის შესახებ" საქართველოს კანონის 36-ე მუხლი.',
+        'ჩვენ ვიღებთ ვალდებულებას:',
+        [
+          'კლიენტის მონაცემები დავამუშაოთ მხოლოდ პლატფორმის მიწოდების მიზნით და ბიზნესის დოკუმენტური მითითებით — სერვისით სარგებლობა თავად წარმოადგენს ასეთ მითითებას; თუ მითითება კანონს არღვევს, ამის შესახებ ბიზნესს ვაცნობებთ;',
+          'უზრუნველვყოთ, რომ მონაცემებზე წვდომის მქონე ნებისმიერი პირი ვალდებული იყოს კონფიდენციალურობით;',
+          'შევინარჩუნოთ პოლიტიკის მე-8 ნაწილში აღწერილი ზომები და აღვრიცხოთ ადმინისტრაციული ხელსაწყოებით განხორციელებული წვდომა;',
+          'არ ჩავრთოთ ქვე-დამმუშავებელი შეტყობინების გარეშე და პასუხისმგებელნი ვიყოთ ჩვენ მიერ ჩართულებზე — მოქმედი ქვე-დამმუშავებლები ჩამოთვლილია პოლიტიკის მე-6 ნაწილში;',
+          'გონივრულ ფარგლებში დავეხმაროთ ბიზნესს კლიენტის უფლებრივ მოთხოვნებზე რეაგირებასა და მონაცემთა დარღვევის შემთხვევაში;',
+          'წავშალოთ კლიენტის მონაცემები პოლიტიკის შენახვის ვადების შესაბამისად და მოთხოვნისას დავაბრუნოთ ან წავშალოთ ისინი სერვისით სარგებლობის შეწყვეტისას;',
+          'მივაწოდოთ ბიზნესს ინფორმაცია, რომელიც მას გონივრულად სჭირდება ჩვენი შესაბამისობის შესამოწმებლად.',
+        ],
+        'ბიზნესის კლიენტთა მონაცემებზე მხარდაჭერის მიზნით წვდომა შემოიფარგლება აუცილებლობით და აღირიცხება.',
+      ] },
+      { heading: '9. ინტელექტუალური საკუთრება', body: ['პლატფორმა, მისი დიზაინი და პროგრამული უზრუნველყოფა ეკუთვნის [კომპანიის სახელი]-ს. თქვენ იღებთ სერვისის გამოყენების შეზღუდულ, არაექსკლუზიურ უფლებას. ატვირთული შინაარსი რჩება თქვენს საკუთრებაში, და გვანიჭებთ ფუნქციონირებისთვის საჭირო ლიცენზიას.'] },
+      { heading: '10. ხელმისაწვდომობა და პასუხისმგებლობის შეზღუდვა', body: ['სერვისი მოწოდებულია „როგორც არის" პრინციპით. არ ვიძლევით უწყვეტი ან უშეცდომო მუშაობის გარანტიას. საქართველოს კანონმდებლობით დაშვებულ ფარგლებში გამოვრიცხავთ ნაგულისხმევ გარანტიებს.'] },
+      { heading: '11. პასუხისმგებლობა', body: ['კანონით დაშვებულ მაქსიმალურ ფარგლებში, [კომპანიის სახელი] არ არის პასუხისმგებელი არაპირდაპირ ან თანმდევ ზიანზე, ან მომხმარებელ ბიზნესთა/კლიენტთა ქმედებებზე. ვერცერთი დებულება ვერ შეზღუდავს პასუხისმგებლობას, რომლის შეზღუდვაც კანონით დაუშვებელია.'] },
+      { heading: '12. შეწყვეტა', body: ['ნებისმიერ დროს შეგიძლიათ შეწყვიტოთ სერვისის გამოყენება და წაშალოთ ანგარიში; წაშლა შლის თქვენს მონაცემებს პოლიტიკის შენახვის ვადების შესაბამისად. დავალიანება ან ჯავშნის გვერდის შეჩერება არ შლის თქვენს ანგარიშსა და მონაცემებს (იხ. ნაწილი 5). ჩვენ შესაძლოა შევაჩეროთ ან შევწყვიტოთ პირობების დამრღვევი ანგარიშები.'] },
+      { heading: '13. მოქმედი სამართალი და დავები', body: ['პირობები რეგულირდება საქართველოს კანონმდებლობით, დავები განიხილება საქართველოს სასამართლოების მიერ, მომხმარებელთა კანონით დადგენილი უფლებების შეზღუდვის გარეშე.'] },
+      { heading: '14. კონტაქტი', body: ['[ელფოსტა] — [მისამართი].'] },
     ],
   },
 }
