@@ -29,6 +29,7 @@ test.describe('Business onboarding', () => {
     // (isValidPersonName rejects digits).
     await expect(async () => {
       await page.getByTestId('onb-service-name').fill('Haircut')
+      await page.getByTestId('onb-service-duration').fill('30')
       await page.getByTestId('onb-service-price').fill('25')
       const save = page.getByTestId('onb-service-save')
       await expect(save).toBeEnabled({ timeout: 2_000 })
@@ -152,6 +153,7 @@ test.describe('Business onboarding — edge cases', () => {
     const next = page.getByTestId('onb-services-next')
     await expect(async () => {
       await page.getByTestId('onb-service-name').fill('Massage')
+      await page.getByTestId('onb-service-duration').fill('45')
       await page.getByTestId('onb-service-price').fill('40')
       await expect(next).toBeEnabled({ timeout: 1_500 })
       await next.click({ timeout: 2_500 })
@@ -183,6 +185,52 @@ test.describe('Business onboarding — edge cases', () => {
     // .first(): during the step transition the name shows both in the sidebar
     // preview and in the exiting step's list row.
     await expect(page.getByText('Etest Draftkeeper').first()).toBeVisible()
+    // Leaves a throwaway account with no org (never reached hours-finish).
+  })
+
+  test('duration and price start empty, are required, and an untouched form never blocks Next', async ({ page }) => {
+    await register(page, uniquePhone())
+    await fillStable(page.getByTestId('biz-name'), tag('E2E Studio'))
+    await fillStable(page.getByTestId('biz-phone'), '555123456')
+    await fillStable(page.getByTestId('biz-email'), 'e2e@studio.ge')
+    await page.getByTestId('biz-next').click()
+    await expect(page).toHaveURL(/\/onboarding\/services/)
+
+    const duration = page.getByTestId('onb-service-duration')
+    const price = page.getByTestId('onb-service-price')
+
+    // No value the owner didn't choose: both fields open blank (a prefilled ₾0
+    // used to save silently as a free service).
+    await expect(duration).toHaveValue('')
+    await expect(price).toHaveValue('')
+
+    // Both are required — adding with only a name flags them inline and saves
+    // nothing. Retried as a whole because the step's entrance animation can
+    // remount the form (and reset the submitted flag) mid-block; the block is
+    // idempotent since no row is ever created.
+    await expect(async () => {
+      await page.getByTestId('onb-service-name').fill('Haircut')
+      await page.getByTestId('onb-service-save').click({ timeout: 2_500 })
+      await expect(duration).toHaveAttribute('aria-invalid', 'true', { timeout: 2_000 })
+      await expect(price).toHaveAttribute('aria-invalid', 'true', { timeout: 2_000 })
+      await expect(page.getByTestId('onb-service-row')).toHaveCount(0)
+    }).toPass({ timeout: 20_000 })
+
+    // Filled in, the service saves and the form resets to blank again.
+    await expect(async () => {
+      await page.getByTestId('onb-service-name').fill('Haircut')
+      await duration.fill('30')
+      await price.fill('25')
+      await page.getByTestId('onb-service-save').click({ timeout: 2_500 })
+      await expect(page.getByTestId('onb-service-row')).toHaveCount(1, { timeout: 2_000 })
+    }).toPass({ timeout: 20_000 })
+    await expect(duration).toHaveValue('')
+    await expect(price).toHaveValue('')
+
+    // The point of the required fields: they must not trap someone who is done.
+    // With a service saved and the form untouched, Next just moves on.
+    await page.getByTestId('onb-services-next').click()
+    await expect(page).toHaveURL(/\/onboarding\/specialists/)
     // Leaves a throwaway account with no org (never reached hours-finish).
   })
 

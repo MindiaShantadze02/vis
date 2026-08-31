@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import {
   login, openApptByName, signInSeed, restApi, type SeedCtx,
-  SEED, letterName, uniquePhone, tag,
+  SEED, letterName, uniquePhone, tag, setSmsEnabled,
 } from './helpers'
 
 /**
@@ -84,7 +84,11 @@ test.describe('Meeting link — per-appointment online link', () => {
     })
   })
 
+  // Sending the link is an SMS, so it needs the add-on. Restored in the finally
+  // — off is the seed's resting state.
   test('owner attaches a link to an online appointment and sends it', async ({ page }) => {
+    await setSmsEnabled(true)
+    try {
     await login(page)
     await openApptByName(page, firstName)
 
@@ -110,5 +114,8 @@ test.describe('Meeting link — per-appointment online link', () => {
     await openApptByName(page, firstName)
     await expect(page.getByTestId('appt-meeting-link')).toHaveValue('https://meet.example.com/vis-abc')
     await expect(page.getByTestId('appt-needs-link')).toHaveCount(0)
+    } finally {
+      await setSmsEnabled(false)
+    }
   })
 })

@@ -10,6 +10,8 @@ import {
   Link as MuiLink,
   ToggleButton,
   ToggleButtonGroup,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import { Trans } from "react-i18next";
 import { ArrowBackIosNew as ArrowBackIosNewIcon } from "@/components/icons";
@@ -37,6 +39,7 @@ import { depositFor } from "@/lib/deposit";
 import { readFunctionError } from "@/lib/functionError";
 import { postToParent } from "./useEmbedBridge";
 import { elevation } from "@/theme/theme";
+import { anim } from "@/theme/animations";
 import type { BookingOrg, BookingState } from "./BookingLayout";
 import { FormErrorAlert } from "@/components/ui";
 
@@ -173,24 +176,75 @@ export default function Step3CustomerForm({
     return () => clearTimeout(id);
   }, [resendIn]);
 
-  // Step 1: text a verification code to the customer's phone, then switch to the
-  // code-entry view. The booking itself is only created after the code checks out.
-  async function sendCode() {
-    // Validate on click with inline field errors rather than a disabled button:
-    // flag every invalid field and pull the first one into view.
+  // Terms acceptance is an explicit tick rather than an implied "by continuing".
+  // The Terms carry provisions a customer would not expect to find (Civil Code
+  // Art. 344 — unusual standard terms do not bind at all), so an affirmative act
+  // is materially stronger evidence than a notice under a button.
+  const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState(false);
+  // Bumping this re-keys the message so the nudge animation replays when someone
+  // presses the button again without ticking.
+  const [consentNudge, setConsentNudge] = useState(0);
+  const consentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (consentTimer.current) clearTimeout(consentTimer.current);
+    },
+    [],
+  );
+
+  function flagConsent() {
+    setConsentError(true);
+    setConsentNudge((n) => n + 1);
+    if (consentTimer.current) clearTimeout(consentTimer.current);
+    consentTimer.current = setTimeout(() => setConsentError(false), 4000);
+  }
+
+  // Whether this business bought the SMS add-on. It is the only thing that
+  // decides if the phone gets verified: with the add-on off no code was ever
+  // sent, so there is nothing to check and the DB trigger
+  // (enforce_booking_verification) waves the insert through on the same
+  // condition. Missing/NULL reads as off.
+  const smsEnabled = org.sms_enabled === true;
+
+  // Validate on click with inline field errors rather than a disabled button:
+  // flag every invalid field and pull the first one into view. Returns true
+  // when the form is good to submit.
+  function validateForm(): boolean {
     setSubmitted(true);
     const invalid =
       booking.firstName.trim().length < 2 ||
       !isValidPersonName(booking.firstName) ||
       lastNameInvalid ||
       !isValidGeorgianPhone(booking.phone);
-    if (invalid) {
+    if (!consent) flagConsent();
+    if (invalid || !consent) {
       focusFirstInvalidFieldAfterRender();
+      return false;
+    }
+    return true;
+  }
+
+  // The submit button. With SMS on, the phone is verified first; with it off we
+  // go straight to the booking, phone collected but unverified.
+  async function handleSubmit() {
+    if (!validateForm()) return;
+    if (smsEnabled) {
+      await sendCode();
       return;
     }
-    // Consent is captured by the affirmative act of proceeding (the notice under
-    // the button states this); the timestamp + CONSENT_VERSION are stamped on the
-    // customer record in confirmBooking, so the audit trail is unchanged.
+    setError(null);
+    await confirmBooking();
+  }
+
+  // Step 1 (SMS add-on only): text a verification code to the customer's phone,
+  // then switch to the code-entry view. The booking itself is only created
+  // after the code checks out.
+  async function sendCode() {
+    // Acceptance is the ticked box above; the timestamp + CONSENT_VERSION are
+    // stamped on the customer record in confirmBooking, so what was accepted —
+    // and which revision of it — stays provable.
     setLoading(true);
     setError(null);
     const { data, error: fnErr } = await supabase.functions.invoke(
@@ -328,57 +382,51 @@ export default function Step3CustomerForm({
         }
       }
 
-      // ── On-site: no gateway, so the rows are written here and now ────────
-      // Safe to insert straight from the client: the OTP is still verified and
-      // unconsumed (trg_enforce_booking_verification), trg_00_normalize_guest_-
-      // appointment pins status/payment_* and rejects a deposit service on this
-      // path, trg_enforce_slot_capacity re-checks capacity under a per-org
-      // advisory lock, and trg_enforce_appointment_limit applies the billing
-      // gate. Ids are minted here because a guest can't read either row back.
+      // ── On-site: no gateway, so the booking is written here and now ──────
+      // One SECURITY DEFINER RPC rather than two client inserts. `customers` is
+      // a global table with no org_id, so its OTP-gated INSERT policy could not
+      // express a per-org opt-out — the write moved server-side when the add-on
+      // made OTP optional, and anon lost its direct insert. Every trigger still
+      // runs: normalize pins status/payment_* and rejects a deposit service,
+      // trg_enforce_slot_capacity re-checks capacity under the per-org advisory
+      // lock, and trg_enforce_appointment_limit applies the billing gate.
       if (payingOnSite) {
-        const customerId = crypto.randomUUID();
-        const appointmentId = crypto.randomUUID();
-
-        const { error: custErr } = await supabase.from("customers").insert({
-          id: customerId,
-          first_name: booking.firstName.trim(),
-          last_name: booking.lastName.trim() || null,
-          phone_number: booking.phone,
-          consent_accepted_at: new Date().toISOString(),
-          consent_version: CONSENT_VERSION,
-        });
-        if (custErr) {
-          setError(t("booking.bookFailed"));
-          setLoading(false);
-          return;
-        }
-
-        const { error: apptErr } = await supabase.from("appointments").insert({
-          id: appointmentId,
-          org_id: org.id,
-          service_id: booking.service.id,
-          customer_id: customerId,
-          scheduled_at: scheduledAt.toISOString(),
-          duration_minutes: booking.service.duration_minutes,
-          staff_id: staffId,
-          notes: booking.notes.trim() || null,
-        });
-        if (apptErr) {
-          // The triggers speak in error codes — surface the ones a customer can
-          // act on, and fall back to the generic failure for the rest.
-          const m = apptErr.message ?? "";
+        const { data: newId, error: apptErr } = await supabase.rpc(
+          "create_guest_booking",
+          {
+            p_org_id: org.id,
+            p_service_id: booking.service.id,
+            p_staff_id: staffId,
+            p_scheduled_at: scheduledAt.toISOString(),
+            p_first_name: booking.firstName.trim(),
+            p_last_name: booking.lastName.trim() || null,
+            p_phone: booking.phone,
+            p_notes: booking.notes.trim() || null,
+            p_consent_version: CONSENT_VERSION,
+          },
+        );
+        if (apptErr || !newId) {
+          // The RPC and the triggers speak in error codes — surface the ones a
+          // customer can act on, and fall back to the generic failure for the
+          // rest. `booking_failed` is what the RPC returns instead of
+          // `customer_blocked` when no code was verified, so an unverified
+          // caller cannot probe the blocklist.
+          const m = apptErr?.message ?? "";
           setError(
             m.includes("customer_blocked")
               ? t("booking.numberBlocked")
-              : m.includes("limit_reached")
-                ? t("booking.unavailable")
-                : m.includes("slot_taken") || m.includes("capacity")
-                  ? t("booking.slotTaken")
-                  : t("booking.bookFailed"),
+              : m.includes("too_many_bookings")
+                ? t("booking.tooManyBookings")
+                : m.includes("limit_reached")
+                  ? t("booking.unavailable")
+                  : m.includes("slot_taken") || m.includes("capacity")
+                    ? t("booking.slotTaken")
+                    : t("booking.bookFailed"),
           );
           setLoading(false);
           return;
         }
+        const appointmentId = newId as string;
 
         // Deliberately NOT the appointmentId: postToParent targets '*' and
         // /book/* is framable by anyone (frame-ancestors *), so a hostile site
@@ -558,7 +606,11 @@ export default function Step3CustomerForm({
                 helperText={
                   phoneInvalid
                     ? t("validation.invalidPhone")
-                    : t("booking.smsHelper")
+                    : smsEnabled
+                      ? t("booking.smsHelper")
+                      : // No code is coming, so don't promise one — say what
+                        // the number is actually for.
+                        t("booking.phoneHelperNoSms")
                 }
                 slotProps={{
                   htmlInput: {
@@ -755,7 +807,7 @@ export default function Step3CustomerForm({
               fullWidth
               variant="contained"
               size="large"
-              onClick={sendCode}
+              onClick={handleSubmit}
               disabled={loading}
               data-testid="book-submit"
             >
@@ -768,42 +820,81 @@ export default function Step3CustomerForm({
               )}
             </Button>
 
-            {/* Consent-by-action notice — the button click above is the affirmative
-            act (no separate checkbox). Terms are "agreed" (contract); the Privacy
-            Policy is "acknowledged" (a notice obligation, not something to accept). */}
-            <Typography
-              variant="caption"
-              sx={{
-                display: "block",
-                textAlign: "center",
-                color: "text.secondary",
-                lineHeight: 1.5,
-                mt: -0.5,
-              }}
-              data-testid="book-consent-notice"
-            >
-              <Trans
-                i18nKey="common.consentInline"
-                components={{
-                  priv: (
-                    <MuiLink
-                      href="/privacy"
-                      target="_blank"
-                      rel="noopener"
-                      underline="hover"
+            {/* Explicit acceptance. Sits BELOW the button in the visual order
+            but is validated on submit like any other field: the button is never
+            disabled (house convention), so the customer gets a reason rather
+            than a dead control. aria-invalid lets focusFirstInvalidField pull
+            the checkbox into view exactly like a text field. */}
+            <Box>
+              <FormControlLabel
+                sx={{ alignItems: "flex-start", mr: 0 }}
+                control={
+                  <Checkbox
+                    checked={consent}
+                    onChange={(e) => {
+                      setConsent(e.target.checked);
+                      if (e.target.checked) {
+                        setConsentError(false);
+                        if (consentTimer.current)
+                          clearTimeout(consentTimer.current);
+                      }
+                    }}
+                    size="small"
+                    color={consentError ? "error" : "primary"}
+                    sx={{ pt: 0.25 }}
+                    data-testid="book-consent"
+                    slotProps={{ input: { "aria-invalid": consentError } }}
+                  />
+                }
+                label={
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: consentError ? "error.main" : "text.secondary",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    <Trans
+                      i18nKey="common.consent"
+                      components={{
+                        priv: (
+                          <MuiLink
+                            href="/privacy"
+                            target="_blank"
+                            rel="noopener"
+                            underline="hover"
+                          />
+                        ),
+                        terms: (
+                          <MuiLink
+                            href="/terms"
+                            target="_blank"
+                            rel="noopener"
+                            underline="hover"
+                          />
+                        ),
+                      }}
                     />
-                  ),
-                  terms: (
-                    <MuiLink
-                      href="/terms"
-                      target="_blank"
-                      rel="noopener"
-                      underline="hover"
-                    />
-                  ),
-                }}
+                  </Typography>
+                }
               />
-            </Typography>
+              {consentError && (
+                <Typography
+                  key={consentNudge}
+                  variant="caption"
+                  sx={{
+                    color: "error.main",
+                    display: "block",
+                    ml: "30px",
+                    mt: 0.25,
+                    animation: anim.fadeIn,
+                  }}
+                  data-testid="book-consent-error"
+                >
+                  {t("validation.consentRequired")}
+                </Typography>
+              )}
+            </Box>
           </Stack>
         </>
       )}

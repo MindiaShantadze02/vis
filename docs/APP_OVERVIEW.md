@@ -102,14 +102,16 @@ dashboard. The product front door is a **marketing landing page** at `/`.
   phone snapshotted server-side). Superadmins work the queue and configure services/staff/hours
   **on the owner's behalf**; marking it completed texts the requester (`setup_complete` SMS).
 
-### Public booking (guest, OTP-gated)
+### Public booking (guest; OTP only when the org bought the SMS add-on)
 1. **Service** (with a per-service **thumbnail** on each card, `services.image_url`) →
    **date/time** (staff pick or "any available")
    → **customer details** (name + phone, optional notes, required Privacy/Terms consent). There is
    **no payment-method choice** — every priced booking pays online.
-2. **Phone OTP:** `request-booking-otp` sends a hashed code; `verify-booking-otp` checks it. A DB
-   trigger (`enforce_booking_verification`) only lets the booking insert through once the phone is
-   verified.
+2. **Phone OTP — only at orgs with `sms_enabled`** (off by default, 2026-09-03). When on,
+   `request-booking-otp` sends a hashed code and `verify-booking-otp` checks it, and the DB trigger
+   `enforce_booking_verification` only lets the insert through once the phone is verified. When
+   off, the phone is collected but never verified and the step is skipped entirely — the same
+   trigger returns early, which also lets the payment webhook's insert through.
 3. **Finish — online or on site.** Two routes, and which are offered is derived, never guessed:
    - **Online** (any service with a price > 0): nothing is written yet — `create-payment` parks
      the intent in `pending_bookings` and redirects to the gateway; `payment-webhook` creates the
@@ -118,11 +120,15 @@ dashboard. The product front door is a **marketing landing page** at `/`.
      chosen **platform-wide** by `getPaymentProvider` — the per-org `payment_config.bog/tbc`
      entries are credential slots, *not* an availability switch.
    - **On site** (`payment_config.in_person.enabled`, default on): the customer pays at the
-     appointment. The rows are inserted straight from the client — safe because the OTP is still
-     verified, `trg_00_normalize_guest_appointment` pins `status=approved` /
-     `payment_method=in_person` / `payment_status=unpaid`, `trg_enforce_slot_capacity` re-checks
-     capacity under the per-org advisory lock, and `trg_enforce_appointment_limit` applies the
-     billing gate. No RPC needed; `create_guest_booking` stays dropped.
+     appointment. The rows are written by the **`create_guest_booking` RPC** (re-introduced
+     2026-09-03 — SECURITY DEFINER, anon-executable). It exists because `customers` is a global
+     table with no `org_id`, so its OTP-gated INSERT policy cannot express a *per-org* opt-out;
+     moving the write server-side also lets the RPC rate-limit unverified bookings per phone and
+     hide the blocklist refusal from a caller who proved nothing. Every appointment trigger still
+     runs: `trg_00_normalize_guest_appointment` pins `status=approved` / `payment_method=in_person`
+     / `payment_status=unpaid`, `trg_enforce_slot_capacity` re-checks capacity under the per-org
+     advisory lock, and `trg_enforce_appointment_limit` applies the billing gate. `anon` no longer
+     has any direct INSERT on `customers`.
    - **A ₾0 service is on-site only** (`create-payment` rejects a zero charge with
      `invalid_amount`), and **a deposit is online only** — collecting it is the point, and the
      normaliser raises `deposit_required` on the direct path. The Online / On site selector
@@ -239,20 +245,34 @@ dashboard. The product front door is a **marketing landing page** at `/`.
   services, staff and hours for concierge onboarding), the **setup-requests queue** (078), and
   multi-superadmin management. All backing RPCs gate on `is_superadmin()`.
 
-## Billing — post-paid usage (2026-07-24 pivot)
+## Billing — flat subscription + SMS add-on (2026-09-03)
 
-Signup is **free**: no tiers, no plans, no trial, no credits, no quota. A business is billed
-**monthly in arrears** for the appointments it actually took.
+A business pays a **flat ₾15 a month**, billed monthly in arrears, whether or not it took any
+bookings. On top of that, orgs that switch on the **SMS add-on** (`organisations.sms_enabled`,
+off by default) pay **₾0.7 per appointment** for the messages it sends. The first period an org
+ever closes is free of the base fee; SMS charges still apply in it.
 
-- **Model:** `platform_config.billing_config` — `appointment_price` **₾1**, `minimum_charge` 0,
-  `notice_days` 3, `retry_schedule` `[1,3,7]`, `grace_days` 7 (superadmin-editable, no deploy).
+This replaced the 2026-07-24 post-paid model, which charged ₾1 per appointment and nothing in an
+empty month. Signup is still free — no tiers, no plans, no trial, no credits, no quota.
+
+- **Model:** `platform_config.billing_config` — `base_monthly_fee` **15**,
+  `sms_appointment_price` **0.7**, `minimum_charge` 0, `notice_days` 3, `retry_schedule` `[1,3,7]`,
+  `grace_days` 7 (superadmin-editable, no deploy). `appointment_price` is retired and deliberately
+  absent, so anything still reading it fails loudly rather than invoicing nothing.
+- **What is counted:** `appointments.sms_billable`, stamped at INSERT by
+  `stamp_appointment_origin` — true only for a public booking at an org with the add-on on.
+  Billing never reads the live org flag, so turning the add-on off changes what future bookings
+  cost and never rewrites a closed period. That is why the toggle is safe to leave owner-writable
+  (unlike `billing_status` / `billing_exempt`).
 - **Tables:** `billing_periods` (one invoice per org per month, `open → pending → charged |
-  failed | waived`, UNIQUE `(org_id, period_start)`), `billing_line_items` (immutable per-appointment
-  ledger, `appointment_id` UNIQUE so counting is idempotent), `org_payment_methods` (provider token
-  only, never a PAN), `billing_events` (audit).
-- **Two pg_cron jobs:** `billing-close` (03:00) walks each org from its `usage_anchor`, counts
-  appointments whose final status is `approved`/`completed`/`no_show`, and opens a `pending`
-  invoice; `billing-charge` (03:30) attempts the charge after the notice window.
+  failed | waived`, UNIQUE `(org_id, period_start)`), `billing_line_items` (immutable ledger with a
+  `kind` of `base` / `sms` / the legacy `appointment`; two partial unique indexes keep one base row
+  per period and one row per appointment per kind across periods), `org_payment_methods` (provider
+  token only, never a PAN), `billing_events` (audit).
+- **Two pg_cron jobs:** `billing-close` (03:00) walks each org from its `usage_anchor` and opens a
+  `pending` invoice for the base fee plus the SMS-billable appointments whose final status is
+  `approved`/`completed`/`no_show`; `billing-charge` (03:30) attempts the charge after the notice
+  window.
 - **Dunning:** a failed charge → `past_due`; after `grace_days` or exhausted retries → `suspended`.
   Paying clears everything — `settle_usage_charge` flips the org back to `active` once nothing is
   `pending`/`failed`.

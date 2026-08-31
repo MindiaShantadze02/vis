@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
         payment_status, payment_reference, payment_method,
         customer:customers(first_name, phone_number),
         service:services(name),
-        org:organisations(name, cancellation_window_hours, deposit_refundable)
+        org:organisations(name, cancellation_window_hours, deposit_refundable, sms_enabled)
       `)
       .eq('id', appointmentId)
       .maybeSingle()
@@ -73,9 +73,15 @@ Deno.serve(async (req) => {
 
     const customer = one(appt.customer as { first_name: string; phone_number: string } | null)
     const service = one(appt.service as { name: string } | null)
-    const org = one(appt.org as { name: string; cancellation_window_hours: number; deposit_refundable: boolean } | null)
+    const org = one(appt.org as { name: string; cancellation_window_hours: number; deposit_refundable: boolean; sms_enabled: boolean } | null)
     const phone = customer?.phone_number
     if (!phone || !org) return err('not_found', 404)
+
+    // Whether this org bought the SMS add-on. It gates the two OUTCOME messages
+    // below, not the OTP: the code is what authenticates a stranger holding a
+    // /manage URL, and withholding it would leave the customer with no way to
+    // cancel at all rather than merely no confirmation text.
+    const smsEnabled = org.sms_enabled === true
 
     // Manageable only while approved and still in the future.
     const manageable = appt.status === 'approved' && new Date(appt.scheduled_at) > new Date()
@@ -152,10 +158,12 @@ Deno.serve(async (req) => {
         return err('server_error', 500)
       }
 
-      await sendSms(admin, {
-        orgId: appt.org_id, appointmentId, messageType: 'reschedule_update', to: phone,
-        body: rescheduleUpdateBody({ businessName: org.name ?? 'Vis', serviceName: service?.name ?? '', when: formatWhen(newAt, lang) }, lang as 'ka' | 'ru' | 'en'),
-      })
+      if (smsEnabled) {
+        await sendSms(admin, {
+          orgId: appt.org_id, appointmentId, messageType: 'reschedule_update', to: phone,
+          body: rescheduleUpdateBody({ businessName: org.name ?? 'Vis', serviceName: service?.name ?? '', when: formatWhen(newAt, lang) }, lang as 'ka' | 'ru' | 'en'),
+        })
+      }
       return Response.json({ ok: true }, { headers: corsHeaders })
     }
 
@@ -212,13 +220,15 @@ Deno.serve(async (req) => {
       if (!claimed || claimed.length === 0) return err('not_manageable', 409)
     }
 
-    await sendSms(admin, {
-      orgId: appt.org_id, appointmentId, messageType: 'cancellation_update', to: phone,
-      body: cancellationUpdateBody({
-        businessName: org.name ?? 'Vis', serviceName: service?.name ?? '',
-        when: formatWhen(appt.scheduled_at, lang), refunded, amount: refundAmount, currency: refundCurrency,
-      }, lang as 'ka' | 'ru' | 'en'),
-    })
+    if (smsEnabled) {
+      await sendSms(admin, {
+        orgId: appt.org_id, appointmentId, messageType: 'cancellation_update', to: phone,
+        body: cancellationUpdateBody({
+          businessName: org.name ?? 'Vis', serviceName: service?.name ?? '',
+          when: formatWhen(appt.scheduled_at, lang), refunded, amount: refundAmount, currency: refundCurrency,
+        }, lang as 'ka' | 'ru' | 'en'),
+      })
+    }
     return Response.json({ ok: true, refunded }, { headers: corsHeaders })
   } catch (e) {
     console.error('[manage-appointment] unhandled:', e)

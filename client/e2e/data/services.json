@@ -1,5 +1,5 @@
 {
-  "_doc": "Service editor save gating (ServicesSettings: name >= 2, duration in (0, 1440], price in [MIN_PRICE, MAX_PRICE], capacity >= 1). The online/in_person toggle no longer reveals a per-service meeting link — links are per-appointment now (see appointments.meeting_link / OverviewPage). Driven by e2e/data-driven/services.spec.ts. The spec fills `base`, then per case applies `fields` (deltas), asserts service-save enabled === valid, and restores the touched base fields. Nothing is ever saved — the create/edit/delete flow test in settings-services.spec.ts is the representative submit.",
+  "_doc": "Service editor save gating (ServicesSettings: name >= 2, duration in (0, 1440], price in [MIN_PRICE, MAX_PRICE], capacity >= 1). Duration and price open blank and are required — empty is invalid for both. The online/in_person toggle no longer reveals a per-service meeting link — links are per-appointment now (see appointments.meeting_link / OverviewPage). Driven by e2e/data-driven/services.spec.ts. The spec fills `base`, then per case applies `fields` (deltas), asserts service-save enabled === valid, and restores the touched base fields. Nothing is ever saved — the create/edit/delete flow test in settings-services.spec.ts is the representative submit.",
   "meta": {
     "nameMin": 2,
     "durationMax": 1440,
@@ -93,6 +93,26 @@
       },
       "valid": true,
       "note": "1 = minimum boundary"
+    },
+    {
+      "id": "duration-ecp-empty",
+      "technique": "ECP",
+      "target": "duration",
+      "fields": {
+        "duration": ""
+      },
+      "valid": false,
+      "note": "empty = the invalid 'not entered' partition — the field opens blank now, so this is the default state and must not save"
+    },
+    {
+      "id": "price-ecp-empty",
+      "technique": "ECP",
+      "target": "price",
+      "fields": {
+        "price": ""
+      },
+      "valid": false,
+      "note": "empty = 'not entered', rejected separately from MIN_PRICE: Number('') is 0 and ₾0 is legal, so a blank field would otherwise save silently as a free service"
     },
     {
       "id": "price-bva-min",

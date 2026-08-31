@@ -34,6 +34,10 @@ export default function BookingPageSettings() {
   // online or carrying a deposit is auto-approved regardless, since the money
   // has already moved. Off by default.
   const [requireApproval, setRequireApproval] = useState(false)
+  // The paid SMS add-on. Off by default: with it off no code is sent at booking
+  // and no confirmation/reminder goes out, and the org is not charged per
+  // appointment for messages it never sends.
+  const [smsEnabled, setSmsEnabled] = useState(false)
   // Optional wide banner for the top of the booking page. Persisted immediately
   // on upload/remove (like the logo), independent of the Save button below.
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
@@ -47,6 +51,7 @@ export default function BookingPageSettings() {
       setBookingTheme(getBookingTheme(org.booking_theme).key)
       setReviewsEnabled(org.reviews_enabled)
       setRequireApproval(org.require_approval ?? false)
+      setSmsEnabled(org.sms_enabled ?? false)
       setCoverUrl(org.cover_url ?? null)
     }
   }, [org])
@@ -109,6 +114,7 @@ export default function BookingPageSettings() {
         booking_theme: bookingTheme,
         reviews_enabled: reviewsEnabled,
         require_approval: requireApproval,
+        sms_enabled: smsEnabled,
       })
       .eq('id', org.id)
     setSaving(false)
@@ -370,6 +376,27 @@ export default function BookingPageSettings() {
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.requireApproval')}</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {t('settings.requireApprovalHelp')}
+                </Typography>
+              </Box>
+            }
+          />
+
+          {/* The paid SMS add-on. The price belongs in the label, not buried in
+              Billing: this is the switch that starts the charge. */}
+          <FormControlLabel
+            sx={{ ml: 0, mt: 2 }}
+            control={
+              <Switch
+                checked={smsEnabled}
+                onChange={e => setSmsEnabled(e.target.checked)}
+                data-testid="sms-enabled-toggle"
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('settings.smsEnabled')}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {t('settings.smsEnabledHelp')}
                 </Typography>
               </Box>
             }

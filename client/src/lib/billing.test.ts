@@ -9,8 +9,12 @@ describe('parseBillingStatus', () => {
       period_start: '2026-07-01T00:00:00+00:00',
       period_end: '2026-08-01T00:00:00+00:00',
       appointment_count: '34',
-      appointment_price: '1',
-      running_amount: '34',
+      sms_enabled: true,
+      sms_count: '20',
+      sms_price: '0.7',
+      base_fee: '15',
+      base_due: '15',
+      running_amount: '29',
       earned: '1250.5',
       rolled_forward: '6',
       card: { last4: '4242', brand: 'visa', expires_at: '2027-05-01' },
@@ -20,8 +24,12 @@ describe('parseBillingStatus', () => {
       periodStart: '2026-07-01T00:00:00+00:00',
       periodEnd: '2026-08-01T00:00:00+00:00',
       appointmentCount: 34,
-      appointmentPrice: 1,
-      runningAmount: 34,
+      smsEnabled: true,
+      smsCount: 20,
+      smsPrice: 0.7,
+      baseFee: 15,
+      baseDue: 15,
+      runningAmount: 29,
       earned: 1250.5,
       rolledForward: 6,
       card: { last4: '4242', brand: 'visa', expiresAt: '2027-05-01' },
@@ -36,7 +44,7 @@ describe('parseBillingStatus', () => {
 
 describe('currentBillTotal', () => {
   it('sums running + rolled-forward, rounded to 2dp', () => {
-    expect(currentBillTotal({ runningAmount: 34, rolledForward: 6 })).toBe(40)
+    expect(currentBillTotal({ runningAmount: 29, rolledForward: 6 })).toBe(35)
     expect(currentBillTotal({ runningAmount: 0.1, rolledForward: 0.2 })).toBe(0.3)
   })
 })

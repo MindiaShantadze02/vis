@@ -27,6 +27,10 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 15_000,
+    launchOptions: {
+      slowMo: 1000
+    },
+    video: 'on'
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

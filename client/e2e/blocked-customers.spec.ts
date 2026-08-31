@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import {
   login, fillStable, bookToDetails, createSeedAppointment,
-  signInSeed, restApi, readSupabaseEnv, letterName, BOOKING_OTP, SEED,
+  signInSeed, restApi, readSupabaseEnv, letterName, setSmsEnabled, BOOKING_OTP, SEED,
   type SeedCtx,
 } from './helpers'
 
@@ -69,12 +69,18 @@ test.describe('Blocked customers', () => {
     }
   })
 
+  // "Before any code is sent" only means anything when a code would have been
+  // sent, so this one needs the SMS add-on ON. With it off the block is still
+  // enforced — by create_guest_booking, which deliberately answers with the
+  // generic 'booking_failed' so an unverified caller cannot probe the blocklist
+  // (covered by the DB-level test below).
   test('a blocked number is refused before any code is sent', async ({ page }) => {
     const ctx = await signInSeed()
     const orgId = await seedOrgId(ctx)
     const phone = `59${String(Date.now()).slice(-7)}`
 
     try {
+      await setSmsEnabled(true)
       await restApi(ctx, 'blocked_customers', {
         method: 'POST',
         body: JSON.stringify({ org_id: orgId, phone, reason: 'e2e' }),
@@ -107,10 +113,19 @@ test.describe('Blocked customers', () => {
       expect(j.ok).toBe(true)
     } finally {
       await unblockAll(ctx, [phone])
+      await setSmsEnabled(false)
     }
   })
 
+  // Needs the SMS add-on ON: the whole premise is a caller holding a VERIFIED
+  // code, and create-payment only names the block ('customer_blocked' rather
+  // than the generic 'booking_failed') for someone who proved phone ownership.
   test('blocking after a code was verified still stops the checkout', async () => {
+    // Flipping the add-on on and back costs two extra auth round-trips on top of
+    // an already HTTP-heavy test (request OTP, verify, block, checkout, unblock),
+    // which pushes it past the default 60s budget.
+    test.slow()
+    await setSmsEnabled(true)
     // The mid-flow race: the customer already holds a verified OTP when the
     // business blocks them. create-payment must refuse rather than charge —
     // the gate the UI can no longer reach now that request-booking-otp
@@ -167,6 +182,7 @@ test.describe('Blocked customers', () => {
       // create-payment parks the booking only after this check passes.)
     } finally {
       await unblockAll(ctx, [phone])
+      await setSmsEnabled(false)
     }
   })
 

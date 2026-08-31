@@ -9,6 +9,7 @@ import { ArrowForwardIos as ArrowForwardIosIcon } from '@/components/icons'
 import { Today as TodayIcon } from '@/components/icons'
 import { EventBusyOutlined as EventBusyOutlinedIcon } from '@/components/icons'
 import { Close as CloseIcon } from '@/components/icons'
+import { Add as AddIcon } from '@/components/icons'
 import { format, startOfWeek, startOfDay, addDays, isSameDay } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
@@ -19,8 +20,9 @@ import { StatusChip, ConfirmDialog, LoadingState, useToast, SideDrawer } from '@
 import AppointmentDetails from '@/components/AppointmentDetails'
 import RefundAction from '@/components/RefundAction'
 import { dateLocale } from '@/lib/dateLocale'
-import { getDayKey, type DayConfig, type WeekTemplate } from '@/lib/slots'
-import { timeToMinutes } from '@/lib/validation'
+import { getDayKey, BUSINESS_UTC_OFFSET, type DayConfig, type WeekTemplate } from '@/lib/slots'
+import { timeToMinutes, isValidGeorgianPhone, isValidPersonName, FIELD_LIMITS } from '@/lib/validation'
+import { focusFirstInvalidFieldAfterRender } from '@/lib/focusFirstInvalidField'
 import { useStaffAssignment } from '@/hooks/useStaffAssignment'
 import { APPOINTMENT_SELECT, pickOne, type Appointment, type StaffRef } from '@/types/appointment'
 
@@ -230,7 +232,11 @@ export default function CalendarPage() {
 
   // Org services, in their stable display order, used to assign a consistent
   // color per appointment type.
-  const [services, setServices] = useState<Array<{ id: string; name: string }>>([])
+  // Includes INACTIVE services on purpose: the calendar has to label historical
+  // appointments booked against a service the owner has since retired. The
+  // add-appointment picker filters them out (activeServices below) — offering
+  // one would produce a service_not_found from create_admin_appointment.
+  const [services, setServices] = useState<Array<{ id: string; name: string; is_active: boolean }>>([])
 
   // service_id → palette color. Keyed off the org's own service order so each
   // service keeps the same color regardless of which ones appear this week.
@@ -261,6 +267,26 @@ export default function CalendarPage() {
   const [restEnd, setRestEnd] = useState('14:00')
   const [restLabel, setRestLabel] = useState('')
   const [savingRest, setSavingRest] = useState(false)
+
+  // ── Add appointment (owner books on a customer's behalf) ────────────────
+  // Re-added 2026-09-03. These bookings never text the customer and never carry
+  // the SMS fee — the DB decides both from the fact that a member inserted them
+  // (stamp_appointment_origin), so there is nothing to pass here.
+  const [addDialog, setAddDialog] = useState(false)
+  const [addServiceId, setAddServiceId] = useState('')
+  const [addStaffId, setAddStaffId] = useState('')
+  const [addDate, setAddDate] = useState('')
+  const [addTime, setAddTime] = useState('')
+  const [addFirstName, setAddFirstName] = useState('')
+  const [addLastName, setAddLastName] = useState('')
+  const [addPhone, setAddPhone] = useState('')
+  const [addNotes, setAddNotes] = useState('')
+  const [addSubmitted, setAddSubmitted] = useState(false)
+  const [savingAdd, setSavingAdd] = useState(false)
+
+  // Only a bookable service can be booked — create_admin_appointment refuses an
+  // inactive one, and the owner retired it for a reason.
+  const activeServices = useMemo(() => services.filter(sv => sv.is_active), [services])
 
   // The week currently loaded/shown. Desktop pages by week from `weekStart`
   // (Mon-first); mobile follows `selectedDay` (Sun-first strip, matching iOS).
@@ -293,13 +319,13 @@ export default function CalendarPage() {
         .order('sort_order'),
       supabase
         .from('services')
-        .select('id, name')
+        .select('id, name, is_active')
         .eq('org_id', org.id)
         .order('sort_order'),
     ])
     if (tplRes.data) setTemplate(tplRes.data as unknown as WeekTemplate)
     setBookableMembers((memRes.data ?? []) as StaffRef[])
-    setServices((svcRes.data ?? []) as Array<{ id: string; name: string }>)
+    setServices((svcRes.data ?? []) as Array<{ id: string; name: string; is_active: boolean }>)
   }
 
   const { assignableMembers, reassignStaff } = useStaffAssignment(
@@ -352,6 +378,76 @@ export default function CalendarPage() {
     }
     setOverrides(map)
     setLoading(false)
+  }
+
+  // Inline per-field validation, house style: nothing is disabled, the click
+  // flags what is wrong.
+  const addFirstNameInvalid =
+    addSubmitted && (addFirstName.trim().length < 2 || !isValidPersonName(addFirstName))
+  const addLastNameInvalid =
+    addLastName.trim().length > 0 && !isValidPersonName(addLastName)
+  const addPhoneInvalid = addSubmitted && !isValidGeorgianPhone(addPhone)
+  const addServiceInvalid = addSubmitted && !addServiceId
+  const addTimeInvalid = addSubmitted && (!addDate || !addTime)
+
+  function openAddDialog() {
+    const todayKey = format(new Date(), 'yyyy-MM-dd')
+    const isInWeek = days.some(d => format(d, 'yyyy-MM-dd') === todayKey)
+    setAddServiceId(activeServices[0]?.id ?? '')
+    setAddStaffId('')
+    setAddDate(isInWeek ? todayKey : format(days[0], 'yyyy-MM-dd'))
+    setAddTime('10:00')
+    setAddFirstName('')
+    setAddLastName('')
+    setAddPhone('')
+    setAddNotes('')
+    setAddSubmitted(false)
+    setAddDialog(true)
+  }
+
+  async function saveAppointment() {
+    if (!org) return
+    setAddSubmitted(true)
+    const invalid =
+      addFirstName.trim().length < 2 ||
+      !isValidPersonName(addFirstName) ||
+      (addLastName.trim().length > 0 && !isValidPersonName(addLastName)) ||
+      !isValidGeorgianPhone(addPhone) ||
+      !addServiceId || !addDate || !addTime
+    if (invalid) {
+      focusFirstInvalidFieldAfterRender(document.querySelector('.MuiDrawer-root') ?? document)
+      return
+    }
+    setSavingAdd(true)
+    // Business wall-clock, pinned to the Georgia offset like every other slot
+    // in the domain — never glued to the viewer's zone.
+    const { error: rpcErr } = await supabase.rpc('create_admin_appointment', {
+      p_org_id: org.id,
+      p_service_id: addServiceId,
+      p_staff_id: addStaffId || null,
+      p_scheduled_at: new Date(`${addDate}T${addTime}:00${BUSINESS_UTC_OFFSET}`).toISOString(),
+      p_first_name: addFirstName.trim(),
+      p_last_name: addLastName.trim() || null,
+      p_phone: addPhone.replace(/\D/g, ''),
+      p_notes: addNotes.trim() || null,
+    })
+    setSavingAdd(false)
+    if (rpcErr) {
+      const m = rpcErr.message ?? ''
+      toast.error(
+        m.includes('slot_taken') || m.includes('capacity')
+          ? t('booking.slotTaken')
+          : m.includes('limit_reached')
+            ? t('billing.blockedTitle')
+            : m.includes('staff_not_available')
+              ? t('validation.staffUnavailable')
+              : m,
+      )
+      return
+    }
+    setAddDialog(false)
+    toast.success(t('calendar.appointmentAdded'))
+    await loadWeek()
   }
 
   function openRestDialog() {
@@ -476,6 +572,16 @@ export default function CalendarPage() {
           {t('dashboard.calendar')}
         </Typography>
         <Button
+          variant="contained"
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={openAddDialog}
+          sx={{ borderRadius: 2 }}
+          data-testid="cal-add-btn"
+        >
+          {t('calendar.addAppointment')}
+        </Button>
+        <Button
           variant="outlined"
           size="small"
           startIcon={<EventBusyOutlinedIcon />}
@@ -515,6 +621,11 @@ export default function CalendarPage() {
           <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>
             {t('dashboard.calendar')}
           </Typography>
+          <Tooltip title={t('calendar.addAppointment')}>
+            <IconButton onClick={openAddDialog} data-testid="cal-add-btn">
+              <AddIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title={t('calendar.rest')}>
             <IconButton onClick={openRestDialog} data-testid="cal-rest-btn">
               <EventBusyOutlinedIcon />
@@ -1033,6 +1144,108 @@ export default function CalendarPage() {
       </SideDrawer>
 
       {/* Add Rest Period drawer */}
+      {/* Add appointment — the owner writing down a booking they already agreed
+          by phone. No SMS is sent and no SMS fee applies; both are decided by
+          the DB from the fact that a member inserted it. */}
+      <SideDrawer
+        open={addDialog}
+        onClose={() => setAddDialog(false)}
+        disableClose={savingAdd}
+        title={t('calendar.addAppointment')}
+        actions={
+          <>
+            <Button onClick={() => setAddDialog(false)} disabled={savingAdd}>{t('common.cancel')}</Button>
+            <Button variant="contained" onClick={saveAppointment} disabled={savingAdd} data-testid="cal-add-save">
+              {savingAdd ? <CircularProgress size={18} color="inherit" /> : t('common.add')}
+            </Button>
+          </>
+        }
+      >
+        <Stack spacing={2.5} sx={{ mt: 0.5 }}>
+          <FormControl fullWidth size="small" error={addServiceInvalid}>
+            <InputLabel>{t('booking.service')}</InputLabel>
+            <Select
+              value={addServiceId}
+              label={t('booking.service')}
+              onChange={e => setAddServiceId(e.target.value)}
+              inputProps={{ 'data-testid': 'cal-add-service' }}
+            >
+              {activeServices.map(sv => <MenuItem key={sv.id} value={sv.id}>{sv.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth size="small">
+            <InputLabel>{t('booking.specialist')}</InputLabel>
+            <Select
+              value={addStaffId}
+              label={t('booking.specialist')}
+              onChange={e => setAddStaffId(e.target.value)}
+              inputProps={{ 'data-testid': 'cal-add-staff' }}
+            >
+              <MenuItem value="">{t('booking.anyAvailable')}</MenuItem>
+              {bookableMembers.map(m => (
+                <MenuItem key={m.id} value={m.id}>{m.display_name ?? ''}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+            <FormControl fullWidth size="small" error={addTimeInvalid}>
+              <InputLabel>{t('calendar.day')}</InputLabel>
+              <Select value={addDate} label={t('calendar.day')} onChange={e => setAddDate(e.target.value)}>
+                {days.map(day => (
+                  <MenuItem key={format(day, 'yyyy-MM-dd')} value={format(day, 'yyyy-MM-dd')}>
+                    {format(day, 'EEEE, d MMM', { locale: dateLocale() })}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth size="small" error={addTimeInvalid}>
+              <InputLabel>{t('calendar.start')}</InputLabel>
+              <Select value={addTime} label={t('calendar.start')} onChange={e => setAddTime(e.target.value)}>
+                {TIME_OPTIONS.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Box>
+
+          <TextField
+            fullWidth size="small" required
+            label={t('booking.firstName')}
+            value={addFirstName}
+            onChange={e => setAddFirstName(e.target.value)}
+            error={addFirstNameInvalid}
+            helperText={addFirstNameInvalid ? t('validation.lettersOnly') : undefined}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'cal-add-first-name' } }}
+          />
+          <TextField
+            fullWidth size="small"
+            label={t('booking.lastName')}
+            value={addLastName}
+            onChange={e => setAddLastName(e.target.value)}
+            error={addLastNameInvalid}
+            helperText={addLastNameInvalid ? t('validation.lettersOnly') : undefined}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.personName, 'data-testid': 'cal-add-last-name' } }}
+          />
+          <TextField
+            fullWidth size="small" required
+            label={t('booking.phone')}
+            placeholder="599 123 456"
+            value={addPhone}
+            onChange={e => setAddPhone(e.target.value)}
+            error={addPhoneInvalid}
+            helperText={addPhoneInvalid ? t('validation.invalidPhone') : t('calendar.addNoSmsHint')}
+            slotProps={{ htmlInput: { inputMode: 'tel', 'data-testid': 'cal-add-phone' } }}
+          />
+          <TextField
+            fullWidth size="small" multiline rows={2}
+            label={t('booking.notes')}
+            value={addNotes}
+            onChange={e => setAddNotes(e.target.value)}
+            slotProps={{ htmlInput: { maxLength: FIELD_LIMITS.notes, 'data-testid': 'cal-add-notes' } }}
+          />
+        </Stack>
+      </SideDrawer>
+
       <SideDrawer
         open={restDialog}
         onClose={() => setRestDialog(false)}

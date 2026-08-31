@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
         id, org_id, status, payment_method, payment_status, payment_reference, admin_notes,
         customer:customers(first_name, phone_number),
         service:services(name),
-        org:organisations(name)
+        org:organisations(name, sms_enabled)
       `)
       .eq('id', appointmentId)
       .maybeSingle()
@@ -271,8 +271,9 @@ Deno.serve(async (req) => {
       const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v)
       const customer = one(appt.customer as { first_name: string; phone_number: string } | null)
       const service = one(appt.service as { name: string } | null)
-      const org = one(appt.org as { name: string } | null)
-      if (customer?.phone_number) {
+      const org = one(appt.org as { name: string; sms_enabled: boolean } | null)
+      // Only orgs that bought the SMS add-on send customer messages.
+      if (customer?.phone_number && org?.sms_enabled === true) {
         await sendSms(admin, {
           orgId: appt.org_id,
           appointmentId: appt.id,

@@ -48,6 +48,9 @@ export interface BookingOrg {
   // When true, an ON-SITE booking here arrives as a request the business must
   // approve — so Step 3 promises a request, not a confirmation.
   require_approval: boolean
+  /** Whether this business bought the SMS add-on. Drives the one thing the
+   *  booking page needs it for: whether to ask for a verification code. */
+  sms_enabled: boolean
 }
 
 // Shape returned by the get_public_org RPC (secrets stripped server-side).
@@ -71,6 +74,7 @@ interface PublicOrg {
   deposit_value: number | null
   deposit_refundable: boolean | null
   require_approval: boolean | null
+  sms_enabled: boolean | null
 }
 
 export interface BookingService {
@@ -206,6 +210,9 @@ export default function BookingLayout() {
         // Default to auto-approve when the flag is absent (an older cached RPC
         // response), matching the column default.
         require_approval: pub.require_approval ?? false,
+        // Absent/NULL means "no add-on", which is the column default and the
+        // safe read: never ask for a code the business isn't paying to send.
+        sms_enabled: pub.sms_enabled ?? false,
         // Deposit config for the Step-3 preview (numeric comes back as string).
         deposit_type: pub.deposit_type ?? 'none',
         deposit_value: pub.deposit_value != null ? Number(pub.deposit_value) : null,

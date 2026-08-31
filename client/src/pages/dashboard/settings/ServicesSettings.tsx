@@ -63,10 +63,12 @@ interface ServiceForm {
   deposit_value: string
 }
 
+// Duration and price start empty: a prefilled value is one the owner never
+// chose, and a prefilled ₾0 saves a free service silently (MIN_PRICE is 0).
 const EMPTY: ServiceForm = {
   name: '',
-  duration_minutes: '60',
-  price: String(MIN_PRICE),
+  duration_minutes: '',
+  price: '',
   is_active: true,
   max_per_slot: '1',
   location_type: 'in_person',
@@ -257,9 +259,10 @@ export default function ServicesSettings() {
   const durationTooLong = Number(form.duration_minutes) > MAX_DURATION_MINUTES
   const durationMissing = submitted && !(Number(form.duration_minutes) > 0)
   const nameTooShort = (submitted || form.name.trim().length > 0) && form.name.trim().length < 2
-  // Free services were removed — a price below MIN_PRICE is invalid, and so is
-  // an empty field (Number('') is 0, which used to save silently as free).
-  const priceValid = isValidServicePrice(Number(form.price))
+  // Price is required: an empty field is rejected explicitly, because Number('')
+  // is 0 and a ₾0 service is legal (see MIN_PRICE) — so "left blank" would
+  // otherwise save silently as free.
+  const priceValid = form.price.trim().length > 0 && isValidServicePrice(Number(form.price))
   const priceInvalid = (submitted || form.price.trim().length > 0) && !priceValid
   const maxPerSlotInvalid = !(Number(form.max_per_slot) >= 1)
 
@@ -500,6 +503,7 @@ export default function ServicesSettings() {
               }
             />
             <TextField
+              required
               label={t('onboarding.price')}
               value={form.price}
               onChange={e => setForm(f => ({ ...f, price: onlyDecimal(e.target.value) }))}
@@ -507,6 +511,7 @@ export default function ServicesSettings() {
               error={priceInvalid}
               helperText={
                 !priceInvalid ? undefined
+                : form.price.trim().length === 0 ? t('validation.required')
                 : Number(form.price) > MAX_PRICE ? t('validation.priceTooLarge', { max: MAX_PRICE })
                 : t('validation.priceTooLow', { min: MIN_PRICE })
               }

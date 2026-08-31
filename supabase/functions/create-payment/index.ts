@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       // — the balance is settled in person; otherwise the full price is charged.
       const { data: orgDeposit } = await admin
         .from('organisations')
-        .select('deposit_type, deposit_value')
+        .select('deposit_type, deposit_value, sms_enabled')
         .eq('id', org_id)
         .maybeSingle()
       const deposit = depositFor(
@@ -133,31 +133,42 @@ Deno.serve(async (req) => {
 
       // Require a verified, unconsumed, unexpired OTP for this phone BEFORE
       // charging — the appointment insert (in the webhook) consumes it.
-      const { data: otp } = await admin
-        .from('booking_verifications')
-        .select('id')
-        .eq('phone', phoneLocal)
-        .not('verified_at', 'is', null)
-        .is('consumed_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      if (!otp) {
-        return Response.json({ error: 'verification_required' }, { status: 422, headers: corsHeaders })
+      // Only at orgs that bought the SMS add-on: without it no code was ever
+      // sent, and enforce_booking_verification lets the webhook's insert through
+      // on the same condition.
+      const otpRequired = orgDeposit?.sms_enabled === true
+      if (otpRequired) {
+        const { data: otp } = await admin
+          .from('booking_verifications')
+          .select('id')
+          .eq('phone', phoneLocal)
+          .not('verified_at', 'is', null)
+          .is('consumed_at', null)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (!otp) {
+          return Response.json({ error: 'verification_required' }, { status: 422, headers: corsHeaders })
+        }
       }
 
-      // Blocklist: this business has barred this number. Checked AFTER the OTP
-      // gate on purpose — the answer is only ever given to someone who has just
-      // proven they own the phone, so this can't be used to enumerate an org's
-      // blocklist. Refusing here means a blocked customer is never charged; if
-      // this check were somehow skipped the appointment insert would still be
-      // refused by trg_zz_block_blocked_customer and the webhook would
-      // auto-refund, so this is the courtesy, not the control.
+      // Blocklist: this business has barred this number. Refusing here means a
+      // blocked customer is never charged; if this check were somehow skipped
+      // the appointment insert would still be refused by
+      // trg_zz_block_blocked_customer and the webhook would auto-refund, so this
+      // is the courtesy, not the control.
+      //
+      // The specific answer is only given to a caller who just proved they own
+      // the phone. Without an OTP it would be an oracle over (org, phone), so an
+      // unverified caller gets the same generic failure a gateway error gives —
+      // the same trade create_guest_booking makes on the on-site path.
       const { data: blocked } = await admin
         .rpc('is_phone_blocked', { p_org_id: org_id, p_phone: phoneLocal })
       if (blocked === true) {
-        return Response.json({ error: 'customer_blocked' }, { status: 403, headers: corsHeaders })
+        return otpRequired
+          ? Response.json({ error: 'customer_blocked' }, { status: 403, headers: corsHeaders })
+          : Response.json({ error: 'booking_failed' }, { status: 403, headers: corsHeaders })
       }
 
       // Park the booking until payment clears.

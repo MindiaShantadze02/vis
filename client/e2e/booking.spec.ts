@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import {
   passBookingOtp, fillStable, bookToDetails, pickFirstAvailableSlot,
-  signInSeed, restApi, letterName, uniquePhone, setPaymentMethods, SEED,
+  signInSeed, restApi, letterName, uniquePhone, setPaymentMethods, setSmsEnabled, SEED,
 } from './helpers'
 
 /** Open the booking wizard on the date step (service selected, week strip visible). */
@@ -122,18 +122,40 @@ test.describe('Public booking', () => {
   // Step-3 field gating (pairwise/BVA/error-guessing) is data-driven now — see
   // e2e/data/booking-customer.json + e2e/data-driven/booking-customer.spec.ts.
 
+  // The OTP step only exists for orgs that bought the SMS add-on, so this test
+  // turns it on and MUST put it back — off is the seed's resting state and
+  // every other booking spec assumes it.
   test('a wrong OTP is rejected and stays on the verification step', async ({ page }) => {
+    await setSmsEnabled(true)
+    try {
+      expect(await bookToDetails(page)).toBeTruthy()
+      await fillStable(page.getByTestId('book-first-name'), 'Nino')
+      await fillStable(page.getByTestId('book-phone'), '599445566')
+      await page.getByTestId('book-submit').click()
+
+      // Enter a wrong code — verification fails, no appointment is created.
+      await page.getByTestId('book-otp-code').fill('111111')
+      await page.getByTestId('book-otp-verify').click()
+
+      await expect(page.getByTestId('book-error')).toBeVisible()
+      await expect(page).not.toHaveURL(/\/booking-confirmation\//)
+    } finally {
+      await setSmsEnabled(false)
+    }
+  })
+
+  // The default path: no add-on, so the phone is collected but never verified.
+  // The seeded Consultation is priced, so submitting goes straight out to the
+  // gateway — reaching it at all is the assertion, because the old flow could
+  // not get past the code screen to do so.
+  test('with the SMS add-on off there is no code step before checkout', async ({ page }) => {
     expect(await bookToDetails(page)).toBeTruthy()
-    await fillStable(page.getByTestId('book-first-name'), 'Nino')
-    await fillStable(page.getByTestId('book-phone'), '599445566')
+    await fillStable(page.getByTestId('book-first-name'), letterName())
+    await fillStable(page.getByTestId('book-phone'), uniquePhone())
     await page.getByTestId('book-submit').click()
 
-    // Enter a wrong code — verification fails, no appointment is created.
-    await page.getByTestId('book-otp-code').fill('111111')
-    await page.getByTestId('book-otp-verify').click()
-
-    await expect(page.getByTestId('book-error')).toBeVisible()
-    await expect(page).not.toHaveURL(/\/booking-confirmation\//)
+    await expect(page).toHaveURL(/\/pay\/mock/, { timeout: 30_000 })
+    await expect(page.getByTestId('book-otp-code')).toHaveCount(0)
   })
 
   test('the week strip pages forward and back with the arrows', async ({ page }) => {

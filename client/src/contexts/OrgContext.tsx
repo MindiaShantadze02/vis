@@ -28,6 +28,9 @@ export interface Organisation {
   /** When on, ON-SITE bookings arrive 'pending' and wait for the owner to
    *  approve. Online/deposit bookings are never gated. Default false. */
   require_approval: boolean
+  /** The paid SMS add-on ("Enable SMS"). Off by default: no booking OTP, no
+   *  confirmation, no reminder. On, it bills per public appointment. */
+  sms_enabled: boolean
   // Cancellation policy (migration 090): the free-cancel/refund window,
   // consumed by self-service cancel-with-refund.
   cancellation_window_hours: number

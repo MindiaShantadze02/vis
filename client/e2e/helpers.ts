@@ -75,12 +75,28 @@ export async function passAuthOtp(page: Page) {
   await page.getByTestId('auth-otp-code').fill(BOOKING_OTP)
 }
 
-/** Complete the booking OTP step with the master code. */
+/**
+ * Complete the booking OTP step with the master code — if there is one.
+ *
+ * Since 20260903120000 the OTP is part of the paid SMS add-on, and the seeded
+ * org's resting state is OFF: the booking goes straight from the details form
+ * to the confirmation page with no code step at all. Absence is therefore the
+ * normal case, not a failure, and treating it as success here keeps every
+ * booking spec free of `if (smsEnabled)` branching. A spec that actually wants
+ * to exercise the OTP turns the add-on on with setSmsEnabled(true) and must
+ * restore it in a `finally`.
+ */
 export async function passBookingOtp(page: Page) {
+  const code = page.getByTestId('book-otp-code')
+  const appeared = await code
+    .waitFor({ state: 'visible', timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false)
+  if (!appeared) return
   // Filling all 6 digits auto-submits (verifyAndBook fires from an effect), so
   // no Verify click here — clicking would race the navigation to the
   // confirmation page and time out on the disabled/unmounted button.
-  await page.getByTestId('book-otp-code').fill(BOOKING_OTP)
+  await code.fill(BOOKING_OTP)
 }
 
 /**
@@ -108,8 +124,14 @@ export async function pickFirstAvailableSlot(page: Page): Promise<boolean> {
     const slot = page.getByTestId('book-slot').first()
     if (await slot.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
       await slot.click()
-      // Step 3 no longer has a consent checkbox — consent is given by proceeding
-      // (an inline notice under the Book button), so there's nothing to tick here.
+      // Step 3 requires explicit consent to Privacy + Terms. Without it sendCode
+      // returns at its own validation — no request, no OTP step, and no
+      // book-error banner either (that one is server-errors-only), so a spec
+      // that skips this just times out waiting for a code field that never
+      // renders. Same MUI hidden-input pattern as register-consent.
+      const consent = page.getByTestId('book-consent').locator('input')
+      await consent.waitFor({ state: 'attached', timeout: 15_000 })
+      await consent.check()
       return true
     }
   }
@@ -468,4 +490,34 @@ export async function cancelAppt(page: Page, name: string): Promise<void> {
     await page.getByTestId('appt-confirm-cancel').click()
     await expect(page.getByRole('dialog')).toBeHidden({ timeout: 20_000 })
   }
+}
+
+/**
+ * Turn the SMS add-on on/off for the seeded org (organisations.sms_enabled,
+ * migration 20260903120000). OFF is the seed's resting state and the column
+ * default: with it off a guest books without any OTP step at all, which is what
+ * every booking spec assumes. A spec that turns it ON **must** restore it in a
+ * `finally`, or every later booking spec starts waiting for a code field that
+ * the earlier ones never see — the same drift contract as setRequireApproval.
+ *
+ * Straight PostgREST as the seeded owner, same as setRequireApproval.
+ */
+export async function setSmsEnabled(on: boolean): Promise<void> {
+  const { url, anonKey, accessToken } = await signInSeed()
+  const res = await fetch(
+    `${url}/rest/v1/organisations?slug=eq.${SEED.slug}&select=id`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: anonKey,
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+        prefer: 'return=representation',
+      },
+      body: JSON.stringify({ sms_enabled: on }),
+    },
+  )
+  if (!res.ok) throw new Error(`setSmsEnabled(${on}) → ${res.status} ${await res.text()}`)
+  const rows = (await res.json()) as { id: string }[]
+  if (!rows.length) throw new Error('sms_enabled update matched no org')
 }

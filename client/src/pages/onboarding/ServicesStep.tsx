@@ -38,8 +38,10 @@ interface DraftService {
   imagePreview: string | null
 }
 
+// Every field starts empty: a prefilled duration/price is a value the owner
+// never chose, and a prefilled ₾0 saves a free service silently (MIN_PRICE is 0).
 const empty: DraftService = {
-  name: '', duration_minutes: '30', price: String(MIN_PRICE),
+  name: '', duration_minutes: '', price: '',
   location_type: 'in_person', imageFile: null, imagePreview: null,
 }
 
@@ -67,9 +69,10 @@ export default function ServicesStep() {
   const durationTooLong = Number(draft.duration_minutes) > MAX_DURATION_MINUTES
   const durationMissing = submitted && !(Number(draft.duration_minutes) > 0)
   const nameTooShort = (submitted || draft.name.trim().length > 0) && draft.name.trim().length < 2
-  // Free services were removed — a price below MIN_PRICE is invalid, and so is
-  // an empty field (Number('') is 0, which used to save silently as free).
-  const priceValid = isValidServicePrice(Number(draft.price))
+  // Price is required: an empty field is rejected explicitly, because Number('')
+  // is 0 and a ₾0 service is legal (see MIN_PRICE) — so "left blank" would
+  // otherwise save silently as free.
+  const priceValid = draft.price.trim().length > 0 && isValidServicePrice(Number(draft.price))
   const priceInvalid = (submitted || draft.price.trim().length > 0) && !priceValid
   const draftValid =
     draft.name.trim().length >= 2 &&
@@ -149,8 +152,15 @@ export default function ServicesStep() {
     if (editingIndex !== null && index <= editingIndex) resetForm()
   }
 
-  // A service the user has started entering (needs at least a name to matter).
-  const hasPendingDraft = draft.name.trim().length > 0 || isEditing
+  // A service the user has started entering. Every field starts empty now, so
+  // any one of them holding a value (or a staged photo) means there's a draft
+  // worth keeping — a pristine form means the owner is done adding services.
+  const hasPendingDraft =
+    isEditing ||
+    draft.name.trim().length > 0 ||
+    draft.duration_minutes.trim().length > 0 ||
+    draft.price.trim().length > 0 ||
+    draft.imageFile !== null
   // "Next" must not throw away a service the user typed but didn't add. If the
   // form holds a valid service, add it first; if it's half-finished, keep them
   // here and say why rather than silently dropping it.
@@ -270,12 +280,14 @@ export default function ServicesStep() {
             />
             <TextField
               fullWidth
+              required
               label={t('onboarding.price')}
               value={draft.price}
               onChange={e => setDraft(d => ({ ...d, price: onlyDecimal(e.target.value) }))}
               error={priceInvalid}
               helperText={
                 !priceInvalid ? undefined
+                : draft.price.trim().length === 0 ? t('validation.required')
                 : Number(draft.price) > MAX_PRICE ? t('validation.priceTooLarge', { max: MAX_PRICE })
                 : t('validation.priceTooLow', { min: MIN_PRICE })
               }

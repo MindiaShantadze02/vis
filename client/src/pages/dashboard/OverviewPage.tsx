@@ -370,7 +370,16 @@ export default function OverviewPage() {
 
     const { error: rpcErr } = await supabase.rpc('request_meeting_link_sms', { p_appointment_id: selected.id })
     setSendingLink(false)
-    if (rpcErr) { toast.error(rpcErr.message); return }
+    if (rpcErr) {
+      // The link IS saved above either way — only the text failed. Translate the
+      // one refusal the owner can act on instead of showing raw SQL.
+      toast.error(
+        rpcErr.message?.includes('sms_disabled')
+          ? t('settings.smsDisabledError')
+          : rpcErr.message,
+      )
+      return
+    }
 
     // Reflect the saved link locally so the "needs link" cue clears immediately.
     setAppointments(prev => prev.map(a => a.id === selected.id ? { ...a, meeting_link: link } : a))

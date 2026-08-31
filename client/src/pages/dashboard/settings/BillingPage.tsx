@@ -265,7 +265,10 @@ export default function BillingPage() {
         <Box>
           <FormErrorAlert message={error} data-testid="card-error" />
           <Alert severity="info" sx={{ mb: 2 }} data-testid="card-disclaimer">
-            {t('billing.cardDisclaimer', { price: billing?.appointmentPrice ?? 1 })}
+            {t('billing.cardDisclaimer', {
+              base: billing?.baseFee ?? 15,
+              price: billing?.smsPrice ?? 0.7,
+            })}
           </Alert>
           <Stack spacing={2}>
             {/* Both fields reformat on every keystroke, so the owner can type

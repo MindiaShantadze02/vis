@@ -3,15 +3,16 @@ import { useTranslation } from 'react-i18next'
 import { useOrg } from '@/contexts/OrgContext'
 
 /**
- * Always-visible dashboard running bill. Post-paid usage billing — signup is
- * free and the business is charged once a month for the appointments it used.
- * Reads the org's billing snapshot from context (get_org_billing_status) — no
- * extra round-trip.
+ * Always-visible dashboard running bill. Signup is free; the business pays a
+ * flat monthly subscription plus, with the SMS add-on on, a fee per public
+ * booking. Reads the org's billing snapshot from context
+ * (get_org_billing_status) — no extra round-trip.
  *
- * The business's gross revenue (`earned`) is the hero figure; the Vis commission
- * it owes (`runningAmount`) sits below as a quiet secondary line. Both cover the
- * same billable appointment set for the current period. A zero month reads as
- * "no charge yet"; rolled-forward / past_due / suspended are flagged last.
+ * The business's gross revenue (`earned`) is the hero figure; what it owes Vis
+ * (`runningAmount`) sits below as a quiet secondary line, itemised so the owner
+ * can see which half is the subscription and which half is SMS. A first period
+ * reads as subscription-free; rolled-forward / past_due / suspended are flagged
+ * last.
  */
 export default function UsageMeter() {
   const { t } = useTranslation()
@@ -21,7 +22,10 @@ export default function UsageMeter() {
   if (org?.billing_exempt) return null
   if (!billing) return null
 
-  const { appointmentCount, runningAmount, earned, rolledForward, status } = billing
+  const {
+    appointmentCount, runningAmount, earned, rolledForward, status,
+    baseDue, smsCount, smsPrice,
+  } = billing
   const hasUsage = appointmentCount > 0
   const hasFooter = rolledForward > 0 || status === 'past_due' || status === 'suspended'
 
@@ -64,8 +68,18 @@ export default function UsageMeter() {
             ₾{runningAmount}
           </Typography>
         </Box>
-        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.5 }}>
-          {hasUsage ? t('billing.billedMonthEnd') : t('billing.noChargeYet')}
+        {/* Itemised: a flat fee and a usage fee are different things, and an
+            owner who turned SMS on should be able to see what it cost. */}
+        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.5 }} data-testid="usage-breakdown">
+          {baseDue > 0
+            ? t('billing.baseLine', { amount: baseDue })
+            : t('billing.baseFreeFirstMonth')}
+          {smsCount > 0
+            ? ` · ${t('billing.smsLine', { count: smsCount, price: smsPrice })}`
+            : ''}
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block' }}>
+          {t('billing.billedMonthEnd')}
         </Typography>
 
         {hasFooter && (

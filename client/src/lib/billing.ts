@@ -3,10 +3,11 @@
  * (post-paid usage billing). One cacheable read that drives the running-bill
  * meter and the billing settings page.
  *
- * Model: signup is free; every billable appointment in the current period meters
- * at a flat per-appointment price; the business is charged once a month for what
- * it used, against a card on file. `billingStatus` is active / past_due /
- * suspended — suspended blocks new bookings (data/page stay alive).
+ * Model: signup is free; the business pays a flat monthly subscription plus,
+ * when it has bought the SMS add-on, a per-appointment fee for each public
+ * booking that generated messages. Charged once a month against a card on file.
+ * `billingStatus` is active / past_due / suspended — suspended blocks new
+ * bookings (data/page stay alive).
  */
 
 export type BillingState = 'active' | 'past_due' | 'suspended'
@@ -23,9 +24,19 @@ export interface BillingStatus {
   periodEnd: string
   /** Billable appointments so far this period (occurrence-date, billable states). */
   appointmentCount: number
-  /** ₾ per billable appointment. */
-  appointmentPrice: number
-  /** appointmentCount × appointmentPrice, in ₾ (the Vis commission). */
+  /** Whether the org has the paid SMS add-on switched on. */
+  smsEnabled: boolean
+  /** Of appointmentCount, those that carry the SMS fee (public bookings made
+   *  while the add-on was on — admin-entered ones never do). */
+  smsCount: number
+  /** ₾ per SMS-billable appointment. */
+  smsPrice: number
+  /** The flat monthly subscription, in ₾. */
+  baseFee: number
+  /** What the base fee actually comes to this period — 0 during an org's first
+   *  period, which is free of the subscription. */
+  baseDue: number
+  /** baseDue + smsCount × smsPrice, in ₾. */
   runningAmount: number
   /** Gross revenue over the same billable appointments this period, in ₾. */
   earned: number
@@ -60,7 +71,11 @@ export function parseBillingStatus(raw: unknown): BillingStatus | null {
     periodStart: String(r.period_start ?? ''),
     periodEnd: String(r.period_end ?? ''),
     appointmentCount: num(r.appointment_count),
-    appointmentPrice: num(r.appointment_price),
+    smsEnabled: r.sms_enabled === true,
+    smsCount: num(r.sms_count),
+    smsPrice: num(r.sms_price),
+    baseFee: num(r.base_fee),
+    baseDue: num(r.base_due),
     runningAmount: num(r.running_amount),
     earned: num(r.earned),
     rolledForward: num(r.rolled_forward),

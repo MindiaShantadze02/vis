@@ -52,12 +52,17 @@ reason, the payment is returned automatically.
 
 ### Business billing
 
-Business accounts are free to open and require no card to start. Businesses are billed once a
-month for the appointments they received that month, at a per-appointment rate charged to a card
-kept on file. Months with no appointments are not charged. The current rate, and the running
-total for the month, are shown in the app under Settings → Billing.
+Business accounts are free to open and require no card to start. Businesses pay a **fixed monthly
+subscription** for use of the platform, charged once a month to a card kept on file. The
+subscription is payable whether or not any appointments were received that month. The first
+month is free of the subscription fee.
 
-An appointment counts towards the bill once it has been confirmed and its time has passed —
+A business that switches on SMS notifications additionally pays a **per-appointment fee** for each
+appointment booked through its public booking page while that option is on. Appointments the
+business enters itself carry no such fee and send no messages to the client. The current rates,
+and the running total for the month, are shown in the app under Settings → Billing.
+
+The per-appointment fee applies once an appointment has been confirmed and its time has passed —
 including where the client did not attend. A booking cancelled **before** its scheduled time is
 never charged. A business may also correct its records for up to **24 hours** after an
 appointment's scheduled end without being charged for it; after that window, an appointment that

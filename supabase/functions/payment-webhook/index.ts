@@ -205,21 +205,26 @@ Deno.serve(async (req) => {
           // Tell the customer their money is coming back. No appointment row
           // exists, so the details come from the parked booking itself.
           const { data: orgRow } = await admin
-            .from('organisations').select('name').eq('id', pb.org_id).maybeSingle()
+            .from('organisations').select('name, sms_enabled').eq('id', pb.org_id).maybeSingle()
           const { data: svcRow } = await admin
             .from('services').select('name').eq('id', pb.service_id).maybeSingle()
-          await sendSms(admin, {
-            orgId: pb.org_id,
-            appointmentId: null,
-            messageType: 'refund_update',
-            to: pb.phone,
-            body: refundUpdateBody({
-              businessName: orgRow?.name ?? 'Vis',
-              serviceName: svcRow?.name ?? '',
-              amount: Number(pb.amount),
-              currency: pb.currency ?? 'GEL',
-            }),
-          })
+          // Only orgs that bought the SMS add-on send customer messages. The
+          // refund itself is already done above either way — this is the notice,
+          // not the money.
+          if (orgRow?.sms_enabled === true) {
+            await sendSms(admin, {
+              orgId: pb.org_id,
+              appointmentId: null,
+              messageType: 'refund_update',
+              to: pb.phone,
+              body: refundUpdateBody({
+                businessName: orgRow?.name ?? 'Vis',
+                serviceName: svcRow?.name ?? '',
+                amount: Number(pb.amount),
+                currency: pb.currency ?? 'GEL',
+              }),
+            })
+          }
         } catch (refundErr) {
           // Refund couldn't be issued (e.g. real gateway down / stub): keep the
           // log 'failed' with both errors so superadmin reconciliation finds

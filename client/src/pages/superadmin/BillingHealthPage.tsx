@@ -37,7 +37,7 @@ interface Dunning {
 }
 interface BillingHealth {
   months: number
-  appointment_price: number
+  sms_appointment_price: number
   outstanding: Outstanding
   collection_by_month: CollectionMonth[]
   no_card: NoCardOrg[]
@@ -236,7 +236,7 @@ export default function BillingHealthPage() {
 
         <Section
           title="შემოსავალი თვეების მიხედვით"
-          hint={`თითოეული ჯავშანი, რომელიც ანგარიშში შედის, ჯდება ₾${health?.appointment_price ?? 0}.`}
+          hint={`SMS-იანი ჯავშანი ჯდება ₾${health?.sms_appointment_price ?? 0}. საბაზისო აბონენტი ინვოისებშია.`}
         >
           {revenue.length === 0 ? (
             <EmptyState title="ჯერ არაფერია" caption="შემოსავალი გამოჩნდება პირველი დახურული თვის შემდეგ." />
