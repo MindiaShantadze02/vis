@@ -1,0 +1,218 @@
+[
+  {
+    "key": "barbershop",
+    "imageDir": "barbershop",
+    "themeHex": null,
+    "org": {
+      "name": "Demo Barbershop",
+      "description": "ბარბერშოპი — თმის შეჭრა და წვერის მოვლა. აირჩიეთ სერვისი, სპეციალისტი და დრო.",
+      "address": "თბილისი, აღმაშენებლის გამზირი 84"
+    },
+    "services": [
+      {
+        "name": "თმის შეჭრა",
+        "duration": "20",
+        "price": "30",
+        "image": "service-1.jpg"
+      },
+      {
+        "name": "წვერის გაპარსვა",
+        "duration": "20",
+        "price": "20",
+        "image": "service-2.jpg"
+      }
+    ],
+    "staff": [
+      {
+        "name": "გიორგი",
+        "title": "ბარბერი",
+        "photo": "staff-1.jpg",
+        "services": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "ლევანი",
+        "title": "ბარბერი",
+        "photo": "staff-2.jpg",
+        "services": [
+          0,
+          1
+        ]
+      }
+    ],
+    "customer": {
+      "firstName": "ნიკა",
+      "lastName": "აბაშიძე"
+    }
+  },
+  {
+    "key": "dental",
+    "imageDir": "dental",
+    "themeHex": "#0F7C8A",
+    "org": {
+      "name": "Demo Dental Clinic",
+      "description": "სტომატოლოგიური კლინიკა — დათვალიერება, წმენდა და მკურნალობა. აირჩიეთ სერვისი, ექიმი და დრო.",
+      "address": "თბილისი, ჭავჭავაძის გამზირი 37"
+    },
+    "services": [
+      {
+        "name": "კონსულტაცია და დათვალიერება",
+        "duration": "30",
+        "price": "50",
+        "image": "service-1.jpg"
+      },
+      {
+        "name": "პროფესიული წმენდა და გათეთრება",
+        "duration": "45",
+        "price": "180",
+        "image": "service-2.jpg"
+      },
+      {
+        "name": "კბილის დაბჟენა",
+        "duration": "60",
+        "price": "150",
+        "image": "service-3.jpg"
+      }
+    ],
+    "staff": [
+      {
+        "name": "ნინო ბერიძე",
+        "title": "სტომატოლოგი",
+        "photo": "staff-1.jpg",
+        "services": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "თამარ ხურციძე",
+        "title": "სტომატოლოგ-ორთოდონტი",
+        "photo": "staff-2.jpg",
+        "services": [
+          0,
+          1,
+          2
+        ]
+      }
+    ],
+    "customer": {
+      "firstName": "ანა",
+      "lastName": "ჩხეიძე"
+    }
+  },
+  {
+    "key": "trainer",
+    "imageDir": "trainer",
+    "themeHex": "#16A34A",
+    "org": {
+      "name": "Demo Personal Trainer",
+      "description": "პერსონალური ვარჯიშის სტუდია — ინდივიდუალური და წყვილის ვარჯიშები. აირჩიეთ სერვისი, მწვრთნელი და დრო.",
+      "address": "თბილისი, პეკინის ქუჩა 21"
+    },
+    "services": [
+      {
+        "name": "საწყისი შეფასება",
+        "duration": "45",
+        "price": "40",
+        "image": "service-1.jpg"
+      },
+      {
+        "name": "პერსონალური ვარჯიში",
+        "duration": "60",
+        "price": "60",
+        "image": "service-2.jpg"
+      },
+      {
+        "name": "წყვილის ვარჯიში",
+        "duration": "60",
+        "price": "90",
+        "image": "service-3.jpg"
+      }
+    ],
+    "staff": [
+      {
+        "name": "დავით ლომიძე",
+        "title": "პერსონალური მწვრთნელი",
+        "photo": "staff-1.jpg",
+        "services": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "მარიამ კაპანაძე",
+        "title": "ფიტნეს მწვრთნელი",
+        "photo": "staff-2.jpg",
+        "services": [
+          0,
+          1,
+          2
+        ]
+      }
+    ],
+    "customer": {
+      "firstName": "სანდრო",
+      "lastName": "წიკლაური"
+    }
+  },
+  {
+    "key": "driving",
+    "imageDir": "driving",
+    "themeHex": "#1D4ED8",
+    "org": {
+      "name": "Demo Driving School",
+      "description": "ავტოსკოლა — B კატეგორიის თეორია და პრაქტიკული მართვა. აირჩიეთ სერვისი, ინსტრუქტორი და დრო.",
+      "address": "თბილისი, ვაჟა-ფშაველას გამზირი 76"
+    },
+    "services": [
+      {
+        "name": "საცდელი გაკვეთილი",
+        "duration": "60",
+        "price": "25",
+        "image": "service-1.jpg"
+      },
+      {
+        "name": "პრაქტიკული მართვა",
+        "duration": "90",
+        "price": "60",
+        "image": "service-2.jpg"
+      },
+      {
+        "name": "საგამოცდო მარშრუტი",
+        "duration": "60",
+        "price": "50",
+        "image": "service-3.jpg"
+      }
+    ],
+    "staff": [
+      {
+        "name": "ზურაბ მაისურაძე",
+        "title": "ინსტრუქტორი",
+        "photo": "staff-1.jpg",
+        "services": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "ეკა გელაშვილი",
+        "title": "ინსტრუქტორი",
+        "photo": "staff-2.jpg",
+        "services": [
+          0,
+          1,
+          2
+        ]
+      }
+    ],
+    "customer": {
+      "firstName": "გიორგი",
+      "lastName": "კვარაცხელია"
+    }
+  }
+]

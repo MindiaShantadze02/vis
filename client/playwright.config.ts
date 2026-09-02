@@ -1,5 +1,14 @@
 import { defineConfig, devices } from '@playwright/test'
 
+/**
+ * Pacing for the demo screencasts (e2e/demo.spec.ts) — the delay Playwright puts
+ * before every action, which is what makes a recording watchable rather than a
+ * blur. Higher = slower and calmer on camera. Override per take:
+ *
+ *     DEMO_SLOW_MO=2400 npm run demo
+ */
+const DEMO_SLOW_MO = Number(process.env.DEMO_SLOW_MO ?? 1800)
+
 // End-to-end tests run against the real dev server + the hosted Supabase backend
 // (the same setup used for manual QA), NOT a stubbed backend. Two consequences:
 //   • Tests are serial (workers: 1) — they share one hosted database and a small
@@ -33,7 +42,33 @@ export default defineConfig({
     video: 'on'
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // The test suite. Excludes the demo screencasts: they are ad creative, not
+    // assertions, and recording four of them added ~5 min to every suite run.
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testIgnore: /demo\.spec\.ts/,
+    },
+    // The screencasts. Slower pacing, and a video recorded at full viewport
+    // resolution — Playwright otherwise scales the recording down to fit
+    // 800x800, which for a 1280x720 viewport means shipping 800x450 footage to
+    // an ad. No retries: a re-run would silently overwrite a good take, and
+    // these are meant to be watched before use anyway.
+    {
+      name: 'demo',
+      testMatch: /demo\.spec\.ts/,
+      retries: 0,
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+        launchOptions: { slowMo: DEMO_SLOW_MO },
+        // slowMo delays sit inside the action's own budget, so the default 15s
+        // gets tight once pacing is turned up for filming.
+        actionTimeout: 30_000,
+        video: { mode: 'on', size: { width: 1280, height: 720 } },
+        trace: 'off',
+      },
+    },
   ],
   // Reuse an already-running `npm run dev`; otherwise start one. The dev server
   // is configured (client/.env) to talk to the hosted Supabase project.

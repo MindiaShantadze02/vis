@@ -15,6 +15,7 @@
     "cy:run": "cypress run",
     "test:e2e": "start-server-and-test dev http://localhost:5173 cy:run",
     "e2e": "playwright test",
+    "demo": "playwright test --project=demo",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
     "e2e:report": "playwright show-report"

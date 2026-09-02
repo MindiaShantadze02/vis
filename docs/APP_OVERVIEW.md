@@ -4,6 +4,9 @@
 > Migrations run through `20260818120000_appointment_refunds.sql` (2026-08-18); everything
 > through that is **pushed to prod**. Verify with `supabase migration list --linked` (remote
 > versions are re-timestamped on push, so match by *name*, not number).
+>
+> For diagrams of how the client, edge functions and database fit together, see
+> [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## What it is
 A multi-tenant SaaS platform for the **Georgian market** that lets small service businesses

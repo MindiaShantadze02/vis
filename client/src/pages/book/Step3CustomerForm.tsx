@@ -608,9 +608,9 @@ export default function Step3CustomerForm({
                     ? t("validation.invalidPhone")
                     : smsEnabled
                       ? t("booking.smsHelper")
-                      : // No code is coming, so don't promise one — say what
-                        // the number is actually for.
-                        t("booking.phoneHelperNoSms")
+                      : // Without the SMS add-on there is no code to explain,
+                        // and the field speaks for itself.
+                        undefined
                 }
                 slotProps={{
                   htmlInput: {

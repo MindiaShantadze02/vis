@@ -86,6 +86,79 @@ Cases seeded from experience of where this app tends to break:
 - Profile: image just over 2 MB, non-image upload, delete-account confirm word.
 - Superadmin: a non-superadmin reaching a privileged route.
 
+## Demo screencasts (`demo.spec.ts`)
+
+`demo.spec.ts` is **not** a test — it is the marketing screencast, one recorded
+run per vertical (barbershop, dental clinic, personal trainer, driving school)
+of signup → onboarding → a fully branded booking page → a confirmed appointment.
+
+```bash
+npm run demo                        # all four
+npm run demo -- --grep dental       # one vertical
+DEMO_SLOW_MO=2400 npm run demo      # slower take (default 1800ms per action)
+```
+
+It runs in its own Playwright **project** (`demo` in playwright.config.ts), which
+is what makes the footage usable:
+
+- **`slowMo: DEMO_SLOW_MO`** (1800ms, env-overridable) instead of the suite's
+  1000 — pacing is the single biggest lever on how watchable a take is.
+- **`video: { size: 1280x720 }`.** Without an explicit size Playwright scales the
+  recording down to fit 800x800, i.e. ships 800x450 footage. Don't remove it.
+- **`retries: 0`** — a retry would silently overwrite a good take.
+- The suite's `chromium` project **ignores** `demo.spec.ts`, so `npm run e2e` no
+  longer records four screencasts it doesn't need.
+
+Takes land in the gitignored `demos/` as `demo-<vertical>.webm` (~12 MB), plus a
+full-page still `demo-<vertical>-booking.png` of the finished booking page —
+usable as ad creative on its own, and the fastest check that a vertical's assets
+landed. Videos are saved in `afterEach` **after `page.close()`**: the recording is
+only finalised on close, so calling `saveAs` from inside the test blocks until the
+test times out.
+
+### Making it look like a person
+
+Playwright jumps: it teleports the page when scrolling a target into view, which
+is the most jarring thing you can put in a screencast. Four helpers in the spec
+fix that — reuse them for any new step:
+
+- `smoothScrollTo(page, y, ms)` — eased (easeInOutCubic) rAF scroll. Native
+  `behavior: 'smooth'` runs at a fixed browser speed and can't be slowed down.
+- `revealAndClick(page, locator)` — ease the target to the middle of the viewport,
+  *then* click, so Playwright's own scroll has nothing left to do. Use this
+  instead of `.click()` for anything that might sit below the fold.
+- `scrollTour(page)` — read the page down and back up, the way someone deciding
+  whether to book would.
+- `beat(page, ms)` — a held pause. `slowMo` spaces actions evenly but leaves no
+  room to *look*; the payoff moments (finished booking page, confirmation, the
+  booking appearing on the owner's dashboard) get an explicit beat.
+
+`waitForImages(page)` also holds until every image has decoded — SkeletonImage
+keeps images at `opacity: 0` behind a pulsing skeleton, so without it the take is
+a page of grey boxes. It retries once (Supabase's transform endpoint occasionally
+errors on a just-uploaded object) and then only *warns*: losing a whole take over
+one slow banner is worse than filming it. Watch the run output for that warning.
+
+### Content
+
+Everything vertical-specific lives in **`e2e/data/demo-verticals.json`** (copy,
+services, staff, brand colour) and **`e2e/images/<imageDir>/`** (cover, logo,
+service photos, staff photos — sources in `e2e/images/CREDITS.md`). Adding a
+vertical is a fixture entry plus a photo folder; the spec itself shouldn't change.
+
+The cover banner and booking-page colour are applied by `brandOrg()` (helpers.ts)
+over PostgREST/Storage using the owner's own session, mid-run, while the dashboard
+is on screen — onboarding cannot set either, and walking Settings → Booking page
+would land in the middle of the take. It returns the org's `{ id, slug }`, and the
+booking URL **must** come from that slug rather than the dashboard's rendered
+`vis.ge/book/…` text: onboarding retries with a `-suffix` slug when the base one
+is taken, and the rendered link can still show the pre-retry slug — booking
+against it silently lands in whichever *other* org owns it.
+
+Each run leaves a **real** org, auth user, photos in three storage buckets and a
+booking on the hosted project. Prune afterwards (the SQL under *What persists*
+covers orgless users only — demo users own an org, so delete the org first).
+
 ## Test data & the seeded account
 
 Authenticated specs log in as the seeded owner in `helpers.ts` (`SEED`):

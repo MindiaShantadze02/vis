@@ -206,7 +206,14 @@ const theme = createTheme({
     },
 
     MuiTextField: {
-      defaultProps: { variant: 'outlined' },
+      // autoComplete off by default for every field in the app. Set here rather
+      // than field by field so a new form can't forget it.
+      //
+      // A field that genuinely wants a browser hint still wins: MUI applies this
+      // prop to the <input> BEFORE spreading slotProps.htmlInput, so the card
+      // (`cc-number`, `cc-exp`) and password (`new-password`) fields that set
+      // their own autoComplete keep it. Override there, not here.
+      defaultProps: { variant: 'outlined', autoComplete: 'off' },
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {

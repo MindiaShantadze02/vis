@@ -521,3 +521,88 @@ export async function setSmsEnabled(on: boolean): Promise<void> {
   const rows = (await res.json()) as { id: string }[]
   if (!rows.length) throw new Error('sms_enabled update matched no org')
 }
+
+/**
+ * Dress the org the browser is currently signed into with the two things
+ * onboarding can't set: a cover banner and a brand colour (plus an address, for
+ * the booking sidebar's contact block). Settings → Booking page is the only UI
+ * that writes these, and walking it would land in the middle of the demo
+ * recording, so the demo does it out of band instead.
+ *
+ * Deliberately uses the OWNER'S OWN session, lifted out of the page's
+ * localStorage, not the service role: these are writes an owner legitimately
+ * makes (booking_theme and address are not guarded by
+ * prevent_billing_self_update), and SUPABASE_SERVICE_ROLE_KEY is absent by
+ * default — a demo that needed it would fail on a clean checkout.
+ *
+ * Call it while a signed-in page is open, after onboarding has created the org.
+ */
+export async function brandOrg(
+  page: Page,
+  opts: { coverPath: string; themeHex?: string | null; address?: string },
+): Promise<{ id: string; slug: string }> {
+  const { url, anonKey } = readSupabaseEnv()
+
+  // supabase-js stores the session under `sb-<project-ref>-auth-token`, but the
+  // encoding has moved around across versions (plain JSON, a `base64-` prefix,
+  // and chunked `.0`/`.1` keys), so find the key and cope with all three rather
+  // than hard-coding one shape.
+  const accessToken = await page.evaluate(() => {
+    const keys = Object.keys(window.localStorage).filter(k => /^sb-.*-auth-token(\.\d+)?$/.test(k))
+    if (!keys.length) return null
+    const base = keys.filter(k => !/\.\d+$/.test(k))[0]
+    const raw = base
+      ? window.localStorage.getItem(base)!
+      : keys.sort().map(k => window.localStorage.getItem(k) ?? '').join('')
+    const json = raw.startsWith('base64-') ? atob(raw.slice('base64-'.length)) : raw
+    try {
+      return (JSON.parse(json) as { access_token?: string }).access_token ?? null
+    } catch {
+      return null
+    }
+  })
+  if (!accessToken) throw new Error('brandOrg: no Supabase session in localStorage')
+
+  const H = { apikey: anonKey, authorization: `Bearer ${accessToken}` }
+
+  // organisations_select is scoped to the caller's own orgs, so this is the
+  // signed-in owner's org and nobody else's. Returning the slug lets callers
+  // build the booking URL from the row rather than scraping it off the
+  // dashboard — the rendered link can lag a slug-collision retry, and booking
+  // against a stale slug silently lands in some *other* org.
+  const orgRes = await fetch(
+    `${url}/rest/v1/organisations?select=id,slug&order=created_at.desc&limit=1`,
+    { headers: H },
+  )
+  if (!orgRes.ok) throw new Error(`brandOrg: org lookup → ${orgRes.status} ${await orgRes.text()}`)
+  const orgs = (await orgRes.json()) as { id: string; slug: string }[]
+  if (!orgs.length) throw new Error('brandOrg: signed-in user owns no org yet')
+  const { id: orgId, slug } = orgs[0]
+
+  // Same bucket + `{org_id}/cover.{ext}` path the cover uploader in
+  // BookingPageSettings uses, so the storage RLS policies already allow it.
+  const objectPath = `logos/${orgId}/cover.jpg`
+  const upload = await fetch(`${url}/storage/v1/object/${objectPath}`, {
+    method: 'POST',
+    headers: { ...H, 'content-type': 'image/jpeg', 'x-upsert': 'true' },
+    body: readFileSync(opts.coverPath),
+  })
+  if (!upload.ok) throw new Error(`brandOrg: cover upload → ${upload.status} ${await upload.text()}`)
+
+  const patch: Record<string, string> = {
+    // Cache-bust like the UI does — the org is new, but a re-run against a
+    // reused org would otherwise serve the previous cover from the CDN.
+    cover_url: `${url}/storage/v1/object/public/${objectPath}?v=${Date.now()}`,
+  }
+  if (opts.themeHex) patch.booking_theme = opts.themeHex
+  if (opts.address) patch.address = opts.address
+
+  const res = await fetch(`${url}/rest/v1/organisations?id=eq.${orgId}`, {
+    method: 'PATCH',
+    headers: { ...H, 'content-type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) throw new Error(`brandOrg: org patch → ${res.status} ${await res.text()}`)
+
+  return { id: orgId, slug }
+}

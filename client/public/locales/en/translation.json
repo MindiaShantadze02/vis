@@ -193,7 +193,6 @@
     "notes": "Notes (optional)",
     "detailsHeading": "Your details",
     "smsHelper": "We'll text you a quick code to confirm it's you.",
-    "phoneHelperNoSms": "So the business can reach you about this booking.",
     "summaryService": "Service",
     "summaryDate": "Date",
     "total": "Total",

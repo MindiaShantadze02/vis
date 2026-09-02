@@ -90,9 +90,6 @@ export interface StatItem {
  * cliché). Segments sit side by side on desktop and stack on mobile.
  */
 export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boolean }) {
-  // Mobile packs the segments 2-up instead of stacking four full-width rows
-  // (which pushed the content below them under the fold).
-  const lastRowStart = items.length - 2
   return (
     <Card
       component={motion.div}
@@ -101,9 +98,12 @@ export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boo
       animate="visible"
       sx={{
         mb: 4,
-        display: { xs: 'grid', sm: 'flex' },
-        gridTemplateColumns: '1fr 1fr',
-        flexDirection: { sm: 'row' },
+        display: 'flex',
+        // One per row on mobile. A 2-up grid orphaned the odd segment in a
+        // half-width cell with a divider running down the empty side; the
+        // single column is also SHORTER, because each segment is a compact
+        // row rather than a tall centred block.
+        flexDirection: { xs: 'column', sm: 'row' },
       }}
     >
       {items.map((it, i) => (
@@ -112,24 +112,19 @@ export function StatStrip({ items, loading }: { items: StatItem[]; loading?: boo
           sx={{
             flex: 1,
             display: 'flex',
-            // Mobile stacks the segment vertically (icon over label over value),
-            // centred — the horizontal row only starts at the sm breakpoint.
-            flexDirection: { xs: 'column', sm: 'row' },
             alignItems: 'center',
-            textAlign: { xs: 'center', sm: 'left' },
-            gap: { xs: 1, sm: 1.75 },
+            gap: 1.75,
             p: 2.5,
             minWidth: 0,
             borderColor: 'divider',
             borderStyle: 'solid',
             borderWidth: 0,
-            // Desktop: hairline between horizontal segments. Mobile 2×2 grid:
-            // hairline after odd columns and under the top row.
+            // One hairline between neighbours, along whichever axis the strip
+            // is laid out on: under each segment when stacked, beside it when
+            // in a row. Never after the last one.
             ...(i < items.length - 1 && {
-              borderRightWidth: { xs: i % 2 === 0 ? '1px' : 0, sm: '1px' },
-            }),
-            ...(i < lastRowStart && {
               borderBottomWidth: { xs: '1px', sm: 0 },
+              borderRightWidth: { xs: 0, sm: '1px' },
             }),
           }}
         >
