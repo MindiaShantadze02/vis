@@ -1,7 +1,7 @@
 /.playwright-mcp
 /demos
+node_modules
 supabase/.temp
 supabase/supabase
 # Claude Code personal (per-project) settings
 .claude/settings.local.json
-/client/e2e/images

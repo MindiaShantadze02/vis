@@ -141,8 +141,7 @@ export const MAX_PRICE = 99999999.99
  * charge to the business, unrelated to this.
  *
  * Mirrors the `services_price_non_negative` CHECK (migration 20260816130000) —
- * change both together. consistency.spec.ts guards this constant against
- * e2e/data/services.json.
+ * change both together.
  */
 export const MIN_PRICE = 0
 
