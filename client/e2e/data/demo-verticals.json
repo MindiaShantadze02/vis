@@ -170,22 +170,16 @@
     },
     "services": [
       {
-        "name": "საცდელი გაკვეთილი",
-        "duration": "60",
-        "price": "25",
-        "image": "service-1.jpg"
-      },
-      {
         "name": "პრაქტიკული მართვა",
         "duration": "90",
         "price": "60",
-        "image": "service-2.jpg"
+        "image": "service-1.jpg"
       },
       {
         "name": "საგამოცდო მარშრუტი",
         "duration": "60",
         "price": "50",
-        "image": "service-3.jpg"
+        "image": "service-2.jpg"
       }
     ],
     "staff": [
@@ -195,8 +189,7 @@
         "photo": "staff-1.jpg",
         "services": [
           0,
-          1,
-          2
+          1
         ]
       },
       {
@@ -205,8 +198,7 @@
         "photo": "staff-2.jpg",
         "services": [
           0,
-          1,
-          2
+          1
         ]
       }
     ],
